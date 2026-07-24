@@ -1,6 +1,6 @@
 # Phase 4 — M2 recovery rehearsal and observation preflight
 
-Status: **IN PROGRESS — PUBLICATION PENDING**
+Status: **COMPLETE**
 
 Date opened: 2026-07-24
 Target module: **jarvis-taskbar-icon-size**
@@ -58,8 +58,8 @@ Live activation in this task: **FORBIDDEN UNTIL A SEPARATE EXACT APPROVAL**
 ### P4.4 — Publication
 
 - [x] 更新 README、roadmap、runbook 和 publication manifest。
-- [ ] 审查精确 Git diff，不发布 artifacts。
-- [ ] 提交、推送并等待 public CI。
+- [x] 审查精确 Git diff，不发布 artifacts。
+- [x] 提交、推送并等待 public CI。
 
 ## Completion rule
 
@@ -109,3 +109,20 @@ Phase 4 完成后仍必须保持：
   `B852EB4B49D7C65C876C54DD381EAA0E823959256ED0EBE4A75D8FCF71A1888C`.
 - Full `Test-Project.ps1` passed 188/188 including the managed Release build.
   It still reports `releaseReady=false` and `activationPermitted=false`.
+
+### 2026-07-24 — Publication complete
+
+- The reviewed change set contained 12 repository files; no artifact, portable
+  toolchain, binary or generated build directory was staged.
+- Publication boundary passed for 53 public candidates. Commit `6071715`
+  was pushed to `agent/m2-recovery-observation`.
+- Draft PR <https://github.com/LeoSasion/JarvisV2/pull/1> is mergeable and
+  public CI run <https://github.com/LeoSasion/JarvisV2/actions/runs/30090014385>
+  passed.
+- Final read-only readiness run `20260724T113519084Z-b28096b0` retained
+  compatibility 23/23, `disabled.flag=armed`, permit absent, Windhawk
+  Stopped/Manual/PID 0, zero module mappings and complete Explorer inspection.
+- The phase ended with `recoveryTerminalAvailable=false`,
+  `exactCommandApproved=false`, `canExecuteNow=false`,
+  `activationPermitted=false`, `liveExplorer=not-run` and
+  `mutationPerformed=false`.
