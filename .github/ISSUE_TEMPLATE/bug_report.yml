@@ -1,0 +1,51 @@
+name: Bug report
+description: Report a reproducible JarvisV2 defect without bypassing safety gates.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not attach credentials, memory dumps, proprietary Windows binaries,
+        or instructions that clear the kill switch.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: input
+    id: module
+    attributes:
+      label: Module
+      placeholder: jarvis-native-taskbar or jarvis-taskbar-icon-size
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and exact receipts
+      description: Windows build/UBR, source hash, run ID and gate result.
+    validations:
+      required: true
+  - type: dropdown
+    id: evidence
+    attributes:
+      label: Evidence level
+      options:
+        - Static only
+        - Compiled offline
+        - Separately authorized live validation
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: The kill switch is armed and no activation permit is present.
+          required: true
+        - label: I did not include secrets, dumps, or proprietary binaries.
+          required: true

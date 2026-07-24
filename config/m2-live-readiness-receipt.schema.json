@@ -1,0 +1,475 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/LeoSasion/JarvisV2/schemas/m2-live-readiness-receipt.schema.json",
+  "title": "JarvisV2 M2 read-only live-readiness receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "receiptType",
+    "runId",
+    "inspectedAtUtc",
+    "result",
+    "offlineReadinessPassed",
+    "readyForExactApproval",
+    "activationPermitted",
+    "liveExplorer",
+    "mutationPerformed",
+    "requestedModule",
+    "sourceIdentity",
+    "killSwitch",
+    "activeModulePermit",
+    "windhawkService",
+    "compatibility",
+    "canonicalBuild",
+    "runtime",
+    "approval",
+    "errors"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "receiptType": {
+      "const": "jarvisv2-m2-live-readiness"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9]{8}T[0-9]{9}Z-[0-9a-f]{8}$"
+    },
+    "inspectedAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "result": {
+      "enum": [
+        "passed",
+        "failed"
+      ]
+    },
+    "offlineReadinessPassed": {
+      "type": "boolean"
+    },
+    "readyForExactApproval": {
+      "type": "boolean"
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "liveExplorer": {
+      "const": "not-run"
+    },
+    "mutationPerformed": {
+      "const": false
+    },
+    "requestedModule": {
+      "const": "jarvis-taskbar-icon-size"
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "readinessScript",
+        "receiptSchema",
+        "compatibilityManifest",
+        "nativeBuildReceipt",
+        "m2Source"
+      ],
+      "properties": {
+        "readinessScript": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "receiptSchema": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "compatibilityManifest": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "nativeBuildReceipt": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "m2Source": {
+          "$ref": "#/$defs/fileIdentity"
+        }
+      }
+    },
+    "killSwitch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "state",
+        "exists",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "armed",
+            "missing",
+            "unknown"
+          ]
+        },
+        "exists": {
+          "type": "boolean"
+        },
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-F0-9]{64}$"
+        }
+      }
+    },
+    "activeModulePermit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "state",
+        "exists"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "absent",
+            "present",
+            "unknown"
+          ]
+        },
+        "exists": {
+          "type": "boolean"
+        }
+      }
+    },
+    "windhawkService": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "found",
+        "count",
+        "state",
+        "startMode",
+        "processId"
+      ],
+      "properties": {
+        "found": {
+          "type": "boolean"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "startMode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "processId": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profileId",
+        "compatible",
+        "checksPassed",
+        "checkCount",
+        "killSwitchState",
+        "activeModuleState",
+        "explorerProcessIds"
+      ],
+      "properties": {
+        "profileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "compatible": {
+          "type": "boolean"
+        },
+        "checksPassed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checkCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "killSwitchState": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "activeModuleState": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "explorerProcessIds": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "canonicalBuild": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "status",
+        "canonicalFullRun",
+        "receiptSha256",
+        "runSummarySha256",
+        "m2SourceSha256",
+        "warningCount",
+        "errorCount",
+        "activationPermitted",
+        "liveExplorer"
+      ],
+      "properties": {
+        "runId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "canonicalFullRun": {
+          "type": "boolean"
+        },
+        "receiptSha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-F0-9]{64}$"
+        },
+        "runSummarySha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-F0-9]{64}$"
+        },
+        "m2SourceSha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-F0-9]{64}$"
+        },
+        "warningCount": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "errorCount": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "activationPermitted": {
+          "const": false
+        },
+        "liveExplorer": {
+          "const": "not-run"
+        }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "namedProcessCount",
+        "processCount",
+        "moduleEnumerableProcessCount",
+        "moduleNotEnumerableProcessCount",
+        "moduleMappingCount",
+        "moduleEnumerationErrorCount",
+        "explorerProcessIds",
+        "explorerMatchingModuleCount",
+        "explorerModuleInspectionSucceeded"
+      ],
+      "properties": {
+        "namedProcessCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "processCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "moduleEnumerableProcessCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "moduleNotEnumerableProcessCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "moduleMappingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "moduleEnumerationErrorCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "explorerProcessIds": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "uniqueItems": true
+        },
+        "explorerMatchingModuleCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "explorerModuleInspectionSucceeded": {
+          "type": "boolean"
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exactCommand",
+        "recoveryCommand",
+        "exactCommandApproved",
+        "recoveryTerminalAvailable",
+        "canExecuteNow"
+      ],
+      "properties": {
+        "exactCommand": {
+          "const": "dotnet run --project .\\src\\Jarvis.Supervisor --configuration Release --no-build -- clear-kill-switch --module jarvis-taskbar-icon-size --confirm"
+        },
+        "recoveryCommand": {
+          "const": "dotnet run --project .\\src\\Jarvis.Supervisor --configuration Release --no-build -- arm-kill-switch"
+        },
+        "exactCommandApproved": {
+          "const": false
+        },
+        "recoveryTerminalAvailable": {
+          "const": false
+        },
+        "canExecuteNow": {
+          "const": false
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "fileIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relativePath",
+        "size",
+        "sha256"
+      ],
+      "properties": {
+        "relativePath": {
+          "type": "string",
+          "pattern": "^[^\\\\/:*?\"<>|]+(?:/[^\\\\/:*?\"<>|]+)*$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[A-F0-9]{64}$"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "result": {
+            "const": "passed"
+          }
+        },
+        "required": [
+          "result"
+        ]
+      },
+      "then": {
+        "properties": {
+          "offlineReadinessPassed": {
+            "const": true
+          },
+          "readyForExactApproval": {
+            "const": true
+          },
+          "errors": {
+            "maxItems": 0
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "offlineReadinessPassed": {
+            "const": false
+          },
+          "readyForExactApproval": {
+            "const": false
+          },
+          "errors": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ]
+}

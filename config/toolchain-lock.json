@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 2,
+  "windhawkVersion": "1.7.3",
+  "windhawkCommit": "b59b38cd77daec98830c0e5e2ad14a35c44f02a7",
+  "sourceInstaller": {
+    "url": "https://github.com/ramensoftware/windhawk/releases/download/v1.7.3/windhawk_setup_offline.exe",
+    "sha256": "4D93016570F982326EEBDFC9068E924FF21F6448534EA32672BB4C1D52A8193B",
+    "authenticodeRequired": true,
+    "signerSubject": "CN=\"Open Source Developer, Michael Maltsev\", O=Open Source Developer, L=Tel Aviv, C=IL"
+  },
+  "compilerScript": {
+    "url": "https://raw.githubusercontent.com/ramensoftware/windhawk-mods/18615a32f83d3bcde2a32bd7ef648021b8100cc5/scripts/compile_mod.py",
+    "windhawkModsCommit": "18615a32f83d3bcde2a32bd7ef648021b8100cc5",
+    "sha256": "EF93BCF623E6A77A3CCA017A27878B252E08737DEFC255F72BA010A2D8D43270"
+  },
+  "python": {
+    "selector": "-3.14",
+    "launcher": {
+      "fileName": "py.exe",
+      "size": 782680,
+      "sha256": "E76BC0ADB64585664E66CC9859A39C4A7046C0B0BDA573206102765B7106AAD6"
+    },
+    "interpreter": {
+      "fileName": "python.exe",
+      "version": "3.14.3",
+      "size": 106328,
+      "sha256": "CCE21C0E8710E304273E98AC4B2B0F5ACEB639ACBCD2343CBAA5C4E81619C45B"
+    },
+    "runtimeFiles": [
+      {
+        "relativePath": "python314.dll",
+        "size": 6753112,
+        "sha256": "1AC15E2224581FC678BBD17728B9AA538D47B891B72C76499EF07E54CD74F151"
+      },
+      {
+        "relativePath": "python3.dll",
+        "size": 74072,
+        "sha256": "BE1017CA4CA8FF837EFBB343D5C8F739BD67BD1C43FB41068A539B19357C0213"
+      },
+      {
+        "relativePath": "vcruntime140.dll",
+        "size": 120400,
+        "sha256": "052AD6A20D375957E82AA6A3C441EA548D89BE0981516CA7EB306E063D5027F4"
+      },
+      {
+        "relativePath": "vcruntime140_1.dll",
+        "size": 49776,
+        "sha256": "6A99BC0128E0C7D6CBBF615FCC26909565E17D4CA3451B97F8987F9C6ACBC6C8"
+      }
+    ]
+  },
+  "compileInputTree": {
+    "algorithm": "sha256-path-size-content-v1",
+    "scopes": [
+      {
+        "relativePath": "Compiler",
+        "kind": "tree"
+      },
+      {
+        "relativePath": "Engine\\1.7.3\\64\\windhawk.lib",
+        "kind": "file"
+      },
+      {
+        "relativePath": "windhawk.exe",
+        "kind": "file"
+      },
+      {
+        "relativePath": "windhawk.ini",
+        "kind": "file"
+      }
+    ],
+    "fileCount": 8397,
+    "bytes": 570199839,
+    "sha256": "990DB4CE8C4AEE2907F67B1C1B183DDE88D4060647CDC9BC12A6084A25956E8B"
+  }
+}

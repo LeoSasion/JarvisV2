@@ -1,0 +1,79 @@
+name: JarvisV2 CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jarvisv2-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  managed-and-publication-boundary:
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          global-json-file: global.json
+
+      - name: Validate public source boundary
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-PublicationBoundary.ps1
+
+      - name: Parse PowerShell and JSON
+        shell: pwsh
+        run: |
+          $parseFailures = [System.Collections.Generic.List[string]]::new()
+          foreach ($script in Get-ChildItem -LiteralPath .\scripts -Filter *.ps1) {
+            $tokens = $null
+            $errors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile(
+              $script.FullName,
+              [ref]$tokens,
+              [ref]$errors)
+            foreach ($error in @($errors)) {
+              $parseFailures.Add("$($script.Name): $($error.Message)")
+            }
+          }
+          foreach ($json in Get-ChildItem -LiteralPath .\config -Filter *.json) {
+            try {
+              $null = Get-Content -LiteralPath $json.FullName -Raw |
+                ConvertFrom-Json -Depth 100
+            }
+            catch {
+              $parseFailures.Add("$($json.Name): invalid JSON")
+            }
+          }
+          if ($parseFailures.Count -ne 0) {
+            throw ($parseFailures -join [Environment]::NewLine)
+          }
+
+      - name: Build safety supervisor
+        shell: pwsh
+        run: >-
+          dotnet build
+          .\src\Jarvis.Supervisor\Jarvis.Supervisor.csproj
+          --configuration Release
+          --nologo
+          --warnaserror
+
+      - name: State native-build boundary
+        shell: pwsh
+        run: |
+          Write-Output "Canonical native compilation is intentionally not run."
+          Write-Output "It requires the separately provisioned hash-locked portable toolchain."
+          Write-Output "This CI run never authorizes activation or live Explorer use."

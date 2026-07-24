@@ -1,0 +1,580 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis2.local/schemas/offline-lifecycle-receipt-v1.json",
+  "title": "JARVIS2 Offline Lifecycle Fault Lab Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "receiptType",
+    "runId",
+    "generatedAtUtc",
+    "result",
+    "offlineEvidenceReady",
+    "releaseReady",
+    "activationPermitted",
+    "liveExplorer",
+    "sourceIdentity",
+    "toolchainIdentity",
+    "environment",
+    "summary",
+    "scenarios",
+    "errors"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "receiptType": {
+      "const": "jarvis2-offline-lifecycle-fault-lab"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9]{8}T[0-9]{9}Z-[0-9a-f]{8}$"
+    },
+    "generatedAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "result": {
+      "enum": [
+        "passed",
+        "failed"
+      ]
+    },
+    "offlineEvidenceReady": {
+      "type": "boolean"
+    },
+    "releaseReady": {
+      "const": false
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "liveExplorer": {
+      "const": "not-run"
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "m1Source",
+        "protocolHeader",
+        "labSource",
+        "runnerScript",
+        "receiptSchema",
+        "testProject"
+      ],
+      "properties": {
+        "m1Source": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/fileIdentity"
+            },
+            {
+              "properties": {
+                "relativePath": {
+                  "const": "mods/jarvis-native-taskbar.wh.cpp"
+                }
+              }
+            }
+          ]
+        },
+        "protocolHeader": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/fileIdentity"
+            },
+            {
+              "properties": {
+                "relativePath": {
+                  "const": "mods/jarvis-resource-protocol.hpp"
+                }
+              }
+            }
+          ]
+        },
+        "labSource": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/fileIdentity"
+            },
+            {
+              "properties": {
+                "relativePath": {
+                  "const": "tests/native/jarvis_lifecycle_harness.cpp"
+                }
+              }
+            }
+          ]
+        },
+        "runnerScript": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/fileIdentity"
+            },
+            {
+              "properties": {
+                "relativePath": {
+                  "const": "scripts/Test-LifecycleFaultLab.ps1"
+                }
+              }
+            }
+          ]
+        },
+        "receiptSchema": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/fileIdentity"
+            },
+            {
+              "properties": {
+                "relativePath": {
+                  "const": "config/offline-lifecycle-receipt.schema.json"
+                }
+              }
+            }
+          ]
+        },
+        "testProject": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/fileIdentity"
+            },
+            {
+              "properties": {
+                "relativePath": {
+                  "const": "scripts/Test-Project.ps1"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "toolchainIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "windhawkVersion",
+        "clang",
+        "toolchainLock",
+        "compileInputTree"
+      ],
+      "properties": {
+        "windhawkVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "clang": {
+          "$ref": "#/$defs/externalFileIdentity"
+        },
+        "toolchainLock": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "compileInputTree": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "algorithm",
+            "fileCount",
+            "bytes",
+            "sha256"
+          ],
+          "properties": {
+            "algorithm": {
+              "const": "sha256-path-size-content-v1"
+            },
+            "fileCount": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[A-F0-9]{64}$"
+            }
+          }
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "framework",
+        "osArchitecture",
+        "processArchitecture"
+      ],
+      "properties": {
+        "framework": {
+          "type": "string",
+          "minLength": 1
+        },
+        "osArchitecture": {
+          "type": "string",
+          "minLength": 1
+        },
+        "processArchitecture": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenarioCount",
+        "passed",
+        "failed",
+        "retainedExplained",
+        "retainedUnexplained",
+        "doubleRelease"
+      ],
+      "properties": {
+        "scenarioCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "passed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retainedExplained": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retainedUnexplained": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "doubleRelease": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/scenario"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "result": {
+            "const": "passed"
+          }
+        },
+        "required": [
+          "result"
+        ]
+      },
+      "then": {
+        "properties": {
+          "offlineEvidenceReady": {
+            "const": true
+          },
+          "summary": {
+            "properties": {
+              "failed": {
+                "const": 0
+              },
+              "retainedUnexplained": {
+                "const": 0
+              },
+              "doubleRelease": {
+                "const": 0
+              }
+            }
+          },
+          "scenarios": {
+            "items": {
+              "properties": {
+                "passed": {
+                  "const": true
+                },
+                "resourceAccounting": {
+                  "properties": {
+                    "unexplained": {
+                      "const": 0
+                    },
+                    "doubleRelease": {
+                      "const": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "errors": {
+            "maxItems": 0
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "offlineEvidenceReady": {
+            "const": false
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "fileIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relativePath",
+        "size",
+        "sha256"
+      ],
+      "properties": {
+        "relativePath": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?![A-Za-z]:)(?![/\\\\]).+"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[A-F0-9]{64}$"
+        }
+      }
+    },
+    "externalFileIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fileName",
+        "size",
+        "sha256"
+      ],
+      "properties": {
+        "fileName": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^/\\\\]+$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[A-F0-9]{64}$"
+        }
+      }
+    },
+    "resourceAccounting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "created",
+        "released",
+        "retained",
+        "unexplained",
+        "doubleRelease"
+      ],
+      "properties": {
+        "created": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "released": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retained": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unexplained": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "doubleRelease": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "resourceEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resourceId",
+        "resourceKind",
+        "action",
+        "reasonCode"
+      ],
+      "properties": {
+        "resourceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resourceKind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "enum": [
+            "create",
+            "release",
+            "retain"
+          ]
+        },
+        "reasonCode": {
+          "enum": [
+            "none",
+            "external-uncertainty",
+            "retry-pending",
+            "retry-exhausted",
+            "owner-transfer",
+            "protocol-failure",
+            "cleanup-failure",
+            "hook-removal-failure",
+            "module-permanent",
+            "capability-retained",
+            "delegate-rejected",
+            "rollback-failure",
+            "resource-transferred"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "retain"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "properties": {
+              "reasonCode": {
+                "not": {
+                  "const": "none"
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "reasonCode": {
+                "const": "none"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "area",
+        "passed",
+        "terminalState",
+        "steps",
+        "faults",
+        "resourceEvents",
+        "resourceAccounting",
+        "boundedConcurrency",
+        "detail"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+        },
+        "area": {
+          "enum": [
+            "git",
+            "ui-thread",
+            "dispatch",
+            "module"
+          ]
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "terminalState": {
+          "type": "string",
+          "minLength": 1
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "faults": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "resourceEvents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/resourceEvent"
+          }
+        },
+        "resourceAccounting": {
+          "$ref": "#/$defs/resourceAccounting"
+        },
+        "boundedConcurrency": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "used",
+            "barrierParticipants"
+          ],
+          "properties": {
+            "used": {
+              "type": "boolean"
+            },
+            "barrierParticipants": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

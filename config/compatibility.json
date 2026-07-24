@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 3,
+  "project": "JARVIS2",
+  "modules": [
+    {
+      "id": "jarvis-native-taskbar",
+      "source": "mods/jarvis-native-taskbar.wh.cpp",
+      "host": "%SystemRoot%\\explorer.exe",
+      "architecture": "amd64",
+      "defaultActivation": "blocked-by-global-kill-switch-and-one-shot-permit",
+      "supervisorActivationEligible": false,
+      "activationBlocker": "runtime-revocation-not-yet-implemented"
+    },
+    {
+      "id": "jarvis-taskbar-icon-size",
+      "source": "mods/jarvis-taskbar-icon-size.wh.cpp",
+      "host": "%SystemRoot%\\explorer.exe",
+      "architecture": "amd64",
+      "defaultActivation": "disabled-setting-global-kill-switch-and-one-shot-permit",
+      "supervisorActivationEligible": true,
+      "privateSymbolHooks": 1
+    }
+  ],
+  "host": {
+    "process": "%SystemRoot%\\explorer.exe",
+    "architecture": "amd64",
+    "minimumWindowsBuild": 26200,
+    "maximumWindowsBuild": 26200,
+    "strictByDefault": true,
+    "killSwitch": "%LOCALAPPDATA%\\JARVIS2\\disabled.flag"
+  },
+  "safety": {
+    "stateRoot": "KnownFolder.LocalAppData\\JARVIS2",
+    "killSwitch": "disabled.flag",
+    "activationPermit": "active-module.txt",
+    "activationPermitEncoding": "strict-ascii-module-id-no-bom-no-newline",
+    "activationPermitLifetime": "one-shot-consumed-before-hook-registration",
+    "activationPermitMaxAgeSeconds": 300,
+    "stateGate": "Local\\JARVIS2.StateGate.v1",
+    "unknownStatePolicy": "fail-closed"
+  },
+  "validatedHosts": [
+    {
+      "profileId": "win11-25h2-26200.8875-x64",
+      "observedAt": "2026-07-22T19:00:00+08:00",
+      "displayVersion": "25H2",
+      "windowsBuild": 26200,
+      "ubr": 8875,
+      "architecture": "AMD64",
+      "installationType": "Client",
+      "explorer": {
+        "relativePath": "explorer.exe",
+        "productVersion": "10.0.26100.8875",
+        "fileVersion": "10.0.26100.8875 (WinBuild.160101.0800)",
+        "size": 3385624,
+        "sha256": "80B21E6F70524EFD84037A4EDA479DDC4BC55C0D6C1A33439B85A554E740F30C",
+        "loadedImage": {
+          "timeDateStamp": "0x0BEBF481",
+          "sizeOfImage": 3371008,
+          "pdbGuid": "EE2147B7-59D5-A1FC-2883-04091869502A",
+          "pdbAge": 1
+        }
+      },
+      "taskbarView": {
+        "relativePath": "SystemApps\\MicrosoftWindows.Client.Core_cw5n1h2txyewy\\Taskbar.View.dll",
+        "productVersion": "2605.22000.400.0",
+        "fileVersion": "2605.22000.400.0",
+        "size": 10020864,
+        "sha256": "00D1BD68240ED0CDB19A98E551BC5BFBA383843CC2564FF40523CB2DCFCD09F5",
+        "loadedImage": {
+          "timeDateStamp": "0x6A29C5C5",
+          "sizeOfImage": 10051584,
+          "pdbGuid": "4A99B7C5-BAD9-4999-9575-72CC66E11978",
+          "pdbAge": 1
+        }
+      },
+      "systemTray": {
+        "relativePath": "SystemApps\\MicrosoftWindows.Client.Core_cw5n1h2txyewy\\SystemTray.dll",
+        "productVersion": "2605.22002.100.0",
+        "fileVersion": "2605.22002.100.0",
+        "size": 2047488,
+        "sha256": "C911987BF024BC162AF1ABBCEA79287C57302419156741596FF9EEB23E23F3E1"
+      },
+      "searchUx": {
+        "relativePath": "SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchUx.UI.dll",
+        "productVersion": "2605.27010.300.0",
+        "fileVersion": "2605.27010.300.0",
+        "size": 12218880,
+        "sha256": "A86F048BE25AFA0A18435266D774131F797EF11C8C0BE8959ECE3A8E547E4943"
+      },
+      "runtimeModuleExpectations": {
+        "taskbarViewLoadedRelativePath": "SystemApps\\MicrosoftWindows.Client.Core_cw5n1h2txyewy\\Taskbar.View.dll",
+        "systemTrayLoadedRelativePath": "SystemApps\\MicrosoftWindows.Client.Core_cw5n1h2txyewy\\SystemTray.dll",
+        "searchUxLoadedRelativePath": "SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchUx.UI.dll",
+        "legacyExplorerExtensions": "absent",
+        "fileExplorerExtensions": "unrelated-component-allowed"
+      },
+      "observedAlternates": [
+        {
+          "relativePath": "SystemApps\\SxS\\MicrosoftWindows.57242383.Tasbar_cw5n1h2txyewy\\Taskbar.View.dll",
+          "productVersion": "2605.22000.400.0",
+          "size": 10021888,
+          "sha256": "8482CE70D00AFA8EC7264B41F8484DD47B9F4AFCB5EF5870EE94662F36A5ECC5",
+          "acceptedAsLoadedModule": false
+        }
+      ],
+      "validation": {
+        "static": "passed-89-checks",
+        "compiled": "passed-windhawk-1.7.3-amd64-run-20260722T133316122Z-f340c396",
+        "liveExplorer": "not-run"
+      }
+    }
+  ]
+}

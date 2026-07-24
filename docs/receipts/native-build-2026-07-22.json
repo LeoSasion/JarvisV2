@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 3,
+  "generatedBy": "scripts/Build-NativeMod.ps1",
+  "generatedAtUtc": "2026-07-24T10:58:57.714967+00:00",
+  "runId": "20260724T105833265Z-e47539f8",
+  "evidence": {
+    "buildScript": {
+      "relativePath": "scripts/Build-NativeMod.ps1",
+      "sha256": "4E498C97675DD1DA0A6FB11007ED693E9B4CF4B4E0C051C68D2092BB2BD61866"
+    },
+    "testScript": {
+      "relativePath": "scripts/Test-Project.ps1",
+      "sha256": "745304B522ABA7D5784943B9605C158B2BF0E8176FC4A5B4B655AD074C13E462"
+    },
+    "toolchainLock": {
+      "relativePath": "config/toolchain-lock.json",
+      "sha256": "1505E9CF4E4D14004B8A62F4DF933683FBEDFD83E01BB9ED94FD0F407787F7AD"
+    }
+  },
+  "runSummary": {
+    "relativePath": "artifacts/native/runs/20260724T105833265Z-e47539f8/run-summary.json",
+    "size": 7612,
+    "sha256": "A522270D142B26F30AC434D55B4F3294DF5BD636AB85C9DC2F2E6F66B9F9F6FF"
+  },
+  "toolchain": {
+    "windhawkVersion": "1.7.3",
+    "windhawkCommit": "b59b38cd77daec98830c0e5e2ad14a35c44f02a7",
+    "sourceInstallerLockSha256": "4D93016570F982326EEBDFC9068E924FF21F6448534EA32672BB4C1D52A8193B",
+    "sourceInstallerLockSigner": "CN=\"Open Source Developer, Michael Maltsev\", O=Open Source Developer, L=Tel Aviv, C=IL",
+    "installerExecution": "forbidden",
+    "portableProvisioning": "preprovisioned-validated",
+    "compilerScriptSha256": "EF93BCF623E6A77A3CCA017A27878B252E08737DEFC255F72BA010A2D8D43270",
+    "compileInputTree": {
+      "algorithm": "sha256-path-size-content-v1",
+      "fileCount": 8397,
+      "bytes": 570199839,
+      "sha256": "990DB4CE8C4AEE2907F67B1C1B183DDE88D4060647CDC9BC12A6084A25956E8B"
+    },
+    "clangVersion": "clang version 20.1.3 (https://github.com/llvm/llvm-project.git 923a5c4f83d2b3675bb88e9fe441daeaa4d69488)",
+    "clangSha256": "E47AF2636FAD3BED5CB4129D7A08AED0D3BEFFD9355A7447EF7B8AD18D8E712C",
+    "pythonVersion": "3.14.3",
+    "pythonExecutableSha256": "CCE21C0E8710E304273E98AC4B2B0F5ACEB639ACBCD2343CBAA5C4E81619C45B",
+    "pythonLauncherSha256": "E76BC0ADB64585664E66CC9859A39C4A7046C0B0BDA573206102765B7106AAD6",
+    "environmentVariablesCleared": [
+      "CCC_OVERRIDE_OPTIONS",
+      "CFLAGS",
+      "CPPFLAGS",
+      "C_INCLUDE_PATH",
+      "CXXFLAGS",
+      "CPLUS_INCLUDE_PATH",
+      "CPATH",
+      "GCC_EXEC_PREFIX",
+      "INCLUDE",
+      "LIB",
+      "LDFLAGS",
+      "LIBRARY_PATH",
+      "OBJC_INCLUDE_PATH",
+      "PYTHONHOME",
+      "PYTHONINSPECT",
+      "PYTHONPATH",
+      "PYTHONSTARTUP",
+      "SDKROOT"
+    ]
+  },
+  "modules": [
+    {
+      "id": "jarvis-native-taskbar",
+      "architecture": "amd64",
+      "sourcePath": "mods/jarvis-native-taskbar.wh.cpp",
+      "sourceSha256": "70B8A002994127A080EE188248C06BF486726827B674665467964E6A0F925751",
+      "sourceSnapshot": {
+        "relativePath": "artifacts/native/runs/20260724T105833265Z-e47539f8/sources/jarvis-native-taskbar/jarvis-native-taskbar-70B8A002994127A080EE188248C06BF486726827B674665467964E6A0F925751.wh.cpp",
+        "size": 1091408,
+        "sha256": "70B8A002994127A080EE188248C06BF486726827B674665467964E6A0F925751"
+      },
+      "supportingSources": [
+        {
+          "path": "mods/jarvis-resource-protocol.hpp",
+          "includeFileName": "jarvis-resource-protocol.hpp",
+          "size": 93246,
+          "sha256": "0F26DE7C6EB150EAE4C2153AD51B1868F646BED877EED23D383DE6C0BE9DD676",
+          "snapshot": {
+            "relativePath": "artifacts/native/runs/20260724T105833265Z-e47539f8/sources/jarvis-native-taskbar/jarvis-resource-protocol.hpp",
+            "size": 93246,
+            "sha256": "0F26DE7C6EB150EAE4C2153AD51B1868F646BED877EED23D383DE6C0BE9DD676"
+          }
+        }
+      ],
+      "artifact": {
+        "relativePath": "artifacts/native/runs/20260724T105833265Z-e47539f8/modules/jarvis-native-taskbar/jarvis-native-taskbar-x64.dll",
+        "fileName": "jarvis-native-taskbar-x64.dll",
+        "size": 1904640,
+        "sha256": "B403AD6E3FE231F258D70F1F8E54330C2AB18D13F6F639A743A57955E4B7ADAF",
+        "pe": {
+          "machine": "0x8664",
+          "optionalHeaderMagic": "0x020B",
+          "isDll": true,
+          "isExecutableImage": true,
+          "numberOfSections": 14,
+          "sizeOfOptionalHeader": 240,
+          "sizeOfImage": 1794048,
+          "timeDateStamp": 1784890731
+        },
+        "exportCount": 2765,
+        "windhawkExports": [
+          "InternalWhModPtr",
+          "_Z10Wh_ModInitv",
+          "_Z12Wh_ModUninitv",
+          "_Z15Wh_ModAfterInitv",
+          "_Z18Wh_ModBeforeUninitv",
+          "_Z21Wh_ModSettingsChangedv"
+        ]
+      },
+      "compileLog": {
+        "relativePath": "artifacts/native/runs/20260724T105833265Z-e47539f8/modules/jarvis-native-taskbar/compile.log",
+        "size": 492,
+        "sha256": "928A4D6536E03E90A431FA039E5948377D12A2E156A0293F417D8F8FDE278B81"
+      },
+      "moduleReceipt": {
+        "relativePath": "artifacts/native/runs/20260724T105833265Z-e47539f8/modules/jarvis-native-taskbar/build-receipt.json",
+        "size": 4669,
+        "sha256": "E4F6E3B8E28B737714463C90C786452E6C31B6A608C7F5760F18F31D44495BE5"
+      },
+      "result": {
+        "exitCode": 0,
+        "warningCount": 0,
+        "errorCount": 0
+      }
+    },
+    {
+      "id": "jarvis-taskbar-icon-size",
+      "architecture": "amd64",
+      "sourcePath": "mods/jarvis-taskbar-icon-size.wh.cpp",
+      "sourceSha256": "4A0278E2BC1CC81D616AC885F87BB51CE26DD044E4F44DDB8341E0C6D79087C4",
+      "sourceSnapshot": {
+        "relativePath": "artifacts/native/runs/20260724T105833265Z-e47539f8/sources/jarvis-taskbar-icon-size/jarvis-taskbar-icon-size-4A0278E2BC1CC81D616AC885F87BB51CE26DD044E4F44DDB8341E0C6D79087C4.wh.cpp",
+        "size": 50142,
+        "sha256": "4A0278E2BC1CC81D616AC885F87BB51CE26DD044E4F44DDB8341E0C6D79087C4"
+      },
+      "supportingSources": [],
+      "artifact": {
+        "relativePath": "artifacts/native/runs/20260724T105833265Z-e47539f8/modules/jarvis-taskbar-icon-size/jarvis-taskbar-icon-size-x64.dll",
+        "fileName": "jarvis-taskbar-icon-size-x64.dll",
+        "size": 146432,
+        "sha256": "0A5D23B0017A8CC444CC546FB31E167A40414D046691DDA5A8FA796CF1018979",
+        "pe": {
+          "machine": "0x8664",
+          "optionalHeaderMagic": "0x020B",
+          "isDll": true,
+          "isExecutableImage": true,
+          "numberOfSections": 13,
+          "sizeOfOptionalHeader": 240,
+          "sizeOfImage": 344064,
+          "timeDateStamp": 1784890735
+        },
+        "exportCount": 535,
+        "windhawkExports": [
+          "InternalWhModPtr",
+          "_Z10Wh_ModInitv",
+          "_Z12Wh_ModUninitv",
+          "_Z18Wh_ModBeforeUninitv",
+          "_Z21Wh_ModSettingsChangedv"
+        ]
+      },
+      "compileLog": {
+        "relativePath": "artifacts/native/runs/20260724T105833265Z-e47539f8/modules/jarvis-taskbar-icon-size/compile.log",
+        "size": 482,
+        "sha256": "9C80E7DB1CD589F3B5AF47913DF0C0D31C0B6196E5B22B18066202370E9F4A2C"
+      },
+      "moduleReceipt": {
+        "relativePath": "artifacts/native/runs/20260724T105833265Z-e47539f8/modules/jarvis-taskbar-icon-size/build-receipt.json",
+        "size": 4120,
+        "sha256": "44263FDFE4CED50986A1628D3BCA7DD32ED1E14DA7629BD1F91BAE4C3C72D527"
+      },
+      "result": {
+        "exitCode": 0,
+        "warningCount": 0,
+        "errorCount": 0
+      }
+    }
+  ],
+  "offlineEvidenceReady": true,
+  "releaseReady": false,
+  "activationPermitted": false,
+  "liveExplorer": "not-run",
+  "scope": "Canonical offline build evidence. Live activation remains forbidden until the separate safety gate and explicit user approval."
+}

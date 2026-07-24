@@ -1,0 +1,48 @@
+# Roadmap
+
+## M1 — Native Taskbar
+
+源码、精确兼容门禁、一次性许可、固定工具链基线和静态约束已经完成。Phase 2 又完成四组严格受限的离线安全切片：GIT cookie 的显式可重试生命周期与 provisional quarantine；不依赖 HWND 的 generation-scoped UI 线程注册表及事务式初始化/清理；以固定 slot、稳定 ID/epoch/generation、独立 observer 和真实能力引用实现的跨线程 claim-or-cancel 派发收据；以及不加载 Explorer 的便携故障注入实验室。single-generation init CAS、创建前 reserve 的 typed kernel ledger、成组保留 registry wait bundle、TAP lifecycle drain、active/retired watcher、callback scope 和 safety pin 约束继续保留。
+
+便携实验室已经用 `git / ui-thread / dispatch / module` 四域的 90 个确定性场景注入 GIT revoke/registration/retired-owner、UI 初始化/线程复用/多窗口/销毁失败/清理、dispatch timeout/target-exit/unhook/emergency-slot/protocol-publication/late callback、ABI/loader/kernel capability 等失败。三次最终运行均为 90/90、场景负载一致，332 个逐项资源全部以 release 或 reasoned retain 收口，`retainedUnexplained=0`、`doubleRelease=0`；收据仍固定 `releaseReady=false`、`activationPermitted=false`、`liveExplorer=not-run`。这把共享状态机的离线证据从静态匹配推进到可重复执行，但没有调用真实 COM apartment、DispatcherQueue、Windhawk hook、XAML 或 Explorer 关闭路径。任何 Windhawk detour callback 或其他外部入口一经发布，独立 HMODULE safety pin 仍永久保留到 Explorer 自然退出；不可确认的能力在最终 seal 中标为 retained/unreachable，而不冒充已恢复。因此 M1 仍为 **build-only**；`compatibility.json` 的 blocker、Supervisor allowlist 和激活资格均不变，本轮没有实机加载 `jarvis-native-taskbar`。
+
+进入 allowlist 前还必须完成：
+
+- 在正确的真实 UI 线程验证同步撤销已应用属性和资源，不依赖当前 HWND 枚举，也不把 retained/unreachable 当成 restored；
+- 在单模块、一次性授权的真实宿主实验中验证 GIT apartment 代理、DispatcherQueue、`WH_CALLWNDPROC`、目标线程退出和 unhook 失败；每个注入点只执行一次，异常立即 re-arm；
+- 为所有实际排队的 Dispatcher、CoreDispatcher、线程池和属性 callback 接入生产收据，并证明最终 seal 与模块 pin 决策一致；
+- 证明撤销线程、Windhawk Hook 生命周期与 Explorer 关闭过程不会互锁，并为重复 Arm、停用和新的 Explorer 生命周期生成专门收据；
+- 完成前不取消“发布外部回调后永久保留 pin”的保守策略，不把离线 90/90 作为 allowlist 或激活依据。
+
+之后的受控实机验收包括：
+
+- 开始按钮、Win 键、任务按钮、拖动排序、缩略图、跳转列表和托盘交互；
+- 100%、125%、150%、200% DPI，双屏和不同缩放组合；
+- 自动隐藏、全屏应用、睡眠唤醒和 Explorer 重启；
+- 连续 25 次 Explorer 重启；
+- 一小时空闲 CPU、私有工作集和事件率基线；
+- 禁用、卸载和 `disabled.flag` 恢复后零视觉残留。
+
+## M2 — Taskbar behavior
+
+第一个离线切片已经完成：`jarvis-taskbar-icon-size` 只保留 GPL-3.0 `taskbar-icon-size` 的现代单符号图标尺寸路径，默认关闭，stock 值 24，边界 20-32。完整上游实现涉及三十多个私有 Hook、内存常量改写、opcode scanner、托盘/搜索和多屏几何；这些没有进入当前模块。当前它是 Supervisor 唯一 allowlisted 候选，但仍未获得本轮实机授权，也没有被加载。
+
+M2 已具备：真实 Shell PID 绑定、精确磁盘和映射映像身份、5 分钟逐模块一次性许可、后台急停监视、热路径纯原子 pass-through，以及 Explorer 重启后无许可自动复载阻断。离线门禁通过不等于实机稳定性通过。
+
+在单符号切片完成独立实机稳定性验证之前，不增加任务栏高度、按钮宽度、badge、overflow、托盘或搜索联动。验收必须一次只加载一个 Explorer 模块，并覆盖 100%-200% DPI、双屏、自动隐藏、应用启动/关闭、睡眠唤醒、卸载与急停恢复。任何一项异常都回到 pass-through，不把第二项功能叠上去。
+
+## M3 — Start and system surfaces
+
+为 `StartMenuExperienceHost.exe` 和 `ShellExperienceHost.exe` 分别建立模块。先做 Start、通知中心、音量/亮度 Flyout 的原生样式，再做行为变更。每个宿主单独急停，禁止全局注入。
+
+## M4 — Explorer chrome
+
+改造文件资源管理器标题栏、导航区和上下文表面。ExplorerBlurMica 可作为 LGPL/GPL 研究对象，但不直接把其配置或二进制混入 M1。
+
+## M5 — DWM laboratory
+
+独立、默认关闭的 DWMBlurGlass 研究分支。只有在已有 dump 捕获、符号缓存、Safe Mode 恢复和多版本 CI 后才允许加载到 `dwm.exe`。DWM 故障不能拖入任务栏稳定分支。
+
+## 长期边界
+
+eDEX-UI 继续只是视觉参考。若未来增加命令中心，优先使用原生窗口、Windows App SDK 或独立普通窗口；它可以成为应用，但不能成为遮盖桌面的壳。

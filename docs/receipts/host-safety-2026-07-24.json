@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "receiptType": "jarvis2-read-only-host-snapshot",
+  "inspectedAtUtc": "2026-07-24T10:11:39.6056401Z",
+  "inspectedAtAsiaShanghai": "2026-07-24 18:11:39 +08:00",
+  "mutationPerformed": false,
+  "supervisorInspect": {
+    "profileId": "win11-25h2-26200.8875-x64",
+    "inspectedAtUtc": "2026-07-24T10:11:00.4252068+00:00",
+    "compatible": true,
+    "checkCount": 23,
+    "passed": 23,
+    "explorerProcessId": 11640,
+    "killSwitchState": "armed",
+    "activeModuleState": "absent"
+  },
+  "killSwitch": {
+    "path": "C:\\Users\\Administrator\\AppData\\Local\\JARVIS2\\disabled.flag",
+    "exists": true,
+    "size": 146,
+    "sha256": "A6A4DDFFAEA0B963AD00F2E47B4BCC3EA3FF0EEC8E068A8A0A843F4D64A3F7BD",
+    "lastWriteTimeUtc": "2026-07-22T11:36:19.2315168Z"
+  },
+  "activeModulePermit": {
+    "path": "C:\\Users\\Administrator\\AppData\\Local\\JARVIS2\\active-module.txt",
+    "exists": false
+  },
+  "windhawkService": {
+    "name": "Windhawk",
+    "state": "Stopped",
+    "startMode": "Manual",
+    "processId": 0
+  },
+  "processInspection": {
+    "processCount": 352,
+    "windhawkOrJarvisProcessCount": 0,
+    "matchingModuleMappingCount": 0,
+    "moduleEnumerationErrorCount": 0
+  },
+  "explorer": {
+    "processId": 11640,
+    "path": "C:\\WINDOWS\\Explorer.EXE",
+    "startTimeUtc": "2026-07-23T07:37:39.1327858Z",
+    "matchingModuleCount": 0
+  },
+  "evidenceBoundary": {
+    "releaseReady": false,
+    "activationPermitted": false,
+    "liveExplorer": "not-run",
+    "uninstallPerformed": false,
+    "moduleActivationPerformed": false,
+    "explorerRestartPerformed": false
+  }
+}

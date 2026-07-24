@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "repositoryName": "JarvisV2",
+  "license": "GPL-3.0",
+  "defaultBranch": "main",
+  "internalRuntimeNamespace": "JARVIS2",
+  "requiredFiles": [
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "AGENTS.md",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "LICENSE",
+    "README.md",
+    "SECURITY.md",
+    "config/compatibility.json",
+    "config/m2-live-readiness-receipt.schema.json",
+    "config/offline-lifecycle-receipt.schema.json",
+    "config/toolchain-lock.json",
+    "config/upstream-lock.json",
+    "docs/M2-CONTROLLED-LIVE-VALIDATION-RUNBOOK.md",
+    "docs/M2-INTERACTION-CHECKLIST.md",
+    "docs/OPEN-SOURCE-BOUNDARY.md",
+    "docs/PHASE-3-OPEN-SOURCE-AND-M2-LIVE-PREP-TASK.md",
+    "scripts/Measure-M2HostBaseline.ps1",
+    "scripts/Test-M2LiveReadiness.ps1",
+    "scripts/Test-PublicationBoundary.ps1",
+    "third_party/NOTICE.md"
+  ],
+  "excludedRoots": [
+    ".git/",
+    "artifacts/",
+    "tools/",
+    "coverage/",
+    "TestResults/"
+  ],
+  "ignoredDirectoryNames": [
+    "bin",
+    "obj",
+    ".vs",
+    ".idea",
+    ".vscode"
+  ],
+  "forbiddenExtensions": [
+    ".7z",
+    ".dll",
+    ".dmp",
+    ".etl",
+    ".exe",
+    ".lib",
+    ".nupkg",
+    ".obj",
+    ".pdb",
+    ".zip"
+  ],
+  "maxTrackedFileBytes": 5242880,
+  "publicCi": {
+    "runsManagedBuild": true,
+    "runsPublicationBoundary": true,
+    "runsCanonicalNativeBuild": false,
+    "canonicalNativeBuildReason": "The canonical native build requires the separately provisioned, hash-locked Windhawk portable toolchain. Public CI must not download or install it."
+  }
+}
