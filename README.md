@@ -1,5 +1,7 @@
 # JarvisV2
 
+[![JarvisV2 CI](https://github.com/LeoSasion/JarvisV2/actions/workflows/ci.yml/badge.svg)](https://github.com/LeoSasion/JarvisV2/actions/workflows/ci.yml)
+
 JarvisV2 是一个独立于旧版 JARVIS 的 Windows 原生桌面改造实验。它不铺设全屏画布，不用 Electron/WebView 假装桌面，也不替换任务栏的交互模型；模块进入明确的 Windows 宿主进程，修改现有原生组件，并且必须可以失败关闭和撤销。仓库与公开展示名称为 **JarvisV2**，内部运行时安全标识仍为 `JARVIS2`；状态目录、命名状态门、模块 ID 和既有收据不做破坏性改名。
 
 当前完成了 **M1 / Native Taskbar** 的 latched no-new-work、线程生命周期闸门、unload-safety pin，以及 Phase 2 的可重试 GIT、UI 线程注册表、跨线程派发收据和便携故障注入四组离线安全切片；同时保留第一个受控的 **M2 / Native Icon Size** 离线里程碑。M1 基于 GPL-3.0 的 Windhawk Taskbar Styler 引擎，直接修改 `explorer.exe` 中的原生 XAML Visual Tree；这些改动仍只允许 build-only，离线状态机通过不构成真实 Explorer 生命周期中的安全卸载或视觉恢复证明。M2 只 Hook `Taskbar.View.dll` 的一个现代图标尺寸计算，是目前唯一进入 Supervisor allowlist 的候选。eDEX-UI 只提供深色控制台、青色状态线和琥珀告警色的视觉语言，不进入运行时。

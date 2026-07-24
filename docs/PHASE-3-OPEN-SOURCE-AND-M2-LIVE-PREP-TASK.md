@@ -1,6 +1,6 @@
 # Phase 3 — Open-source baseline and M2 live-validation preparation
 
-Status: **IN PROGRESS**
+Status: **COMPLETE**
 
 Date opened: 2026-07-24
 Repository name: **JarvisV2**
@@ -75,11 +75,11 @@ Live activation in this task: **FORBIDDEN**
 
 ### P3.5 — Git baseline
 
-- [ ] 审查精确提交清单；不使用未审查的宽泛 staging。
-- [ ] 创建 `main` 初始分支与本地基线提交。
-- [ ] 记录 tracked/staged/ignored/large-file/secret-scan 收据。
-- [ ] 只在远程 owner、visibility 和目标仓库均明确后发布。
-- [ ] 阶段结束时重新只读确认主机 locked。
+- [x] 审查精确提交清单；不使用未审查的宽泛 staging。
+- [x] 创建 `main` 初始分支与本地基线提交。
+- [x] 记录 tracked/staged/ignored/large-file/secret-scan 收据。
+- [x] 只在远程 owner、visibility 和目标仓库均明确后发布。
+- [x] 阶段结束时重新只读确认主机 locked。
 
 ## Completion rule
 
@@ -127,3 +127,19 @@ Live activation in this task: **FORBIDDEN**
 - Full `Test-Project.ps1` passed 182/182, including all Phase 3 gates and the
   managed Release build. It still reports `releaseReady=false` and
   `activationPermitted=false`.
+
+### 2026-07-24 — Public Git baseline complete
+
+- The exact reviewed set contained 47 tracked files / 2,284,531 bytes. Git
+  whitespace checks and the publication boundary passed with no large files,
+  excluded generated roots, local absolute paths or common credential matches.
+- Local repository identity is scoped to this checkout. The initial `main`
+  baseline commit is `c9de7a60f10c3c44a27c7b1b5d2fc6e6880c5d78`.
+- The authenticated owner, public visibility and previously absent target were
+  verified before creating <https://github.com/LeoSasion/JarvisV2>.
+- Public CI run
+  <https://github.com/LeoSasion/JarvisV2/actions/runs/30088098604> completed
+  successfully for the baseline commit.
+- The final read-only host inspection kept `disabled.flag` armed,
+  `active-module.txt` absent, Windhawk stopped/manual and zero JARVIS2 module
+  mappings. No module was loaded and Explorer was not restarted.

@@ -1,5 +1,7 @@
 # Open-source publication boundary
 
+Public repository: <https://github.com/LeoSasion/JarvisV2>
+
 ## Names
 
 The repository and public project name is **JarvisV2**. Existing runtime
