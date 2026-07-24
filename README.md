@@ -22,10 +22,11 @@ JarvisV2 是一个独立于旧版 JARVIS 的 Windows 原生桌面改造实验。
 - 急停：默认 `disabled.flag` 存在、`active-module.txt` 不存在；M1 和 M2 都使用后台状态目录监视器将已进入运行路径的模块永久锁进静默状态，热路径不做文件 I/O。M1 本轮只证明 latched no-new-work，不等于已恢复现有 XAML 属性。
 - 一次性许可：只允许严格 ASCII 模块 ID、无 BOM/换行、5 分钟内有效；在 Hook 前原子消费，Explorer 崩溃重启后不会自动再次注入。
 - Supervisor：核对 23 项宿主和逐真实 Shell PID 的加载事实；Arm/Clear/Restart 与原生许可消费共享跨进程状态门，恢复只处理真实 Shell PID。
-- 构建：固定 Windhawk 1.7.3 / Clang 20.1.3 / Python 3.14.3，锁定 8,397 个真实编译输入；最终 canonical run `20260724T105833265Z-e47539f8` 绑定 M1 源码 SHA-256 `70B8A002994127A080EE188248C06BF486726827B674665467964E6A0F925751` 与 M2 源码 SHA-256 `4A0278E2BC1CC81D616AC885F87BB51CE26DD044E4F44DDB8341E0C6D79087C4`。两个 AMD64 DLL 均为 0 warning / 0 error，完整离线门禁 182/182 通过；[schema v3 构建回执](docs/receipts/native-build-2026-07-22.json)仍明确 `activationPermitted=false`、`liveExplorer=not-run`，不能授权加载。
+- 构建：固定 Windhawk 1.7.3 / Clang 20.1.3 / Python 3.14.3，锁定 8,397 个真实编译输入；最终 canonical run `20260724T112901367Z-c246e535` 绑定 M1 源码 SHA-256 `70B8A002994127A080EE188248C06BF486726827B674665467964E6A0F925751` 与 M2 源码 SHA-256 `4A0278E2BC1CC81D616AC885F87BB51CE26DD044E4F44DDB8341E0C6D79087C4`。两个 AMD64 DLL 均为 0 warning / 0 error，完整离线门禁 188/188 通过；[schema v3 构建回执](docs/receipts/native-build-2026-07-22.json)仍明确 `activationPermitted=false`、`liveExplorer=not-run`，不能授权加载。
 - M1 证据边界：无 Explorer 的便携生命周期实验室覆盖 `git / ui-thread / dispatch / module` 四域的 90 个确定性场景。最终三次运行均为 90/90；逐项账本共有 332 个资源，其中 259 个确认释放、73 个带原因保留，`retainedUnexplained=0`、`doubleRelease=0`，两路独立审计均为 `P0=0 / P1=0 / P2=0`。机器可读收据仍分别报告 `offlineEvidenceReady=true`、`releaseReady=false`、`activationPermitted=false` 与 `liveExplorer=not-run`。它能证明冻结状态机、引用归属、typed kernel ledger 和收据模型在这些注入点的结果可重复，不能证明真实 COM apartment、DispatcherQueue、Windhawk hook、Explorer 关闭顺序或 XAML 属性一定恢复。代码仍保留长期 XAML callback scope、异常防火墙和 remote ImageBrush 禁止重追踪等既有保护；未获准或 drain 未确认时不会执行破坏性 UI 清理。因此此版本继续选择“停用后 DLL 可能安全映射到 Explorer 自然退出，且同一 Explorer 生命周期内不能重新激活”，而不是冒险卸载。`compatibility.json` 和 Supervisor allowlist 保持不变，M1 继续 build-only，本轮没有把它加载进 Explorer。
 - 主机安全状态：2026-07-24 18:11（Asia/Shanghai）的[最终只读主机收据](docs/receipts/host-safety-2026-07-24.json)确认：`disabled.flag` 存在且 SHA-256 为 `A6A4DDFFAEA0B963AD00F2E47B4BCC3EA3FF0EEC8E068A8A0A843F4D64A3F7BD`，`active-module.txt` 不存在；Windhawk 服务为 Stopped / Manual / PID 0，Windhawk/JARVIS 进程数为 0；352 个进程全部完成模块枚举，对应 DLL 映射数与枚举错误数均为 0；Explorer PID 11640 没有 Windhawk/JARVIS 映射；Supervisor `inspect` 为 23/23 compatible。这只证明主机仍处于锁定态，不是任务栏实机验证；没有执行卸载、激活、Explorer 重启或人工交互验收。
 - Phase 3：GPL 开源发布边界和 M2 只读实机准备包已经实现。最终 readiness 为 `readyForExactApproval=true`、Supervisor 23/23、所有可枚举进程中 0 匹配映射，但仍固定 `activationPermitted=false`、`liveExplorer=not-run`、`canExecuteNow=false`；它绝不执行清除急停、启动 Windhawk 或加载模块。完整边界见 [开源发布说明](docs/OPEN-SOURCE-BOUNDARY.md) 与 [M2 受控实机 runbook](docs/M2-CONTROLLED-LIVE-VALIDATION-RUNBOOK.md)。
+- Phase 4：增加短时、单模块、源码绑定的 M2 session plan，默认 inert 的恢复终端入口，以及把真实宿主状态和内存故障评估副本分开的只读观测演练。正常路径不得出现停止条件；kill switch、permit、Windhawk、Explorer PID、module mapping 和 CPU 六类模拟漂移必须各自生成 reasoned stop。该阶段只抵达精确人工批准门，仍不打开恢复终端、不清除急停、不加载 M2。
 
 ## 验证与构建
 
@@ -33,6 +34,10 @@ JarvisV2 是一个独立于旧版 JARVIS 的 Windows 原生桌面改造实验。
 pwsh -File .\scripts\Test-Project.ps1
 pwsh -File .\scripts\Test-PublicationBoundary.ps1
 pwsh -File .\scripts\Test-M2LiveReadiness.ps1
+pwsh -File .\scripts\New-M2ValidationSessionPlan.ps1 -OutputPath `
+  .\artifacts\m2-validation-session-plans\runs\<unique-name>.json
+pwsh -File .\scripts\Test-M2ObservationRehearsal.ps1 -SessionPlanPath `
+  .\artifacts\m2-validation-session-plans\runs\<unique-name>.json
 dotnet run --project .\src\Jarvis.Supervisor -- inspect
 pwsh -File .\scripts\Build-NativeMod.ps1
 pwsh -File .\scripts\Build-NativeMod.ps1 -Module jarvis-taskbar-icon-size

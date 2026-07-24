@@ -50,6 +50,18 @@ $m2ChecklistPath =
     Join-Path $root 'docs\M2-INTERACTION-CHECKLIST.md'
 $publicCiPath =
     Join-Path $root '.github\workflows\ci.yml'
+$phase4TaskPath =
+    Join-Path $root 'docs\PHASE-4-M2-RECOVERY-AND-OBSERVATION-TASK.md'
+$m2SessionPlanSchemaPath =
+    Join-Path $root 'config\m2-validation-session-plan.schema.json'
+$m2ObservationSchemaPath =
+    Join-Path $root 'config\m2-observation-rehearsal-receipt.schema.json'
+$m2SessionPlannerPath =
+    Join-Path $root 'scripts\New-M2ValidationSessionPlan.ps1'
+$m2RecoveryTerminalPath =
+    Join-Path $root 'scripts\Open-M2RecoveryTerminal.ps1'
+$m2ObservationRehearsalPath =
+    Join-Path $root 'scripts\Test-M2ObservationRehearsal.ps1'
 
 $checks = [System.Collections.Generic.List[object]]::new()
 $failures = [System.Collections.Generic.List[string]]::new()
@@ -272,6 +284,19 @@ $m2BaselineScript =
 $m2Runbook = [System.IO.File]::ReadAllText($m2RunbookPath)
 $m2Checklist = [System.IO.File]::ReadAllText($m2ChecklistPath)
 $publicCi = [System.IO.File]::ReadAllText($publicCiPath)
+$phase4Task = [System.IO.File]::ReadAllText($phase4TaskPath)
+$m2SessionPlanSchema =
+    Get-Content -LiteralPath $m2SessionPlanSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$m2ObservationSchema =
+    Get-Content -LiteralPath $m2ObservationSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$m2SessionPlanner =
+    [System.IO.File]::ReadAllText($m2SessionPlannerPath)
+$m2RecoveryTerminal =
+    [System.IO.File]::ReadAllText($m2RecoveryTerminalPath)
+$m2ObservationRehearsal =
+    [System.IO.File]::ReadAllText($m2ObservationRehearsalPath)
 $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
 $phase2ExpectedSourceIdentity = [ordered]@{
@@ -580,6 +605,161 @@ Add-Check `
     'phase3.public-name-runtime-identity-stable' `
     $publicNamingContract `
     'JarvisV2 may change the public name only; all runtime safety paths and synchronization identities must stay JARVIS2.'
+
+$phase4TaskContract =
+    $phase4Task.Contains(
+        'Live activation in this task: **FORBIDDEN UNTIL A SEPARATE EXACT APPROVAL**') -and
+    $phase4Task.Contains(
+        '`disabled.flag` 在全部开发与演练中保持 armed') -and
+    $phase4Task.Contains(
+        '`active-module.txt` 在全部开发与演练中保持 absent') -and
+    $phase4Task.Contains('不启动、配置或启用 Windhawk') -and
+    $phase4Task.Contains(
+        '不执行 `clear-kill-switch`、不加载模块、不重启 Explorer') -and
+    $phase4Task.Contains('恢复终端入口没有 `-ConfirmOpen` 时必须保持 inert') -and
+    $phase4Task.Contains('M1 继续 build-only')
+Add-Check `
+    'phase4.task-locked-exact-gate' `
+    $phase4TaskContract `
+    'Phase 4 must stop at the separate exact approval gate while M1 remains build-only and the host remains locked.'
+
+$phase4PlanSchemaRequired =
+    @($m2SessionPlanSchema.required)
+$phase4PlanSourceRequired =
+    @($m2SessionPlanSchema.properties.sourceIdentity.required)
+$phase4PlanSchemaContract =
+    $m2SessionPlanSchema.properties.schemaVersion.const -eq 1 -and
+    $m2SessionPlanSchema.properties.receiptType.const -eq
+        'jarvisv2-m2-validation-session-plan' -and
+    $m2SessionPlanSchema.properties.state.const -eq
+        'awaiting-exact-approval' -and
+    $m2SessionPlanSchema.properties.moduleId.const -eq
+        'jarvis-taskbar-icon-size' -and
+    $m2SessionPlanSchema.properties.activationPermitted.const -eq $false -and
+    $m2SessionPlanSchema.properties.liveExplorer.const -eq 'not-run' -and
+    $m2SessionPlanSchema.properties.mutationPerformed.const -eq $false -and
+    $m2SessionPlanSchema.properties.recoveryTerminal.properties.launchPerformed.const -eq
+        $false -and
+    $m2SessionPlanSchema.properties.recoveryTerminal.properties.terminalAvailable.const -eq
+        $false -and
+    $m2SessionPlanSchema.properties.approval.properties.exactCommandApproved.const -eq
+        $false -and
+    $m2SessionPlanSchema.properties.approval.properties.canExecuteNow.const -eq
+        $false -and
+    $phase4PlanSchemaRequired -contains 'sourceIdentity' -and
+    $phase4PlanSourceRequired -contains 'planner' -and
+    $phase4PlanSourceRequired -contains 'recoveryTerminalScript' -and
+    $phase4PlanSourceRequired -contains 'observerScript' -and
+    $phase4PlanSourceRequired -contains 'nativeBuildReceipt' -and
+    $phase4PlanSourceRequired -contains 'm2Source'
+Add-Check `
+    'phase4.session-plan-schema-failclosed' `
+    $phase4PlanSchemaContract `
+    'The session plan must bind every controller and source while remaining non-live and incapable of granting execution.'
+
+$phase4PlannerContract =
+    $m2SessionPlanner.Contains(
+        '& pwsh -NoLogo -NoProfile -File $readinessScript') -and
+    $m2SessionPlanner.Contains(
+        'artifacts\m2-validation-session-plans\runs') -and
+    $m2SessionPlanner.Contains(
+        'Refusing to overwrite an existing session plan.') -and
+    $m2SessionPlanner.Contains('activationPermitted = $false') -and
+    $m2SessionPlanner.Contains("liveExplorer = 'not-run'") -and
+    $m2SessionPlanner.Contains('mutationPerformed = $false') -and
+    $m2SessionPlanner.Contains('exactCommandApproved = $false') -and
+    $m2SessionPlanner.Contains('canExecuteNow = $false') -and
+    -not [regex]::IsMatch(
+        $m2SessionPlanner,
+        '(?im)^\s*&\s*dotnet[^\r\n]*(?:clear-kill-switch|arm-kill-switch|restart-explorer)') -and
+    -not [regex]::IsMatch(
+        $m2SessionPlanner,
+        '(?i)\b(?:Start-Service|Stop-Service|Set-Service|Stop-Process|taskkill)\b')
+Add-Check `
+    'phase4.session-planner-no-activation' `
+    $phase4PlannerContract `
+    'The planner must consume fresh read-only evidence, bind a non-overwriting artifact and never execute recovery or activation.'
+
+$phase4RecoveryDryRunBeforeLaunch =
+    (Test-MarkersInOrder `
+        -Text $m2RecoveryTerminal `
+        -Markers @(
+            '$dryRun = -not $ConfirmOpen',
+            'if ($dryRun) {',
+            'launchPerformed = $false',
+            'terminalAvailable = $false',
+            'return',
+            '$startInfo = [Diagnostics.ProcessStartInfo]::new()',
+            '$process = [Diagnostics.Process]::Start($startInfo)'
+        ))
+$phase4RecoveryTerminalContract =
+    $phase4RecoveryDryRunBeforeLaunch -and
+    $m2RecoveryTerminal.Contains(
+        'JarvisV2 M2 recovery terminal - no command executed') -and
+    $m2RecoveryTerminal.Contains(
+        '--configuration Release --no-build -- arm-kill-switch') -and
+    $m2RecoveryTerminal.Contains('UseShellExecute = $true') -and
+    $m2RecoveryTerminal.Contains(
+        'The host was rechecked in the locked state.') -and
+    -not $m2RecoveryTerminal.Contains('clear-kill-switch') -and
+    -not [regex]::IsMatch(
+        $m2RecoveryTerminal,
+        '(?im)^\s*&\s*dotnet[^\r\n]*(?:arm-kill-switch|restart-explorer)') -and
+    -not [regex]::IsMatch(
+        $m2RecoveryTerminal,
+        '(?i)\b(?:Start-Service|Stop-Service|Set-Service|Stop-Process|taskkill)\b')
+Add-Check `
+    'phase4.recovery-terminal-default-inert' `
+    $phase4RecoveryTerminalContract `
+    'The recovery-terminal entry must recheck the locked plan, remain inert by default and only open a visible command display after exact ConfirmOpen.'
+
+$phase4ObservationFaults =
+    @($m2ObservationSchema.properties.faultInjection.enum)
+$phase4ObservationSchemaContract =
+    $m2ObservationSchema.properties.schemaVersion.const -eq 1 -and
+    $m2ObservationSchema.properties.receiptType.const -eq
+        'jarvisv2-m2-observation-rehearsal' -and
+    $m2ObservationSchema.properties.mode.const -eq 'locked-rehearsal' -and
+    $m2ObservationSchema.properties.activationPermitted.const -eq $false -and
+    $m2ObservationSchema.properties.liveExplorer.const -eq 'not-run' -and
+    $m2ObservationSchema.properties.mutationPerformed.const -eq $false -and
+    $phase4ObservationFaults.Count -eq 7 -and
+    $phase4ObservationFaults -contains 'none' -and
+    $phase4ObservationFaults -contains 'kill-switch-missing' -and
+    $phase4ObservationFaults -contains 'permit-present' -and
+    $phase4ObservationFaults -contains 'windhawk-running' -and
+    $phase4ObservationFaults -contains 'explorer-changed' -and
+    $phase4ObservationFaults -contains 'module-mapped' -and
+    $phase4ObservationFaults -contains 'elevated-cpu'
+Add-Check `
+    'phase4.observation-schema-stop-matrix' `
+    $phase4ObservationSchemaContract `
+    'The locked rehearsal receipt must distinguish the normal path from every required simulated stop condition.'
+
+$phase4ObservationScriptContract =
+    $m2ObservationRehearsal.Contains(
+        '-ScriptPath $readinessScript') -and
+    $m2ObservationRehearsal.Contains(
+        '-ScriptPath $baselineScript') -and
+    $m2ObservationRehearsal.Contains('$actualHost = [ordered]@{') -and
+    $m2ObservationRehearsal.Contains('$evaluationState = [ordered]@{') -and
+    $m2ObservationRehearsal.Contains(
+        'injected-fault-did-not-trigger-expected-stop') -and
+    $m2ObservationRehearsal.Contains(
+        'artifacts\m2-observation-rehearsal\runs') -and
+    $m2ObservationRehearsal.Contains('activationPermitted = $false') -and
+    $m2ObservationRehearsal.Contains("liveExplorer = 'not-run'") -and
+    $m2ObservationRehearsal.Contains('mutationPerformed = $false') -and
+    -not [regex]::IsMatch(
+        $m2ObservationRehearsal,
+        '(?im)^\s*&\s*dotnet[^\r\n]*(?:clear-kill-switch|arm-kill-switch|restart-explorer)') -and
+    -not [regex]::IsMatch(
+        $m2ObservationRehearsal,
+        '(?i)\b(?:Start-Service|Stop-Service|Set-Service|Stop-Process|taskkill)\b')
+Add-Check `
+    'phase4.observation-rehearsal-readonly' `
+    $phase4ObservationScriptContract `
+    'Fault injection must alter only an evaluation copy while locked host sampling and all receipts remain read-only.'
 
 foreach ($module in @(
     [pscustomobject]@{ Id = 'jarvis-native-taskbar'; Text = $styler },

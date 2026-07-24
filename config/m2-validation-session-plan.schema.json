@@ -1,0 +1,265 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JarvisV2 M2 validation session plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "receiptType",
+    "runId",
+    "createdAtUtc",
+    "expiresAtUtc",
+    "result",
+    "state",
+    "moduleId",
+    "activationPermitted",
+    "liveExplorer",
+    "mutationPerformed",
+    "sourceIdentity",
+    "readiness",
+    "recoveryTerminal",
+    "approval",
+    "errors"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "receiptType": {
+      "const": "jarvisv2-m2-validation-session-plan"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9]{8}T[0-9]{9}Z-[a-f0-9]{8}$"
+    },
+    "createdAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiresAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "result": {
+      "enum": [
+        "passed",
+        "failed"
+      ]
+    },
+    "state": {
+      "const": "awaiting-exact-approval"
+    },
+    "moduleId": {
+      "const": "jarvis-taskbar-icon-size"
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "liveExplorer": {
+      "const": "not-run"
+    },
+    "mutationPerformed": {
+      "const": false
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planner",
+        "planSchema",
+        "readinessScript",
+        "readinessSchema",
+        "recoveryTerminalScript",
+        "observerScript",
+        "observerSchema",
+        "nativeBuildReceipt",
+        "m2Source"
+      ],
+      "properties": {
+        "planner": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "planSchema": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "readinessScript": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "readinessSchema": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "recoveryTerminalScript": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "observerScript": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "observerSchema": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "nativeBuildReceipt": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "m2Source": {
+          "$ref": "#/$defs/fileIdentity"
+        }
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "result",
+        "readyForExactApproval",
+        "compatibilityChecksPassed",
+        "compatibilityCheckCount",
+        "canonicalRunId",
+        "m2SourceSha256",
+        "warningCount",
+        "errorCount",
+        "killSwitchState",
+        "permitState",
+        "windhawkState",
+        "windhawkStartMode",
+        "explorerProcessId",
+        "moduleMappingCount",
+        "explorerModuleInspectionSucceeded"
+      ],
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "result": {
+          "const": "passed"
+        },
+        "readyForExactApproval": {
+          "const": true
+        },
+        "compatibilityChecksPassed": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "compatibilityCheckCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "canonicalRunId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "m2SourceSha256": {
+          "type": "string",
+          "pattern": "^[A-F0-9]{64}$"
+        },
+        "warningCount": {
+          "const": 0
+        },
+        "errorCount": {
+          "const": 0
+        },
+        "killSwitchState": {
+          "const": "armed"
+        },
+        "permitState": {
+          "const": "absent"
+        },
+        "windhawkState": {
+          "const": "Stopped"
+        },
+        "windhawkStartMode": {
+          "const": "Manual"
+        },
+        "explorerProcessId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "moduleMappingCount": {
+          "const": 0
+        },
+        "explorerModuleInspectionSucceeded": {
+          "const": true
+        }
+      }
+    },
+    "recoveryTerminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command",
+        "openCommand",
+        "launchPerformed",
+        "terminalAvailable"
+      ],
+      "properties": {
+        "command": {
+          "const": "dotnet run --project .\\src\\Jarvis.Supervisor --configuration Release --no-build -- arm-kill-switch"
+        },
+        "openCommand": {
+          "type": "string",
+          "minLength": 1
+        },
+        "launchPerformed": {
+          "const": false
+        },
+        "terminalAvailable": {
+          "const": false
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exactCommand",
+        "exactCommandApproved",
+        "canExecuteNow"
+      ],
+      "properties": {
+        "exactCommand": {
+          "const": "dotnet run --project .\\src\\Jarvis.Supervisor --configuration Release --no-build -- clear-kill-switch --module jarvis-taskbar-icon-size --confirm"
+        },
+        "exactCommandApproved": {
+          "const": false
+        },
+        "canExecuteNow": {
+          "const": false
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "fileIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relativePath",
+        "size",
+        "sha256"
+      ],
+      "properties": {
+        "relativePath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[A-F0-9]{64}$"
+        }
+      }
+    }
+  }
+}

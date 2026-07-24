@@ -16,8 +16,8 @@ Preparing or passing this runbook does not authorize:
 - loading M2;
 - restarting Explorer.
 
-The broad authorization to develop Phase 3 cannot replace the final,
-current-task approval required by `AGENTS.md`.
+Broad authorization to develop a phase cannot replace the final, current-task
+approval required by `AGENTS.md`.
 
 ## Offline readiness
 
@@ -37,6 +37,42 @@ A passing receipt means only `readyForExactApproval=true`. It must still say:
 - `exactCommandApproved=false`;
 - `recoveryTerminalAvailable=false`;
 - `canExecuteNow=false`.
+
+## Locked session rehearsal
+
+Phase 4 can create a short-lived, source-bound plan and exercise the observer
+without opening a terminal or changing the host:
+
+```powershell
+pwsh -NoLogo -NoProfile -File .\scripts\New-M2ValidationSessionPlan.ps1 `
+  -OutputPath .\artifacts\m2-validation-session-plans\runs\<unique-name>.json
+
+pwsh -NoLogo -NoProfile -File .\scripts\Open-M2RecoveryTerminal.ps1 `
+  -SessionPlanPath .\artifacts\m2-validation-session-plans\runs\<unique-name>.json
+
+pwsh -NoLogo -NoProfile -File .\scripts\Test-M2ObservationRehearsal.ps1 `
+  -SessionPlanPath .\artifacts\m2-validation-session-plans\runs\<unique-name>.json
+```
+
+The recovery-terminal command above is a dry run because it omits
+`-ConfirmOpen`. It must report `launchPerformed=false`,
+`terminalAvailable=false`, `mutationPerformed=false` and
+`canExecuteNow=false`.
+
+The observation rehearsal samples the verified locked Explorer and keeps the
+real host snapshot separate from its in-memory fault-evaluation copy. The
+supported simulated stop conditions are:
+
+- `kill-switch-missing`;
+- `permit-present`;
+- `windhawk-running`;
+- `explorer-changed`;
+- `module-mapped`;
+- `elevated-cpu`.
+
+Fault injection never changes the service, permit, flag, process or module
+mapping. A `stop-required` result is an offline detector rehearsal, not proof
+that recovery ran.
 
 ## Required human gate
 
