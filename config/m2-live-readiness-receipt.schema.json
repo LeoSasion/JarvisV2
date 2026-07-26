@@ -323,6 +323,9 @@
         "moduleEnumerableProcessCount",
         "moduleNotEnumerableProcessCount",
         "moduleMappingCount",
+        "jarvisModuleMappingCount",
+        "acceptedBaseRuntimeMappingCount",
+        "unexpectedWindhawkRuntimeMappingCount",
         "moduleEnumerationErrorCount",
         "safetyRelevantModuleEnumerationErrorCount",
         "nonTargetModuleEnumerationErrorCount",
@@ -348,6 +351,18 @@
           "minimum": 0
         },
         "moduleMappingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "jarvisModuleMappingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "acceptedBaseRuntimeMappingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unexpectedWindhawkRuntimeMappingCount": {
           "type": "integer",
           "minimum": 0
         },

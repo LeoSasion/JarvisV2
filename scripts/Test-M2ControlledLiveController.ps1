@@ -134,6 +134,8 @@ Add-Check `
 
 $updateText =
     Get-FunctionText $ast 'Invoke-UpdateDisabledInstallationAction'
+$acceptedRuntimeText =
+    Get-FunctionText $ast 'Assert-OnlyAcceptedLockedRuntimeMappings'
 $startText = Get-FunctionText $ast 'Invoke-StartDisabledHostAction'
 $enableText = Get-FunctionText $ast 'Invoke-EnableOnceAction'
 $observeText = Get-FunctionText $ast 'Invoke-ObserveAction'
@@ -182,6 +184,14 @@ $disabledInstallationContract =
     $updateText.Contains('ExpectedCount 0') -and
     $updateText.Contains('Assert-LockedPlanDryRun') -and
     $updateText.Contains('Retire-StaleRecoveryLease') -and
+    [regex]::Matches(
+        $updateText,
+        'Assert-OnlyAcceptedLockedRuntimeMappings').Count -eq 2 -and
+    $controller.Contains(
+        '0AAD074CAF156200BE7A77E4615F9171CEA884CDE96BAF90397366C28C4F10A1') -and
+    $acceptedRuntimeText.Contains('A Jarvis module mapping is present') -and
+    $acceptedRuntimeText.Contains(
+        'An unaccepted Windhawk runtime mapping is present') -and
     $updateText.Contains('Install-FileAtomically') -and
     $updateText.Contains('rollback was incomplete') -and
     -not [regex]::IsMatch(
@@ -190,7 +200,7 @@ $disabledInstallationContract =
 Add-Check `
     -Name 'controller.disabled-installation-atomic' `
     -Passed $disabledInstallationContract `
-    -Detail 'The plan-bound disabled installer must require exact old/new hashes, zero mappings, no service start and verified rollback.'
+    -Detail 'The plan-bound disabled installer must require exact old/new hashes, zero Jarvis/target mappings, an unchanged exact base-runtime residual set, no service start and verified rollback.'
 
 $startDisabledContract =
     $startText.Contains("'Stopped'") -and
@@ -383,6 +393,7 @@ $updateDetail = [ordered]@{
         'C2DB007E2FDCDA145463E2D0355BD4F7E18ACC9CE414D77652EED33DD5532865'
     backupDirectory = 'C:\repo\artifacts\backup'
     targetMappingCount = 0
+    acceptedBaseRuntimeMappingCount = 1
 }
 $startDetail = [ordered]@{
     sessionPlanRunId = $fixtureRunId

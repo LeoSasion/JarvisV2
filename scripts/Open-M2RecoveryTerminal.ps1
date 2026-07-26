@@ -247,7 +247,9 @@ if ($readiness.result -ne 'passed' -or
     $readiness.windhawkService.state -ne 'Stopped' -or
     $readiness.windhawkService.startMode -ne 'Manual' -or
     $readiness.windhawkService.processId -ne 0 -or
-    $readiness.runtime.moduleMappingCount -ne 0 -or
+    $readiness.runtime.jarvisModuleMappingCount -ne 0 -or
+    $readiness.runtime.unexpectedWindhawkRuntimeMappingCount -ne 0 -or
+    $readiness.runtime.explorerMatchingModuleCount -ne 0 -or
     $readiness.runtime.safetyRelevantModuleEnumerationErrorCount -ne 0 -or
     -not $readiness.runtime.explorerModuleInspectionSucceeded -or
     $readiness.canonicalBuild.runId -ne $plan.readiness.canonicalRunId -or

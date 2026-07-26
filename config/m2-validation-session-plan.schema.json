@@ -140,6 +140,10 @@
         "windhawkStartMode",
         "explorerProcessId",
         "moduleMappingCount",
+        "jarvisModuleMappingCount",
+        "acceptedBaseRuntimeMappingCount",
+        "unexpectedWindhawkRuntimeMappingCount",
+        "explorerMatchingModuleCount",
         "safetyRelevantModuleEnumerationErrorCount",
         "explorerModuleInspectionSucceeded"
       ],
@@ -193,6 +197,20 @@
           "minimum": 1
         },
         "moduleMappingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "jarvisModuleMappingCount": {
+          "const": 0
+        },
+        "acceptedBaseRuntimeMappingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unexpectedWindhawkRuntimeMappingCount": {
+          "const": 0
+        },
+        "explorerMatchingModuleCount": {
           "const": 0
         },
         "safetyRelevantModuleEnumerationErrorCount": {

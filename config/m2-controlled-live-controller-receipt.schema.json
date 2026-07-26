@@ -371,7 +371,8 @@
         "sourceSha256",
         "dllSha256",
         "backupDirectory",
-        "targetMappingCount"
+        "targetMappingCount",
+        "acceptedBaseRuntimeMappingCount"
       ],
       "properties": {
         "sessionPlanRunId": {
@@ -417,6 +418,10 @@
         },
         "targetMappingCount": {
           "const": 0
+        },
+        "acceptedBaseRuntimeMappingCount": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     },

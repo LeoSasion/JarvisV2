@@ -541,6 +541,12 @@ $m2ReadinessSchemaContract =
     @($m2ReadinessSchema.properties.runtime.required) -contains
         'moduleNotEnumerableProcessCount' -and
     @($m2ReadinessSchema.properties.runtime.required) -contains
+        'jarvisModuleMappingCount' -and
+    @($m2ReadinessSchema.properties.runtime.required) -contains
+        'acceptedBaseRuntimeMappingCount' -and
+    @($m2ReadinessSchema.properties.runtime.required) -contains
+        'unexpectedWindhawkRuntimeMappingCount' -and
+    @($m2ReadinessSchema.properties.runtime.required) -contains
         'safetyRelevantModuleEnumerationErrorCount' -and
     @($m2ReadinessSchema.properties.runtime.required) -contains
         'nonTargetModuleEnumerationErrorCount' -and
@@ -564,6 +570,11 @@ $m2ReadinessScriptContract =
         'nonTargetModuleEnumerationErrorCount') -and
     $m2ReadinessScript.Contains(
         'safety-relevant-process-module-enumeration-incomplete') -and
+    $m2ReadinessScript.Contains(
+        '0AAD074CAF156200BE7A77E4615F9171CEA884CDE96BAF90397366C28C4F10A1') -and
+    $m2ReadinessScript.Contains('jarvis-module-mapped') -and
+    $m2ReadinessScript.Contains(
+        'unexpected-windhawk-runtime-mapped') -and
     $m2ReadinessScript.Contains(
         'Refusing to overwrite an existing readiness receipt') -and
     [regex]::Matches(

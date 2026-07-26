@@ -230,7 +230,9 @@ else {
         $readiness.canonicalBuild.liveExplorer -ne 'not-run') {
         Add-Failure 'canonical-build-boundary-invalid'
     }
-    if ($readiness.runtime.moduleMappingCount -ne 0 -or
+    if ($readiness.runtime.jarvisModuleMappingCount -ne 0 -or
+        $readiness.runtime.unexpectedWindhawkRuntimeMappingCount -ne 0 -or
+        $readiness.runtime.explorerMatchingModuleCount -ne 0 -or
         $readiness.runtime.safetyRelevantModuleEnumerationErrorCount -ne 0 -or
         -not $readiness.runtime.explorerModuleInspectionSucceeded) {
         Add-Failure 'runtime-mapping-boundary-invalid'
@@ -289,6 +291,14 @@ $readinessReceipt = [ordered]@{
         [int]@($readiness.compatibility.explorerProcessIds)[0]
     moduleMappingCount =
         [int]$readiness.runtime.moduleMappingCount
+    jarvisModuleMappingCount =
+        [int]$readiness.runtime.jarvisModuleMappingCount
+    acceptedBaseRuntimeMappingCount =
+        [int]$readiness.runtime.acceptedBaseRuntimeMappingCount
+    unexpectedWindhawkRuntimeMappingCount =
+        [int]$readiness.runtime.unexpectedWindhawkRuntimeMappingCount
+    explorerMatchingModuleCount =
+        [int]$readiness.runtime.explorerMatchingModuleCount
     safetyRelevantModuleEnumerationErrorCount =
         [int]$readiness.runtime.safetyRelevantModuleEnumerationErrorCount
     explorerModuleInspectionSucceeded =

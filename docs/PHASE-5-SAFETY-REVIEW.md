@@ -94,31 +94,36 @@ module mapping was created during the failed attempt.
 
 Status: **resolved and covered by a static plus semantic regression**.
 
-### P1 — Elevated readiness conflated protected-process access with Explorer coverage
+### P1 — Elevated readiness exposed a hidden non-Jarvis base mapping
 
-The disabled-installation controller correctly required an administrator
-token, but its plan-bound recovery dry run launched readiness in that same
-elevated context. Windows can expose unrelated protected processes to
-`Get-Process` while still rejecting their module enumeration. The original
-readiness probe treated any such global exception as a fatal loss of Explorer
-coverage, so it rejected the update before mutation even though the exact
-desktop Explorer PID was fully enumerable.
+The standard-token probe could not enumerate the modules of `wslservice.exe`,
+so it reported zero global matches. The administrator probe correctly exposed
+one mapping in PID 5936:
+`C:\Program Files\Windhawk\Engine\1.7.3\64\windhawk.dll`. The target Explorer
+PID had no matching module, `allJarvisMappings` was empty, Windhawk remained
+Stopped / Manual / PID 0, and the only configured mod was the disabled,
+Explorer-only M2. Stopping or terminating WSL merely to update two disabled M2
+files would broaden the operation and violate the no-force recovery boundary.
 
 Resolution:
 
 - the receipt continues to count every module-enumeration exception;
 - it separately counts safety-relevant errors for the verified Explorer PID
   and named Windhawk/Jarvis processes versus unrelated non-target errors;
-- readiness, the session planner and the recovery-terminal handoff require
-  zero safety-relevant enumeration errors and complete inspection of the
-  verified Explorer PID;
-- access errors from unrelated protected processes remain visible evidence but
-  do not masquerade as a target-host failure.
+- readiness and the controller require zero Jarvis mappings, zero Explorer
+  mappings and zero unexpected Windhawk mappings;
+- a non-Explorer residual is accepted only when its module name, exact path,
+  version, size and SHA-256 match the reviewed Windhawk 1.7.3 base DLL and its
+  host is not a Windhawk/Jarvis process;
+- the disabled installer requires the accepted residual set to be identical
+  before and after its atomic file update and verified rollback window;
+- no WSL stop, process termination, Explorer restart or force-unload path is
+  introduced.
 
 Both observed failures were fail-closed and reported
 `mutationPerformed=false`.
 
-Status: **resolved in source; elevated read-only regression pending**.
+Status: **strict source fix applied; elevated read-only regression pending**.
 
 ### P1 — Fixed toolchain still emitted volatile PE timestamps
 

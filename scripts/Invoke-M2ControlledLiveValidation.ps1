@@ -54,7 +54,7 @@ $oldInstalledDllSha256 =
 $canonicalSourcePath =
     Join-Path $root 'mods\jarvis-taskbar-icon-size.wh.cpp'
 $canonicalDllPath = Join-Path $root (
-    'artifacts\native\runs\20260726T194925883Z-eeb54147\modules\' +
+    'artifacts\native\runs\20260726T201254154Z-82b2826b\modules\' +
     'jarvis-taskbar-icon-size\jarvis-taskbar-icon-size-x64.dll'
 )
 $supervisorProject =
@@ -70,6 +70,11 @@ $killSwitchPath = Join-Path $stateRoot 'disabled.flag'
 $permitPath = Join-Path $stateRoot 'active-module.txt'
 $leasePath = Join-Path $stateRoot 'Recovery\m2-recovery-terminal.json'
 $windhawkDataRoot = Join-Path $env:ProgramData 'Windhawk'
+$expectedWindhawkBaseDllPath =
+    Join-Path $env:ProgramFiles 'Windhawk\Engine\1.7.3\64\windhawk.dll'
+$expectedWindhawkBaseDllSize = 979544
+$expectedWindhawkBaseDllSha256 =
+    '0AAD074CAF156200BE7A77E4615F9171CEA884CDE96BAF90397366C28C4F10A1'
 $installedSourcePath =
     Join-Path $windhawkDataRoot "ModsSource\$windhawkModId.wh.cpp"
 $installedDllPath =
@@ -390,6 +395,70 @@ function Get-ProcessMappings {
         }
     }
     return @($mappings)
+}
+
+function Assert-OnlyAcceptedLockedRuntimeMappings {
+    param(
+        [Parameter(Mandatory)] [object[]]$Mappings,
+        [Parameter(Mandatory)] [int]$ExplorerProcessId
+    )
+
+    $null = Assert-NoReparsePointsInPath $expectedWindhawkBaseDllPath
+    $windhawkBaseItem =
+        Get-Item -LiteralPath $expectedWindhawkBaseDllPath -Force
+    Assert-Condition `
+        -Condition (
+            (Test-Path `
+                -LiteralPath $expectedWindhawkBaseDllPath `
+                -PathType Leaf) -and
+            [string]$windhawkBaseItem.VersionInfo.ProductVersion -ceq
+                '1.7.3' -and
+            [int64]$windhawkBaseItem.Length -eq
+                $expectedWindhawkBaseDllSize -and
+            (Get-Sha256 $expectedWindhawkBaseDllPath) -ceq
+                $expectedWindhawkBaseDllSha256
+        ) `
+        -Message 'The accepted Windhawk 1.7.3 base DLL identity drifted.'
+
+    $jarvisMappings = @(
+        $Mappings | Where-Object { [bool]$_.isJarvis }
+    )
+    Assert-Condition `
+        -Condition ($jarvisMappings.Count -eq 0) `
+        -Message (
+            'A Jarvis module mapping is present: ' +
+            ($jarvisMappings | ConvertTo-Json -Depth 8 -Compress)
+        )
+
+    $acceptedBaseMappings = @(
+        $Mappings |
+            Where-Object {
+                -not [bool]$_.isJarvis -and
+                [int]$_.processId -ne $ExplorerProcessId -and
+                [string]$_.process -notmatch '(?i)^(windhawk|jarvis)' -and
+                [string]$_.module -ceq 'windhawk.dll' -and
+                [string]$_.path -ieq $expectedWindhawkBaseDllPath
+            } |
+            Sort-Object processId, process, module, path
+    )
+    $unexpectedMappings = @(
+        $Mappings |
+            Where-Object {
+                [bool]$_.isJarvis -or
+                [int]$_.processId -eq $ExplorerProcessId -or
+                [string]$_.process -match '(?i)^(windhawk|jarvis)' -or
+                [string]$_.module -cne 'windhawk.dll' -or
+                [string]$_.path -ine $expectedWindhawkBaseDllPath
+            }
+    )
+    Assert-Condition `
+        -Condition ($unexpectedMappings.Count -eq 0) `
+        -Message (
+            'An unaccepted Windhawk runtime mapping is present: ' +
+            ($unexpectedMappings | ConvertTo-Json -Depth 8 -Compress)
+        )
+
+    return @($acceptedBaseMappings)
 }
 
 function Get-DesktopExplorerMappings {
@@ -954,12 +1023,13 @@ function Invoke-UpdateDisabledInstallationAction {
         -ExpectedCount 0
     $runtimeMappings =
         @(Get-ProcessMappings -IncludeWindhawkRuntime)
-    Assert-Condition `
-        -Condition ($runtimeMappings.Count -eq 0) `
-        -Message (
-            'A Windhawk/Jarvis runtime mapping is still present: ' +
-            ($runtimeMappings | ConvertTo-Json -Depth 8 -Compress)
-        )
+    $acceptedBaseRuntimeMappings =
+        @(Assert-OnlyAcceptedLockedRuntimeMappings `
+            -Mappings $runtimeMappings `
+            -ExplorerProcessId $ExpectedExplorerProcessId)
+    $acceptedBaseRuntimeFingerprint =
+        $acceptedBaseRuntimeMappings |
+            ConvertTo-Json -Depth 8 -Compress
     foreach ($source in @(
         [pscustomobject]@{
             Path = $canonicalSourcePath
@@ -1048,11 +1118,24 @@ function Invoke-UpdateDisabledInstallationAction {
         $null = Assert-TargetMappingState `
             -ExplorerProcessId $ExpectedExplorerProcessId `
             -ExpectedCount 0
+        $postUpdateRuntimeMappings =
+            @(Get-ProcessMappings -IncludeWindhawkRuntime)
+        $postUpdateAcceptedBaseRuntimeMappings =
+            @(Assert-OnlyAcceptedLockedRuntimeMappings `
+                -Mappings $postUpdateRuntimeMappings `
+                -ExplorerProcessId $ExpectedExplorerProcessId)
+        $postUpdateAcceptedBaseRuntimeFingerprint =
+            $postUpdateAcceptedBaseRuntimeMappings |
+                ConvertTo-Json -Depth 8 -Compress
         Assert-Condition `
             -Condition (
-                @(Get-ProcessMappings -IncludeWindhawkRuntime).Count -eq 0
+                $postUpdateAcceptedBaseRuntimeFingerprint -ceq
+                    $acceptedBaseRuntimeFingerprint
             ) `
-            -Message 'A Windhawk/Jarvis mapping appeared during installation.'
+            -Message (
+                'The accepted base runtime mapping set changed during ' +
+                'disabled installation.'
+            )
     }
     catch {
         $installationError = $_.Exception
@@ -1109,6 +1192,8 @@ function Invoke-UpdateDisabledInstallationAction {
             dllSha256 = Get-Sha256 $installedDllPath
             backupDirectory = $backupDirectory
             targetMappingCount = 0
+            acceptedBaseRuntimeMappingCount =
+                $postUpdateAcceptedBaseRuntimeMappings.Count
         })
 }
 
