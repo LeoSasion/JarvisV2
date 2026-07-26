@@ -61,6 +61,8 @@ $supervisorProject =
     Join-Path $root 'src\Jarvis.Supervisor\Jarvis.Supervisor.csproj'
 $planSchemaPath =
     Join-Path $root 'config\m2-validation-session-plan.schema.json'
+$controllerReceiptSchemaPath =
+    Join-Path $root 'config\m2-controlled-live-controller-receipt.schema.json'
 $recoveryTerminalScriptPath =
     Join-Path $root 'scripts\Open-M2RecoveryTerminal.ps1'
 $stateRoot = Join-Path $env:LOCALAPPDATA 'JARVIS2'
@@ -93,6 +95,7 @@ $clearCommand = (
 )
 $script:mutationPerformed = $false
 $script:stopRequired = $false
+$script:liveExplorerObserved = $false
 
 function Assert-Condition {
     param(
@@ -763,8 +766,17 @@ function New-ControllerResult {
         action = $Action
         result = $Result
         moduleId = $moduleId
+        controllerSha256 = Get-Sha256 $PSCommandPath
+        receiptSchemaSha256 = Get-Sha256 $controllerReceiptSchemaPath
         observedAtUtc = [DateTime]::UtcNow.ToString('o')
         expectedExplorerProcessId = $ExpectedExplorerProcessId
+        activationPermitted = $false
+        liveExplorer = if ($script:liveExplorerObserved) {
+            'controlled-session'
+        }
+        else {
+            'not-run'
+        }
         mutationPerformed = $MutationPerformed
         stopRequired = $StopRequired
         explorerRestartRequested = $false
@@ -780,6 +792,12 @@ function Publish-ControllerResult {
     param([Parameter(Mandatory)] [object]$Result)
 
     $json = $Result | ConvertTo-Json -Depth 16
+    Assert-Condition `
+        -Condition ($json |
+            Test-Json `
+                -SchemaFile $controllerReceiptSchemaPath `
+                -ErrorAction Stop) `
+        -Message 'Controller result failed its committed receipt schema.'
     if (-not [string]::IsNullOrWhiteSpace($OutputPath)) {
         $resolvedOutputPath = Resolve-RestrictedPath `
             -Path $OutputPath `
@@ -1345,6 +1363,7 @@ function Invoke-EnableOnceAction {
         Invoke-FailClosedAfterEnableError -ActivationError $_.Exception
     }
     $script:stopRequired = $false
+    $script:liveExplorerObserved = $true
 
     return New-ControllerResult `
         -Result 'passed-one-shot-m2-active' `
@@ -1373,6 +1392,7 @@ function Invoke-ObserveAction {
         -Condition ($ExpectedExplorerProcessId -gt 0) `
         -Message 'ExpectedExplorerProcessId is required for Observe.'
     $initial = Assert-ActiveState
+    $script:liveExplorerObserved = $true
     $explorer =
         Get-Process -Id $ExpectedExplorerProcessId -ErrorAction Stop
     $previousCpu = [double]$explorer.CPU
@@ -1537,6 +1557,7 @@ function Invoke-RecoverAction {
             }
             Start-Sleep -Milliseconds 500
         } while ([DateTime]::UtcNow -lt $deadline)
+        $script:liveExplorerObserved = $true
     }
     else {
         $recoveryErrors.Add(
@@ -1580,9 +1601,23 @@ function Invoke-RecoverAction {
         $recoveryErrors.Add(
             'The M2 DLL remains physically mapped in desktop Explorer.')
     }
+    if (
+        $ExpectedExplorerProcessId -gt 0 -and
+        $actualExplorerProcessId -ne $ExpectedExplorerProcessId
+    ) {
+        $recoveryErrors.Add(
+            "Explorer PID changed from $ExpectedExplorerProcessId to " +
+            "$actualExplorerProcessId.")
+    }
 
     $runtimeMappings =
         @(Get-ProcessMappings -IncludeWindhawkRuntime)
+    $jarvisResidualMappings =
+        @($runtimeMappings | Where-Object { [bool]$_.isJarvis })
+    if ($jarvisResidualMappings.Count -ne 0) {
+        $recoveryErrors.Add(
+            'One or more Jarvis module mappings remain after recovery.')
+    }
     $result = if ($recoveryErrors.Count -eq 0) {
         if ($runtimeMappings.Count -eq 0) {
             'passed-locked-zero-mappings'

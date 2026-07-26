@@ -74,6 +74,7 @@
         "observerScript",
         "observerSchema",
         "controlledLiveController",
+        "controlledLiveReceiptSchema",
         "nativeBuildReceipt",
         "m2Source",
         "supervisorAssembly"
@@ -104,6 +105,9 @@
           "$ref": "#/$defs/fileIdentity"
         },
         "controlledLiveController": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "controlledLiveReceiptSchema": {
           "$ref": "#/$defs/fileIdentity"
         },
         "nativeBuildReceipt": {

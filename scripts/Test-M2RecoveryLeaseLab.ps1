@@ -30,6 +30,8 @@ $sourcePaths = [ordered]@{
     observerSchema = 'config/m2-observation-rehearsal-receipt.schema.json'
     controlledLiveController =
         'scripts/Invoke-M2ControlledLiveValidation.ps1'
+    controlledLiveReceiptSchema =
+        'config/m2-controlled-live-controller-receipt.schema.json'
     nativeBuildReceipt = 'docs/receipts/native-build-2026-07-22.json'
     m2Source = 'mods/jarvis-taskbar-icon-size.wh.cpp'
     supervisorAssembly = (

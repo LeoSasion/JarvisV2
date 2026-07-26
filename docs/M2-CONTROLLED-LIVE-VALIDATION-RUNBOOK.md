@@ -154,6 +154,12 @@ Only a future, separately authorized task may perform this sequence:
 
 No step may be put into an unattended loop.
 
+Every controller invocation must validate its result against
+`config/m2-controlled-live-controller-receipt.schema.json` before printing or
+publishing it. The session plan binds both the controller and this schema by
+path, size and SHA-256. A schema failure is a failed action, never acceptable
+live evidence.
+
 The exact controller forms are:
 
 ```powershell
@@ -162,6 +168,7 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass `
   -Action UpdateDisabledInstallation `
   -SessionPlanPath <fresh-plan> `
   -ExpectedExplorerProcessId <verified-pid> `
+  -OutputPath <unique-update-receipt> `
   -RetireStaleRecoveryLease `
   -ConfirmUpdateDisabledInstallation
 
@@ -170,6 +177,7 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass `
   -Action StartDisabledHost `
   -SessionPlanPath <fresh-plan> `
   -ExpectedExplorerProcessId <verified-pid> `
+  -OutputPath <unique-start-receipt> `
   -ConfirmStartDisabledHost
 
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass `
@@ -177,6 +185,7 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass `
   -Action EnableOnce `
   -SessionPlanPath <same-fresh-plan> `
   -ExpectedExplorerProcessId <same-verified-pid> `
+  -OutputPath <unique-enable-receipt> `
   -ConfirmEnableOnce
 
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass `
@@ -184,7 +193,8 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass `
   -Action Observe `
   -SessionPlanPath <same-fresh-plan> `
   -ExpectedExplorerProcessId <same-verified-pid> `
-  -ObservationSeconds 10
+  -ObservationSeconds 10 `
+  -OutputPath <unique-observe-receipt>
 
 dotnet run --project .\src\Jarvis.Supervisor `
   --configuration Release --no-build -- arm-kill-switch
@@ -193,6 +203,7 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass `
   -File .\scripts\Invoke-M2ControlledLiveValidation.ps1 `
   -Action Recover `
   -ExpectedExplorerProcessId <same-verified-pid> `
+  -OutputPath <unique-recovery-receipt> `
   -ConfirmRecover
 ```
 

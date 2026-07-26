@@ -11,6 +11,8 @@ $plannerPath =
     Join-Path $root 'scripts\New-M2ValidationSessionPlan.ps1'
 $planSchemaPath =
     Join-Path $root 'config\m2-validation-session-plan.schema.json'
+$controllerReceiptSchemaPath =
+    Join-Path $root 'config\m2-controlled-live-controller-receipt.schema.json'
 $leaseValidatorPath =
     Join-Path $root 'src\Jarvis.Supervisor\RecoveryTerminalLease.cs'
 $publicationManifestPath =
@@ -77,11 +79,24 @@ function Get-FunctionText {
     return $function[0].Extent.Text
 }
 
+function Test-ControllerReceipt {
+    param([Parameter(Mandatory)] [object]$Value)
+
+    $json = $Value | ConvertTo-Json -Depth 30
+    return [bool]($json |
+        Test-Json `
+            -SchemaFile $controllerReceiptSchemaPath `
+            -ErrorAction SilentlyContinue)
+}
+
 $controller = [IO.File]::ReadAllText($controllerPath)
 $planner = [IO.File]::ReadAllText($plannerPath)
 $leaseValidator = [IO.File]::ReadAllText($leaseValidatorPath)
 $planSchema =
     Get-Content -LiteralPath $planSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$controllerReceiptSchema =
+    Get-Content -LiteralPath $controllerReceiptSchemaPath -Raw |
         ConvertFrom-Json -Depth 100
 $publicationManifest =
     Get-Content -LiteralPath $publicationManifestPath -Raw |
@@ -253,16 +268,325 @@ Add-Check `
     -Passed $forbiddenExecutionSurface `
     -Detail 'The controller must never change start mode, launch Windhawk UI, terminate processes, restart Explorer or execute clear-kill-switch.'
 
+$receiptSchemaContract =
+    $controllerReceiptSchema.properties.schemaVersion.const -eq 1 -and
+    $controllerReceiptSchema.properties.receiptType.const -eq
+        'jarvisv2-m2-controlled-live-controller' -and
+    $controllerReceiptSchema.properties.activationPermitted.const -eq
+        $false -and
+    $controllerReceiptSchema.properties.explorerRestartRequested.const -eq
+        $false -and
+    $controllerReceiptSchema.properties.processTerminationRequested.const -eq
+        $false -and
+    $controllerReceiptSchema.properties.serviceStartModeMutationRequested.const -eq
+        $false -and
+    @($controllerReceiptSchema.properties.action.enum).Count -eq 6 -and
+    @($controllerReceiptSchema.oneOf).Count -eq 9 -and
+    $controller.Contains('$controllerReceiptSchemaPath') -and
+    $controller.Contains(
+        'Controller result failed its committed receipt schema.') -and
+    $controller.Contains('activationPermitted = $false') -and
+    $controller.Contains('controllerSha256 = Get-Sha256 $PSCommandPath') -and
+    $controller.Contains(
+        'receiptSchemaSha256 = Get-Sha256 $controllerReceiptSchemaPath') -and
+    $controller.Contains("'controlled-session'")
+Add-Check `
+    -Name 'controller.receipt-schema-enforced' `
+    -Passed $receiptSchemaContract `
+    -Detail 'Every controller result must validate against a committed action-specific schema with non-activation, no-restart and no-termination boundaries.'
+
+$fixtureRunId = '20260726T191234567Z-deadbeef'
+$fixtureSha = 'A' * 64
+$fixtureMapping = [ordered]@{
+    process = 'explorer'
+    processId = 11640
+    module = 'windhawk.dll'
+    path = 'C:\Program Files\Windhawk\Engine\1.7.3\64\windhawk.dll'
+    isJarvis = $false
+}
+function New-ReceiptFixture {
+    param(
+        [Parameter(Mandatory)] [string]$Action,
+        [Parameter(Mandatory)] [string]$Result,
+        [Parameter(Mandatory)] [string]$LiveExplorer,
+        [Parameter(Mandatory)] [bool]$MutationPerformed,
+        [Parameter(Mandatory)] [bool]$StopRequired,
+        [Parameter(Mandatory)] [object]$Detail
+    )
+
+    return [ordered]@{
+        schemaVersion = 1
+        receiptType = 'jarvisv2-m2-controlled-live-controller'
+        action = $Action
+        result = $Result
+        moduleId = 'jarvis-taskbar-icon-size'
+        controllerSha256 = $fixtureSha
+        receiptSchemaSha256 = $fixtureSha
+        observedAtUtc = '2026-07-26T19:12:34.567Z'
+        expectedExplorerProcessId = 11640
+        activationPermitted = $false
+        liveExplorer = $LiveExplorer
+        mutationPerformed = $MutationPerformed
+        stopRequired = $StopRequired
+        explorerRestartRequested = $false
+        processTerminationRequested = $false
+        serviceStartModeMutationRequested = $false
+        exactClearCommand = (
+            'dotnet run --project .\src\Jarvis.Supervisor ' +
+            '--configuration Release --no-build -- clear-kill-switch ' +
+            '--module jarvis-taskbar-icon-size --confirm'
+        )
+        emergencyArmCommand = (
+            'dotnet run --project .\src\Jarvis.Supervisor ' +
+            '--configuration Release --no-build -- arm-kill-switch'
+        )
+        detail = $Detail
+    }
+}
+
+$inspectDetail = [ordered]@{
+    compatibilityPassed = $true
+    compatibilityCheckCount = 23
+    explorerProcessId = 11640
+    killSwitchState = 'armed'
+    permitState = 'absent'
+    permitModuleId = $null
+    serviceState = 'Stopped'
+    serviceStartMode = 'Manual'
+    serviceProcessId = 0
+    configuredModule = 'local@jarvis-taskbar-icon-size'
+    installedGeneration = 'phase4-reviewed-old'
+    targetDisabled = $true
+    configError = 'Phase 5 canonical files are not installed.'
+    recoveryTerminalReady = $false
+    recoveryTerminalStatus = 'blocked'
+    recoveryTerminalError = 'lease-heartbeat-stale'
+    explorerJarvisMappings = @()
+    allJarvisMappings = @()
+    allWindhawkAndJarvisMappings = @()
+    planInspection = $null
+}
+$updateDetail = [ordered]@{
+    sessionPlanRunId = $fixtureRunId
+    sessionPlanSha256 = $fixtureSha
+    explorerProcessId = 11640
+    staleRecoveryLeaseRetired = $true
+    targetDisabled = $true
+    serviceState = 'Stopped'
+    serviceStartMode = 'Manual'
+    serviceProcessId = 0
+    killSwitchArmed = $true
+    permitPresent = $false
+    sourceSha256 =
+        '9F955ADD6B9CE1E087F8DCB97093C392B17845BEF2DBD31688A17B7D1B9B0C31'
+    dllSha256 =
+        '747F17F4DF5974222218DE716661416A934F86CF10DC15BEA50FB18E72327F5B'
+    backupDirectory = 'C:\repo\artifacts\backup'
+    targetMappingCount = 0
+}
+$startDetail = [ordered]@{
+    sessionPlanRunId = $fixtureRunId
+    sessionPlanSha256 = $fixtureSha
+    recoveryTerminalProcessId = 1234
+    explorerProcessId = 11640
+    serviceState = 'Running'
+    serviceStartMode = 'Manual'
+    serviceProcessId = 4321
+    targetDisabled = $true
+    permitPresent = $false
+    killSwitchArmed = $true
+    targetMappingCount = 0
+}
+$enableDetail = [ordered]@{
+    sessionPlanRunId = $fixtureRunId
+    sessionPlanSha256 = $fixtureSha
+    recoveryTerminalProcessId = 1234
+    explorerProcessId = 11640
+    serviceState = 'Running'
+    serviceStartMode = 'Manual'
+    serviceProcessId = 4321
+    targetDisabled = $false
+    permitConsumed = $true
+    killSwitchArmed = $false
+    targetMappingCount = 1
+    targetDllSha256 =
+        '747F17F4DF5974222218DE716661416A934F86CF10DC15BEA50FB18E72327F5B'
+}
+$observeDetail = [ordered]@{
+    sessionPlanRunId = $fixtureRunId
+    sessionPlanSha256 = $fixtureSha
+    explorerProcessId = 11640
+    observationSeconds = 3
+    maxAllowedSingleCoreCpuPercent = 25.0
+    maximumObservedSingleCoreCpuPercent = 0.0
+    sampleCount = 1
+    samples = @(
+        [ordered]@{
+            sampledAtUtc = '2026-07-26T19:12:35.567Z'
+            approximateSingleCoreCpuPercent = 0.0
+            workingSetBytes = 1024
+            handleCount = 1
+            threadCount = 1
+            recoveryTerminalProcessId = 1234
+        }
+    )
+}
+$recoverDetail = [ordered]@{
+    errors = @()
+    expectedExplorerProcessId = 11640
+    actualExplorerProcessId = 11640
+    explorerProcessIdStable = $true
+    targetDisabled = $true
+    serviceState = 'Stopped'
+    serviceStartMode = 'Manual'
+    serviceProcessId = 0
+    killSwitchArmed = $true
+    permitPresent = $false
+    targetExplorerMappingCount = 0
+    allWindhawkAndJarvisMappings = @($fixtureMapping)
+    explorerRestartRequested = $false
+    forceStopRequested = $false
+}
+$failureDetail = [ordered]@{
+    error = 'confirmation missing'
+    exceptionType = 'System.InvalidOperationException'
+}
+$recoverZeroDetail =
+    $recoverDetail |
+        ConvertTo-Json -Depth 30 |
+        ConvertFrom-Json -Depth 30
+$recoverZeroDetail.allWindhawkAndJarvisMappings = @()
+$recoverNeedsDetail =
+    $recoverDetail |
+        ConvertTo-Json -Depth 30 |
+        ConvertFrom-Json -Depth 30
+$recoverNeedsDetail.errors = @('mapping residual')
+$positiveReceiptFixtures = @(
+    (New-ReceiptFixture 'Inspect' 'passed-read-only' 'not-run' $false $false $inspectDetail),
+    (New-ReceiptFixture 'UpdateDisabledInstallation' 'passed-disabled-installation-updated' 'not-run' $true $false $updateDetail),
+    (New-ReceiptFixture 'StartDisabledHost' 'passed-disabled-host-running' 'not-run' $true $false $startDetail),
+    (New-ReceiptFixture 'EnableOnce' 'passed-one-shot-m2-active' 'controlled-session' $true $false $enableDetail),
+    (New-ReceiptFixture 'Observe' 'passed-bounded-idle-observation' 'controlled-session' $false $false $observeDetail),
+    (New-ReceiptFixture 'Recover' 'passed-locked-zero-mappings' 'controlled-session' $true $false $recoverZeroDetail),
+    (New-ReceiptFixture 'Recover' 'passed-locked-runtime-residual-recorded' 'controlled-session' $true $false $recoverDetail),
+    (New-ReceiptFixture 'Recover' 'failed-locked-state-needs-attention' 'controlled-session' $true $true $recoverNeedsDetail),
+    (New-ReceiptFixture 'EnableOnce' 'failed' 'not-run' $false $true $failureDetail)
+)
+$positiveReceiptResults =
+    @($positiveReceiptFixtures | ForEach-Object {
+        Test-ControllerReceipt $_
+    })
+Add-Check `
+    -Name 'controller.receipt-schema-positive-matrix' `
+    -Passed (
+        $positiveReceiptResults.Count -eq
+            $positiveReceiptFixtures.Count -and
+        @($positiveReceiptResults | Where-Object { -not $_ }).Count -eq 0
+    ) `
+    -Detail 'Representative Inspect, update, start, enable, observe, recovery, residual and failure receipts must all validate.'
+
+$negativeReceiptFixtures = [System.Collections.Generic.List[object]]::new()
+foreach ($mutation in @(
+    [pscustomobject]@{
+        Property = 'activationPermitted'
+        Value = $true
+    },
+    [pscustomobject]@{
+        Property = 'explorerRestartRequested'
+        Value = $true
+    },
+    [pscustomobject]@{
+        Property = 'processTerminationRequested'
+        Value = $true
+    },
+    [pscustomobject]@{
+        Property = 'serviceStartModeMutationRequested'
+        Value = $true
+    },
+    [pscustomobject]@{
+        Property = 'liveExplorer'
+        Value = 'controlled-session'
+    },
+    [pscustomobject]@{
+        Property = 'mutationPerformed'
+        Value = $true
+    }
+)) {
+    $fixture =
+        $positiveReceiptFixtures[0] |
+            ConvertTo-Json -Depth 30 |
+            ConvertFrom-Json -Depth 30
+    $fixture.($mutation.Property) = $mutation.Value
+    $negativeReceiptFixtures.Add($fixture)
+}
+$wrongActionResult =
+    $positiveReceiptFixtures[2] |
+        ConvertTo-Json -Depth 30 |
+        ConvertFrom-Json -Depth 30
+$wrongActionResult.result = 'passed-one-shot-m2-active'
+$negativeReceiptFixtures.Add($wrongActionResult)
+$unexpectedProperty =
+    $positiveReceiptFixtures[0] |
+        ConvertTo-Json -Depth 30 |
+        ConvertFrom-Json -Depth 30
+$unexpectedProperty | Add-Member -NotePropertyName unexpected -NotePropertyValue $true
+$negativeReceiptFixtures.Add($unexpectedProperty)
+$zeroWithResidual =
+    $positiveReceiptFixtures[5] |
+        ConvertTo-Json -Depth 30 |
+        ConvertFrom-Json -Depth 30
+$zeroWithResidual.detail.allWindhawkAndJarvisMappings = @($fixtureMapping)
+$negativeReceiptFixtures.Add($zeroWithResidual)
+$wrongUpdateHash =
+    $positiveReceiptFixtures[1] |
+        ConvertTo-Json -Depth 30 |
+        ConvertFrom-Json -Depth 30
+$wrongUpdateHash.detail.sourceSha256 = $fixtureSha
+$negativeReceiptFixtures.Add($wrongUpdateHash)
+$wrongEnableHash =
+    $positiveReceiptFixtures[3] |
+        ConvertTo-Json -Depth 30 |
+        ConvertFrom-Json -Depth 30
+$wrongEnableHash.detail.targetDllSha256 = $fixtureSha
+$negativeReceiptFixtures.Add($wrongEnableHash)
+$residualClaimWithJarvis =
+    $positiveReceiptFixtures[6] |
+        ConvertTo-Json -Depth 30 |
+        ConvertFrom-Json -Depth 30
+$residualClaimWithJarvis.detail.allWindhawkAndJarvisMappings[0].isJarvis =
+    $true
+$negativeReceiptFixtures.Add($residualClaimWithJarvis)
+$negativeReceiptResults =
+    @($negativeReceiptFixtures | ForEach-Object {
+        Test-ControllerReceipt $_
+    })
+Add-Check `
+    -Name 'controller.receipt-schema-negative-guardrails' `
+    -Passed (
+        $negativeReceiptResults.Count -eq
+            $negativeReceiptFixtures.Count -and
+        @($negativeReceiptResults | Where-Object { $_ }).Count -eq 0
+    ) `
+    -Detail 'The schema must reject activation authority, restart, termination, start-mode mutation, false live or mutation claims, action/result mismatch, extra properties, zero-mapping contradictions, Jarvis residuals and non-canonical installation or active DLL hashes.'
+
 $planRequired = @($planSchema.properties.sourceIdentity.required)
 $planBinding =
     $planRequired -contains 'controlledLiveController' -and
+    $planRequired -contains 'controlledLiveReceiptSchema' -and
     $null -ne
         $planSchema.properties.sourceIdentity.properties.controlledLiveController -and
+    $null -ne
+        $planSchema.properties.sourceIdentity.properties.controlledLiveReceiptSchema -and
     $planner.Contains("Key = 'controlledLiveController'") -and
+    $planner.Contains("Key = 'controlledLiveReceiptSchema'") -and
     $planner.Contains(
         "RelativePath = 'scripts/Invoke-M2ControlledLiveValidation.ps1'") -and
+    $planner.Contains(
+        "'config/m2-controlled-live-controller-receipt.schema.json'") -and
     $leaseValidator.Contains(
-        '["controlledLiveController"] = "scripts/Invoke-M2ControlledLiveValidation.ps1"')
+        '["controlledLiveController"] = "scripts/Invoke-M2ControlledLiveValidation.ps1"') -and
+    $leaseValidator.Contains(
+        '["controlledLiveReceiptSchema"] = "config/m2-controlled-live-controller-receipt.schema.json"')
 Add-Check `
     -Name 'controller.session-plan-sha-bound' `
     -Passed $planBinding `
@@ -272,6 +596,8 @@ $publicationFiles = @($publicationManifest.requiredFiles)
 $publicationBoundary =
     $publicationFiles -contains
         'scripts/Invoke-M2ControlledLiveValidation.ps1' -and
+    $publicationFiles -contains
+        'config/m2-controlled-live-controller-receipt.schema.json' -and
     $publicationFiles -contains
         'scripts/Test-M2ControlledLiveController.ps1'
 Add-Check `

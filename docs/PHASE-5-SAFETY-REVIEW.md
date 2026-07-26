@@ -135,7 +135,12 @@ Resolution:
   requires `disabled.flag` present and the permit absent before disabling M2
   and normally stopping the service;
 - the plan schema, planner and Supervisor now bind the controller's exact path,
-  size and SHA-256.
+  size and SHA-256;
+- every controller result is validated before publication against the
+  action-specific `m2-controlled-live-controller-receipt.schema.json`, which
+  fixes the non-activation claim and forbids Explorer restart, process
+  termination and service start-mode mutation in every receipt; the receipt
+  schema is bound into the same session plan.
 
 Status: **resolved and covered by an executable static controller audit**.
 

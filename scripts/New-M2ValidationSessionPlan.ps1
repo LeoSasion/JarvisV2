@@ -27,6 +27,8 @@ $observerSchema =
     Join-Path $root 'config\m2-observation-rehearsal-receipt.schema.json'
 $controlledLiveController =
     Join-Path $root 'scripts\Invoke-M2ControlledLiveValidation.ps1'
+$controlledLiveReceiptSchema =
+    Join-Path $root 'config\m2-controlled-live-controller-receipt.schema.json'
 $nativeReceipt =
     Join-Path $root 'docs\receipts\native-build-2026-07-22.json'
 $m2Source = Join-Path $root 'mods\jarvis-taskbar-icon-size.wh.cpp'
@@ -138,6 +140,12 @@ foreach ($source in @(
         Key = 'controlledLiveController'
         Path = $controlledLiveController
         RelativePath = 'scripts/Invoke-M2ControlledLiveValidation.ps1'
+    },
+    [pscustomobject]@{
+        Key = 'controlledLiveReceiptSchema'
+        Path = $controlledLiveReceiptSchema
+        RelativePath =
+            'config/m2-controlled-live-controller-receipt.schema.json'
     },
     [pscustomobject]@{
         Key = 'nativeBuildReceipt'

@@ -15,6 +15,7 @@
     "SECURITY.md",
     "config/compatibility.json",
     "config/m2-live-readiness-receipt.schema.json",
+    "config/m2-controlled-live-controller-receipt.schema.json",
     "config/m2-observation-rehearsal-receipt.schema.json",
     "config/m2-recovery-lease-lab-receipt.schema.json",
     "config/m2-recovery-terminal-lease.schema.json",
