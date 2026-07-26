@@ -73,6 +73,12 @@ jobs:
           --nologo
           --warnaserror
 
+      - name: Audit controlled-live controller
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-M2ControlledLiveController.ps1
+
       - name: State native-build boundary
         shell: pwsh
         run: |

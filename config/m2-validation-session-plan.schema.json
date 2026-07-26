@@ -73,6 +73,7 @@
         "recoveryLeaseSchema",
         "observerScript",
         "observerSchema",
+        "controlledLiveController",
         "nativeBuildReceipt",
         "m2Source",
         "supervisorAssembly"
@@ -100,6 +101,9 @@
           "$ref": "#/$defs/fileIdentity"
         },
         "observerSchema": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "controlledLiveController": {
           "$ref": "#/$defs/fileIdentity"
         },
         "nativeBuildReceipt": {

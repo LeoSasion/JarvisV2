@@ -109,6 +109,36 @@ Resolution:
 
 Status: **accepted operational constraint**.
 
+### P1 — Live mutation tooling was outside the session-plan identity
+
+The recovery lease originally bound the planner, readiness probe, recovery
+terminal, locked observer, native source and Supervisor assembly, but no
+repository controller represented the later service start, one-shot registry
+enable or normal cleanup. A temporary operator script could therefore drift
+after the plan was created without invalidating the lease.
+
+Resolution:
+
+- `Invoke-M2ControlledLiveValidation.ps1` is inert by default and separates
+  `UpdateDisabledInstallation`, `StartDisabledHost`, `EnableOnce`, `Observe`
+  and `Recover`;
+- each mutating action requires its own exact confirmation switch;
+- the disabled-installation action accepts only the reviewed old hashes,
+  creates verified backups, atomically installs only the canonical new hashes
+  and rolls back on failure while Windhawk is stopped and M2 is disabled;
+- the controller never executes `clear-kill-switch`, never launches the
+  Windhawk application, never changes service start mode, never terminates a
+  process and never restarts Explorer;
+- `EnableOnce` re-arms first, disables M2 and normally stops Windhawk on any
+  failed preflight or load check;
+- `Recover` deliberately remains usable after terminal or plan loss, but
+  requires `disabled.flag` present and the permit absent before disabling M2
+  and normally stopping the service;
+- the plan schema, planner and Supervisor now bind the controller's exact path,
+  size and SHA-256.
+
+Status: **resolved and covered by an executable static controller audit**.
+
 ## Preserved safety properties
 
 - `disabled.flag` remains armed throughout review and offline fixes.

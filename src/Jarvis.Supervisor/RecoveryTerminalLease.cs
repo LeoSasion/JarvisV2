@@ -35,6 +35,7 @@ internal static partial class RecoveryTerminalLease
             ["recoveryLeaseSchema"] = "config/m2-recovery-terminal-lease.schema.json",
             ["observerScript"] = "scripts/Test-M2ObservationRehearsal.ps1",
             ["observerSchema"] = "config/m2-observation-rehearsal-receipt.schema.json",
+            ["controlledLiveController"] = "scripts/Invoke-M2ControlledLiveValidation.ps1",
             ["nativeBuildReceipt"] = "docs/receipts/native-build-2026-07-22.json",
             ["m2Source"] = "mods/jarvis-taskbar-icon-size.wh.cpp",
             ["supervisorAssembly"] = "src/Jarvis.Supervisor/bin/Release/net8.0-windows/jarvis-supervisor.dll",

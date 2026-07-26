@@ -62,6 +62,9 @@ Phase 5 把恢复能力从“曾经打开一个窗口”提升为短租约安全
 - [x] 离线实验增加 non-recursive child-path isolation，矩阵扩展为 7/7。
 - [x] 在当前源码上重新生成 canonical native build receipt。
 - [x] 运行完整 `Test-Project.ps1` 与 publication boundary。
+- [x] 把默认惰性的受控实机控制器纳入 session plan 源码身份；禁用态
+  安装切换、启动、单次启用、观察、恢复必须是分离动作，控制器自身
+  不能清除急停或重启 Explorer。
 - [ ] 在主机自然清除残余基础映射后，生成新的真实 session plan。
 - [ ] 另一个任务中重新展示 fresh compatibility/readiness、恢复终端租约
   和精确恢复命令，等待新的明确实机授权。

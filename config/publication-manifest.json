@@ -31,11 +31,13 @@
     "docs/PHASE-5-SAFETY-REVIEW.md",
     "docs/receipts/host-safety-2026-07-27.json",
     "scripts/Measure-M2HostBaseline.ps1",
+    "scripts/Invoke-M2ControlledLiveValidation.ps1",
     "scripts/New-M2ValidationSessionPlan.ps1",
     "scripts/Open-M2RecoveryTerminal.ps1",
     "scripts/Test-M2RecoveryLeaseLab.ps1",
     "scripts/Test-M2ObservationRehearsal.ps1",
     "scripts/Test-M2LiveReadiness.ps1",
+    "scripts/Test-M2ControlledLiveController.ps1",
     "scripts/Test-PublicationBoundary.ps1",
     "third_party/NOTICE.md"
   ],
