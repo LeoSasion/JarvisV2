@@ -140,6 +140,7 @@
         "windhawkStartMode",
         "explorerProcessId",
         "moduleMappingCount",
+        "safetyRelevantModuleEnumerationErrorCount",
         "explorerModuleInspectionSucceeded"
       ],
       "properties": {
@@ -192,6 +193,9 @@
           "minimum": 1
         },
         "moduleMappingCount": {
+          "const": 0
+        },
+        "safetyRelevantModuleEnumerationErrorCount": {
           "const": 0
         },
         "explorerModuleInspectionSucceeded": {

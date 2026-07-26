@@ -541,6 +541,10 @@ $m2ReadinessSchemaContract =
     @($m2ReadinessSchema.properties.runtime.required) -contains
         'moduleNotEnumerableProcessCount' -and
     @($m2ReadinessSchema.properties.runtime.required) -contains
+        'safetyRelevantModuleEnumerationErrorCount' -and
+    @($m2ReadinessSchema.properties.runtime.required) -contains
+        'nonTargetModuleEnumerationErrorCount' -and
+    @($m2ReadinessSchema.properties.runtime.required) -contains
         'explorerModuleInspectionSucceeded'
 Add-Check `
     'phase3.m2-readiness-schema-failclosed' `
@@ -554,6 +558,12 @@ $m2ReadinessScriptContract =
     $m2ReadinessScript.Contains('mutationPerformed = $false') -and
     $m2ReadinessScript.Contains('canExecuteNow = $false') -and
     $m2ReadinessScript.Contains('explorerModuleInspectionSucceeded') -and
+    $m2ReadinessScript.Contains(
+        'safetyRelevantModuleEnumerationErrorCount') -and
+    $m2ReadinessScript.Contains(
+        'nonTargetModuleEnumerationErrorCount') -and
+    $m2ReadinessScript.Contains(
+        'safety-relevant-process-module-enumeration-incomplete') -and
     $m2ReadinessScript.Contains(
         'Refusing to overwrite an existing readiness receipt') -and
     [regex]::Matches(
@@ -1035,6 +1045,7 @@ foreach ($module in @(
     Test-NoPattern "module.$($module.Id).no-legacy-permit-payload" $module.Text 'JARVIS2-ACTIVATION-PERMIT-V1|activation-permits\\' 'Legacy per-module permit files and multi-line payloads are forbidden.'
     Test-NoPattern "module.$($module.Id).no-layered-overlay" $module.Text 'WS_EX_LAYERED|UpdateLayeredWindow|SetLayeredWindowAttributes' 'Native modules must not create a layered overlay.'
     Test-NoPattern "module.$($module.Id).no-self-restart" $module.Text 'taskkill|TerminateProcess|ShellExecuteW\(|CreateProcessW?\(' 'Injected modules must leave Explorer recovery to the supervisor.'
+    Test-Pattern "module.$($module.Id).stable-link-timestamp" $module.Text '(?m)^// @compilerOptions [^\r\n]*-Wl,--no-insert-timestamp(?:\s|$)' 'Every native module must suppress the known volatile PE and debug-directory timestamps.'
 }
 
 Test-Pattern 'styler.build-gate' $styler ("constexpr DWORD kValidatedBuild = {0};" -f $compatibility.host.minimumWindowsBuild) 'M1 source build gate must match compatibility.json.'

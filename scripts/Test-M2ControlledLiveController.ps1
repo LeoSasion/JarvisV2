@@ -378,9 +378,9 @@ $updateDetail = [ordered]@{
     killSwitchArmed = $true
     permitPresent = $false
     sourceSha256 =
-        '9F955ADD6B9CE1E087F8DCB97093C392B17845BEF2DBD31688A17B7D1B9B0C31'
+        'CD7760DBC1111B0608599D49F8694AAA1C53D2A828AF362D3383995853D38CFB'
     dllSha256 =
-        '747F17F4DF5974222218DE716661416A934F86CF10DC15BEA50FB18E72327F5B'
+        'C2DB007E2FDCDA145463E2D0355BD4F7E18ACC9CE414D77652EED33DD5532865'
     backupDirectory = 'C:\repo\artifacts\backup'
     targetMappingCount = 0
 }
@@ -410,7 +410,7 @@ $enableDetail = [ordered]@{
     killSwitchArmed = $false
     targetMappingCount = 1
     targetDllSha256 =
-        '747F17F4DF5974222218DE716661416A934F86CF10DC15BEA50FB18E72327F5B'
+        'C2DB007E2FDCDA145463E2D0355BD4F7E18ACC9CE414D77652EED33DD5532865'
 }
 $observeDetail = [ordered]@{
     sessionPlanRunId = $fixtureRunId

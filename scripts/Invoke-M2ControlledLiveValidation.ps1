@@ -44,9 +44,9 @@ $serviceName = 'Windhawk'
 $libraryFileName = 'jarvis-taskbar-icon-size_0.2.0_jarvis2.dll'
 $controllerRelativePath = 'scripts/Invoke-M2ControlledLiveValidation.ps1'
 $expectedSourceSha256 =
-    '9F955ADD6B9CE1E087F8DCB97093C392B17845BEF2DBD31688A17B7D1B9B0C31'
+    'CD7760DBC1111B0608599D49F8694AAA1C53D2A828AF362D3383995853D38CFB'
 $expectedDllSha256 =
-    '747F17F4DF5974222218DE716661416A934F86CF10DC15BEA50FB18E72327F5B'
+    'C2DB007E2FDCDA145463E2D0355BD4F7E18ACC9CE414D77652EED33DD5532865'
 $oldInstalledSourceSha256 =
     '4A0278E2BC1CC81D616AC885F87BB51CE26DD044E4F44DDB8341E0C6D79087C4'
 $oldInstalledDllSha256 =
@@ -54,7 +54,7 @@ $oldInstalledDllSha256 =
 $canonicalSourcePath =
     Join-Path $root 'mods\jarvis-taskbar-icon-size.wh.cpp'
 $canonicalDllPath = Join-Path $root (
-    'artifacts\native\runs\20260726T183340920Z-efe8b4b3\modules\' +
+    'artifacts\native\runs\20260726T194925883Z-eeb54147\modules\' +
     'jarvis-taskbar-icon-size\jarvis-taskbar-icon-size-x64.dll'
 )
 $supervisorProject =

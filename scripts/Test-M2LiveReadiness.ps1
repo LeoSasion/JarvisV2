@@ -337,6 +337,8 @@ $moduleEnumerationErrors =
 $moduleEnumerableProcessIds =
     [System.Collections.Generic.List[int]]::new()
 $moduleNotEnumerableProcessCount = 0
+$safetyRelevantModuleEnumerationErrorCount = 0
+$nonTargetModuleEnumerationErrorCount = 0
 $mappingPattern = (
     '(?i)(windhawk|jarvis[-_]?native[-_]?taskbar|' +
     'jarvis[-_]?taskbar[-_]?icon[-_]?size|\\JARVIS2\\)'
@@ -390,14 +392,31 @@ try {
     if ($moduleMappings.Count -ne 0) {
         Add-Failure 'windhawk-or-jarvis-module-mapped'
     }
-    if ($moduleEnumerationErrors.Count -ne 0) {
-        Add-Failure 'process-module-enumeration-incomplete'
+    $explorerProcessIds =
+        @($compatibilityReceipt.explorerProcessIds | ForEach-Object { [int]$_ })
+    $safetyRelevantModuleEnumerationErrors = @(
+        $moduleEnumerationErrors |
+            Where-Object {
+                [int]$_['processId'] -in $explorerProcessIds -or
+                [string]$_['processName'] -match '(?i)^(windhawk|jarvis)'
+            }
+    )
+    $safetyRelevantModuleEnumerationErrorCount =
+        $safetyRelevantModuleEnumerationErrors.Count
+    $nonTargetModuleEnumerationErrorCount =
+        $moduleEnumerationErrors.Count -
+        $safetyRelevantModuleEnumerationErrorCount
+    if ($safetyRelevantModuleEnumerationErrorCount -ne 0) {
+        Add-Failure 'safety-relevant-process-module-enumeration-incomplete'
         foreach ($errorType in @(
-            $moduleEnumerationErrors |
+            $safetyRelevantModuleEnumerationErrors |
                 ForEach-Object { [string]$_['errorType'] } |
                 Sort-Object -Unique
         )) {
-            Add-Failure "process-module-enumeration-error:$errorType"
+            Add-Failure (
+                'safety-relevant-process-module-enumeration-error:' +
+                $errorType
+            )
         }
     }
 }
@@ -481,6 +500,10 @@ $receipt = [ordered]@{
         moduleNotEnumerableProcessCount = $moduleNotEnumerableProcessCount
         moduleMappingCount = $moduleMappings.Count
         moduleEnumerationErrorCount = $moduleEnumerationErrors.Count
+        safetyRelevantModuleEnumerationErrorCount =
+            $safetyRelevantModuleEnumerationErrorCount
+        nonTargetModuleEnumerationErrorCount =
+            $nonTargetModuleEnumerationErrorCount
         explorerProcessIds = $explorerProcessIds
         explorerMatchingModuleCount = $explorerMatchingModuleCount
         explorerModuleInspectionSucceeded =

@@ -7,7 +7,7 @@
 // @license         GPL-3.0
 // @include         %SystemRoot%\explorer.exe
 // @architecture    amd64
-// @compilerOptions -DWINVER=0x0A00 -D_WIN32_WINNT=0x0A00 -lversion -lbcrypt -ladvapi32 -lshell32 -lole32
+// @compilerOptions -DWINVER=0x0A00 -D_WIN32_WINNT=0x0A00 -Wl,--no-insert-timestamp -lversion -lbcrypt -ladvapi32 -lshell32 -lole32
 // ==/WindhawkMod==
 
 // Copyright (C) 2026 JARVIS2 contributors.

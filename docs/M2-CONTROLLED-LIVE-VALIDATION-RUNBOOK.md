@@ -90,6 +90,17 @@ directory is intentional: M2 keeps a non-recursive emergency watch on the
 JARVIS2 state root and separately polls the lease once per second. A heartbeat
 older than six seconds latches the hook into pass-through.
 
+Readiness records module-enumeration failures for every process, but only an
+enumeration failure in the verified desktop Explorer PID or a named
+Windhawk/Jarvis process is safety-relevant and blocking. Elevated Windows
+processes can return access errors for unrelated protected system processes;
+those errors remain counted as non-target evidence and do not weaken the
+required complete Explorer inspection.
+
+The native metadata also suppresses volatile PE link timestamps. Before a new
+DLL hash is admitted to the controller, two independent fixed-toolchain builds
+must produce the same M2 SHA-256.
+
 ## Required human gate
 
 Before activation, all of the following must be true in the same task:

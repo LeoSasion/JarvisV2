@@ -324,6 +324,8 @@
         "moduleNotEnumerableProcessCount",
         "moduleMappingCount",
         "moduleEnumerationErrorCount",
+        "safetyRelevantModuleEnumerationErrorCount",
+        "nonTargetModuleEnumerationErrorCount",
         "explorerProcessIds",
         "explorerMatchingModuleCount",
         "explorerModuleInspectionSucceeded"
@@ -350,6 +352,14 @@
           "minimum": 0
         },
         "moduleEnumerationErrorCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "safetyRelevantModuleEnumerationErrorCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nonTargetModuleEnumerationErrorCount": {
           "type": "integer",
           "minimum": 0
         },

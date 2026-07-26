@@ -94,6 +94,57 @@ module mapping was created during the failed attempt.
 
 Status: **resolved and covered by a static plus semantic regression**.
 
+### P1 — Elevated readiness conflated protected-process access with Explorer coverage
+
+The disabled-installation controller correctly required an administrator
+token, but its plan-bound recovery dry run launched readiness in that same
+elevated context. Windows can expose unrelated protected processes to
+`Get-Process` while still rejecting their module enumeration. The original
+readiness probe treated any such global exception as a fatal loss of Explorer
+coverage, so it rejected the update before mutation even though the exact
+desktop Explorer PID was fully enumerable.
+
+Resolution:
+
+- the receipt continues to count every module-enumeration exception;
+- it separately counts safety-relevant errors for the verified Explorer PID
+  and named Windhawk/Jarvis processes versus unrelated non-target errors;
+- readiness, the session planner and the recovery-terminal handoff require
+  zero safety-relevant enumeration errors and complete inspection of the
+  verified Explorer PID;
+- access errors from unrelated protected processes remain visible evidence but
+  do not masquerade as a target-host failure.
+
+Both observed failures were fail-closed and reported
+`mutationPerformed=false`.
+
+Status: **resolved in source; elevated read-only regression pending**.
+
+### P1 — Fixed toolchain still emitted volatile PE timestamps
+
+A canonical rebuild after the readiness fix produced the same M2 source size
+and semantics but a different DLL SHA-256. Binary comparison found only two
+copies of the link timestamp changed: the PE/COFF header and debug-directory
+timestamp. Accepting a new hash after every rebuild would make the live
+controller's exact DLL allowlist operationally unstable.
+
+Resolution:
+
+- both native modules pass the locked MinGW/LLD linker
+  `--no-insert-timestamp` option through Windhawk metadata;
+- the project gate requires the option for both sources;
+- two independent canonical builds must produce the same M2 DLL SHA-256 before
+  that hash is admitted to the live controller.
+
+The two proof runs produced the exact same M2 DLL SHA-256,
+`C2DB007E2FDCDA145463E2D0355BD4F7E18ACC9CE414D77652EED33DD5532865`.
+M1 still differed by 22 non-timestamp bytes between those runs. M1 remains
+build-only and outside this live-validation allowlist; its remaining
+reproducibility work cannot be used to broaden the M2 session.
+
+Status: **M2 resolved with a two-run reproducibility proof; M1 remains
+build-only**.
+
 ### P2 — Offline gates are intentionally serialized
 
 Two simultaneous `Test-Project.ps1` executions can compete for the shared

@@ -231,6 +231,7 @@ else {
         Add-Failure 'canonical-build-boundary-invalid'
     }
     if ($readiness.runtime.moduleMappingCount -ne 0 -or
+        $readiness.runtime.safetyRelevantModuleEnumerationErrorCount -ne 0 -or
         -not $readiness.runtime.explorerModuleInspectionSucceeded) {
         Add-Failure 'runtime-mapping-boundary-invalid'
     }
@@ -288,6 +289,8 @@ $readinessReceipt = [ordered]@{
         [int]@($readiness.compatibility.explorerProcessIds)[0]
     moduleMappingCount =
         [int]$readiness.runtime.moduleMappingCount
+    safetyRelevantModuleEnumerationErrorCount =
+        [int]$readiness.runtime.safetyRelevantModuleEnumerationErrorCount
     explorerModuleInspectionSucceeded =
         [bool]$readiness.runtime.explorerModuleInspectionSucceeded
 }
