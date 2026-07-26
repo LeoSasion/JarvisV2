@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "receiptType": "jarvis2-read-only-host-snapshot",
-  "inspectedAtUtc": "2026-07-26T18:18:13.1914542Z",
-  "inspectedAtAsiaShanghai": "2026-07-27 02:18:13 +08:00",
+  "inspectedAtUtc": "2026-07-26T18:29:33.9610969Z",
+  "inspectedAtAsiaShanghai": "2026-07-27 02:29:33 +08:00",
   "mutationPerformed": false,
   "supervisorInspect": {
     "profileId": "win11-25h2-26200.8875-x64",
-    "inspectedAtUtc": "2026-07-26T18:18:13.1914542Z",
+    "inspectedAtUtc": "2026-07-26T18:29:33.7001724Z",
     "compatible": true,
     "checkCount": 23,
     "passed": 23,
@@ -36,9 +36,9 @@
     "processId": 0
   },
   "processInspection": {
-    "processCount": 385,
-    "moduleEnumerableProcessCount": 206,
-    "moduleNotEnumerableProcessCount": 179,
+    "processCount": 386,
+    "moduleEnumerableProcessCount": 200,
+    "moduleNotEnumerableProcessCount": 186,
     "windhawkOrJarvisProcessCount": 0,
     "matchingModuleMappingCount": 0,
     "moduleEnumerationErrorCount": 0
@@ -49,20 +49,34 @@
     "startTimeUtc": "2026-07-23T07:37:39.1327858Z",
     "matchingModuleCount": 0
   },
+  "installedM2": {
+    "state": "disabled-old-phase4-build",
+    "sourceSha256": "4A0278E2BC1CC81D616AC885F87BB51CE26DD044E4F44DDB8341E0C6D79087C4",
+    "dllSha256": "DBABD5BEDAB2A2CF1BA0592A1742C2E31FF91E2F9CD4EEF440E0E2A82AF8C490"
+  },
   "canonicalBuild": {
-    "runId": "20260726T181614398Z-c553751a",
+    "runId": "20260726T182734035Z-a20c872d",
+    "receiptSha256": "9081F24B1D914095C224FE904F78ADAB64AC0660047612B7FB403B3F0A8F28C8",
+    "runSummarySha256": "12435344EDB1DC3E5A121060F73151AA1C2048914DBDDDDA97559D3192BE4DF8",
     "m2SourceSha256": "9F955ADD6B9CE1E087F8DCB97093C392B17845BEF2DBD31688A17B7D1B9B0C31",
-    "m2DllSha256": "CE062570CC5BA79688E858F8D8861A216C15F660336D529C262BB4EB83C71F33",
+    "m2DllSha256": "D511B211360518CED330E704FEDC9D93931A2D82C4BEB6CB92A0BB621E3B2751",
     "warningCount": 0,
     "errorCount": 0
   },
   "readiness": {
-    "runId": "20260726T181800236Z-48380d9e",
+    "runId": "20260726T182915184Z-f3806af5",
     "result": "passed",
     "readyForExactApproval": true,
-    "receiptRelativePath": "artifacts/m2-live-readiness/runs/phase5-review-closure-20260727T0218CST.json",
+    "receiptRelativePath": "artifacts/m2-live-readiness/runs/phase5-utc-fix-closure-20260727T0229CST.json",
     "receiptSize": 3582,
-    "receiptSha256": "EFF80F55A01E7449BC45328DA54F972DBA36CE98CA906B76BE17EB8A7908EB62"
+    "receiptSha256": "DAF4446B58A27D98B73AA337B048CA15439FC04285DB2479AD76BBFBBD501662"
+  },
+  "disabledUpdateScript": {
+    "relativePath": "artifacts/live/Update-M2Disabled-Phase5.ps1",
+    "size": 11730,
+    "sha256": "F9DF1E1CBDCB52FA6B52B70431CB7F371901066D437D1C98DAD6137EA6BFEFA1",
+    "parseErrors": 0,
+    "executed": false
   },
   "evidenceBoundary": {
     "releaseReady": false,

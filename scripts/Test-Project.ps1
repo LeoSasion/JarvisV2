@@ -775,6 +775,8 @@ $phase5ReviewContract =
     $phase5Review.Contains(
         'P1 — Lease and fixture paths followed reparse points') -and
     $phase5Review.Contains(
+        'P1 — UTC plan timestamps were parsed as local time by PowerShell') -and
+    $phase5Review.Contains(
         'P2 — Offline gates are intentionally serialized') -and
     $phase5Review.Contains(
         'Live activation during review: **not performed**') -and
@@ -824,6 +826,10 @@ $phase5HeartbeatContract =
     $m2RecoveryTerminal.Contains("-State 'expired'") -and
     $m2RecoveryTerminal.Contains(
         'The recovery terminal did not publish a fresh lease within 8 seconds.') -and
+    ([regex]::Matches(
+        $m2RecoveryTerminal,
+        '\[DateTimeOffset\]::Parse\(').Count -eq 3) -and
+    -not $m2RecoveryTerminal.Contains('[DateTime]::Parse(') -and
     $m2RecoveryTerminal.Contains('processStartTimeUtc') -and
     -not $m2RecoveryTerminal.Contains('clear-kill-switch') -and
     -not [regex]::IsMatch(
@@ -836,6 +842,25 @@ Add-Check `
     'phase5.recovery-terminal-heartbeat-inert' `
     $phase5HeartbeatContract `
     'The visible recovery terminal must atomically heartbeat, expire closed and never execute recovery or activation itself.'
+
+$phase5UtcProbeText = '2026-07-26T18:54:15.6294166Z'
+$phase5UtcProbe =
+    [DateTimeOffset]::Parse(
+        $phase5UtcProbeText,
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::RoundtripKind).UtcDateTime
+$phase5UtcParsingContract =
+    $phase5UtcProbe.Kind -eq [DateTimeKind]::Utc -and
+    $phase5UtcProbe.ToString(
+        'o',
+        [Globalization.CultureInfo]::InvariantCulture) -eq
+        $phase5UtcProbeText -and
+    $m2ObservationRehearsal.Contains('[DateTimeOffset]::Parse(') -and
+    -not $m2ObservationRehearsal.Contains('[DateTime]::Parse(')
+Add-Check `
+    'phase5.utc-timestamp-roundtrip' `
+    $phase5UtcParsingContract `
+    'Recovery and observation controllers must preserve Z timestamps as UTC instead of applying the local offset.'
 
 $phase5SupervisorLeaseContract =
     $recoveryTerminalLeaseSource.Contains(

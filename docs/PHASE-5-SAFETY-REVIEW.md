@@ -70,6 +70,27 @@ Resolution:
 
 Status: **resolved**.
 
+### P1 — UTC plan timestamps were parsed as local time by PowerShell
+
+The first controlled handoff correctly refused to open the recovery terminal,
+but for the wrong reason: PowerShell's `[DateTime]::Parse(...,
+RoundtripKind).ToUniversalTime()` overload treated a `Z` timestamp as local
+time on this host. In UTC+08:00 that shifted a new plan eight hours backwards,
+so a fresh 30-minute plan appeared expired immediately.
+
+Resolution:
+
+- recovery-terminal plan expiry, process-start and heartbeat fields now parse
+  through `DateTimeOffset` and are compared as `UtcDateTime`;
+- the locked observation rehearsal uses the same UTC-preserving conversion;
+- the project gate requires both controllers to use `DateTimeOffset` for these
+  external timestamps and rejects the old `DateTime.Parse` form.
+
+The refusal was fail-closed: no recovery terminal, permit, Windhawk process or
+module mapping was created during the failed attempt.
+
+Status: **resolved and covered by a static plus semantic regression**.
+
 ### P2 — Offline gates are intentionally serialized
 
 Two simultaneous `Test-Project.ps1` executions can compete for the shared

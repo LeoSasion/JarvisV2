@@ -6,7 +6,7 @@ JARVIS2 不替换系统文件、不修改 `Shell` 注册表项，也不把自己
 
 2026-07-22 的只读审计发现，早期 portable 工具链引导意外在 `C:\Program Files\Windhawk` 产生了 `Portable=0` 的系统安装，并由 Windows 记录了 Windhawk 服务创建。没有发现任何 JARVIS/JARVIS2 模组配置或加载。经用户明确授权，阶段 A 已正常停止 Windhawk 服务、把启动类型改为 Manual，并确认 Explorer 不再映射基础引擎；当时一个完全挂起的 `ShellExperienceHost.exe` 仍保留惰性 DLL 映射，所以流程没有恢复或终止该进程，也没有运行卸载器。
 
-用户随后自行重启。2026-07-24 的[历史只读主机收据](receipts/host-safety-2026-07-24.json)曾确认全系统 Windhawk/JARVIS 映射为 0；同日后续受控实验留下的 `ShellExperienceHost.exe` 基础惰性映射也已自然消失。2026-07-27 02:18（Asia/Shanghai）的[最新只读主机收据](receipts/host-safety-2026-07-27.json)确认 `%LOCALAPPDATA%\JARVIS2\disabled.flag` 存在、`active-module.txt` 和恢复租约不存在、Windhawk 服务 Stopped / Manual / PID 0、Explorer PID 11640 与全系统匹配映射均为 0、Supervisor 23/23 compatible。readiness 只抵达 `readyForExactApproval=true`，不构成激活授权。事故时间线见[安全事件记录](SECURITY-INCIDENT-2026-07-22.md)。
+用户随后自行重启。2026-07-24 的[历史只读主机收据](receipts/host-safety-2026-07-24.json)曾确认全系统 Windhawk/JARVIS 映射为 0；同日后续受控实验留下的 `ShellExperienceHost.exe` 基础惰性映射也已自然消失。2026-07-27 02:29（Asia/Shanghai）的[最新只读主机收据](receipts/host-safety-2026-07-27.json)确认 `%LOCALAPPDATA%\JARVIS2\disabled.flag` 存在、`active-module.txt` 和恢复租约不存在、Windhawk 服务 Stopped / Manual / PID 0、Explorer PID 11640 与全系统匹配映射均为 0、Supervisor 23/23 compatible。readiness 只抵达 `readyForExactApproval=true`，不构成激活授权。事故时间线见[安全事件记录](SECURITY-INCIDENT-2026-07-22.md)。
 
 ## 正常恢复
 

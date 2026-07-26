@@ -132,10 +132,10 @@ if ($plan.result -ne 'passed' -or
     $plan.approval.canExecuteNow) {
     throw 'Observation rehearsal requires a locked pre-activation plan.'
 }
-$expiresAt = [DateTime]::Parse(
+$expiresAt = [DateTimeOffset]::Parse(
     [string]$plan.expiresAtUtc,
     [Globalization.CultureInfo]::InvariantCulture,
-    [Globalization.DateTimeStyles]::RoundtripKind)
+    [Globalization.DateTimeStyles]::RoundtripKind).UtcDateTime
 if ($expiresAt -le [DateTime]::UtcNow) {
     throw 'The session plan has expired.'
 }

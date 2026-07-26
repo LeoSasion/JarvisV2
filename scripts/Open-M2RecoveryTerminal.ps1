@@ -144,14 +144,14 @@ function Read-ReadyLease {
             return $null
         }
         $lease = $leaseJson | ConvertFrom-Json -Depth 20
-        $processStart = [DateTime]::Parse(
+        $processStart = [DateTimeOffset]::Parse(
             [string]$lease.processStartTimeUtc,
             [Globalization.CultureInfo]::InvariantCulture,
-            [Globalization.DateTimeStyles]::RoundtripKind).ToUniversalTime()
-        $heartbeat = [DateTime]::Parse(
+            [Globalization.DateTimeStyles]::RoundtripKind).UtcDateTime
+        $heartbeat = [DateTimeOffset]::Parse(
             [string]$lease.heartbeatAtUtc,
             [Globalization.CultureInfo]::InvariantCulture,
-            [Globalization.DateTimeStyles]::RoundtripKind).ToUniversalTime()
+            [Globalization.DateTimeStyles]::RoundtripKind).UtcDateTime
         if ($lease.state -ne 'ready' -or
             $lease.moduleId -ne $moduleId -or
             [int]$lease.processId -ne $ExpectedProcessId -or
@@ -190,10 +190,10 @@ if ($plan.result -ne 'passed' -or
     throw 'The session plan is not a locked pre-activation plan.'
 }
 
-$expiresAt = [DateTime]::Parse(
+$expiresAt = [DateTimeOffset]::Parse(
     [string]$plan.expiresAtUtc,
     [Globalization.CultureInfo]::InvariantCulture,
-    [Globalization.DateTimeStyles]::RoundtripKind).ToUniversalTime()
+    [Globalization.DateTimeStyles]::RoundtripKind).UtcDateTime
 if ($expiresAt -le [DateTime]::UtcNow) {
     throw 'The session plan has expired.'
 }
