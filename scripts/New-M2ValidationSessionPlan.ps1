@@ -19,6 +19,8 @@ $readinessSchema =
     Join-Path $root 'config\m2-live-readiness-receipt.schema.json'
 $recoveryTerminalScript =
     Join-Path $root 'scripts\Open-M2RecoveryTerminal.ps1'
+$recoveryLeaseSchema =
+    Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $observerScript =
     Join-Path $root 'scripts\Test-M2ObservationRehearsal.ps1'
 $observerSchema =
@@ -26,6 +28,10 @@ $observerSchema =
 $nativeReceipt =
     Join-Path $root 'docs\receipts\native-build-2026-07-22.json'
 $m2Source = Join-Path $root 'mods\jarvis-taskbar-icon-size.wh.cpp'
+$supervisorAssembly = Join-Path $root (
+    'src\Jarvis.Supervisor\bin\Release\net8.0-windows\' +
+    'jarvis-supervisor.dll'
+)
 $allowedOutputRoot =
     Join-Path $root 'artifacts\m2-validation-session-plans\runs'
 $exactCommand = (
@@ -111,6 +117,11 @@ foreach ($source in @(
         RelativePath = 'scripts/Open-M2RecoveryTerminal.ps1'
     },
     [pscustomobject]@{
+        Key = 'recoveryLeaseSchema'
+        Path = $recoveryLeaseSchema
+        RelativePath = 'config/m2-recovery-terminal-lease.schema.json'
+    },
+    [pscustomobject]@{
         Key = 'observerScript'
         Path = $observerScript
         RelativePath = 'scripts/Test-M2ObservationRehearsal.ps1'
@@ -130,6 +141,14 @@ foreach ($source in @(
         Key = 'm2Source'
         Path = $m2Source
         RelativePath = 'mods/jarvis-taskbar-icon-size.wh.cpp'
+    },
+    [pscustomobject]@{
+        Key = 'supervisorAssembly'
+        Path = $supervisorAssembly
+        RelativePath = (
+            'src/Jarvis.Supervisor/bin/Release/net8.0-windows/' +
+            'jarvis-supervisor.dll'
+        )
     }
 )) {
     try {

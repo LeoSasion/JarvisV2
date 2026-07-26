@@ -12,11 +12,19 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
+$moduleId = 'jarvis-taskbar-icon-size'
 $planSchema =
     Join-Path $root 'config\m2-validation-session-plan.schema.json'
+$leaseSchema =
+    Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $readinessScript = Join-Path $root 'scripts\Test-M2LiveReadiness.ps1'
 $allowedPlanRoot =
     Join-Path $root 'artifacts\m2-validation-session-plans\runs'
+$stateDirectory = Join-Path $env:LOCALAPPDATA 'JARVIS2'
+$recoveryDirectory = Join-Path $stateDirectory 'Recovery'
+$leasePath = Join-Path $recoveryDirectory 'm2-recovery-terminal.json'
+$heartbeatIntervalMilliseconds = 1000
+$heartbeatFreshnessSeconds = 4
 $recoveryCommand = (
     'dotnet run --project .\src\Jarvis.Supervisor ' +
     '--configuration Release --no-build -- arm-kill-switch'
@@ -65,6 +73,104 @@ function Test-CurrentSourceIdentity {
     )
 }
 
+function Write-RecoveryLease {
+    param(
+        [Parameter(Mandatory)] [string]$State,
+        [Parameter(Mandatory)] [long]$Sequence,
+        [Parameter(Mandatory)] [DateTime]$OpenedAtUtc,
+        [Parameter(Mandatory)] [DateTime]$ProcessStartTimeUtc,
+        [Parameter(Mandatory)] [DateTime]$PlanExpiresAtUtc,
+        [Parameter(Mandatory)] [string]$PlanHash,
+        [Parameter(Mandatory)] [object]$SessionPlan,
+        [Parameter(Mandatory)] [string]$ResolvedPlanPath
+    )
+
+    $lease = [ordered]@{
+        schemaVersion = 1
+        receiptType = 'jarvisv2-m2-recovery-terminal-lease'
+        state = $State
+        moduleId = $moduleId
+        sessionPlanRunId = [string]$SessionPlan.runId
+        planPath = $ResolvedPlanPath
+        planSha256 = $PlanHash
+        processId = [int]$PID
+        processStartTimeUtc = $ProcessStartTimeUtc.ToString('o')
+        openedAtUtc = $OpenedAtUtc.ToString('o')
+        heartbeatAtUtc = [DateTime]::UtcNow.ToString('o')
+        heartbeatSequence = $Sequence
+        planExpiresAtUtc = $PlanExpiresAtUtc.ToString('o')
+        recoveryCommand = $recoveryCommand
+        activationPermitted = $false
+        mutationPerformed = $false
+    }
+    $json = $lease | ConvertTo-Json -Depth 8
+    if (-not ($json | Test-Json -SchemaFile $leaseSchema -ErrorAction Stop)) {
+        throw 'The recovery-terminal lease failed schema validation.'
+    }
+
+    $null = [IO.Directory]::CreateDirectory($recoveryDirectory)
+    $temporaryPath = Join-Path $recoveryDirectory (
+        '.m2-recovery-terminal.' + [Guid]::NewGuid().ToString('N') + '.tmp'
+    )
+    try {
+        [IO.File]::WriteAllText(
+            $temporaryPath,
+            $json + [Environment]::NewLine,
+            [Text.UTF8Encoding]::new($false))
+        [IO.File]::Move($temporaryPath, $leasePath, $true)
+    }
+    finally {
+        if (Test-Path -LiteralPath $temporaryPath) {
+            Remove-Item -LiteralPath $temporaryPath -Force
+        }
+    }
+}
+
+function Read-ReadyLease {
+    param(
+        [Parameter(Mandatory)] [int]$ExpectedProcessId,
+        [Parameter(Mandatory)] [DateTime]$ExpectedProcessStartTimeUtc,
+        [Parameter(Mandatory)] [string]$ExpectedPlanHash,
+        [Parameter(Mandatory)] [string]$ExpectedPlanRunId
+    )
+
+    if (-not (Test-Path -LiteralPath $leasePath -PathType Leaf)) {
+        return $null
+    }
+    try {
+        $leaseJson = Get-Content -LiteralPath $leasePath -Raw
+        if (-not ($leaseJson |
+                Test-Json -SchemaFile $leaseSchema -ErrorAction Stop)) {
+            return $null
+        }
+        $lease = $leaseJson | ConvertFrom-Json -Depth 20
+        $processStart = [DateTime]::Parse(
+            [string]$lease.processStartTimeUtc,
+            [Globalization.CultureInfo]::InvariantCulture,
+            [Globalization.DateTimeStyles]::RoundtripKind).ToUniversalTime()
+        $heartbeat = [DateTime]::Parse(
+            [string]$lease.heartbeatAtUtc,
+            [Globalization.CultureInfo]::InvariantCulture,
+            [Globalization.DateTimeStyles]::RoundtripKind).ToUniversalTime()
+        if ($lease.state -ne 'ready' -or
+            $lease.moduleId -ne $moduleId -or
+            [int]$lease.processId -ne $ExpectedProcessId -or
+            [Math]::Abs(
+                ($processStart - $ExpectedProcessStartTimeUtc).TotalSeconds) -gt
+                    2 -or
+            [string]$lease.planSha256 -ne $ExpectedPlanHash -or
+            [string]$lease.sessionPlanRunId -ne $ExpectedPlanRunId -or
+            ([DateTime]::UtcNow - $heartbeat).TotalSeconds -gt
+                $heartbeatFreshnessSeconds) {
+            return $null
+        }
+        return $lease
+    }
+    catch {
+        return $null
+    }
+}
+
 $resolvedPlanPath = Resolve-RestrictedPlanPath $SessionPlanPath
 $planJson = Get-Content -LiteralPath $resolvedPlanPath -Raw
 if (-not ($planJson | Test-Json -SchemaFile $planSchema -ErrorAction Stop)) {
@@ -74,7 +180,7 @@ $plan = $planJson | ConvertFrom-Json -Depth 100
 
 if ($plan.result -ne 'passed' -or
     $plan.state -ne 'awaiting-exact-approval' -or
-    $plan.moduleId -ne 'jarvis-taskbar-icon-size' -or
+    $plan.moduleId -ne $moduleId -or
     $plan.activationPermitted -or
     $plan.liveExplorer -ne 'not-run' -or
     $plan.mutationPerformed -or
@@ -87,7 +193,7 @@ if ($plan.result -ne 'passed' -or
 $expiresAt = [DateTime]::Parse(
     [string]$plan.expiresAtUtc,
     [Globalization.CultureInfo]::InvariantCulture,
-    [Globalization.DateTimeStyles]::RoundtripKind)
+    [Globalization.DateTimeStyles]::RoundtripKind).ToUniversalTime()
 if ($expiresAt -le [DateTime]::UtcNow) {
     throw 'The session plan has expired.'
 }
@@ -123,9 +229,12 @@ if ($readiness.result -ne 'passed' -or
     throw 'Fresh host or canonical readiness no longer matches the plan.'
 }
 
+$planHash =
+    (Get-FileHash -LiteralPath $resolvedPlanPath -Algorithm SHA256).Hash
+
 if ($RecoveryConsole) {
     $host.UI.RawUI.WindowTitle =
-        'JarvisV2 M2 recovery terminal - no command executed'
+        'JarvisV2 M2 recovery terminal - lease active; no command executed'
     Write-Host ''
     Write-Host 'JarvisV2 M2 recovery terminal' -ForegroundColor Cyan
     Write-Host "Session plan: $($plan.runId)"
@@ -136,9 +245,81 @@ if ($RecoveryConsole) {
     Write-Host $recoveryCommand
     Write-Host ''
     Write-Host (
-        'If the future live session shows any stop condition, run the ' +
-        'command above first.'
+        'This window now publishes a one-second safety heartbeat. Closing it ' +
+        'invalidates activation within four seconds.'
     )
+
+    $openedAt = [DateTime]::UtcNow
+    $processStart = (Get-Process -Id $PID -ErrorAction Stop).
+        StartTime.ToUniversalTime()
+    [long]$sequence = 0
+    try {
+        while ([DateTime]::UtcNow -lt $expiresAt) {
+            $sequence++
+            if (-not (Test-Path -LiteralPath $resolvedPlanPath -PathType Leaf) -or
+                (Get-FileHash -LiteralPath $resolvedPlanPath -Algorithm SHA256).
+                    Hash -ne $planHash) {
+                Write-RecoveryLease `
+                    -State 'closing' `
+                    -Sequence $sequence `
+                    -OpenedAtUtc $openedAt `
+                    -ProcessStartTimeUtc $processStart `
+                    -PlanExpiresAtUtc $expiresAt `
+                    -PlanHash $planHash `
+                    -SessionPlan $plan `
+                    -ResolvedPlanPath $resolvedPlanPath
+                throw 'The session plan changed while the recovery terminal was open.'
+            }
+            Write-RecoveryLease `
+                -State 'ready' `
+                -Sequence $sequence `
+                -OpenedAtUtc $openedAt `
+                -ProcessStartTimeUtc $processStart `
+                -PlanExpiresAtUtc $expiresAt `
+                -PlanHash $planHash `
+                -SessionPlan $plan `
+                -ResolvedPlanPath $resolvedPlanPath
+            Start-Sleep -Milliseconds $heartbeatIntervalMilliseconds
+        }
+
+        $sequence++
+        Write-RecoveryLease `
+            -State 'expired' `
+            -Sequence $sequence `
+            -OpenedAtUtc $openedAt `
+            -ProcessStartTimeUtc $processStart `
+            -PlanExpiresAtUtc $expiresAt `
+            -PlanHash $planHash `
+            -SessionPlan $plan `
+            -ResolvedPlanPath $resolvedPlanPath
+        Write-Host ''
+        Write-Host (
+            'Session plan expired. Activation is blocked; close this window ' +
+            'and prepare a fresh locked plan.'
+        ) -ForegroundColor Yellow
+    }
+    finally {
+        if ([DateTime]::UtcNow -lt $expiresAt) {
+            try {
+                $sequence++
+                Write-RecoveryLease `
+                    -State 'closing' `
+                    -Sequence $sequence `
+                    -OpenedAtUtc $openedAt `
+                    -ProcessStartTimeUtc $processStart `
+                    -PlanExpiresAtUtc $expiresAt `
+                    -PlanHash $planHash `
+                    -SessionPlan $plan `
+                    -ResolvedPlanPath $resolvedPlanPath
+            }
+            catch {
+                Write-Warning (
+                    'Could not publish the closing lease state. The last ' +
+                    'heartbeat will still become stale within four seconds.'
+                )
+            }
+        }
+    }
     return
 }
 
@@ -150,9 +331,10 @@ if ($dryRun) {
         checkedAtUtc = [DateTime]::UtcNow.ToString('o')
         result = 'passed'
         sessionPlanRunId = [string]$plan.runId
-        planSha256 =
-            (Get-FileHash -LiteralPath $resolvedPlanPath -Algorithm SHA256).Hash
+        planSha256 = $planHash
         recoveryCommand = $recoveryCommand
+        leasePath = $leasePath
+        heartbeatFreshnessSeconds = $heartbeatFreshnessSeconds
         launchPerformed = $false
         terminalAvailable = $false
         activationPermitted = $false
@@ -187,9 +369,26 @@ $process = [Diagnostics.Process]::Start($startInfo)
 if ($null -eq $process) {
     throw 'The recovery terminal process was not created.'
 }
-Start-Sleep -Milliseconds 750
-if ($process.HasExited) {
-    throw 'The recovery terminal exited before availability was confirmed.'
+$processStart = $process.StartTime.ToUniversalTime()
+$readyLease = $null
+$deadline = [DateTime]::UtcNow.AddSeconds(8)
+do {
+    if ($process.HasExited) {
+        throw 'The recovery terminal exited before its heartbeat was confirmed.'
+    }
+    $readyLease = Read-ReadyLease `
+        -ExpectedProcessId $process.Id `
+        -ExpectedProcessStartTimeUtc $processStart `
+        -ExpectedPlanHash $planHash `
+        -ExpectedPlanRunId ([string]$plan.runId)
+    if ($null -ne $readyLease) {
+        break
+    }
+    Start-Sleep -Milliseconds 200
+} while ([DateTime]::UtcNow -lt $deadline)
+
+if ($null -eq $readyLease) {
+    throw 'The recovery terminal did not publish a fresh lease within 8 seconds.'
 }
 
 [ordered]@{
@@ -198,12 +397,18 @@ if ($process.HasExited) {
     checkedAtUtc = [DateTime]::UtcNow.ToString('o')
     result = 'passed'
     sessionPlanRunId = [string]$plan.runId
-    planSha256 =
-        (Get-FileHash -LiteralPath $resolvedPlanPath -Algorithm SHA256).Hash
+    planSha256 = $planHash
     recoveryCommand = $recoveryCommand
+    leasePath = $leasePath
+    leaseSha256 =
+        (Get-FileHash -LiteralPath $leasePath -Algorithm SHA256).Hash
+    heartbeatAtUtc = [string]$readyLease.heartbeatAtUtc
+    heartbeatSequence = [long]$readyLease.heartbeatSequence
+    heartbeatFreshnessSeconds = $heartbeatFreshnessSeconds
     launchPerformed = $true
     terminalAvailable = $true
     processId = [int]$process.Id
+    processStartTimeUtc = $processStart.ToString('o')
     activationPermitted = $false
     liveExplorer = 'not-run'
     mutationPerformed = $false

@@ -52,6 +52,11 @@ Safety is the default:
 - `%LOCALAPPDATA%\JARVIS2\disabled.flag` blocks initialization before symbol
   resolution. A background directory watcher latches an already loaded module
   into pass-through mode; the hook itself performs no file-system I/O.
+- `%LOCALAPPDATA%\JARVIS2\Recovery\m2-recovery-terminal.json` must also retain
+  a fresh heartbeat. The watcher polls it once per second and latches
+  pass-through if its last-write time becomes older than six seconds. The
+  Recovery child directory is outside the non-recursive state-root file-name
+  notifications, so normal heartbeats cannot quiesce their own module.
 - Every load also requires and atomically consumes
   `%LOCALAPPDATA%\JARVIS2\active-module.txt`. Its entire contents must be the
   exact ASCII module ID (no BOM and no trailing newline):
@@ -118,10 +123,17 @@ constexpr wchar_t kStateGateName[] = L"Local\\JARVIS2.StateGate.v1";
 constexpr wchar_t kStateDirectorySuffix[] = L"\\JARVIS2";
 constexpr wchar_t kKillSwitchSuffix[] = L"\\disabled.flag";
 constexpr wchar_t kActivationPermitSuffix[] = L"\\active-module.txt";
+constexpr wchar_t kRecoveryLeaseSuffix[] =
+    L"\\Recovery\\m2-recovery-terminal.json";
 constexpr char kActivationPermitPayload[] = "jarvis-taskbar-icon-size";
 constexpr ULONGLONG kFileTimeTicksPerSecond = 10'000'000;
 constexpr ULONGLONG kActivationPermitMaxAgeTicks =
     5 * 60 * kFileTimeTicksPerSecond;
+constexpr ULONGLONG kRecoveryLeaseMaxAgeTicks =
+    6 * kFileTimeTicksPerSecond;
+constexpr ULONGLONG kRecoveryLeaseFutureSkewTicks =
+    2 * kFileTimeTicksPerSecond;
+constexpr DWORD kRecoveryLeasePollIntervalMs = 1000;
 
 constexpr wchar_t kTaskbarViewRelativePath[] =
     L"SystemApps\\MicrosoftWindows.Client.Core_cw5n1h2txyewy"
@@ -178,6 +190,7 @@ std::atomic<bool> g_runtimeBlocked{true};
 std::array<wchar_t, 32768> g_stateDirectoryPath{};
 std::array<wchar_t, 32768> g_killSwitchPath{};
 std::array<wchar_t, 32768> g_activationPermitPath{};
+std::array<wchar_t, 32768> g_recoveryLeasePath{};
 
 HANDLE g_watcherStopEvent = nullptr;
 HANDLE g_watcherChangeNotification = INVALID_HANDLE_VALUE;
@@ -624,7 +637,9 @@ bool InitializeStatePaths() {
         BuildFixedPath(g_stateDirectoryPath.data(), kKillSwitchSuffix,
                        &g_killSwitchPath) &&
         BuildFixedPath(g_stateDirectoryPath.data(), kActivationPermitSuffix,
-                       &g_activationPermitPath);
+                       &g_activationPermitPath) &&
+        BuildFixedPath(g_stateDirectoryPath.data(), kRecoveryLeaseSuffix,
+                       &g_recoveryLeasePath);
     CoTaskMemFree(localAppData);
 
     if (!pathsBuilt) {
@@ -778,34 +793,85 @@ void LatchRuntimeBlocked(PCWSTR reason) {
     }
 }
 
+bool IsRecoveryLeaseHeartbeatFresh() {
+    if (!g_recoveryLeasePath[0]) {
+        return false;
+    }
+
+    WIN32_FILE_ATTRIBUTE_DATA attributes{};
+    if (!GetFileAttributesExW(g_recoveryLeasePath.data(),
+                              GetFileExInfoStandard, &attributes) ||
+        (attributes.dwFileAttributes &
+         (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) != 0) {
+        return false;
+    }
+
+    FILETIME nowFileTime{};
+    GetSystemTimeAsFileTime(&nowFileTime);
+    ULARGE_INTEGER now{};
+    now.LowPart = nowFileTime.dwLowDateTime;
+    now.HighPart = nowFileTime.dwHighDateTime;
+    ULARGE_INTEGER heartbeat{};
+    heartbeat.LowPart = attributes.ftLastWriteTime.dwLowDateTime;
+    heartbeat.HighPart = attributes.ftLastWriteTime.dwHighDateTime;
+
+    if (heartbeat.QuadPart > now.QuadPart) {
+        return heartbeat.QuadPart - now.QuadPart <=
+               kRecoveryLeaseFutureSkewTicks;
+    }
+
+    return now.QuadPart - heartbeat.QuadPart <=
+           kRecoveryLeaseMaxAgeTicks;
+}
+
 DWORD WINAPI KillSwitchWatcherThread(void*) {
     HANDLE waitHandles[] = {
         g_watcherStopEvent,
         g_watcherChangeNotification,
     };
 
-    DWORD waitResult = WaitForMultipleObjects(ARRAYSIZE(waitHandles),
-                                              waitHandles, FALSE, INFINITE);
-    if (waitResult == WAIT_OBJECT_0) {
-        return 0;
-    }
+    for (;;) {
+        DWORD waitResult = WaitForMultipleObjects(
+            ARRAYSIZE(waitHandles), waitHandles, FALSE,
+            kRecoveryLeasePollIntervalMs);
+        if (waitResult == WAIT_OBJECT_0) {
+            return 0;
+        }
 
-    if (waitResult == WAIT_OBJECT_0 + 1) {
-        // The state root is dedicated to safety controls. Any direct file-name
-        // mutation after activation is conservatively treated as an emergency
-        // request. active-module.txt is consumed before this watcher starts.
-        LatchRuntimeBlocked(L"JARVIS2 state directory changed");
-        return 0;
-    }
+        if (waitResult == WAIT_OBJECT_0 + 1) {
+            // The state root is dedicated to safety controls. Any direct
+            // file-name mutation after activation is conservatively treated as
+            // an emergency request. active-module.txt is consumed before this
+            // watcher starts. Recovery heartbeats live in a pre-created child
+            // directory and therefore don't trigger this non-recursive watch.
+            LatchRuntimeBlocked(L"JARVIS2 state directory changed");
+            return 0;
+        }
 
-    LatchRuntimeBlocked(L"kill-switch watcher failed");
-    return GetLastError();
+        if (waitResult == WAIT_TIMEOUT) {
+            if (IsRecoveryLeaseHeartbeatFresh()) {
+                continue;
+            }
+
+            LatchRuntimeBlocked(L"recovery-terminal heartbeat expired");
+            return WAIT_TIMEOUT;
+        }
+
+        DWORD error = GetLastError();
+        LatchRuntimeBlocked(L"kill-switch watcher failed");
+        return error;
+    }
 }
 
 bool StartKillSwitchWatcher() {
     if (!g_stateDirectoryPath[0] || g_watcherThread ||
         g_watcherStopEvent ||
         g_watcherChangeNotification != INVALID_HANDLE_VALUE) {
+        return false;
+    }
+
+    if (!IsRecoveryLeaseHeartbeatFresh()) {
+        Wh_Log(L"Recovery-terminal heartbeat is missing or stale");
         return false;
     }
 

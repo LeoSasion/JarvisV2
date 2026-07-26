@@ -62,6 +62,22 @@ $m2RecoveryTerminalPath =
     Join-Path $root 'scripts\Open-M2RecoveryTerminal.ps1'
 $m2ObservationRehearsalPath =
     Join-Path $root 'scripts\Test-M2ObservationRehearsal.ps1'
+$phase5TaskPath =
+    Join-Path $root 'docs\PHASE-5-M2-RECOVERY-LEASE-TASK.md'
+$phase5ReviewPath =
+    Join-Path $root 'docs\PHASE-5-SAFETY-REVIEW.md'
+$m2RecoveryLeaseSchemaPath =
+    Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
+$m2RecoveryLeaseLabSchemaPath =
+    Join-Path $root 'config\m2-recovery-lease-lab-receipt.schema.json'
+$m2RecoveryLeaseLabPath =
+    Join-Path $root 'scripts\Test-M2RecoveryLeaseLab.ps1'
+$recoveryTerminalLeaseSourcePath =
+    Join-Path $root 'src\Jarvis.Supervisor\RecoveryTerminalLease.cs'
+$killSwitchSourcePath =
+    Join-Path $root 'src\Jarvis.Supervisor\KillSwitch.cs'
+$programSourcePath =
+    Join-Path $root 'src\Jarvis.Supervisor\Program.cs'
 
 $checks = [System.Collections.Generic.List[object]]::new()
 $failures = [System.Collections.Generic.List[string]]::new()
@@ -297,6 +313,22 @@ $m2RecoveryTerminal =
     [System.IO.File]::ReadAllText($m2RecoveryTerminalPath)
 $m2ObservationRehearsal =
     [System.IO.File]::ReadAllText($m2ObservationRehearsalPath)
+$phase5Task = [System.IO.File]::ReadAllText($phase5TaskPath)
+$phase5Review = [System.IO.File]::ReadAllText($phase5ReviewPath)
+$m2RecoveryLeaseSchema =
+    Get-Content -LiteralPath $m2RecoveryLeaseSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$m2RecoveryLeaseLabSchema =
+    Get-Content -LiteralPath $m2RecoveryLeaseLabSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$m2RecoveryLeaseLab =
+    [System.IO.File]::ReadAllText($m2RecoveryLeaseLabPath)
+$recoveryTerminalLeaseSource =
+    [System.IO.File]::ReadAllText($recoveryTerminalLeaseSourcePath)
+$killSwitchSource =
+    [System.IO.File]::ReadAllText($killSwitchSourcePath)
+$programSource =
+    [System.IO.File]::ReadAllText($programSourcePath)
 $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
 $phase2ExpectedSourceIdentity = [ordered]@{
@@ -649,9 +681,11 @@ $phase4PlanSchemaContract =
     $phase4PlanSchemaRequired -contains 'sourceIdentity' -and
     $phase4PlanSourceRequired -contains 'planner' -and
     $phase4PlanSourceRequired -contains 'recoveryTerminalScript' -and
+    $phase4PlanSourceRequired -contains 'recoveryLeaseSchema' -and
     $phase4PlanSourceRequired -contains 'observerScript' -and
     $phase4PlanSourceRequired -contains 'nativeBuildReceipt' -and
-    $phase4PlanSourceRequired -contains 'm2Source'
+    $phase4PlanSourceRequired -contains 'm2Source' -and
+    $phase4PlanSourceRequired -contains 'supervisorAssembly'
 Add-Check `
     'phase4.session-plan-schema-failclosed' `
     $phase4PlanSchemaContract `
@@ -695,7 +729,7 @@ $phase4RecoveryDryRunBeforeLaunch =
 $phase4RecoveryTerminalContract =
     $phase4RecoveryDryRunBeforeLaunch -and
     $m2RecoveryTerminal.Contains(
-        'JarvisV2 M2 recovery terminal - no command executed') -and
+        'JarvisV2 M2 recovery terminal - lease active; no command executed') -and
     $m2RecoveryTerminal.Contains(
         '--configuration Release --no-build -- arm-kill-switch') -and
     $m2RecoveryTerminal.Contains('UseShellExecute = $true') -and
@@ -712,6 +746,184 @@ Add-Check `
     'phase4.recovery-terminal-default-inert' `
     $phase4RecoveryTerminalContract `
     'The recovery-terminal entry must recheck the locked plan, remain inert by default and only open a visible command display after exact ConfirmOpen.'
+
+$phase5TaskContract =
+    $phase5Task.Contains('Live activation in this task: **FORBIDDEN**') -and
+    $phase5Task.Contains(
+        '`disabled.flag` 在全部开发和故障注入中保持 armed') -and
+    $phase5Task.Contains(
+        '`active-module.txt` 在全部开发和故障注入中保持 absent') -and
+    $phase5Task.Contains(
+        '不执行 `clear-kill-switch` 或 `restart-explorer`') -and
+    $phase5Task.Contains('不启动、配置、启用或停止 Windhawk') -and
+    $phase5Task.Contains(
+        '不加载任何 Windhawk 模块，不终止任何 Windows Shell 进程') -and
+    $phase5Task.Contains('M1 继续 build-only') -and
+    $phase5Task.Contains('stateDirectoryTouched=false')
+Add-Check `
+    'phase5.task-locked-recovery-lease-boundary' `
+    $phase5TaskContract `
+    'Phase 5 must remain a locked, offline recovery-lease task with no host or Shell mutation.'
+
+$phase5ReviewContract =
+    $phase5Review.Contains(
+        'P0 — Recovery heartbeat conflicted with the native state-root watcher') -and
+    $phase5Review.Contains(
+        '%LOCALAPPDATA%\JARVIS2\Recovery\m2-recovery-terminal.json') -and
+    $phase5Review.Contains(
+        'P1 — Terminal loss after activation was not bounded') -and
+    $phase5Review.Contains(
+        'P1 — Lease and fixture paths followed reparse points') -and
+    $phase5Review.Contains(
+        'P2 — Offline gates are intentionally serialized') -and
+    $phase5Review.Contains(
+        'Live activation during review: **not performed**') -and
+    $phase5Review.Contains(
+        'explicit approval of the exact activation command plus loading only M2')
+Add-Check `
+    'phase5.safety-review-closure' `
+    $phase5ReviewContract `
+    'The Phase 5 review must record the watcher conflict, post-activation bound, reparse closure, serialized-gate constraint and separate live approval.'
+
+$phase5LeaseSchemaRequired = @($m2RecoveryLeaseSchema.required)
+$phase5LeaseSchemaContract =
+    $m2RecoveryLeaseSchema.properties.schemaVersion.const -eq 1 -and
+    $m2RecoveryLeaseSchema.properties.receiptType.const -eq
+        'jarvisv2-m2-recovery-terminal-lease' -and
+    $m2RecoveryLeaseSchema.properties.moduleId.const -eq
+        'jarvis-taskbar-icon-size' -and
+    @($m2RecoveryLeaseSchema.properties.state.enum).Count -eq 3 -and
+    @($m2RecoveryLeaseSchema.properties.state.enum) -contains 'ready' -and
+    @($m2RecoveryLeaseSchema.properties.state.enum) -contains 'closing' -and
+    @($m2RecoveryLeaseSchema.properties.state.enum) -contains 'expired' -and
+    $m2RecoveryLeaseSchema.properties.activationPermitted.const -eq $false -and
+    $m2RecoveryLeaseSchema.properties.mutationPerformed.const -eq $false -and
+    $phase5LeaseSchemaRequired -contains 'processStartTimeUtc' -and
+    $phase5LeaseSchemaRequired -contains 'heartbeatAtUtc' -and
+    $phase5LeaseSchemaRequired -contains 'heartbeatSequence' -and
+    $phase5LeaseSchemaRequired -contains 'planSha256' -and
+    $phase5LeaseSchemaRequired -contains 'planExpiresAtUtc'
+Add-Check `
+    'phase5.recovery-lease-schema-failclosed' `
+    $phase5LeaseSchemaContract `
+    'The lease schema must bind process identity, heartbeat, plan identity and non-activation boundaries.'
+
+$phase5HeartbeatContract =
+    $m2RecoveryTerminal.Contains(
+        '$heartbeatIntervalMilliseconds = 1000') -and
+    $m2RecoveryTerminal.Contains('$heartbeatFreshnessSeconds = 4') -and
+    $m2RecoveryTerminal.Contains(
+        "`$recoveryDirectory = Join-Path `$stateDirectory 'Recovery'") -and
+    $m2RecoveryTerminal.Contains(
+        '$temporaryPath = Join-Path $recoveryDirectory') -and
+    $m2RecoveryTerminal.Contains(
+        "[IO.File]::Move(`$temporaryPath, `$leasePath, `$true)") -and
+    $m2RecoveryTerminal.Contains("while ([DateTime]::UtcNow -lt `$expiresAt)") -and
+    $m2RecoveryTerminal.Contains("-State 'ready'") -and
+    $m2RecoveryTerminal.Contains("-State 'closing'") -and
+    $m2RecoveryTerminal.Contains("-State 'expired'") -and
+    $m2RecoveryTerminal.Contains(
+        'The recovery terminal did not publish a fresh lease within 8 seconds.') -and
+    $m2RecoveryTerminal.Contains('processStartTimeUtc') -and
+    -not $m2RecoveryTerminal.Contains('clear-kill-switch') -and
+    -not [regex]::IsMatch(
+        $m2RecoveryTerminal,
+        '(?im)^\s*&\s*dotnet[^\r\n]*(?:arm-kill-switch|restart-explorer)') -and
+    -not [regex]::IsMatch(
+        $m2RecoveryTerminal,
+        '(?i)\b(?:Start-Service|Stop-Service|Set-Service|Stop-Process|taskkill)\b')
+Add-Check `
+    'phase5.recovery-terminal-heartbeat-inert' `
+    $phase5HeartbeatContract `
+    'The visible recovery terminal must atomically heartbeat, expire closed and never execute recovery or activation itself.'
+
+$phase5SupervisorLeaseContract =
+    $recoveryTerminalLeaseSource.Contains(
+        'private const string LeaseDirectoryName = "Recovery"') -and
+    $recoveryTerminalLeaseSource.Contains(
+        'MaximumHeartbeatAge = TimeSpan.FromSeconds(4)') -and
+    $recoveryTerminalLeaseSource.Contains('lease-heartbeat-stale') -and
+    $recoveryTerminalLeaseSource.Contains('lease-process-start-mismatch') -and
+    $recoveryTerminalLeaseSource.Contains(
+        'plan-supervisor-assembly-not-running') -and
+    $recoveryTerminalLeaseSource.Contains(
+        'lease-fixture-path-invalid') -and
+    $recoveryTerminalLeaseSource.Contains(
+        'lease-path-reparse-point') -and
+    $recoveryTerminalLeaseSource.Contains(
+        'plan-source-hash-mismatch:{key}') -and
+    $recoveryTerminalLeaseSource.Contains(
+        'm2-validation-session-plans') -and
+    [regex]::Matches(
+        $killSwitchSource,
+        'RecoveryTerminalLease\.RequireReady\(moduleId\)').Count -eq 2 -and
+    $programSource.Contains('"inspect-recovery-terminal"') -and
+    $programSource.Contains('ExitCodes.SafetyInterlock')
+Add-Check `
+    'phase5.supervisor-double-recovery-lease-gate' `
+    $phase5SupervisorLeaseContract `
+    'Supervisor must validate a fresh bound lease twice and expose only a read-only inspection command.'
+
+$phase5NativeLeaseWatchdogContract =
+    $iconSize.Contains(
+        'L"\\Recovery\\m2-recovery-terminal.json"') -and
+    $iconSize.Contains(
+        'constexpr DWORD kRecoveryLeasePollIntervalMs = 1000') -and
+    $iconSize.Contains(
+        'constexpr ULONGLONG kRecoveryLeaseMaxAgeTicks') -and
+    $iconSize.Contains('bool IsRecoveryLeaseHeartbeatFresh()') -and
+    $iconSize.Contains(
+        'FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT') -and
+    $iconSize.Contains(
+        'waitResult == WAIT_TIMEOUT') -and
+    $iconSize.Contains(
+        'LatchRuntimeBlocked(L"recovery-terminal heartbeat expired")') -and
+    $iconSize.Contains(
+        'FindFirstChangeNotificationW(') -and
+    $iconSize.Contains(
+        'g_stateDirectoryPath.data(), FALSE, FILE_NOTIFY_CHANGE_FILE_NAME')
+Add-Check `
+    'phase5.native-recovery-lease-watchdog' `
+    $phase5NativeLeaseWatchdogContract `
+    'M2 must keep recovery heartbeats below the non-recursive state-root watch and latch pass-through when the heartbeat expires.'
+
+$phase5LabSchemaContract =
+    $m2RecoveryLeaseLabSchema.properties.schemaVersion.const -eq 1 -and
+    $m2RecoveryLeaseLabSchema.properties.receiptType.const -eq
+        'jarvisv2-m2-recovery-lease-lab' -and
+    $m2RecoveryLeaseLabSchema.properties.mode.const -eq
+        'offline-read-only-inspection' -and
+    $m2RecoveryLeaseLabSchema.properties.scenarioCount.const -eq 7 -and
+    $m2RecoveryLeaseLabSchema.properties.activationPermitted.const -eq $false -and
+    $m2RecoveryLeaseLabSchema.properties.liveExplorer.const -eq 'not-run' -and
+    $m2RecoveryLeaseLabSchema.properties.mutationPerformed.const -eq $false -and
+    $m2RecoveryLeaseLabSchema.properties.stateDirectoryTouched.const -eq $false
+Add-Check `
+    'phase5.recovery-lease-lab-schema' `
+    $phase5LabSchemaContract `
+    'The lab receipt must remain offline, read-only and incapable of claiming live Explorer evidence.'
+
+$phase5LabScriptContract =
+    $m2RecoveryLeaseLab.Contains("ScenarioId 'fresh-valid'") -and
+    $m2RecoveryLeaseLab.Contains("ScenarioId 'stale-heartbeat'") -and
+    $m2RecoveryLeaseLab.Contains("ScenarioId 'closing-state'") -and
+    $m2RecoveryLeaseLab.Contains("ScenarioId 'plan-hash-mismatch'") -and
+    $m2RecoveryLeaseLab.Contains("ScenarioId 'process-start-mismatch'") -and
+    $m2RecoveryLeaseLab.Contains("ScenarioId 'source-identity-drift'") -and
+    $m2RecoveryLeaseLab.Contains(
+        "id = 'recovery-child-path-isolation'") -and
+    $m2RecoveryLeaseLab.Contains('--lease-path $fixtureLeasePath') -and
+    $m2RecoveryLeaseLab.Contains('stateDirectoryTouched = $false') -and
+    -not [regex]::IsMatch(
+        $m2RecoveryLeaseLab,
+        '(?im)^\s*&\s*dotnet[^\r\n]*(?:clear-kill-switch|arm-kill-switch|restart-explorer)') -and
+    -not [regex]::IsMatch(
+        $m2RecoveryLeaseLab,
+        '(?i)\b(?:Start-Service|Stop-Service|Set-Service|Stop-Process|taskkill)\b')
+Add-Check `
+    'phase5.recovery-lease-lab-fault-matrix' `
+    $phase5LabScriptContract `
+    'The lab must cover six deterministic lease failures plus non-recursive recovery-child path isolation using only read-only fixture paths.'
 
 $phase4ObservationFaults =
     @($m2ObservationSchema.properties.faultInjection.enum)

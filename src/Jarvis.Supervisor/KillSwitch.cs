@@ -212,6 +212,9 @@ internal static class KillSwitch
                 nameof(moduleId));
         }
 
+        RecoveryTerminalLeaseProbe recoveryTerminal =
+            RecoveryTerminalLease.RequireReady(moduleId);
+
         KillSwitchProbe initialProbe = Probe();
         if (initialProbe.State != KillSwitchState.Armed)
         {
@@ -269,6 +272,11 @@ internal static class KillSwitch
                     throw new IOException(
                         $"The active-module permit changed while preparing activation: {permitAgain.Error ?? permitAgain.State.ToString()}.");
                 }
+
+                // Keep the final recovery-terminal check as close as possible to
+                // the intentional flag deletion. A closed terminal or stale
+                // heartbeat therefore rolls back while the host is still locked.
+                recoveryTerminal = RecoveryTerminalLease.RequireReady(moduleId);
             }
 
             File.Delete(FlagPath);
@@ -288,7 +296,11 @@ internal static class KillSwitch
                 finalProbe.State,
                 DateTimeOffset.UtcNow,
                 permitProbe.ExpiresAtUtc ??
-                    DateTimeOffset.UtcNow + ActivationPermitLifetime);
+                    DateTimeOffset.UtcNow + ActivationPermitLifetime,
+                recoveryTerminal.LeasePath,
+                recoveryTerminal.SessionPlanRunId!,
+                recoveryTerminal.ProcessId!.Value,
+                recoveryTerminal.HeartbeatAtUtc!.Value);
         }
         catch (Exception activationException)
         {
@@ -669,4 +681,8 @@ internal sealed record ModuleActivationResult(
     string KillSwitchPath,
     KillSwitchState KillSwitchState,
     DateTimeOffset ActivatedAtUtc,
-    DateTimeOffset PermitExpiresAtUtc);
+    DateTimeOffset PermitExpiresAtUtc,
+    string RecoveryTerminalLeasePath,
+    string RecoveryTerminalSessionPlanRunId,
+    int RecoveryTerminalProcessId,
+    DateTimeOffset RecoveryTerminalHeartbeatAtUtc);

@@ -40,7 +40,7 @@ A passing receipt means only `readyForExactApproval=true`. It must still say:
 
 ## Locked session rehearsal
 
-Phase 4 can create a short-lived, source-bound plan and exercise the observer
+Phase 4/5 can create a short-lived, source-bound plan and exercise the observer
 without opening a terminal or changing the host:
 
 ```powershell
@@ -74,6 +74,22 @@ Fault injection never changes the service, permit, flag, process or module
 mapping. A `stop-required` result is an offline detector rehearsal, not proof
 that recovery ran.
 
+Phase 5 also provides an offline, fixture-only recovery-lease lab:
+
+```powershell
+pwsh -NoLogo -NoProfile -File .\scripts\Test-M2RecoveryLeaseLab.ps1
+```
+
+It must pass all seven scenarios and report `stateDirectoryTouched=false`.
+It never calls `clear-kill-switch`, writes a real lease, starts Windhawk or
+touches Explorer.
+
+The production heartbeat lives at
+`%LOCALAPPDATA%\JARVIS2\Recovery\m2-recovery-terminal.json`. The child
+directory is intentional: M2 keeps a non-recursive emergency watch on the
+JARVIS2 state root and separately polls the lease once per second. A heartbeat
+older than six seconds latches the hook into pass-through.
+
 ## Required human gate
 
 Before activation, all of the following must be true in the same task:
@@ -82,7 +98,15 @@ Before activation, all of the following must be true in the same task:
 2. The kill switch is armed and the permit is absent.
 3. The canonical M2 source/build identity exactly matches the receipt.
 4. M1 is off and remains build-only.
-5. A second recovery terminal is open with this command prepared:
+5. A second recovery terminal is opened from the current plan with
+   `-ConfirmOpen`. The following read-only command must report `ready=true`,
+   a heartbeat no older than four seconds, and the same plan/PID identities:
+
+   ```powershell
+   dotnet run --project .\src\Jarvis.Supervisor --configuration Release --no-build -- inspect-recovery-terminal --module jarvis-taskbar-icon-size
+   ```
+
+   The terminal visibly displays this prepared recovery command:
 
    ```powershell
    dotnet run --project .\src\Jarvis.Supervisor --configuration Release --no-build -- arm-kill-switch
@@ -101,13 +125,15 @@ not an action.
 
 Only a future, separately authorized task may perform this sequence:
 
-1. Re-run readiness and compare its exact hashes.
-2. Start/configure Windhawk only as explicitly approved for M2.
-3. Clear the kill switch once with the exact command above.
-4. Load only `jarvis-taskbar-icon-size` once.
-5. Execute [the interaction checklist](M2-INTERACTION-CHECKLIST.md).
-6. Re-arm before any unload or recovery step.
-7. Verify the permit is absent and no automatic reload occurs after a new
+1. Re-run readiness, generate a new plan and compare its exact hashes.
+2. Open the visible recovery terminal and verify its fresh lease.
+3. Start/configure Windhawk only as explicitly approved for M2.
+4. Recheck the recovery lease, then clear the kill switch once with the exact
+   command above.
+5. Load only `jarvis-taskbar-icon-size` once.
+6. Execute [the interaction checklist](M2-INTERACTION-CHECKLIST.md).
+7. Re-arm before any unload or recovery step.
+8. Verify the permit is absent and no automatic reload occurs after a new
    Explorer lifecycle.
 
 No step may be put into an unattended loop.

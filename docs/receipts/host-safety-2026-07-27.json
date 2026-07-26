@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "receiptType": "jarvis2-read-only-host-snapshot",
+  "inspectedAtUtc": "2026-07-26T18:18:13.1914542Z",
+  "inspectedAtAsiaShanghai": "2026-07-27 02:18:13 +08:00",
+  "mutationPerformed": false,
+  "supervisorInspect": {
+    "profileId": "win11-25h2-26200.8875-x64",
+    "inspectedAtUtc": "2026-07-26T18:18:13.1914542Z",
+    "compatible": true,
+    "checkCount": 23,
+    "passed": 23,
+    "explorerProcessId": 11640,
+    "killSwitchState": "armed",
+    "activeModuleState": "absent"
+  },
+  "killSwitch": {
+    "path": "C:\\Users\\Administrator\\AppData\\Local\\JARVIS2\\disabled.flag",
+    "exists": true,
+    "size": 146,
+    "sha256": "7512DACFC5BDA30CD61E3C3F2B4678139E7BCCB38CECF9EBE4F1ADB7E48594F3",
+    "lastWriteTimeUtc": "2026-07-24T12:19:46.1024762Z"
+  },
+  "activeModulePermit": {
+    "path": "C:\\Users\\Administrator\\AppData\\Local\\JARVIS2\\active-module.txt",
+    "exists": false
+  },
+  "recoveryTerminalLease": {
+    "path": "C:\\Users\\Administrator\\AppData\\Local\\JARVIS2\\Recovery\\m2-recovery-terminal.json",
+    "exists": false
+  },
+  "windhawkService": {
+    "name": "Windhawk",
+    "state": "Stopped",
+    "startMode": "Manual",
+    "processId": 0
+  },
+  "processInspection": {
+    "processCount": 385,
+    "moduleEnumerableProcessCount": 206,
+    "moduleNotEnumerableProcessCount": 179,
+    "windhawkOrJarvisProcessCount": 0,
+    "matchingModuleMappingCount": 0,
+    "moduleEnumerationErrorCount": 0
+  },
+  "explorer": {
+    "processId": 11640,
+    "path": "C:\\WINDOWS\\Explorer.EXE",
+    "startTimeUtc": "2026-07-23T07:37:39.1327858Z",
+    "matchingModuleCount": 0
+  },
+  "canonicalBuild": {
+    "runId": "20260726T181614398Z-c553751a",
+    "m2SourceSha256": "9F955ADD6B9CE1E087F8DCB97093C392B17845BEF2DBD31688A17B7D1B9B0C31",
+    "m2DllSha256": "CE062570CC5BA79688E858F8D8861A216C15F660336D529C262BB4EB83C71F33",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "readiness": {
+    "runId": "20260726T181800236Z-48380d9e",
+    "result": "passed",
+    "readyForExactApproval": true,
+    "receiptRelativePath": "artifacts/m2-live-readiness/runs/phase5-review-closure-20260727T0218CST.json",
+    "receiptSize": 3582,
+    "receiptSha256": "EFF80F55A01E7449BC45328DA54F972DBA36CE98CA906B76BE17EB8A7908EB62"
+  },
+  "evidenceBoundary": {
+    "releaseReady": false,
+    "activationPermitted": false,
+    "liveExplorer": "not-run",
+    "uninstallPerformed": false,
+    "moduleActivationPerformed": false,
+    "explorerRestartPerformed": false
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JarvisV2 M2 recovery terminal lease",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "receiptType",
+    "state",
+    "moduleId",
+    "sessionPlanRunId",
+    "planPath",
+    "planSha256",
+    "processId",
+    "processStartTimeUtc",
+    "openedAtUtc",
+    "heartbeatAtUtc",
+    "heartbeatSequence",
+    "planExpiresAtUtc",
+    "recoveryCommand",
+    "activationPermitted",
+    "mutationPerformed"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "receiptType": {
+      "const": "jarvisv2-m2-recovery-terminal-lease"
+    },
+    "state": {
+      "enum": [
+        "ready",
+        "closing",
+        "expired"
+      ]
+    },
+    "moduleId": {
+      "const": "jarvis-taskbar-icon-size"
+    },
+    "sessionPlanRunId": {
+      "type": "string",
+      "pattern": "^[0-9]{8}T[0-9]{9}Z-[a-f0-9]{8}$"
+    },
+    "planPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "planSha256": {
+      "type": "string",
+      "pattern": "^[A-F0-9]{64}$"
+    },
+    "processId": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "processStartTimeUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "openedAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "heartbeatAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "heartbeatSequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "planExpiresAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "recoveryCommand": {
+      "const": "dotnet run --project .\\src\\Jarvis.Supervisor --configuration Release --no-build -- arm-kill-switch"
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "mutationPerformed": {
+      "const": false
+    }
+  }
+}

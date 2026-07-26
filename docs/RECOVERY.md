@@ -6,7 +6,7 @@ JARVIS2 不替换系统文件、不修改 `Shell` 注册表项，也不把自己
 
 2026-07-22 的只读审计发现，早期 portable 工具链引导意外在 `C:\Program Files\Windhawk` 产生了 `Portable=0` 的系统安装，并由 Windows 记录了 Windhawk 服务创建。没有发现任何 JARVIS/JARVIS2 模组配置或加载。经用户明确授权，阶段 A 已正常停止 Windhawk 服务、把启动类型改为 Manual，并确认 Explorer 不再映射基础引擎；当时一个完全挂起的 `ShellExperienceHost.exe` 仍保留惰性 DLL 映射，所以流程没有恢复或终止该进程，也没有运行卸载器。
 
-用户随后自行重启。2026-07-24 18:11（Asia/Shanghai）的[最新只读主机收据](receipts/host-safety-2026-07-24.json)确认：`%LOCALAPPDATA%\JARVIS2\disabled.flag` 存在，SHA-256 为 `A6A4DDFFAEA0B963AD00F2E47B4BCC3EA3FF0EEC8E068A8A0A843F4D64A3F7BD`；`active-module.txt` 不存在；Windhawk 服务为 Stopped / Manual / PID 0，Windhawk/JARVIS 进程数为 0；352 个进程全部完成模块枚举，对应 DLL 映射数与枚举错误数均为 0；Explorer PID 11640 没有 Windhawk/JARVIS 映射；Supervisor `inspect` 的 23 项兼容性检查全部通过。该收据只确认当前锁定态和加载事实，不授权卸载或激活；没有执行卸载、激活、Explorer 重启，也没有完成人工任务栏、托盘、Win 键或文件管理器交互验收。事故时间线见[安全事件记录](SECURITY-INCIDENT-2026-07-22.md)。
+用户随后自行重启。2026-07-24 的[历史只读主机收据](receipts/host-safety-2026-07-24.json)曾确认全系统 Windhawk/JARVIS 映射为 0；同日后续受控实验留下的 `ShellExperienceHost.exe` 基础惰性映射也已自然消失。2026-07-27 02:18（Asia/Shanghai）的[最新只读主机收据](receipts/host-safety-2026-07-27.json)确认 `%LOCALAPPDATA%\JARVIS2\disabled.flag` 存在、`active-module.txt` 和恢复租约不存在、Windhawk 服务 Stopped / Manual / PID 0、Explorer PID 11640 与全系统匹配映射均为 0、Supervisor 23/23 compatible。readiness 只抵达 `readyForExactApproval=true`，不构成激活授权。事故时间线见[安全事件记录](SECURITY-INCIDENT-2026-07-22.md)。
 
 ## 正常恢复
 
@@ -24,6 +24,8 @@ M1 本轮新增的离线路径先以 single-generation CAS 拒绝同一 DLL 映�
 上述切片不是完整恢复或安全卸载证明。无 Explorer 的便携故障实验室以 90 个确定性场景覆盖 `git / ui-thread / dispatch / module` 四域的状态机及资源归属；三次最终运行均为 90/90、0 未解释保留、0 double release，但它没有调用真实 XAML Diagnostics、DispatcherQueue、Windhawk hook 或 Explorer 关闭路径。任何 Windhawk detour callback 或其他外部入口一经发布，模块仍不可逆地保留独立 HMODULE pin 到 Explorer 自然退出；非零 WinRT module lock、残留能力、drain 超时或任一清理失败也会保留 pin。不能把“离线 90 场景通过”“已创建急停”“进入 `Quiesced`”“最终收据为 retained”或“pin 已保留”误报成“视觉已经完全还原”“DLL 已卸载”或“真实宿主已验证”；急停不允许被解释为物理卸载。M1 继续 build-only，`compatibility.json` 与 Supervisor allowlist 保持不变。急停文件本身从不终止 Explorer，也不会自动重启或反复拉起 Explorer。
 
 每次受控激活还需要 `%LOCALAPPDATA%\JARVIS2\active-module.txt` 中与唯一模块精确匹配的一次性许可。原生模块在注册 Hook 前消费它；即使 Explorer 随后崩溃，下一次 Explorer 启动也因没有许可而拒绝实验模块，从而截断崩溃/注入循环。取消测试时再次运行 `arm-kill-switch` 即可在保持急停的同时撤销尚未消费的许可。
+
+Phase 5 还要求 `%LOCALAPPDATA%\JARVIS2\Recovery\m2-recovery-terminal.json` 提供可验证的短租约。可见恢复终端每秒更新心跳；Supervisor 在签发许可前与删除急停前各验证一次 4 秒新鲜度、`pwsh` PID 和启动时间、session plan 哈希/过期时间、全部固定源码身份及正在执行的 Release DLL。终端正常关闭写 `closing`，计划到期写 `expired`；强制关闭时 managed lease 最多 4 秒后失效，M2 自身最多 6 秒后永久锁进 pass-through。`Recovery` 子目录使心跳不触发非递归 state-root watcher。心跳不执行 `arm-kill-switch`，不启动服务，也不重启 Explorer；急停仍是 pass-through 请求，不是物理 DLL 卸载。
 
 Explorer 恢复后，在 Windhawk 中禁用 `jarvis-native-taskbar` 和 `jarvis-taskbar-icon-size` 中本次正在验证的那个模块。一次只验证一个 Explorer 宿主模块。不要先清除急停。确认原生任务栏、托盘、Win 键和文件管理器正常后再调查日志。
 

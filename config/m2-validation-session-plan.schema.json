@@ -70,10 +70,12 @@
         "readinessScript",
         "readinessSchema",
         "recoveryTerminalScript",
+        "recoveryLeaseSchema",
         "observerScript",
         "observerSchema",
         "nativeBuildReceipt",
-        "m2Source"
+        "m2Source",
+        "supervisorAssembly"
       ],
       "properties": {
         "planner": {
@@ -91,6 +93,9 @@
         "recoveryTerminalScript": {
           "$ref": "#/$defs/fileIdentity"
         },
+        "recoveryLeaseSchema": {
+          "$ref": "#/$defs/fileIdentity"
+        },
         "observerScript": {
           "$ref": "#/$defs/fileIdentity"
         },
@@ -101,6 +106,9 @@
           "$ref": "#/$defs/fileIdentity"
         },
         "m2Source": {
+          "$ref": "#/$defs/fileIdentity"
+        },
+        "supervisorAssembly": {
           "$ref": "#/$defs/fileIdentity"
         }
       }
