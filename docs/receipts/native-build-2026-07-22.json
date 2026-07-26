@@ -1,8 +1,8 @@
 {
   "schemaVersion": 3,
   "generatedBy": "scripts/Build-NativeMod.ps1",
-  "generatedAtUtc": "2026-07-26T18:28:00.2155468+00:00",
-  "runId": "20260726T182734035Z-a20c872d",
+  "generatedAtUtc": "2026-07-26T18:34:06.9122787+00:00",
+  "runId": "20260726T183340920Z-efe8b4b3",
   "evidence": {
     "buildScript": {
       "relativePath": "scripts/Build-NativeMod.ps1",
@@ -10,7 +10,7 @@
     },
     "testScript": {
       "relativePath": "scripts/Test-Project.ps1",
-      "sha256": "1892FF57478FAD49257E80A9F7F3586BA58834B0D5AED687150DCECBE47A1ABB"
+      "sha256": "DF1F8400755CE718B206FEC85E1ACC56D7FBE1ED3103F6E37F5249EF591AA88E"
     },
     "toolchainLock": {
       "relativePath": "config/toolchain-lock.json",
@@ -18,9 +18,9 @@
     }
   },
   "runSummary": {
-    "relativePath": "artifacts/native/runs/20260726T182734035Z-a20c872d/run-summary.json",
+    "relativePath": "artifacts/native/runs/20260726T183340920Z-efe8b4b3/run-summary.json",
     "size": 7612,
-    "sha256": "12435344EDB1DC3E5A121060F73151AA1C2048914DBDDDDA97559D3192BE4DF8"
+    "sha256": "5F716102F28D9542D38B613F055374F668E35955AED7438D89A90EA93F2FC558"
   },
   "toolchain": {
     "windhawkVersion": "1.7.3",
@@ -69,7 +69,7 @@
       "sourcePath": "mods/jarvis-native-taskbar.wh.cpp",
       "sourceSha256": "70B8A002994127A080EE188248C06BF486726827B674665467964E6A0F925751",
       "sourceSnapshot": {
-        "relativePath": "artifacts/native/runs/20260726T182734035Z-a20c872d/sources/jarvis-native-taskbar/jarvis-native-taskbar-70B8A002994127A080EE188248C06BF486726827B674665467964E6A0F925751.wh.cpp",
+        "relativePath": "artifacts/native/runs/20260726T183340920Z-efe8b4b3/sources/jarvis-native-taskbar/jarvis-native-taskbar-70B8A002994127A080EE188248C06BF486726827B674665467964E6A0F925751.wh.cpp",
         "size": 1091408,
         "sha256": "70B8A002994127A080EE188248C06BF486726827B674665467964E6A0F925751"
       },
@@ -80,17 +80,17 @@
           "size": 93246,
           "sha256": "0F26DE7C6EB150EAE4C2153AD51B1868F646BED877EED23D383DE6C0BE9DD676",
           "snapshot": {
-            "relativePath": "artifacts/native/runs/20260726T182734035Z-a20c872d/sources/jarvis-native-taskbar/jarvis-resource-protocol.hpp",
+            "relativePath": "artifacts/native/runs/20260726T183340920Z-efe8b4b3/sources/jarvis-native-taskbar/jarvis-resource-protocol.hpp",
             "size": 93246,
             "sha256": "0F26DE7C6EB150EAE4C2153AD51B1868F646BED877EED23D383DE6C0BE9DD676"
           }
         }
       ],
       "artifact": {
-        "relativePath": "artifacts/native/runs/20260726T182734035Z-a20c872d/modules/jarvis-native-taskbar/jarvis-native-taskbar-x64.dll",
+        "relativePath": "artifacts/native/runs/20260726T183340920Z-efe8b4b3/modules/jarvis-native-taskbar/jarvis-native-taskbar-x64.dll",
         "fileName": "jarvis-native-taskbar-x64.dll",
         "size": 1904640,
-        "sha256": "139D526057697CC8AAF0D2DFB162CCF831145E17D550D7669BEA0458B72FF2B9",
+        "sha256": "207AC5731682BD97206191D52340BDFF13F134B4C2D821360B96F9951B2573CB",
         "pe": {
           "machine": "0x8664",
           "optionalHeaderMagic": "0x020B",
@@ -99,7 +99,7 @@
           "numberOfSections": 14,
           "sizeOfOptionalHeader": 240,
           "sizeOfImage": 1794048,
-          "timeDateStamp": 1785090473
+          "timeDateStamp": 1785090840
         },
         "exportCount": 2765,
         "windhawkExports": [
@@ -112,14 +112,14 @@
         ]
       },
       "compileLog": {
-        "relativePath": "artifacts/native/runs/20260726T182734035Z-a20c872d/modules/jarvis-native-taskbar/compile.log",
+        "relativePath": "artifacts/native/runs/20260726T183340920Z-efe8b4b3/modules/jarvis-native-taskbar/compile.log",
         "size": 492,
-        "sha256": "1E9D8342F34FC345109365C33DE298908C9F7A0276F878D0623BE28813E44338"
+        "sha256": "14C5A74D93FD54F9F4206D548946D6D2DC239692F260F82EC9C9834E6D8DD06C"
       },
       "moduleReceipt": {
-        "relativePath": "artifacts/native/runs/20260726T182734035Z-a20c872d/modules/jarvis-native-taskbar/build-receipt.json",
+        "relativePath": "artifacts/native/runs/20260726T183340920Z-efe8b4b3/modules/jarvis-native-taskbar/build-receipt.json",
         "size": 4669,
-        "sha256": "D72C4F5C7B1C974FD1189FDDD0CD32DCB3026AAE21491924727FEE1F6DD4DAE6"
+        "sha256": "AE0E953C697F112D87A3CE23B6BBF1EB144232914913EF85F790E67930EA1626"
       },
       "result": {
         "exitCode": 0,
@@ -133,16 +133,16 @@
       "sourcePath": "mods/jarvis-taskbar-icon-size.wh.cpp",
       "sourceSha256": "9F955ADD6B9CE1E087F8DCB97093C392B17845BEF2DBD31688A17B7D1B9B0C31",
       "sourceSnapshot": {
-        "relativePath": "artifacts/native/runs/20260726T182734035Z-a20c872d/sources/jarvis-taskbar-icon-size/jarvis-taskbar-icon-size-9F955ADD6B9CE1E087F8DCB97093C392B17845BEF2DBD31688A17B7D1B9B0C31.wh.cpp",
+        "relativePath": "artifacts/native/runs/20260726T183340920Z-efe8b4b3/sources/jarvis-taskbar-icon-size/jarvis-taskbar-icon-size-9F955ADD6B9CE1E087F8DCB97093C392B17845BEF2DBD31688A17B7D1B9B0C31.wh.cpp",
         "size": 52641,
         "sha256": "9F955ADD6B9CE1E087F8DCB97093C392B17845BEF2DBD31688A17B7D1B9B0C31"
       },
       "supportingSources": [],
       "artifact": {
-        "relativePath": "artifacts/native/runs/20260726T182734035Z-a20c872d/modules/jarvis-taskbar-icon-size/jarvis-taskbar-icon-size-x64.dll",
+        "relativePath": "artifacts/native/runs/20260726T183340920Z-efe8b4b3/modules/jarvis-taskbar-icon-size/jarvis-taskbar-icon-size-x64.dll",
         "fileName": "jarvis-taskbar-icon-size-x64.dll",
         "size": 147968,
-        "sha256": "D511B211360518CED330E704FEDC9D93931A2D82C4BEB6CB92A0BB621E3B2751",
+        "sha256": "747F17F4DF5974222218DE716661416A934F86CF10DC15BEA50FB18E72327F5B",
         "pe": {
           "machine": "0x8664",
           "optionalHeaderMagic": "0x020B",
@@ -151,7 +151,7 @@
           "numberOfSections": 13,
           "sizeOfOptionalHeader": 240,
           "sizeOfImage": 413696,
-          "timeDateStamp": 1785090477
+          "timeDateStamp": 1785090843
         },
         "exportCount": 535,
         "windhawkExports": [
@@ -163,14 +163,14 @@
         ]
       },
       "compileLog": {
-        "relativePath": "artifacts/native/runs/20260726T182734035Z-a20c872d/modules/jarvis-taskbar-icon-size/compile.log",
+        "relativePath": "artifacts/native/runs/20260726T183340920Z-efe8b4b3/modules/jarvis-taskbar-icon-size/compile.log",
         "size": 482,
-        "sha256": "ED8775AF1101E1971D095E1E59B38BDAB0FD5EF19E147C81C8C45FB5CD97CB78"
+        "sha256": "7BE9C2E9670E808C6C0ED46E13F191571FDD928598B4DA199D4BB1B16F66870B"
       },
       "moduleReceipt": {
-        "relativePath": "artifacts/native/runs/20260726T182734035Z-a20c872d/modules/jarvis-taskbar-icon-size/build-receipt.json",
-        "size": 4120,
-        "sha256": "2405AB4A9FB4F1069A0F4F5CDF623475B8153AACCCE1A0F4EB2EF0D0E1B0A2B7"
+        "relativePath": "artifacts/native/runs/20260726T183340920Z-efe8b4b3/modules/jarvis-taskbar-icon-size/build-receipt.json",
+        "size": 4119,
+        "sha256": "72C8AE08F0F8BB37AD875817698A1ECBC69D3F9952F676FE127C4921C65B3A7C"
       },
       "result": {
         "exitCode": 0,

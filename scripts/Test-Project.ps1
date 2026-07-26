@@ -826,9 +826,10 @@ $phase5HeartbeatContract =
     $m2RecoveryTerminal.Contains("-State 'expired'") -and
     $m2RecoveryTerminal.Contains(
         'The recovery terminal did not publish a fresh lease within 8 seconds.') -and
+    $m2RecoveryTerminal.Contains('function Convert-JsonUtcDateTime') -and
     ([regex]::Matches(
         $m2RecoveryTerminal,
-        '\[DateTimeOffset\]::Parse\(').Count -eq 3) -and
+        '\bConvert-JsonUtcDateTime\b').Count -eq 4) -and
     -not $m2RecoveryTerminal.Contains('[DateTime]::Parse(') -and
     $m2RecoveryTerminal.Contains('processStartTimeUtc') -and
     -not $m2RecoveryTerminal.Contains('clear-kill-switch') -and
@@ -844,18 +845,29 @@ Add-Check `
     'The visible recovery terminal must atomically heartbeat, expire closed and never execute recovery or activation itself.'
 
 $phase5UtcProbeText = '2026-07-26T18:54:15.6294166Z'
-$phase5UtcProbe =
+$phase5UtcProbeValue =
+    ('{"timestamp":"' + $phase5UtcProbeText + '"}' |
+        ConvertFrom-Json).timestamp
+$phase5UtcProbe = if ($phase5UtcProbeValue -is [DateTime]) {
+    ([DateTime]$phase5UtcProbeValue).ToUniversalTime()
+}
+else {
     [DateTimeOffset]::Parse(
-        $phase5UtcProbeText,
+        [string]$phase5UtcProbeValue,
         [Globalization.CultureInfo]::InvariantCulture,
         [Globalization.DateTimeStyles]::RoundtripKind).UtcDateTime
+}
 $phase5UtcParsingContract =
     $phase5UtcProbe.Kind -eq [DateTimeKind]::Utc -and
     $phase5UtcProbe.ToString(
         'o',
         [Globalization.CultureInfo]::InvariantCulture) -eq
         $phase5UtcProbeText -and
-    $m2ObservationRehearsal.Contains('[DateTimeOffset]::Parse(') -and
+    $m2ObservationRehearsal.Contains(
+        'function Convert-JsonUtcDateTime') -and
+    ([regex]::Matches(
+        $m2ObservationRehearsal,
+        '\bConvert-JsonUtcDateTime\b').Count -eq 2) -and
     -not $m2ObservationRehearsal.Contains('[DateTime]::Parse(')
 Add-Check `
     'phase5.utc-timestamp-roundtrip' `

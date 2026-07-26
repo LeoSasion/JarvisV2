@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "receiptType": "jarvis2-read-only-host-snapshot",
-  "inspectedAtUtc": "2026-07-26T18:29:33.9610969Z",
-  "inspectedAtAsiaShanghai": "2026-07-27 02:29:33 +08:00",
+  "inspectedAtUtc": "2026-07-26T18:35:46.5796992Z",
+  "inspectedAtAsiaShanghai": "2026-07-27 02:35:46 +08:00",
   "mutationPerformed": false,
   "supervisorInspect": {
     "profileId": "win11-25h2-26200.8875-x64",
-    "inspectedAtUtc": "2026-07-26T18:29:33.7001724Z",
+    "inspectedAtUtc": "2026-07-26T18:35:46.5796992Z",
     "compatible": true,
     "checkCount": 23,
     "passed": 23,
@@ -36,9 +36,9 @@
     "processId": 0
   },
   "processInspection": {
-    "processCount": 386,
-    "moduleEnumerableProcessCount": 200,
-    "moduleNotEnumerableProcessCount": 186,
+    "processCount": 368,
+    "moduleEnumerableProcessCount": 185,
+    "moduleNotEnumerableProcessCount": 183,
     "windhawkOrJarvisProcessCount": 0,
     "matchingModuleMappingCount": 0,
     "moduleEnumerationErrorCount": 0
@@ -55,26 +55,26 @@
     "dllSha256": "DBABD5BEDAB2A2CF1BA0592A1742C2E31FF91E2F9CD4EEF440E0E2A82AF8C490"
   },
   "canonicalBuild": {
-    "runId": "20260726T182734035Z-a20c872d",
-    "receiptSha256": "9081F24B1D914095C224FE904F78ADAB64AC0660047612B7FB403B3F0A8F28C8",
-    "runSummarySha256": "12435344EDB1DC3E5A121060F73151AA1C2048914DBDDDDA97559D3192BE4DF8",
+    "runId": "20260726T183340920Z-efe8b4b3",
+    "receiptSha256": "32A523BF4F9CC3B1A0BEAC230DC2068AB684A2E3404F604B09408E24B595A4E8",
+    "runSummarySha256": "5F716102F28D9542D38B613F055374F668E35955AED7438D89A90EA93F2FC558",
     "m2SourceSha256": "9F955ADD6B9CE1E087F8DCB97093C392B17845BEF2DBD31688A17B7D1B9B0C31",
-    "m2DllSha256": "D511B211360518CED330E704FEDC9D93931A2D82C4BEB6CB92A0BB621E3B2751",
+    "m2DllSha256": "747F17F4DF5974222218DE716661416A934F86CF10DC15BEA50FB18E72327F5B",
     "warningCount": 0,
     "errorCount": 0
   },
   "readiness": {
-    "runId": "20260726T182915184Z-f3806af5",
+    "runId": "20260726T183546575Z-be11c021",
     "result": "passed",
     "readyForExactApproval": true,
-    "receiptRelativePath": "artifacts/m2-live-readiness/runs/phase5-utc-fix-closure-20260727T0229CST.json",
+    "receiptRelativePath": "artifacts/m2-live-readiness/runs/phase5-json-date-fix-closure-20260727T0235CST.json",
     "receiptSize": 3582,
-    "receiptSha256": "DAF4446B58A27D98B73AA337B048CA15439FC04285DB2479AD76BBFBBD501662"
+    "receiptSha256": "27AD5FCD72F1AF2D294E2D0A665FF4D4577E47884E804923A4B37DF1E04B507C"
   },
   "disabledUpdateScript": {
     "relativePath": "artifacts/live/Update-M2Disabled-Phase5.ps1",
     "size": 11730,
-    "sha256": "F9DF1E1CBDCB52FA6B52B70431CB7F371901066D437D1C98DAD6137EA6BFEFA1",
+    "sha256": "48D7F6A4E3CFBBAEF697892BCDEECB4423DABE4B2AA4B1C3D861FAF8C1C6B2BB",
     "parseErrors": 0,
     "executed": false
   },

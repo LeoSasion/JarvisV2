@@ -73,18 +73,21 @@ Status: **resolved**.
 ### P1 — UTC plan timestamps were parsed as local time by PowerShell
 
 The first controlled handoff correctly refused to open the recovery terminal,
-but for the wrong reason: PowerShell's `[DateTime]::Parse(...,
-RoundtripKind).ToUniversalTime()` overload treated a `Z` timestamp as local
-time on this host. In UTC+08:00 that shifted a new plan eight hours backwards,
-so a fresh 30-minute plan appeared expired immediately.
+but for the wrong reason. On this host PowerShell's `ConvertFrom-Json` first
+materialized a `Z` timestamp as a UTC `DateTime`; casting that value back to
+`string` discarded its `Kind`. The following parse then treated the unchanged
+clock value as local time. In UTC+08:00 that shifted a new plan eight hours
+backwards, so a fresh 30-minute plan appeared expired immediately.
 
 Resolution:
 
-- recovery-terminal plan expiry, process-start and heartbeat fields now parse
-  through `DateTimeOffset` and are compared as `UtcDateTime`;
-- the locked observation rehearsal uses the same UTC-preserving conversion;
+- recovery-terminal plan expiry, process-start and heartbeat fields now use a
+  type-aware converter: `DateTime` and `DateTimeOffset` retain their UTC
+  identity, while strings must carry an explicit `Z` or numeric offset;
+- the locked observation rehearsal uses the same converter;
 - the project gate requires both controllers to use `DateTimeOffset` for these
-  external timestamps and rejects the old `DateTime.Parse` form.
+  external string timestamps, exercises the `ConvertFrom-Json` coercion path
+  and rejects the old string-cast `DateTime.Parse` form.
 
 The refusal was fail-closed: no recovery terminal, permit, Windhawk process or
 module mapping was created during the failed attempt.

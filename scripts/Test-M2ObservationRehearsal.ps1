@@ -38,6 +38,38 @@ $allowedPlanRoot =
 $allowedOutputRoot =
     Join-Path $root 'artifacts\m2-observation-rehearsal\runs'
 
+function Convert-JsonUtcDateTime {
+    param(
+        [Parameter(Mandatory)] [object]$Value,
+        [Parameter(Mandatory)] [string]$FieldName
+    )
+
+    if ($Value -is [DateTime]) {
+        $dateTime = [DateTime]$Value
+        if ($dateTime.Kind -eq [DateTimeKind]::Unspecified) {
+            throw "$FieldName must include an explicit UTC offset."
+        }
+        return $dateTime.ToUniversalTime()
+    }
+    if ($Value -is [DateTimeOffset]) {
+        return ([DateTimeOffset]$Value).UtcDateTime
+    }
+
+    $text = [string]$Value
+    if ($text -notmatch '(?i)(?:Z|[+-]\d{2}:\d{2})$') {
+        throw "$FieldName must include an explicit UTC offset."
+    }
+    $parsed = [DateTimeOffset]::MinValue
+    if (-not [DateTimeOffset]::TryParse(
+            $text,
+            [Globalization.CultureInfo]::InvariantCulture,
+            [Globalization.DateTimeStyles]::RoundtripKind,
+            [ref]$parsed)) {
+        throw "$FieldName is not a valid UTC timestamp."
+    }
+    return $parsed.UtcDateTime
+}
+
 function Resolve-PathUnderRoot {
     param(
         [Parameter(Mandatory)] [string]$Path,
@@ -132,10 +164,9 @@ if ($plan.result -ne 'passed' -or
     $plan.approval.canExecuteNow) {
     throw 'Observation rehearsal requires a locked pre-activation plan.'
 }
-$expiresAt = [DateTimeOffset]::Parse(
-    [string]$plan.expiresAtUtc,
-    [Globalization.CultureInfo]::InvariantCulture,
-    [Globalization.DateTimeStyles]::RoundtripKind).UtcDateTime
+$expiresAt = Convert-JsonUtcDateTime `
+    -Value $plan.expiresAtUtc `
+    -FieldName 'plan.expiresAtUtc'
 if ($expiresAt -le [DateTime]::UtcNow) {
     throw 'The session plan has expired.'
 }

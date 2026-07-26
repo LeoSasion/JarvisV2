@@ -30,6 +30,38 @@ $recoveryCommand = (
     '--configuration Release --no-build -- arm-kill-switch'
 )
 
+function Convert-JsonUtcDateTime {
+    param(
+        [Parameter(Mandatory)] [object]$Value,
+        [Parameter(Mandatory)] [string]$FieldName
+    )
+
+    if ($Value -is [DateTime]) {
+        $dateTime = [DateTime]$Value
+        if ($dateTime.Kind -eq [DateTimeKind]::Unspecified) {
+            throw "$FieldName must include an explicit UTC offset."
+        }
+        return $dateTime.ToUniversalTime()
+    }
+    if ($Value -is [DateTimeOffset]) {
+        return ([DateTimeOffset]$Value).UtcDateTime
+    }
+
+    $text = [string]$Value
+    if ($text -notmatch '(?i)(?:Z|[+-]\d{2}:\d{2})$') {
+        throw "$FieldName must include an explicit UTC offset."
+    }
+    $parsed = [DateTimeOffset]::MinValue
+    if (-not [DateTimeOffset]::TryParse(
+            $text,
+            [Globalization.CultureInfo]::InvariantCulture,
+            [Globalization.DateTimeStyles]::RoundtripKind,
+            [ref]$parsed)) {
+        throw "$FieldName is not a valid UTC timestamp."
+    }
+    return $parsed.UtcDateTime
+}
+
 function Resolve-RestrictedPlanPath {
     param([Parameter(Mandatory)] [string]$Path)
 
@@ -144,14 +176,12 @@ function Read-ReadyLease {
             return $null
         }
         $lease = $leaseJson | ConvertFrom-Json -Depth 20
-        $processStart = [DateTimeOffset]::Parse(
-            [string]$lease.processStartTimeUtc,
-            [Globalization.CultureInfo]::InvariantCulture,
-            [Globalization.DateTimeStyles]::RoundtripKind).UtcDateTime
-        $heartbeat = [DateTimeOffset]::Parse(
-            [string]$lease.heartbeatAtUtc,
-            [Globalization.CultureInfo]::InvariantCulture,
-            [Globalization.DateTimeStyles]::RoundtripKind).UtcDateTime
+        $processStart = Convert-JsonUtcDateTime `
+            -Value $lease.processStartTimeUtc `
+            -FieldName 'lease.processStartTimeUtc'
+        $heartbeat = Convert-JsonUtcDateTime `
+            -Value $lease.heartbeatAtUtc `
+            -FieldName 'lease.heartbeatAtUtc'
         if ($lease.state -ne 'ready' -or
             $lease.moduleId -ne $moduleId -or
             [int]$lease.processId -ne $ExpectedProcessId -or
@@ -190,10 +220,9 @@ if ($plan.result -ne 'passed' -or
     throw 'The session plan is not a locked pre-activation plan.'
 }
 
-$expiresAt = [DateTimeOffset]::Parse(
-    [string]$plan.expiresAtUtc,
-    [Globalization.CultureInfo]::InvariantCulture,
-    [Globalization.DateTimeStyles]::RoundtripKind).UtcDateTime
+$expiresAt = Convert-JsonUtcDateTime `
+    -Value $plan.expiresAtUtc `
+    -FieldName 'plan.expiresAtUtc'
 if ($expiresAt -le [DateTime]::UtcNow) {
     throw 'The session plan has expired.'
 }
