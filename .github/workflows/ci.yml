@@ -73,11 +73,24 @@ jobs:
           --nologo
           --warnaserror
 
+      - name: Audit and build read-only control center
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ControlCenter.ps1
+
       - name: Audit offline Explorer host model
         shell: pwsh
         run: >-
           pwsh -NoLogo -NoProfile -File
           .\scripts\Test-ExplorerHostModel.ps1
+
+      - name: Audit offline Explorer bridge contract
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerBridgeModel.ps1
+          -StaticOnly
 
       - name: Audit controlled-live controller
         shell: pwsh

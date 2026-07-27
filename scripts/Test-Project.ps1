@@ -23,6 +23,18 @@ $explorerHostModelAuditPath =
     Join-Path $root 'scripts\Test-ExplorerHostModel.ps1'
 $explorerHostPlanSchemaPath =
     Join-Path $root 'config\explorer-host-offline-plan.schema.json'
+$controlCenterProject =
+    Join-Path $root 'src\Jarvis.ControlCenter\Jarvis.ControlCenter.csproj'
+$controlCenterSourceRoot =
+    Join-Path $root 'src\Jarvis.ControlCenter'
+$controlCenterAuditPath =
+    Join-Path $root 'scripts\Test-ControlCenter.ps1'
+$explorerBridgeSourceRoot =
+    Join-Path $root 'src\Jarvis.ExplorerBridgeModel'
+$explorerBridgeHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_bridge_model_harness.cpp'
+$explorerBridgeAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerBridgeModel.ps1'
 $buildScriptPath = Join-Path $root 'scripts\Build-NativeMod.ps1'
 $testScriptPath = $PSCommandPath
 $artifactsRoot = Join-Path $root 'artifacts\native'
@@ -78,6 +90,8 @@ $phase6TaskPath =
     Join-Path $root 'docs\PHASE-6-WINDHAWK-HOST-QUARANTINE-TASK.md'
 $phase6AdrPath =
     Join-Path $root 'docs\ADR-0001-EXPLORER-ONLY-HOST.md'
+$phase7TaskPath =
+    Join-Path $root 'docs\PHASE-7-CONTROL-CENTER-AND-BRIDGE-CONTRACT-TASK.md'
 $m2RecoveryLeaseSchemaPath =
     Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $m2RecoveryLeaseLabSchemaPath =
@@ -355,6 +369,21 @@ $explorerHostModelSource = @(
 $explorerHostPlanSchema =
     Get-Content -LiteralPath $explorerHostPlanSchemaPath -Raw |
         ConvertFrom-Json -Depth 100
+$phase7Task = [System.IO.File]::ReadAllText($phase7TaskPath)
+$controlCenterSource = @(
+    Get-ChildItem -LiteralPath $controlCenterSourceRoot -File -Recurse |
+        Where-Object Extension -In @('.cs', '.xaml', '.csproj') |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$explorerBridgeSource = @(
+    Get-ChildItem -LiteralPath $explorerBridgeSourceRoot -File -Recurse |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+    [IO.File]::ReadAllText($explorerBridgeHarnessPath)
+) -join [Environment]::NewLine
 $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
 $phase2ExpectedSourceIdentity = [ordered]@{
@@ -675,6 +704,9 @@ $publicCiContract =
         $publicCi,
         '(?m)^\s*uses:\s+[^@\r\n]+@[A-Fa-f0-9]{40}\s*$').Count -eq 2 -and
     $publicCi.Contains('Test-PublicationBoundary.ps1') -and
+    $publicCi.Contains('Test-ControlCenter.ps1') -and
+    $publicCi.Contains('Test-ExplorerBridgeModel.ps1') -and
+    $publicCi.Contains('-StaticOnly') -and
     $publicCi.Contains('dotnet build') -and
     $publicCi.Contains('Canonical native compilation is intentionally not run') -and
     -not $publicCi.Contains('pull_request_target') -and
@@ -1056,6 +1088,122 @@ Add-Check `
     'phase6.explorer-host-model-executable-audit' `
     $phase6OfflineModelAuditPassed `
     'The 20-case host-model matrix must pass while every receipt remains non-executable, non-live and non-mutating.'
+
+$phase7ControlCenterStaticContract =
+    $phase7Task.Contains(
+        'Status: **COMPLETE — LOCKED / OFFLINE**') -and
+    $phase7Task.Contains(
+        'must never be described as a live modified taskbar or Explorer surface') -and
+    $controlCenterSource.Contains('<OutputType>WinExe</OutputType>') -and
+    $controlCenterSource.Contains('<UseWPF>true</UseWPF>') -and
+    $controlCenterSource.Contains('LOCKED') -and
+    $controlCenterSource.Contains('/ FAIL-CLOSED') -and
+    $controlCenterSource.Contains('QUARANTINED') -and
+    $controlCenterSource.Contains('READ-ONLY CONTROL SURFACE') -and
+    -not [regex]::IsMatch(
+        $controlCenterSource,
+        '(?i)\b(?:DllImport|LibraryImport|OpenProcess|CreateRemoteThread|' +
+        'VirtualAllocEx|WriteProcessMemory|SetWindowsHookEx|' +
+        'NtQueueApcThread|StartService|ServiceController|' +
+        'Microsoft\.Win32\.Registry|System\.Diagnostics\.Process)\b') -and
+    -not [regex]::IsMatch(
+        $controlCenterSource,
+        '(?i)(?:Topmost\s*=\s*"True"|AllowsTransparency\s*=\s*"True"|' +
+        'WindowState\s*=\s*"Maximized"|ShowInTaskbar\s*=\s*"False")')
+Add-Check `
+    'phase7.control-center-static-readonly' `
+    $phase7ControlCenterStaticContract `
+    'The visible Control Center must remain an ordinary read-only WPF window with explicit locked state and no shell mutation API.'
+
+$controlCenterAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $controlCenterAuditPath 2>&1
+)
+$controlCenterAuditExitCode = $LASTEXITCODE
+$controlCenterAudit = $null
+try {
+    $controlCenterAudit =
+        ($controlCenterAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $controlCenterAudit = $null
+}
+$phase7ControlCenterAuditPassed =
+    $controlCenterAuditExitCode -eq 0 -and
+    $null -ne $controlCenterAudit -and
+    $controlCenterAudit.result -eq 'passed' -and
+    $controlCenterAudit.checkCount -eq 6 -and
+    $controlCenterAudit.passedCount -eq 6 -and
+    -not $controlCenterAudit.executionSupported -and
+    -not $controlCenterAudit.activationPermitted -and
+    $controlCenterAudit.liveExplorer -eq 'not-run' -and
+    -not $controlCenterAudit.mutationPerformed
+Add-Check `
+    'phase7.control-center-executable-audit' `
+    $phase7ControlCenterAuditPassed `
+    'The Control Center safety/build audit must pass all six checks without enabling live execution.'
+
+$phase7BridgeStaticContract =
+    $explorerBridgeSource.Contains(
+        'JARVIS_EXPLORER_BRIDGE_ABI_VERSION = 1U') -and
+    $explorerBridgeSource.Contains(
+        'jarvis_bridge_model_query_contract') -and
+    $explorerBridgeSource.Contains(
+        'jarvis_bridge_model_initialize') -and
+    $explorerBridgeSource.Contains(
+        'jarvis_bridge_model_quiesce') -and
+    $explorerBridgeSource.Contains(
+        'jarvis_bridge_model_query') -and
+    $explorerBridgeSource.Contains('.activation_permitted = 0U') -and
+    $explorerBridgeSource.Contains('.mutation_performed = 0U') -and
+    $explorerBridgeSource.Contains('.live_explorer_touched = 0U') -and
+    -not [regex]::IsMatch(
+        $explorerBridgeSource,
+        '(?i)\b(?:windows\.h|DllMain|__declspec\s*\(\s*dllexport|' +
+        'LoadLibrary|OpenProcess|CreateRemoteThread|VirtualAllocEx|' +
+        'WriteProcessMemory|SetWindowsHookEx|UnhookWindowsHookEx|' +
+        'NtQueueApcThread|TerminateProcess)\b')
+Add-Check `
+    'phase7.explorer-bridge-contract-static-offline' `
+    $phase7BridgeStaticContract `
+    'Bridge ABI v1 must expose only an offline fail-closed model, never a DLL export, hook, loader or process API.'
+
+$explorerBridgeAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerBridgeAuditPath 2>&1
+)
+$explorerBridgeAuditExitCode = $LASTEXITCODE
+$explorerBridgeAudit = $null
+try {
+    $explorerBridgeAudit =
+        ($explorerBridgeAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerBridgeAudit = $null
+}
+$phase7BridgeAuditPassed =
+    $explorerBridgeAuditExitCode -eq 0 -and
+    $null -ne $explorerBridgeAudit -and
+    $explorerBridgeAudit.result -eq 'passed' -and
+    -not $explorerBridgeAudit.staticOnly -and
+    $explorerBridgeAudit.checkCount -eq 6 -and
+    $explorerBridgeAudit.passedCount -eq 6 -and
+    -not $explorerBridgeAudit.executionSupported -and
+    -not $explorerBridgeAudit.activationPermitted -and
+    $explorerBridgeAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerBridgeAudit.mutationPerformed
+Add-Check `
+    'phase7.explorer-bridge-contract-executable-audit' `
+    $phase7BridgeAuditPassed `
+    'The portable 16-case bridge fault matrix must compile and pass while every response remains non-live and non-mutating.'
 
 $phase5NativeLeaseWatchdogContract =
     $iconSize.Contains(
@@ -6223,9 +6371,17 @@ if (-not $SkipManagedBuild) {
         'explorer-host-model.release-build' `
         ($hostModelBuildExitCode -eq 0) `
         (($hostModelBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $controlCenterBuildOutput =
+        & dotnet build $controlCenterProject --configuration Release --nologo 2>&1
+    $controlCenterBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'control-center.release-build' `
+        ($controlCenterBuildExitCode -eq 0) `
+        (($controlCenterBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
     $buildExitCode = if (
         $supervisorBuildExitCode -eq 0 -and
-        $hostModelBuildExitCode -eq 0
+        $hostModelBuildExitCode -eq 0 -and
+        $controlCenterBuildExitCode -eq 0
     ) {
         0
     }
@@ -6235,6 +6391,7 @@ if (-not $SkipManagedBuild) {
     $buildOutput = @(
         $supervisorBuildOutput
         $hostModelBuildOutput
+        $controlCenterBuildOutput
     )
     $managedBuild = [pscustomobject]@{
         status = if ($buildExitCode -eq 0) { 'passed' } else { 'failed' }
