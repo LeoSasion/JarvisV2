@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JarvisV2 offline IInspectable adapter contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "contractId",
+    "lifecycleState",
+    "transportAbiVersion",
+    "compileGate",
+    "projection",
+    "fingerprint",
+    "integration",
+    "propertyReadSupported",
+    "executionSupported",
+    "readyForLiveConnection",
+    "readyForExactApproval",
+    "activationPermitted",
+    "liveExplorer",
+    "mutationPerformed"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./explorer-inspectable-adapter-contract.schema.json"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "contractId": {
+      "const": "jarvis-explorer-inspectable-adapter-v1"
+    },
+    "lifecycleState": {
+      "const": "offline-projection-model-only"
+    },
+    "transportAbiVersion": {
+      "const": 1
+    },
+    "compileGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "macro",
+        "requiredValue",
+        "livePropertyReadCompiled"
+      ],
+      "properties": {
+        "macro": {
+          "const": "JARVIS_ENABLE_LIVE_XAML_PROPERTY_READ"
+        },
+        "requiredValue": {
+          "const": 0
+        },
+        "livePropertyReadCompiled": {
+          "const": false
+        }
+      }
+    },
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "snapshotBytes",
+        "callerSuppliedExactIdentityRequired",
+        "acceptedValueOrigin",
+        "acceptedRuntimeKinds",
+        "acceptedRuntimeClasses",
+        "exactRuntimeClassNameMatchRequiredForObject",
+        "maximumOpacityMillionths",
+        "rejectedValueOrigins",
+        "rejectedRuntimeClasses",
+        "unsupportedValuePolicy"
+      ],
+      "properties": {
+        "snapshotBytes": {
+          "const": 192
+        },
+        "callerSuppliedExactIdentityRequired": {
+          "const": true
+        },
+        "acceptedValueOrigin": {
+          "const": "local"
+        },
+        "acceptedRuntimeKinds": {
+          "const": [
+            "null",
+            "object"
+          ]
+        },
+        "acceptedRuntimeClasses": {
+          "const": [
+            "none",
+            "solid-color-brush"
+          ]
+        },
+        "exactRuntimeClassNameMatchRequiredForObject": {
+          "const": true
+        },
+        "maximumOpacityMillionths": {
+          "const": 1000000
+        },
+        "rejectedValueOrigins": {
+          "type": "array",
+          "minItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "rejectedRuntimeClasses": {
+          "type": "array",
+          "minItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "unsupportedValuePolicy": {
+          "const": "latch-adapter-and-fingerprint-blocked"
+        }
+      }
+    },
+    "fingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ownsPhase13FingerprintInstance",
+        "forwardsOnlyCanonicalValues",
+        "canonicalValueCountRequired",
+        "completeFingerprintRequired"
+      ],
+      "properties": {
+        "ownsPhase13FingerprintInstance": {
+          "const": true
+        },
+        "forwardsOnlyCanonicalValues": {
+          "const": true
+        },
+        "canonicalValueCountRequired": {
+          "const": 9
+        },
+        "completeFingerprintRequired": {
+          "const": true
+        }
+      }
+    },
+    "integration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "controllerContainsOfflineAdapterModel",
+        "tapDllContainsOfflineAdapterModel",
+        "adapterEntryPointsExported",
+        "setSiteResult",
+        "iInspectableReadAttemptedDuringValidation",
+        "endpointAttemptedDuringValidation",
+        "tapDllLoadedDuringValidation"
+      ],
+      "properties": {
+        "controllerContainsOfflineAdapterModel": {
+          "const": true
+        },
+        "tapDllContainsOfflineAdapterModel": {
+          "const": true
+        },
+        "adapterEntryPointsExported": {
+          "const": false
+        },
+        "setSiteResult": {
+          "const": "E_ACCESSDENIED"
+        },
+        "iInspectableReadAttemptedDuringValidation": {
+          "const": false
+        },
+        "endpointAttemptedDuringValidation": {
+          "const": false
+        },
+        "tapDllLoadedDuringValidation": {
+          "const": false
+        }
+      }
+    },
+    "propertyReadSupported": {
+      "const": false
+    },
+    "executionSupported": {
+      "const": false
+    },
+    "readyForLiveConnection": {
+      "const": false
+    },
+    "readyForExactApproval": {
+      "const": false
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "liveExplorer": {
+      "const": "not-run"
+    },
+    "mutationPerformed": {
+      "const": false
+    }
+  }
+}

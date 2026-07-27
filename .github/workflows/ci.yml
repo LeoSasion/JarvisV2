@@ -158,6 +158,13 @@ jobs:
           .\scripts\Test-ExplorerReadOnlyAdmission.ps1
           -StaticOnly
 
+      - name: Audit offline Explorer IInspectable projection adapter
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerInspectableAdapter.ps1
+          -StaticOnly
+
       - name: Audit controlled-live controller
         shell: pwsh
         run: >-

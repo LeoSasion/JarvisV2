@@ -93,6 +93,10 @@ $explorerReadOnlyAdmissionHarnessPath =
     Join-Path $root 'tests\native\jarvis_explorer_tap_admission_harness.cpp'
 $explorerReadOnlyAdmissionAuditPath =
     Join-Path $root 'scripts\Test-ExplorerReadOnlyAdmission.ps1'
+$explorerInspectableAdapterHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_tap_inspectable_adapter_harness.cpp'
+$explorerInspectableAdapterAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerInspectableAdapter.ps1'
 $buildScriptPath = Join-Path $root 'scripts\Build-NativeMod.ps1'
 $testScriptPath = $PSCommandPath
 $artifactsRoot = Join-Path $root 'artifacts\native'
@@ -166,6 +170,8 @@ $phase12TaskPath =
     Join-Path $root 'docs\PHASE-12-EXPLORER-READONLY-TAP-OFFLINE-BUILD-TASK.md'
 $phase13TaskPath =
     Join-Path $root 'docs\PHASE-13-EXPLORER-READONLY-ADMISSION-AND-FINGERPRINT-TASK.md'
+$phase14TaskPath =
+    Join-Path $root 'docs\PHASE-14-EXPLORER-INSPECTABLE-ADAPTER-TASK.md'
 $explorerFrameSelectorProfilePath =
     Join-Path $root 'config\explorer-frame-selector-candidate.json'
 $explorerFrameSelectorSchemaPath =
@@ -182,6 +188,10 @@ $explorerReadOnlyAdmissionContractPath =
     Join-Path $root 'config\explorer-readonly-admission-fingerprint-contract.json'
 $explorerReadOnlyAdmissionContractSchemaPath =
     Join-Path $root 'config\explorer-readonly-admission-fingerprint-contract.schema.json'
+$explorerInspectableAdapterContractPath =
+    Join-Path $root 'config\explorer-inspectable-adapter-contract.json'
+$explorerInspectableAdapterContractSchemaPath =
+    Join-Path $root 'config\explorer-inspectable-adapter-contract.schema.json'
 $m2RecoveryLeaseSchemaPath =
     Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $m2RecoveryLeaseLabSchemaPath =
@@ -522,6 +532,7 @@ $phase10Task = [System.IO.File]::ReadAllText($phase10TaskPath)
 $phase11Task = [System.IO.File]::ReadAllText($phase11TaskPath)
 $phase12Task = [System.IO.File]::ReadAllText($phase12TaskPath)
 $phase13Task = [System.IO.File]::ReadAllText($phase13TaskPath)
+$phase14Task = [System.IO.File]::ReadAllText($phase14TaskPath)
 $explorerFrameSelectorProfile =
     Get-Content -LiteralPath $explorerFrameSelectorProfilePath -Raw |
         ConvertFrom-Json -Depth 100
@@ -605,6 +616,23 @@ $explorerReadOnlyAdmissionSource = @(
         (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_fingerprint.cpp')
     )
     [IO.File]::ReadAllText($explorerReadOnlyAdmissionHarnessPath)
+) -join [Environment]::NewLine
+$explorerInspectableAdapterContract =
+    Get-Content -LiteralPath $explorerInspectableAdapterContractPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerInspectableAdapterContractSchema =
+    Get-Content `
+        -LiteralPath $explorerInspectableAdapterContractSchemaPath `
+        -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerInspectableAdapterSource = @(
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_inspectable_adapter.h')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_inspectable_adapter.cpp')
+    )
+    [IO.File]::ReadAllText($explorerInspectableAdapterHarnessPath)
 ) -join [Environment]::NewLine
 $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
@@ -938,6 +966,7 @@ $publicCiContract =
     $publicCi.Contains('Test-ExplorerTransportModel.ps1') -and
     $publicCi.Contains('Test-ExplorerReadOnlyTap.ps1') -and
     $publicCi.Contains('Test-ExplorerReadOnlyAdmission.ps1') -and
+    $publicCi.Contains('Test-ExplorerInspectableAdapter.ps1') -and
     $publicCi.Contains('-StaticOnly') -and
     $publicCi.Contains('dotnet build') -and
     $publicCi.Contains('Canonical native compilation is intentionally not run') -and
@@ -2109,6 +2138,92 @@ Add-Check `
     'phase13.admission-fingerprint-executable-audit' `
     $phase13AdmissionAuditPassed `
     'The portable admission/fingerprint core must pass 11/11 checks and 50/50 fault scenarios with the independently frozen SHA-256 vector and no endpoint, DLL or property access.'
+
+$phase14AdapterStaticContract =
+    $phase14Task.Contains(
+        'OFFLINE PROJECTION MODEL COMPLETE — NO IINSPECTABLE READ'
+    ) -and
+    $explorerInspectableAdapterContract.schemaVersion -eq 1 -and
+    $explorerInspectableAdapterContract.contractId -eq
+        'jarvis-explorer-inspectable-adapter-v1' -and
+    $explorerInspectableAdapterContract.lifecycleState -eq
+        'offline-projection-model-only' -and
+    $explorerInspectableAdapterContract.compileGate.requiredValue -eq 0 -and
+    -not $explorerInspectableAdapterContract.compileGate.livePropertyReadCompiled -and
+    $explorerInspectableAdapterContract.projection.snapshotBytes -eq 192 -and
+    $explorerInspectableAdapterContract.projection.acceptedValueOrigin -eq
+        'local' -and
+    $explorerInspectableAdapterContract.projection.exactRuntimeClassNameMatchRequiredForObject -and
+    $explorerInspectableAdapterContract.projection.maximumOpacityMillionths -eq
+        1000000 -and
+    $explorerInspectableAdapterContract.fingerprint.canonicalValueCountRequired -eq
+        9 -and
+    -not $explorerInspectableAdapterContract.integration.adapterEntryPointsExported -and
+    -not $explorerInspectableAdapterContract.integration.iInspectableReadAttemptedDuringValidation -and
+    -not $explorerInspectableAdapterContract.integration.endpointAttemptedDuringValidation -and
+    -not $explorerInspectableAdapterContract.integration.tapDllLoadedDuringValidation -and
+    -not $explorerInspectableAdapterContract.propertyReadSupported -and
+    -not $explorerInspectableAdapterContract.executionSupported -and
+    -not $explorerInspectableAdapterContract.readyForLiveConnection -and
+    -not $explorerInspectableAdapterContract.readyForExactApproval -and
+    -not $explorerInspectableAdapterContract.activationPermitted -and
+    $explorerInspectableAdapterContract.liveExplorer -eq 'not-run' -and
+    -not $explorerInspectableAdapterContract.mutationPerformed -and
+    $explorerInspectableAdapterContractSchema.additionalProperties -eq
+        $false -and
+    $explorerInspectableAdapterSource.Contains(
+        'static_assert(sizeof(jarvis_tap_runtime_property_snapshot) == 192U)'
+    ) -and
+    $explorerInspectableAdapterSource.Contains(
+        'snapshot->exact_runtime_class_name_matched != 1U'
+    ) -and
+    $explorerInspectableAdapterSource.Contains(
+        'instance->fingerprint.state ='
+    ) -and
+    -not $explorerInspectableAdapterSource.Contains(
+        'InitializeXamlDiagnosticsEx'
+    )
+Add-Check `
+    'phase14.inspectable-adapter-static-offline-contract' `
+    $phase14AdapterStaticContract `
+    'Phase 14 must accept only bounded local null or exact solid-color projections, own one Phase 13 fingerprint, and keep the live read gate closed.'
+
+$explorerInspectableAdapterAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerInspectableAdapterAuditPath 2>&1
+)
+$explorerInspectableAdapterAuditExitCode = $LASTEXITCODE
+try {
+    $explorerInspectableAdapterAudit = (
+        $explorerInspectableAdapterAuditOutput -join [Environment]::NewLine
+    ) | ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerInspectableAdapterAudit = $null
+}
+$phase14AdapterAuditPassed =
+    $explorerInspectableAdapterAuditExitCode -eq 0 -and
+    $null -ne $explorerInspectableAdapterAudit -and
+    $explorerInspectableAdapterAudit.result -eq 'passed' -and
+    $explorerInspectableAdapterAudit.checkCount -eq 11 -and
+    $explorerInspectableAdapterAudit.passedCount -eq 11 -and
+    $explorerInspectableAdapterAudit.scenarioCount -eq 29 -and
+    $explorerInspectableAdapterAudit.scenarioPassedCount -eq 29 -and
+    -not $explorerInspectableAdapterAudit.iInspectableReadAttempted -and
+    -not $explorerInspectableAdapterAudit.propertyReadSupported -and
+    -not $explorerInspectableAdapterAudit.endpointAttempted -and
+    -not $explorerInspectableAdapterAudit.tapDllLoaded -and
+    -not $explorerInspectableAdapterAudit.executionSupported -and
+    -not $explorerInspectableAdapterAudit.activationPermitted -and
+    $explorerInspectableAdapterAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerInspectableAdapterAudit.mutationPerformed
+Add-Check `
+    'phase14.inspectable-adapter-executable-audit' `
+    $phase14AdapterAuditPassed `
+    'The portable projection adapter must pass 11/11 checks and 29/29 fault scenarios without a COM object, property read, endpoint attempt or DLL load.'
 
 $phase5NativeLeaseWatchdogContract =
     $iconSize.Contains(

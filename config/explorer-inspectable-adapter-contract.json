@@ -1,0 +1,65 @@
+{
+  "$schema": "./explorer-inspectable-adapter-contract.schema.json",
+  "schemaVersion": 1,
+  "contractId": "jarvis-explorer-inspectable-adapter-v1",
+  "lifecycleState": "offline-projection-model-only",
+  "transportAbiVersion": 1,
+  "compileGate": {
+    "macro": "JARVIS_ENABLE_LIVE_XAML_PROPERTY_READ",
+    "requiredValue": 0,
+    "livePropertyReadCompiled": false
+  },
+  "projection": {
+    "snapshotBytes": 192,
+    "callerSuppliedExactIdentityRequired": true,
+    "acceptedValueOrigin": "local",
+    "acceptedRuntimeKinds": [
+      "null",
+      "object"
+    ],
+    "acceptedRuntimeClasses": [
+      "none",
+      "solid-color-brush"
+    ],
+    "exactRuntimeClassNameMatchRequiredForObject": true,
+    "maximumOpacityMillionths": 1000000,
+    "rejectedValueOrigins": [
+      "default",
+      "inherited",
+      "style",
+      "theme-resource",
+      "dynamic-resource"
+    ],
+    "rejectedRuntimeClasses": [
+      "acrylic-brush",
+      "gradient-brush",
+      "image-brush",
+      "markup-extension",
+      "string",
+      "unknown"
+    ],
+    "unsupportedValuePolicy": "latch-adapter-and-fingerprint-blocked"
+  },
+  "fingerprint": {
+    "ownsPhase13FingerprintInstance": true,
+    "forwardsOnlyCanonicalValues": true,
+    "canonicalValueCountRequired": 9,
+    "completeFingerprintRequired": true
+  },
+  "integration": {
+    "controllerContainsOfflineAdapterModel": true,
+    "tapDllContainsOfflineAdapterModel": true,
+    "adapterEntryPointsExported": false,
+    "setSiteResult": "E_ACCESSDENIED",
+    "iInspectableReadAttemptedDuringValidation": false,
+    "endpointAttemptedDuringValidation": false,
+    "tapDllLoadedDuringValidation": false
+  },
+  "propertyReadSupported": false,
+  "executionSupported": false,
+  "readyForLiveConnection": false,
+  "readyForExactApproval": false,
+  "activationPermitted": false,
+  "liveExplorer": "not-run",
+  "mutationPerformed": false
+}

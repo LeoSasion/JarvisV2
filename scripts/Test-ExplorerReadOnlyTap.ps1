@@ -18,6 +18,12 @@ $admissionHeaderPath = Join-Path $sourceRoot 'jarvis_explorer_tap_admission.h'
 $admissionPath = Join-Path $sourceRoot 'jarvis_explorer_tap_admission.cpp'
 $fingerprintHeaderPath = Join-Path $sourceRoot 'jarvis_explorer_tap_fingerprint.h'
 $fingerprintPath = Join-Path $sourceRoot 'jarvis_explorer_tap_fingerprint.cpp'
+$adapterHeaderPath = Join-Path (
+    $sourceRoot
+) 'jarvis_explorer_tap_inspectable_adapter.h'
+$adapterPath = Join-Path (
+    $sourceRoot
+) 'jarvis_explorer_tap_inspectable_adapter.cpp'
 $targetPath = Join-Path $sourceRoot 'jarvis_explorer_tap_target.cpp'
 $tapPath = Join-Path $sourceRoot 'jarvis_explorer_tap_readonly.cpp'
 $controllerPath = Join-Path $sourceRoot 'jarvis_explorer_tap_controller.cpp'
@@ -409,6 +415,8 @@ $admissionHeaderText = [IO.File]::ReadAllText($admissionHeaderPath)
 $admissionText = [IO.File]::ReadAllText($admissionPath)
 $fingerprintHeaderText = [IO.File]::ReadAllText($fingerprintHeaderPath)
 $fingerprintText = [IO.File]::ReadAllText($fingerprintPath)
+$adapterHeaderText = [IO.File]::ReadAllText($adapterHeaderPath)
+$adapterText = [IO.File]::ReadAllText($adapterPath)
 $targetText = [IO.File]::ReadAllText($targetPath)
 $tapText = [IO.File]::ReadAllText($tapPath)
 $controllerText = [IO.File]::ReadAllText($controllerPath)
@@ -425,6 +433,8 @@ $allSourceText = @(
     $admissionText,
     $fingerprintHeaderText,
     $fingerprintText,
+    $adapterHeaderText,
+    $adapterText,
     $targetText,
     $tapText,
     $controllerText,
@@ -709,6 +719,7 @@ if (-not $StaticOnly) {
                     $protocolPath `
                     $admissionPath `
                     $fingerprintPath `
+                    $adapterPath `
                     $controllerPath `
                     -o $controllerExecutable 2>&1
             )
@@ -754,6 +765,7 @@ if (-not $StaticOnly) {
                         $controllerReceipt.offlineEndpointCandidateLimit -eq
                             1 -and
                         $controllerReceipt.offlineFingerprintModelSupported -and
+                        $controllerReceipt.offlineInspectableAdapterModelSupported -and
                         -not $controllerReceipt.propertyReadSupported -and
                         -not $controllerReceipt.liveConnectionCompiled -and
                         -not $controllerReceipt.executionSupported -and
@@ -769,9 +781,11 @@ if (-not $StaticOnly) {
                     @commonArguments `
                     -shared `
                     -DJARVIS_ENABLE_LIVE_XAML_READONLY=0 `
+                    -DJARVIS_ENABLE_LIVE_XAML_PROPERTY_READ=0 `
                     $protocolPath `
                     $admissionPath `
                     $fingerprintPath `
+                    $adapterPath `
                     $targetPath `
                     $tapPath `
                     -lole32 `
