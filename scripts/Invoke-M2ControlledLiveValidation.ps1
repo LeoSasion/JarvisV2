@@ -54,7 +54,7 @@ $oldInstalledDllSha256 =
 $canonicalSourcePath =
     Join-Path $root 'mods\jarvis-taskbar-icon-size.wh.cpp'
 $canonicalDllPath = Join-Path $root (
-    'artifacts\native\runs\20260727T054148125Z-07b3c01b\modules\' +
+    'artifacts\native\runs\20260727T060035319Z-8e602329\modules\' +
     'jarvis-taskbar-icon-size\jarvis-taskbar-icon-size-x64.dll'
 )
 $supervisorProject =

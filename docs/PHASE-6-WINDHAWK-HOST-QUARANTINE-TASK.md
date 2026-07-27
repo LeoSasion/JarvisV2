@@ -68,17 +68,17 @@ user's complete process inventory.
 The next host must target only the verified desktop Explorer PID and must not
 install a persistent global injector.
 
-- [ ] Trace Windhawk's official service/injector architecture from upstream
+- [x] Trace Windhawk's official service/injector architecture from upstream
   source and document why a disabled mod still exposes the base runtime
   broadly.
-- [ ] Evaluate a dedicated Explorer-only launcher with explicit PID, session,
+- [x] Evaluate a dedicated Explorer-only launcher with explicit PID, session,
   image-path, signer/hash and compatibility checks.
-- [ ] Evaluate supported Windows mechanisms before any remote-thread or loader
+- [x] Evaluate supported Windows mechanisms before any remote-thread or loader
   implementation.
-- [ ] Document loader lifetime, module ownership, rollback, crash-loop
+- [x] Document loader lifetime, module ownership, rollback, crash-loop
   prevention and Windows-update invalidation in an ADR.
-- [ ] Build only an offline/mockable launcher skeleton first.
-- [ ] Prove every test path remains incapable of targeting `dwm.exe`,
+- [x] Build only an offline/mockable launcher skeleton first.
+- [x] Prove every test path remains incapable of targeting `dwm.exe`,
   arbitrary processes or a name-wide Explorer set.
 
 ## Acceptance boundary

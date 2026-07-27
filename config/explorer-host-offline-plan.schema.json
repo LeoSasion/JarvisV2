@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvisv2.local/schemas/explorer-host-offline-plan.schema.json",
+  "title": "JarvisV2 Explorer host offline plan receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "receiptType",
+    "result",
+    "evaluationMode",
+    "executionSupported",
+    "activationPermitted",
+    "liveExplorer",
+    "mutationPerformed",
+    "candidate",
+    "failureCount",
+    "failures"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "receiptType": {
+      "const": "jarvisv2-explorer-host-offline-plan"
+    },
+    "result": {
+      "enum": [
+        "passed-offline-plan",
+        "blocked"
+      ]
+    },
+    "evaluationMode": {
+      "const": "offline-fixture-only"
+    },
+    "executionSupported": {
+      "const": false
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "liveExplorer": {
+      "const": "not-run"
+    },
+    "mutationPerformed": {
+      "const": false
+    },
+    "candidate": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/candidate"
+        }
+      ]
+    },
+    "failureCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "result": {
+            "const": "passed-offline-plan"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "candidate": {
+            "$ref": "#/$defs/candidate"
+          },
+          "failureCount": {
+            "const": 0
+          },
+          "failures": {
+            "maxItems": 0
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "candidate": {
+            "type": "null"
+          },
+          "failureCount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "failures": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "processId",
+        "threadId",
+        "hookScope",
+        "moduleId",
+        "moduleSha256",
+        "requiresLiveImplementationReview",
+        "requiresExactUserApproval"
+      ],
+      "properties": {
+        "method": {
+          "const": "thread-specific-window-hook-review-candidate"
+        },
+        "processId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "threadId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "hookScope": {
+          "const": "single-thread"
+        },
+        "moduleId": {
+          "const": "jarvis-explorer-bridge"
+        },
+        "moduleSha256": {
+          "type": "string",
+          "pattern": "^[0-9A-F]{64}$"
+        },
+        "requiresLiveImplementationReview": {
+          "const": true
+        },
+        "requiresExactUserApproval": {
+          "const": true
+        }
+      }
+    }
+  }
+}

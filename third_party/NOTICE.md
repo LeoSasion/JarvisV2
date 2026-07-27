@@ -57,9 +57,17 @@ JARVIS2 modifications on 2026-07-22:
 
 - Version: 1.7.3
 - Commit: `b59b38cd77daec98830c0e5e2ad14a35c44f02a7`
+- Architecture research commit:
+  `61fc60dad607e6888d8de560d1b6add716f936c3`
 - License: GPL-3.0
-- Role: runtime and portable Clang build toolchain; not vendored
+- Role: quarantined historical injection runtime and portable Clang build
+  toolchain; no runtime source is vendored
 - Upstream: <https://github.com/ramensoftware/windhawk>
+
+Phase 6 uses the current upstream source only to document the service,
+all-process injector and loader boundary. No Windhawk injector, service,
+remote-memory, APC or remote-thread source was copied into the Explorer host
+model.
 
 ## Reference-only projects
 

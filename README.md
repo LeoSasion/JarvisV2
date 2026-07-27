@@ -21,13 +21,14 @@ JarvisV2 是一个独立于旧版 JARVIS 的 Windows 原生桌面改造实验。
 - 兼容门禁：只接受已审计的 Windows `26200.8875`，真实 Shell PID，以及 Explorer、`Taskbar.View.dll`、`SystemTray.dll`、`SearchUx.UI.dll` 的精确加载路径、版本、大小和 SHA-256；原生侧还核对映射 PE 与 CodeView 身份。
 - 急停：默认 `disabled.flag` 存在、`active-module.txt` 不存在；M1 和 M2 都使用后台状态目录监视器将已进入运行路径的模块永久锁进静默状态，热路径不做文件 I/O。M2 还每秒检查 `JARVIS2\Recovery` 子目录中的恢复租约，心跳超过六秒即永久 pass-through；该子目录位于非递归 state-root file-name watcher 之下，正常心跳不会触发自己的急停。M1 本轮只证明 latched no-new-work，不等于已恢复现有 XAML 属性。
 - 一次性许可：只允许严格 ASCII 模块 ID、无 BOM/换行、5 分钟内有效；在 Hook 前原子消费，Explorer 崩溃重启后不会自动再次注入。
-- Supervisor：核对 23 项宿主和逐真实 Shell PID 的加载事实；Arm/Clear/Restart 与原生许可消费共享跨进程状态门，恢复只处理真实 Shell PID。`clear-kill-switch` 现在还会在许可写入前及删除急停前两次验证恢复终端短租约；租约必须有 4 秒内心跳，并绑定 PID、进程启动时间、session plan、全部固定源码身份和当前正在执行的 Release Supervisor DLL。
-- 构建：固定 Windhawk 1.7.3 / Clang 20.1.3 / Python 3.14.3，锁定 8,397 个真实编译输入；最终 canonical run `20260726T181614398Z-c553751a` 绑定 M1 源码 SHA-256 `70B8A002994127A080EE188248C06BF486726827B674665467964E6A0F925751` 与 M2 源码 SHA-256 `9F955ADD6B9CE1E087F8DCB97093C392B17845BEF2DBD31688A17B7D1B9B0C31`。两个 AMD64 DLL 均为 0 warning / 0 error，完整离线门禁 196/196 通过；[schema v3 构建回执](docs/receipts/native-build-2026-07-22.json)仍明确 `activationPermitted=false`、`liveExplorer=not-run`，不能授权加载。
+- Supervisor：核对 23 项宿主和逐真实 Shell PID 的加载事实；Arm/Clear/Restart 与原生许可消费共享跨进程状态门，恢复只处理真实 Shell PID。Phase 6 已在取得状态门之前固定拒绝 `clear-kill-switch`，错误为 `live_activation_quarantined`；旧的恢复租约即使新鲜也不能越过该隔离。
+- 构建：固定 Windhawk 1.7.3 / Clang 20.1.3 / Python 3.14.3，锁定 8,397 个真实编译输入；当前 canonical run 与逐文件哈希见 [schema v3 构建回执](docs/receipts/native-build-2026-07-22.json)。两个 AMD64 DLL 均为 0 warning / 0 error，但回执始终明确 `activationPermitted=false`、`liveExplorer=not-run`，不能授权加载。
 - M1 证据边界：无 Explorer 的便携生命周期实验室覆盖 `git / ui-thread / dispatch / module` 四域的 90 个确定性场景。最终三次运行均为 90/90；逐项账本共有 332 个资源，其中 259 个确认释放、73 个带原因保留，`retainedUnexplained=0`、`doubleRelease=0`，两路独立审计均为 `P0=0 / P1=0 / P2=0`。机器可读收据仍分别报告 `offlineEvidenceReady=true`、`releaseReady=false`、`activationPermitted=false` 与 `liveExplorer=not-run`。它能证明冻结状态机、引用归属、typed kernel ledger 和收据模型在这些注入点的结果可重复，不能证明真实 COM apartment、DispatcherQueue、Windhawk hook、Explorer 关闭顺序或 XAML 属性一定恢复。代码仍保留长期 XAML callback scope、异常防火墙和 remote ImageBrush 禁止重追踪等既有保护；未获准或 drain 未确认时不会执行破坏性 UI 清理。因此此版本继续选择“停用后 DLL 可能安全映射到 Explorer 自然退出，且同一 Explorer 生命周期内不能重新激活”，而不是冒险卸载。`compatibility.json` 和 Supervisor allowlist 保持不变，M1 继续 build-only，本轮没有把它加载进 Explorer。
-- 主机安全状态：2026-07-27 02:35（Asia/Shanghai）的[最新只读主机收据](docs/receipts/host-safety-2026-07-27.json)确认 `disabled.flag` 存在、`active-module.txt` 与恢复租约不存在，Windhawk 服务为 Stopped / Manual / PID 0，Explorer PID 11640 和全系统均无 Windhawk/JARVIS 映射，Supervisor 为 23/23 compatible。readiness 为 `readyForExactApproval=true`，但仍固定 `activationPermitted=false`、`liveExplorer=not-run`；它只抵达精确人工批准门。
+- 主机安全状态：受控禁用宿主演练已正常收口；`disabled.flag` 保持 armed、`active-module.txt` absent、M2 disabled、Windhawk Stopped / Manual / PID 0，Explorer PID 保持稳定且 M2 映射始终为 0。恢复终端已关闭。停止服务后仍可能有非 JARVIS 的 Windhawk 基础运行库残留到各宿主自然退出，因此仓库不再把“服务停止”表述为“全系统映射已经归零”。
 - Phase 3：GPL 开源发布边界和 M2 只读实机准备包已经实现。最终 readiness 为 `readyForExactApproval=true`、Supervisor 23/23、所有可枚举进程中 0 匹配映射，但仍固定 `activationPermitted=false`、`liveExplorer=not-run`、`canExecuteNow=false`；它绝不执行清除急停、启动 Windhawk 或加载模块。完整边界见 [开源发布说明](docs/OPEN-SOURCE-BOUNDARY.md) 与 [M2 受控实机 runbook](docs/M2-CONTROLLED-LIVE-VALIDATION-RUNBOOK.md)。
 - Phase 4：增加短时、单模块、源码绑定的 M2 session plan，默认 inert 的恢复终端入口，以及把真实宿主状态和内存故障评估副本分开的只读观测演练。正常路径不得出现停止条件；kill switch、permit、Windhawk、Explorer PID、module mapping 和 CPU 六类模拟漂移必须各自生成 reasoned stop。该阶段只抵达精确人工批准门，仍不打开恢复终端、不清除急停、不加载 M2。
 - Phase 5：修复实机观察中“恢复终端曾打开但随后消失”的缺口。可见终端每秒在 `JARVIS2\Recovery` 子目录原子发布短租约；关闭、4 秒无心跳、计划过期、PID 复用、reparse point、计划/源码漂移或运行 DLL 不一致都会阻断许可。M2 原生 watchdog 再以六秒窗口约束解锁后的终端丢失。离线故障与路径隔离实验室 7/7 通过，固定 `stateDirectoryTouched=false`、`activationPermitted=false`、`liveExplorer=not-run`；详见 [Phase 5 长任务](docs/PHASE-5-M2-RECOVERY-LEASE-TASK.md)与[安全审查](docs/PHASE-5-SAFETY-REVIEW.md)。
+- Phase 6：禁用宿主演练证明 Windhawk 服务会在 Mod 禁用时仍把基础运行库映射到 Explorer 和非目标进程。readiness、受控控制器与 Supervisor 现已三层固定拒绝旧激活路径。[ADR-0001](docs/ADR-0001-EXPLORER-ONLY-HOST.md)记录上游链路和 Explorer-only 边界；`Jarvis.ExplorerHostModel` 只评估离线 fixture，不含进程、服务、注册表、远程内存、P/Invoke 或 Hook 安装 API。20 项模型回归覆盖精确 Shell PID/TID、零 TID、`dwm.exe`、多候选、会话与签名漂移、Windhawk 残留和当前 Windhawk Mod 契约；所有输出都固定禁止执行和激活。
 
 ## 验证与构建
 
@@ -36,6 +37,7 @@ pwsh -File .\scripts\Test-Project.ps1
 pwsh -File .\scripts\Test-PublicationBoundary.ps1
 pwsh -File .\scripts\Test-M2LiveReadiness.ps1
 pwsh -File .\scripts\Test-M2RecoveryLeaseLab.ps1
+pwsh -File .\scripts\Test-ExplorerHostModel.ps1
 pwsh -File .\scripts\New-M2ValidationSessionPlan.ps1 -OutputPath `
   .\artifacts\m2-validation-session-plans\runs\<unique-name>.json
 pwsh -File .\scripts\Test-M2ObservationRehearsal.ps1 -SessionPlanPath `
@@ -51,18 +53,11 @@ pwsh -File .\scripts\Build-NativeMod.ps1 -Module jarvis-taskbar-icon-size
 
 2026-07-22 的安全审计发现，旧版 portable 引导曾因 `Start-Process` 的 `/D` 参数额外带引号而把安装器导向默认系统安装位置。安装器退出码为 0，但预期的 portable 编译器并未出现；约 40 秒后 Windows 记录了 Windhawk 服务创建。完整时间线、影响边界和处置状态见 [安全事件记录](docs/SECURITY-INCIDENT-2026-07-22.md)。经用户明确授权，阶段 A 已用上游正常停机路径把服务改为 Stopped / Manual，并让 Explorer 和其他活动宿主卸载基础引擎；当时一个完全挂起的 `ShellExperienceHost.exe` 仍保留惰性 DLL 映射，因此流程没有运行卸载器、恢复或终止该系统进程，也没有重启 Explorer。用户随后自行重启；2026-07-23 15:39 的只读复查确认所有 Windhawk DLL 映射已归零，但没有据此执行卸载或激活。
 
-## 未来首次实机验证顺序
+## 实机边界
 
-1. 运行 Supervisor 的 `inspect`，必须全部通过。
-2. 运行 `arm-kill-switch`，确认状态为 flag present / permit absent。
-3. 只选择 `jarvis-taskbar-icon-size`；M1 当前不在实机 allowlist。先核对当前源码 SHA-256 与 schema v3 收据，并保持模块未加载。
-4. 把 M2 的 `Enabled` 明确设为 `true`，再次核对 Windhawk 目标进程和编译日志。
-5. 生成新的短时 session plan，以 `-ConfirmOpen` 打开可见恢复终端；`inspect-recovery-terminal --module jarvis-taskbar-icon-size` 必须确认心跳、PID、计划和 Release Supervisor 身份全部匹配。
-6. 用户在当前任务明确批准后，才运行 `clear-kill-switch --module jarvis-taskbar-icon-size --confirm`；缺少精确参数、新鲜恢复租约、未过期计划或任一指纹不匹配都会拒绝。
-7. 在 5 分钟内只启用一次 M2。许可在 Hook 前被消费；若取消测试，立即重新 Arm。
-8. 若有任何异常，先 `arm-kill-switch`，在 Windhawk 禁用模块；只有确有需要并再次确认时才运行 `restart-explorer --confirm`。
+当前没有可执行的首次实机验证顺序。Windhawk 服务宿主已被隔离，`StartDisabledHost`、`EnableOnce` 和 `clear-kill-switch` 都必须失败。任何旧文档、旧命令或旧 session plan 都不再构成授权。
 
-本轮没有执行上述实机步骤：急停仍为 armed，许可不存在。用户重启产生了新的 Explorer 进程，但本项目没有运行 `restart-explorer`，也没有执行卸载、模块激活或人工交互验收。
+未来只有在独立 bridge ABI、便携 native fault lab、只读 collector、单 PID/非零 TID transport 和新恢复设计分别完成审查后，才可以起草新的实机 runbook。届时仍需在当前任务中展示并批准精确二进制哈希、PID、TID 和一次性命令；本 ADR 与离线模型本身不授予任何加载权限。
 
 完整的边界、恢复流程和验收矩阵见 [架构](docs/ARCHITECTURE.md)、[恢复](docs/RECOVERY.md)、[安全事件记录](docs/SECURITY-INCIDENT-2026-07-22.md) 与 [路线图](docs/ROADMAP.md)。
 

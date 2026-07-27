@@ -6,8 +6,9 @@
       "repository": "https://github.com/ramensoftware/windhawk",
       "version": "1.7.3",
       "commit": "b59b38cd77daec98830c0e5e2ad14a35c44f02a7",
+      "architectureResearchCommit": "61fc60dad607e6888d8de560d1b6add716f936c3",
       "license": "GPL-3.0",
-      "role": "native injection runtime and portable compiler"
+      "role": "quarantined historical injection runtime and portable compiler; runtime source not vendored"
     },
     {
       "name": "Windows 11 Taskbar Styler",

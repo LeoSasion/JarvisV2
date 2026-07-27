@@ -33,7 +33,9 @@ Phase 4 在锁定态增加了短时 session plan、默认 inert 的恢复终端�
 
 Phase 5 把恢复终端从启动瞬间的 PID 快照升级为一秒心跳、四秒 managed 失效的短租约。安全审查修复了心跳写入 state root 会触发原生 watcher 的 P0 冲突：lease 现在位于非递归 watcher 下的 `JARVIS2\Recovery` 子目录；M2 自身每秒轮询，超过六秒即永久 pass-through。Supervisor 在写许可前和删除急停前两次验证终端 PID/启动时间、计划哈希/过期时间、固定源码身份、reparse boundary 和当前 Release 程序。七场景离线故障/路径隔离实验室全部通过，但不会写真实状态目录，也不执行恢复或激活。
 
-2026-07-27 的受控会话随后证明：即使 M2 保持禁用，Windhawk 服务仍会把基础运行库映射进 Explorer 和大量非目标进程。会话在清除急停前终止，正常恢复保持 Explorer PID 稳定且 M2 映射为 0。Phase 6 因此隔离整个 Windhawk 服务宿主：readiness 固定失败，控制器不再具备启动服务或把 M2 设为启用的可达路径，Supervisor 也在状态锁之前拒绝 `clear-kill-switch`。下一阶段先研究和实现显式 PID 绑定的 Explorer-only 宿主；在新 ADR、离线骨架、固定身份门禁和新的人工批准完成前，不再进入实机激活。
+2026-07-27 的受控会话随后证明：即使 M2 保持禁用，Windhawk 服务仍会把基础运行库映射进 Explorer 和大量非目标进程。会话在清除急停前终止，正常恢复保持 Explorer PID 稳定且 M2 映射为 0。Phase 6 因此隔离整个 Windhawk 服务宿主：readiness 固定失败，控制器不再具备启动服务或把 M2 设为启用的可达路径，Supervisor 也在状态锁之前拒绝 `clear-kill-switch`。
+
+[ADR-0001](ADR-0001-EXPLORER-ONLY-HOST.md) 已从 Windhawk 官方源码确认 service → engine → all-process injector 链路，并把未来候选收窄为 Shell 窗口绑定的单一非零线程 ID；它不是实机授权。`Jarvis.ExplorerHostModel` 目前只读取 `offline-fixture`，不含 P/Invoke、进程枚举、服务、注册表、远程内存或 Hook 安装 API。即使 fixture 全部匹配，输出仍固定 `executionSupported=false`、`activationPermitted=false`、`liveExplorer=not-run`。下一步必须先把 M2 的 Windhawk API 契约拆成独立 bridge ABI，并在便携 native fault lab 证明 quiesce/ownership，才可以讨论真实 collector 或 transport。
 
 在单符号切片完成独立实机稳定性验证之前，不增加任务栏高度、按钮宽度、badge、overflow、托盘或搜索联动。验收必须一次只加载一个 Explorer 模块，并覆盖 100%-200% DPI、双屏、自动隐藏、应用启动/关闭、睡眠唤醒、卸载与急停恢复。任何一项异常都回到 pass-through，不把第二项功能叠上去。
 

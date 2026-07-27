@@ -15,6 +15,14 @@ $toolchainLockPath = Join-Path $root 'config\toolchain-lock.json'
 $licensePath = Join-Path $root 'LICENSE'
 $supervisorProject = Join-Path $root 'src\Jarvis.Supervisor\Jarvis.Supervisor.csproj'
 $supervisorSourcePath = Join-Path $root 'src\Jarvis.Supervisor\CompatibilityInspector.cs'
+$explorerHostModelProject =
+    Join-Path $root 'src\Jarvis.ExplorerHostModel\Jarvis.ExplorerHostModel.csproj'
+$explorerHostModelSourceRoot =
+    Join-Path $root 'src\Jarvis.ExplorerHostModel'
+$explorerHostModelAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerHostModel.ps1'
+$explorerHostPlanSchemaPath =
+    Join-Path $root 'config\explorer-host-offline-plan.schema.json'
 $buildScriptPath = Join-Path $root 'scripts\Build-NativeMod.ps1'
 $testScriptPath = $PSCommandPath
 $artifactsRoot = Join-Path $root 'artifacts\native'
@@ -66,6 +74,10 @@ $phase5TaskPath =
     Join-Path $root 'docs\PHASE-5-M2-RECOVERY-LEASE-TASK.md'
 $phase5ReviewPath =
     Join-Path $root 'docs\PHASE-5-SAFETY-REVIEW.md'
+$phase6TaskPath =
+    Join-Path $root 'docs\PHASE-6-WINDHAWK-HOST-QUARANTINE-TASK.md'
+$phase6AdrPath =
+    Join-Path $root 'docs\ADR-0001-EXPLORER-ONLY-HOST.md'
 $m2RecoveryLeaseSchemaPath =
     Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $m2RecoveryLeaseLabSchemaPath =
@@ -329,6 +341,20 @@ $killSwitchSource =
     [System.IO.File]::ReadAllText($killSwitchSourcePath)
 $programSource =
     [System.IO.File]::ReadAllText($programSourcePath)
+$phase6Task = [System.IO.File]::ReadAllText($phase6TaskPath)
+$phase6Adr = [System.IO.File]::ReadAllText($phase6AdrPath)
+$explorerHostModelSource = @(
+    Get-ChildItem `
+        -LiteralPath $explorerHostModelSourceRoot `
+        -Filter '*.cs' `
+        -File |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$explorerHostPlanSchema =
+    Get-Content -LiteralPath $explorerHostPlanSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
 $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
 $phase2ExpectedSourceIdentity = [ordered]@{
@@ -968,6 +994,68 @@ Add-Check `
     'phase6.windhawk-host-activation-quarantined' `
     $phase6HostQuarantineContract `
     'Supervisor must reject clear-kill-switch before state-gate acquisition while the Windhawk service host is quarantined.'
+
+$phase6OfflineModelSourceContract =
+    $phase6Task.Contains(
+        '- [x] Build only an offline/mockable launcher skeleton first.') -and
+    $phase6Adr.Contains('Status: accepted for offline modelling only') -and
+    $phase6Adr.Contains('Live implementation: prohibited') -and
+    $phase6Adr.Contains(
+        'Thread-specific `SetWindowsHookEx`') -and
+    $explorerHostModelSource.Contains(
+        'thread-specific-window-hook-review-candidate') -and
+    $explorerHostModelSource.Contains(
+        'ExpectedSelectionMode = "shell-window-exact"') -and
+    $explorerHostModelSource.Contains(
+        'ExpectedModuleContract = "standalone-explicit-init-v1"') -and
+    $explorerHostModelSource.Contains('ExecutionSupported = false') -and
+    $explorerHostModelSource.Contains('ActivationPermitted = false') -and
+    -not [regex]::IsMatch(
+        $explorerHostModelSource,
+        '(?i)\b(?:DllImport|LibraryImport|OpenProcess|CreateRemoteThread|' +
+        'VirtualAllocEx|WriteProcessMemory|SetWindowsHookEx|' +
+        'NtQueueApcThread|StartService|ServiceController|' +
+        'Microsoft\.Win32\.Registry|System\.Diagnostics\.Process)\b') -and
+    $explorerHostPlanSchema.properties.executionSupported.const -eq $false -and
+    $explorerHostPlanSchema.properties.activationPermitted.const -eq $false -and
+    $explorerHostPlanSchema.properties.liveExplorer.const -eq 'not-run' -and
+    $explorerHostPlanSchema.properties.mutationPerformed.const -eq $false
+Add-Check `
+    'phase6.explorer-host-model-static-offline' `
+    $phase6OfflineModelSourceContract `
+    'The replacement-host skeleton must remain a fixture-only single PID/TID policy model with no live process or injection API.'
+
+$explorerHostAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerHostModelAuditPath 2>&1
+)
+$explorerHostAuditExitCode = $LASTEXITCODE
+$explorerHostAudit = $null
+try {
+    $explorerHostAudit =
+        ($explorerHostAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerHostAudit = $null
+}
+$phase6OfflineModelAuditPassed =
+    $explorerHostAuditExitCode -eq 0 -and
+    $null -ne $explorerHostAudit -and
+    $explorerHostAudit.result -eq 'passed' -and
+    $explorerHostAudit.checkCount -eq 20 -and
+    $explorerHostAudit.passedCount -eq 20 -and
+    -not $explorerHostAudit.executionSupported -and
+    -not $explorerHostAudit.activationPermitted -and
+    $explorerHostAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerHostAudit.mutationPerformed
+Add-Check `
+    'phase6.explorer-host-model-executable-audit' `
+    $phase6OfflineModelAuditPassed `
+    'The 20-case host-model matrix must pass while every receipt remains non-executable, non-live and non-mutating.'
 
 $phase5NativeLeaseWatchdogContract =
     $iconSize.Contains(
@@ -6121,9 +6209,33 @@ $managedBuild = [pscustomobject]@{
     detail = 'Managed build was explicitly skipped.'
 }
 if (-not $SkipManagedBuild) {
-    $buildOutput = & dotnet build $supervisorProject --configuration Release --nologo 2>&1
-    $buildExitCode = $LASTEXITCODE
-    Add-Check 'supervisor.release-build' ($buildExitCode -eq 0) (($buildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $supervisorBuildOutput =
+        & dotnet build $supervisorProject --configuration Release --nologo 2>&1
+    $supervisorBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'supervisor.release-build' `
+        ($supervisorBuildExitCode -eq 0) `
+        (($supervisorBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $hostModelBuildOutput =
+        & dotnet build $explorerHostModelProject --configuration Release --nologo 2>&1
+    $hostModelBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'explorer-host-model.release-build' `
+        ($hostModelBuildExitCode -eq 0) `
+        (($hostModelBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $buildExitCode = if (
+        $supervisorBuildExitCode -eq 0 -and
+        $hostModelBuildExitCode -eq 0
+    ) {
+        0
+    }
+    else {
+        1
+    }
+    $buildOutput = @(
+        $supervisorBuildOutput
+        $hostModelBuildOutput
+    )
     $managedBuild = [pscustomobject]@{
         status = if ($buildExitCode -eq 0) { 'passed' } else { 'failed' }
         exitCode = $buildExitCode
