@@ -33,6 +33,7 @@ JarvisV2 是一个独立于旧版 JARVIS 的 Windows 原生桌面改造实验。
 - Phase 10：把视觉验收前的开发合并为一批。仓库固定了 GPL Windows 11 File Explorer Styler 1.5 的 commit/blob/SHA-256，增加与当前兼容档绑定的三表面选择器编译器、只接受精确 HWND/PID/TID/启动时间且拒绝桌面 Shell 的只读 UI Automation 拓扑探针，以及 60 秒、三次截图、完整原值日志和严格逆序恢复的统一预览计划。配置/计划模型 43/43、审计 8/8，探针静态审计 6/6；探针未运行，选择器仍未获得实机 XAML 证明，视觉写入仍不可用。详见 [Phase 10 批量开发任务](docs/PHASE-10-BATCHED-EXPLORER-PREVIEW-PREP-TASK.md)。
 - Phase 11：新增单进程 XAML 传输核心，把微软 `InitializeXamlDiagnosticsEx` 的“按 PID 连接并加载 TAP DLL”现实边界固化为机器合同和固定宽度 ABI。一次性能力绑定精确 PID/TID/HWND/启动时间/标题哈希/树代际/选择器、计划、三条精确选择器及九个目标样式值哈希；三表面九属性必须完整记录原值，60 秒到期或部分应用会锁定严格逆序恢复。便携式原生故障矩阵 85/85、审计 12/12；当前没有 TAP DLL、COM 导出、XAML Diagnostics 调用、Explorer 连接或实机写入。详见 [Phase 11 传输核心任务](docs/PHASE-11-EXPLORER-XAML-TRANSPORT-CORE-TASK.md)。
 - Phase 12：首次离线构建独立的 AMD64 TAP 形态 DLL 与控制器，但把连接能力从编译期彻底封死。初始化数据只能是 Phase 11 固定 ABI 的 1,251 字符规范编码；TAP 只有 `DllCanUnloadNow` / `DllGetClassObject` 两个导出，`SetSite` 永久返回 `E_ACCESSDENIED`；控制器只接受 `--describe`，端点尝试数为 0，不能接受 PID 或加载 DLL。协议矩阵 38/38、离线构建与 PE 导入/导出审计 18/18；验证只检查磁盘文件，DLL 从未加载，尚不能读取 XAML 属性，更不构成实机只读验证。详见 [Phase 12 离线 TAP 构建任务](docs/PHASE-12-EXPLORER-READONLY-TAP-OFFLINE-BUILD-TASK.md)。
+- Phase 13：新增单 PID、单端点的离线准入模型和固定三表面九属性的只读指纹核心。准入必须绑定完整 616-byte bind、控制器/TAP/XAML Diagnostics/端点四个哈希，要求既有消费者为 0、候选端点恰好为 1，并一次性消费计划；指纹只接受 `null` 或规范纯色值，绑定目标树代际、选择器、实例句柄和固定槽位。故障矩阵 50/50，通过后两个模型分别编入 describe-only 控制器和仍拒绝 `SetSite` 的 TAP DLL，但不导出、不调用；端点尝试、DLL 加载和属性读取仍均为 false。详见 [Phase 13 准入与指纹任务](docs/PHASE-13-EXPLORER-READONLY-ADMISSION-AND-FINGERPRINT-TASK.md)。
 
 ## 验证与构建
 
@@ -47,6 +48,7 @@ pwsh -File .\scripts\Test-ExplorerPreviewModel.ps1
 pwsh -File .\scripts\Test-ExplorerSurfaceProbe.ps1
 pwsh -File .\scripts\Test-ExplorerTransportModel.ps1
 pwsh -File .\scripts\Test-ExplorerReadOnlyTap.ps1
+pwsh -File .\scripts\Test-ExplorerReadOnlyAdmission.ps1
 pwsh -File .\scripts\New-M2ValidationSessionPlan.ps1 -OutputPath `
   .\artifacts\m2-validation-session-plans\runs\<unique-name>.json
 pwsh -File .\scripts\Test-M2ObservationRehearsal.ps1 -SessionPlanPath `

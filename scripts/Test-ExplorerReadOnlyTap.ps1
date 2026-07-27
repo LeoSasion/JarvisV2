@@ -14,6 +14,10 @@ $sourceRoot = Join-Path $root 'src\Jarvis.ExplorerTapReadOnly'
 $transportRoot = Join-Path $root 'src\Jarvis.ExplorerTransportModel'
 $headerPath = Join-Path $sourceRoot 'jarvis_explorer_tap_readonly.h'
 $protocolPath = Join-Path $sourceRoot 'jarvis_explorer_tap_protocol.cpp'
+$admissionHeaderPath = Join-Path $sourceRoot 'jarvis_explorer_tap_admission.h'
+$admissionPath = Join-Path $sourceRoot 'jarvis_explorer_tap_admission.cpp'
+$fingerprintHeaderPath = Join-Path $sourceRoot 'jarvis_explorer_tap_fingerprint.h'
+$fingerprintPath = Join-Path $sourceRoot 'jarvis_explorer_tap_fingerprint.cpp'
 $targetPath = Join-Path $sourceRoot 'jarvis_explorer_tap_target.cpp'
 $tapPath = Join-Path $sourceRoot 'jarvis_explorer_tap_readonly.cpp'
 $controllerPath = Join-Path $sourceRoot 'jarvis_explorer_tap_controller.cpp'
@@ -401,6 +405,10 @@ function Get-PeMetadata {
 
 $headerText = [IO.File]::ReadAllText($headerPath)
 $protocolText = [IO.File]::ReadAllText($protocolPath)
+$admissionHeaderText = [IO.File]::ReadAllText($admissionHeaderPath)
+$admissionText = [IO.File]::ReadAllText($admissionPath)
+$fingerprintHeaderText = [IO.File]::ReadAllText($fingerprintHeaderPath)
+$fingerprintText = [IO.File]::ReadAllText($fingerprintPath)
 $targetText = [IO.File]::ReadAllText($targetPath)
 $tapText = [IO.File]::ReadAllText($tapPath)
 $controllerText = [IO.File]::ReadAllText($controllerPath)
@@ -413,6 +421,10 @@ $contractSchema = $contractSchemaText | ConvertFrom-Json -Depth 100
 $allSourceText = @(
     $headerText,
     $protocolText,
+    $admissionHeaderText,
+    $admissionText,
+    $fingerprintHeaderText,
+    $fingerprintText,
     $targetText,
     $tapText,
     $controllerText,
@@ -694,6 +706,9 @@ if (-not $StaticOnly) {
                 & $compiler `
                     @commonArguments `
                     -municode `
+                    $protocolPath `
+                    $admissionPath `
+                    $fingerprintPath `
                     $controllerPath `
                     -o $controllerExecutable 2>&1
             )
@@ -735,6 +750,11 @@ if (-not $StaticOnly) {
                             'reject' -and
                         $controllerReceipt.endpointAttemptLimit -eq 0 -and
                         -not $controllerReceipt.tapDllLoadSupported -and
+                        $controllerReceipt.offlineAdmissionModelSupported -and
+                        $controllerReceipt.offlineEndpointCandidateLimit -eq
+                            1 -and
+                        $controllerReceipt.offlineFingerprintModelSupported -and
+                        -not $controllerReceipt.propertyReadSupported -and
                         -not $controllerReceipt.liveConnectionCompiled -and
                         -not $controllerReceipt.executionSupported -and
                         -not $controllerReceipt.activationPermitted -and
@@ -750,6 +770,8 @@ if (-not $StaticOnly) {
                     -shared `
                     -DJARVIS_ENABLE_LIVE_XAML_READONLY=0 `
                     $protocolPath `
+                    $admissionPath `
+                    $fingerprintPath `
                     $targetPath `
                     $tapPath `
                     -lole32 `

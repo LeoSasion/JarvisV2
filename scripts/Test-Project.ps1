@@ -89,6 +89,10 @@ $explorerReadOnlyTapHarnessPath =
     Join-Path $root 'tests\native\jarvis_explorer_tap_protocol_harness.cpp'
 $explorerReadOnlyTapAuditPath =
     Join-Path $root 'scripts\Test-ExplorerReadOnlyTap.ps1'
+$explorerReadOnlyAdmissionHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_tap_admission_harness.cpp'
+$explorerReadOnlyAdmissionAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerReadOnlyAdmission.ps1'
 $buildScriptPath = Join-Path $root 'scripts\Build-NativeMod.ps1'
 $testScriptPath = $PSCommandPath
 $artifactsRoot = Join-Path $root 'artifacts\native'
@@ -160,6 +164,8 @@ $phase11TaskPath =
     Join-Path $root 'docs\PHASE-11-EXPLORER-XAML-TRANSPORT-CORE-TASK.md'
 $phase12TaskPath =
     Join-Path $root 'docs\PHASE-12-EXPLORER-READONLY-TAP-OFFLINE-BUILD-TASK.md'
+$phase13TaskPath =
+    Join-Path $root 'docs\PHASE-13-EXPLORER-READONLY-ADMISSION-AND-FINGERPRINT-TASK.md'
 $explorerFrameSelectorProfilePath =
     Join-Path $root 'config\explorer-frame-selector-candidate.json'
 $explorerFrameSelectorSchemaPath =
@@ -172,6 +178,10 @@ $explorerReadOnlyTapContractPath =
     Join-Path $root 'config\explorer-readonly-tap-build-contract.json'
 $explorerReadOnlyTapContractSchemaPath =
     Join-Path $root 'config\explorer-readonly-tap-build-contract.schema.json'
+$explorerReadOnlyAdmissionContractPath =
+    Join-Path $root 'config\explorer-readonly-admission-fingerprint-contract.json'
+$explorerReadOnlyAdmissionContractSchemaPath =
+    Join-Path $root 'config\explorer-readonly-admission-fingerprint-contract.schema.json'
 $m2RecoveryLeaseSchemaPath =
     Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $m2RecoveryLeaseLabSchemaPath =
@@ -511,6 +521,7 @@ $phase9Task = [System.IO.File]::ReadAllText($phase9TaskPath)
 $phase10Task = [System.IO.File]::ReadAllText($phase10TaskPath)
 $phase11Task = [System.IO.File]::ReadAllText($phase11TaskPath)
 $phase12Task = [System.IO.File]::ReadAllText($phase12TaskPath)
+$phase13Task = [System.IO.File]::ReadAllText($phase13TaskPath)
 $explorerFrameSelectorProfile =
     Get-Content -LiteralPath $explorerFrameSelectorProfilePath -Raw |
         ConvertFrom-Json -Depth 100
@@ -571,6 +582,29 @@ $explorerReadOnlyTapSource = @(
             [IO.File]::ReadAllText($_.FullName)
         }
     [IO.File]::ReadAllText($explorerReadOnlyTapHarnessPath)
+) -join [Environment]::NewLine
+$explorerReadOnlyAdmissionContract =
+    Get-Content -LiteralPath $explorerReadOnlyAdmissionContractPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerReadOnlyAdmissionContractSchema =
+    Get-Content `
+        -LiteralPath $explorerReadOnlyAdmissionContractSchemaPath `
+        -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerReadOnlyAdmissionSource = @(
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_admission.h')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_admission.cpp')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_fingerprint.h')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_fingerprint.cpp')
+    )
+    [IO.File]::ReadAllText($explorerReadOnlyAdmissionHarnessPath)
 ) -join [Environment]::NewLine
 $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
@@ -903,6 +937,7 @@ $publicCiContract =
     $publicCi.Contains('Test-ExplorerSurfaceProbe.ps1') -and
     $publicCi.Contains('Test-ExplorerTransportModel.ps1') -and
     $publicCi.Contains('Test-ExplorerReadOnlyTap.ps1') -and
+    $publicCi.Contains('Test-ExplorerReadOnlyAdmission.ps1') -and
     $publicCi.Contains('-StaticOnly') -and
     $publicCi.Contains('dotnet build') -and
     $publicCi.Contains('Canonical native compilation is intentionally not run') -and
@@ -1974,6 +2009,106 @@ Add-Check `
     'phase12.readonly-tap-offline-build-and-pe-audit' `
     $phase12ReadOnlyTapAuditPassed `
     'The portable TAP/controller build must pass 18/18 checks and 38/38 protocol scenarios, inspect exact exports/imports, and prove the DLL was never loaded.'
+
+$phase13AdmissionStaticContract =
+    $phase13Task.Contains(
+        'OFFLINE MODELS COMPLETE — NO ENDPOINT ATTEMPT OR PROPERTY READ'
+    ) -and
+    $explorerReadOnlyAdmissionContract.schemaVersion -eq 1 -and
+    $explorerReadOnlyAdmissionContract.contractId -eq
+        'jarvis-explorer-readonly-admission-fingerprint-v1' -and
+    $explorerReadOnlyAdmissionContract.lifecycleState -eq
+        'offline-model-only' -and
+    $explorerReadOnlyAdmissionContract.admission.existingDiagnosticsConsumerCountRequired -eq
+        0 -and
+    $explorerReadOnlyAdmissionContract.admission.endpointCandidateCountRequired -eq
+        1 -and
+    $explorerReadOnlyAdmissionContract.admission.runtimeEndpointAttemptLimit -eq
+        0 -and
+    @($explorerReadOnlyAdmissionContract.admission.requiredBinaryHashes).Count -eq
+        4 -and
+    $explorerReadOnlyAdmissionContract.admission.requiredTapExportCount -eq
+        2 -and
+    $explorerReadOnlyAdmissionContract.admission.oneShotPlanConsumedOnAdmission -and
+    $explorerReadOnlyAdmissionContract.admission.completeBindByteMatchRequired -and
+    $explorerReadOnlyAdmissionContract.fingerprint.surfaceCount -eq 3 -and
+    $explorerReadOnlyAdmissionContract.fingerprint.propertyCount -eq 3 -and
+    $explorerReadOnlyAdmissionContract.fingerprint.observationCount -eq 9 -and
+    @($explorerReadOnlyAdmissionContract.fingerprint.allowedValueKinds).Count -eq
+        2 -and
+    -not $explorerReadOnlyAdmissionContract.fingerprint.propertyReadSupported -and
+    -not $explorerReadOnlyAdmissionContract.integration.modelEntryPointsExported -and
+    -not $explorerReadOnlyAdmissionContract.integration.endpointAttemptedDuringValidation -and
+    -not $explorerReadOnlyAdmissionContract.integration.tapDllLoadedDuringValidation -and
+    -not $explorerReadOnlyAdmissionContract.executionSupported -and
+    -not $explorerReadOnlyAdmissionContract.readyForLiveConnection -and
+    -not $explorerReadOnlyAdmissionContract.readyForExactApproval -and
+    -not $explorerReadOnlyAdmissionContract.activationPermitted -and
+    $explorerReadOnlyAdmissionContract.liveExplorer -eq 'not-run' -and
+    -not $explorerReadOnlyAdmissionContract.mutationPerformed -and
+    $explorerReadOnlyAdmissionContractSchema.additionalProperties -eq
+        $false -and
+    $explorerReadOnlyAdmissionSource.Contains(
+        'static_assert(sizeof(jarvis_tap_admission_request) == 792U)'
+    ) -and
+    $explorerReadOnlyAdmissionSource.Contains(
+        'static_assert(sizeof(jarvis_tap_fingerprint_request) == 176U)'
+    ) -and
+    $explorerReadOnlyAdmissionSource.Contains(
+        'instance->bind = request->bind'
+    ) -and
+    $explorerReadOnlyAdmissionSource.Contains(
+        'JARVIS_TAP_FINGERPRINT_RESULT_VALUE_UNSUPPORTED'
+    ) -and
+    $explorerReadOnlyAdmissionSource.Contains(
+        'kSha256RoundConstants'
+    ) -and
+    -not $explorerReadOnlyAdmissionSource.Contains(
+        'InitializeXamlDiagnosticsEx'
+    )
+Add-Check `
+    'phase13.admission-fingerprint-static-offline-contract' `
+    $phase13AdmissionStaticContract `
+    'Phase 13 must require zero consumers and one offline endpoint candidate, consume the full exact bind once, fingerprint only nine canonical values, and retain every non-live claim.'
+
+$explorerReadOnlyAdmissionAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerReadOnlyAdmissionAuditPath 2>&1
+)
+$explorerReadOnlyAdmissionAuditExitCode = $LASTEXITCODE
+try {
+    $explorerReadOnlyAdmissionAudit = (
+        $explorerReadOnlyAdmissionAuditOutput -join [Environment]::NewLine
+    ) | ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerReadOnlyAdmissionAudit = $null
+}
+$phase13AdmissionAuditPassed =
+    $explorerReadOnlyAdmissionAuditExitCode -eq 0 -and
+    $null -ne $explorerReadOnlyAdmissionAudit -and
+    $explorerReadOnlyAdmissionAudit.result -eq 'passed' -and
+    $explorerReadOnlyAdmissionAudit.checkCount -eq 11 -and
+    $explorerReadOnlyAdmissionAudit.passedCount -eq 11 -and
+    $explorerReadOnlyAdmissionAudit.scenarioCount -eq 50 -and
+    $explorerReadOnlyAdmissionAudit.scenarioPassedCount -eq 50 -and
+    $explorerReadOnlyAdmissionAudit.firstFingerprintSha256 -eq
+        '00542DB9887A4CE9FA17AD0B42EC164D5E38FDD3BFE410D9517B2814CC264560' -and
+    -not $explorerReadOnlyAdmissionAudit.endpointAttempted -and
+    -not $explorerReadOnlyAdmissionAudit.tapDllLoaded -and
+    -not $explorerReadOnlyAdmissionAudit.propertyReadSupported -and
+    -not $explorerReadOnlyAdmissionAudit.liveConnectionCompiled -and
+    -not $explorerReadOnlyAdmissionAudit.executionSupported -and
+    -not $explorerReadOnlyAdmissionAudit.activationPermitted -and
+    $explorerReadOnlyAdmissionAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerReadOnlyAdmissionAudit.mutationPerformed
+Add-Check `
+    'phase13.admission-fingerprint-executable-audit' `
+    $phase13AdmissionAuditPassed `
+    'The portable admission/fingerprint core must pass 11/11 checks and 50/50 fault scenarios with the independently frozen SHA-256 vector and no endpoint, DLL or property access.'
 
 $phase5NativeLeaseWatchdogContract =
     $iconSize.Contains(
