@@ -92,6 +92,13 @@ jobs:
           .\scripts\Test-DesktopStyleProbe.ps1
           -StaticOnly
 
+      - name: Audit desktop text-color session without live inspection
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-DesktopStyleSession.ps1
+          -StaticOnly
+
       - name: Audit offline Explorer host model
         shell: pwsh
         run: >-

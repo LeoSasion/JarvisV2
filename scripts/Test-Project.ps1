@@ -41,6 +41,12 @@ $desktopStyleProbeSourceRoot =
     Join-Path $root 'src\Jarvis.DesktopStyleProbe'
 $desktopStyleProbeAuditPath =
     Join-Path $root 'scripts\Test-DesktopStyleProbe.ps1'
+$desktopStyleSessionProject =
+    Join-Path $root 'src\Jarvis.DesktopStyleSession\Jarvis.DesktopStyleSession.csproj'
+$desktopStyleSessionSourceRoot =
+    Join-Path $root 'src\Jarvis.DesktopStyleSession'
+$desktopStyleSessionAuditPath =
+    Join-Path $root 'scripts\Test-DesktopStyleSession.ps1'
 $explorerBridgeSourceRoot =
     Join-Path $root 'src\Jarvis.ExplorerBridgeModel'
 $explorerBridgeHarnessPath =
@@ -106,6 +112,8 @@ $phase7TaskPath =
     Join-Path $root 'docs\PHASE-7-CONTROL-CENTER-AND-BRIDGE-CONTRACT-TASK.md'
 $phase8TaskPath =
     Join-Path $root 'docs\PHASE-8-NATIVE-STYLE-LAB-AND-DESKTOP-PROBE-TASK.md'
+$phase8DesktopSessionTaskPath =
+    Join-Path $root 'docs\PHASE-8-DESKTOP-TEXT-COLOR-SESSION-TASK.md'
 $m2RecoveryLeaseSchemaPath =
     Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $m2RecoveryLeaseLabSchemaPath =
@@ -408,6 +416,15 @@ $nativeStyleLabSource = @(
 ) -join [Environment]::NewLine
 $desktopStyleProbeSource = @(
     Get-ChildItem -LiteralPath $desktopStyleProbeSourceRoot -File -Recurse |
+        Where-Object Extension -In @('.cs', '.csproj') |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$phase8DesktopSessionTask =
+    [System.IO.File]::ReadAllText($phase8DesktopSessionTaskPath)
+$desktopStyleSessionSource = @(
+    Get-ChildItem -LiteralPath $desktopStyleSessionSourceRoot -File -Recurse |
         Where-Object Extension -In @('.cs', '.csproj') |
         ForEach-Object {
             [IO.File]::ReadAllText($_.FullName)
@@ -736,6 +753,7 @@ $publicCiContract =
     $publicCi.Contains('Test-ControlCenter.ps1') -and
     $publicCi.Contains('Test-NativeStyleLab.ps1') -and
     $publicCi.Contains('Test-DesktopStyleProbe.ps1') -and
+    $publicCi.Contains('Test-DesktopStyleSession.ps1') -and
     $publicCi.Contains('Test-ExplorerBridgeModel.ps1') -and
     $publicCi.Contains('-StaticOnly') -and
     $publicCi.Contains('dotnet build') -and
@@ -1348,6 +1366,73 @@ Add-Check `
     'phase8.desktop-style-probe-static-audit' `
     $phase8DesktopProbeAuditPassed `
     'Canonical project checks must audit the desktop probe without inspecting live Explorer.'
+
+$phase8DesktopSessionStaticContract =
+    $phase8DesktopSessionTask.Contains(
+        'LIVE APPLY NOT YET AUTHORIZED') -and
+    $phase8DesktopSessionTask.Contains(
+        'LVM_GETTEXTCOLOR') -and
+    $phase8DesktopSessionTask.Contains(
+        'LVM_SETTEXTCOLOR') -and
+    $desktopStyleSessionSource.Contains(
+        'MessageTimeoutMilliseconds = 250') -and
+    $desktopStyleSessionSource.Contains(
+        'MaximumTtlSeconds = 60') -and
+    $desktopStyleSessionSource.Contains(
+        '--confirm-live-desktop-text-color') -and
+    $desktopStyleSessionSource.Contains(
+        'store.Prepare(journal);') -and
+    $desktopStyleSessionSource.Contains(
+        'RollBackExactTarget(') -and
+    [regex]::Matches(
+        $desktopStyleSessionSource,
+        '\[DllImport\(').Count -eq 6 -and
+    -not [regex]::IsMatch(
+        $desktopStyleSessionSource,
+        '(?i)\b(?:PostMessage|SetWindowLong|SetWindowPos|MoveWindow|' +
+        'ShowWindow|DestroyWindow|OpenProcess|CreateRemoteThread|' +
+        'VirtualAllocEx|WriteProcessMemory|SetWindowsHookEx|' +
+        'TerminateProcess|System\.Diagnostics\.Process|' +
+        'ServiceController|Microsoft\.Win32\.Registry|' +
+        'DwmSetWindowAttribute|SystemParametersInfo)\b')
+Add-Check `
+    'phase8.desktop-style-session-narrow-static' `
+    $phase8DesktopSessionStaticContract `
+    'The desktop style session must remain a journaled, bounded, text-color-only ListView experiment.'
+
+$desktopSessionAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $desktopStyleSessionAuditPath `
+        -StaticOnly 2>&1
+)
+$desktopSessionAuditExitCode = $LASTEXITCODE
+$desktopSessionAudit = $null
+try {
+    $desktopSessionAudit =
+        ($desktopSessionAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $desktopSessionAudit = $null
+}
+$phase8DesktopSessionAuditPassed =
+    $desktopSessionAuditExitCode -eq 0 -and
+    $null -ne $desktopSessionAudit -and
+    $desktopSessionAudit.result -eq 'passed' -and
+    $desktopSessionAudit.staticOnly -and
+    $desktopSessionAudit.checkCount -eq 10 -and
+    $desktopSessionAudit.passedCount -eq 10 -and
+    -not $desktopSessionAudit.liveMutationRun -and
+    -not $desktopSessionAudit.activationPermitted -and
+    -not $desktopSessionAudit.mutationPerformed -and
+    $desktopSessionAudit.liveExplorer -eq 'not-run'
+Add-Check `
+    'phase8.desktop-style-session-static-audit' `
+    $phase8DesktopSessionAuditPassed `
+    'Canonical project checks must audit all desktop session guards without reading or mutating live Explorer.'
 
 $phase5NativeLeaseWatchdogContract =
     $iconSize.Contains(
@@ -6536,12 +6621,20 @@ if (-not $SkipManagedBuild) {
         'desktop-style-probe.release-build' `
         ($desktopProbeBuildExitCode -eq 0) `
         (($desktopProbeBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $desktopSessionBuildOutput =
+        & dotnet build $desktopStyleSessionProject --configuration Release --nologo 2>&1
+    $desktopSessionBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'desktop-style-session.release-build' `
+        ($desktopSessionBuildExitCode -eq 0) `
+        (($desktopSessionBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
     $buildExitCode = if (
         $supervisorBuildExitCode -eq 0 -and
         $hostModelBuildExitCode -eq 0 -and
         $controlCenterBuildExitCode -eq 0 -and
         $nativeStyleBuildExitCode -eq 0 -and
-        $desktopProbeBuildExitCode -eq 0
+        $desktopProbeBuildExitCode -eq 0 -and
+        $desktopSessionBuildExitCode -eq 0
     ) {
         0
     }
@@ -6554,6 +6647,7 @@ if (-not $SkipManagedBuild) {
         $controlCenterBuildOutput
         $nativeStyleBuildOutput
         $desktopProbeBuildOutput
+        $desktopSessionBuildOutput
     )
     $managedBuild = [pscustomobject]@{
         status = if ($buildExitCode -eq 0) { 'passed' } else { 'failed' }
