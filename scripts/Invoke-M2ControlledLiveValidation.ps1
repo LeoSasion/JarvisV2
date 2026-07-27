@@ -54,7 +54,7 @@ $oldInstalledDllSha256 =
 $canonicalSourcePath =
     Join-Path $root 'mods\jarvis-taskbar-icon-size.wh.cpp'
 $canonicalDllPath = Join-Path $root (
-    'artifacts\native\runs\20260726T201254154Z-82b2826b\modules\' +
+    'artifacts\native\runs\20260727T054148125Z-07b3c01b\modules\' +
     'jarvis-taskbar-icon-size\jarvis-taskbar-icon-size-x64.dll'
 )
 $supervisorProject =
@@ -97,6 +97,14 @@ $clearCommand = (
     'dotnet run --project .\src\Jarvis.Supervisor ' +
     '--configuration Release --no-build -- clear-kill-switch ' +
     '--module jarvis-taskbar-icon-size --confirm'
+)
+$hostActivationQuarantineReason =
+    'windhawk-service-global-runtime-injection-observed-20260727'
+$hostActivationQuarantineMessage = (
+    'Live Windhawk host activation is quarantined because the controlled ' +
+    'disabled-host session mapped the Windhawk base runtime into Explorer ' +
+    'and many non-target processes. StartDisabledHost and EnableOnce have ' +
+    'no reachable mutation path until an Explorer-only host is reviewed.'
 )
 $script:mutationPerformed = $false
 $script:stopRequired = $false
@@ -1203,100 +1211,9 @@ function Invoke-StartDisabledHostAction {
         -Message (
             'StartDisabledHost is inert without -ConfirmStartDisabledHost.'
         )
-    Assert-Administrator
-    $planLease = Assert-PlanAndRecoveryLease
-    $compatibility = Get-CompatibilityReport
-    Assert-ExplorerIdentity $compatibility $ExpectedExplorerProcessId
-    Assert-Condition `
-        -Condition (
-            [string]$compatibility.host.killSwitchState -ceq 'armed'
-        ) `
-        -Message 'Kill switch must be armed before starting Windhawk.'
-    Assert-Condition `
-        -Condition (
-            [string]$compatibility.host.activeModuleState -ceq 'absent'
-        ) `
-        -Message 'One-shot permit must be absent before starting Windhawk.'
-    $service = Get-ServiceSnapshot
-    Assert-Condition `
-        -Condition (
-            [string]$service.State -ceq 'Stopped' -and
-            [string]$service.StartMode -ceq 'Manual' -and
-            [int]$service.ProcessId -eq 0
-        ) `
-        -Message 'Windhawk must be Stopped / Manual / PID 0 before start.'
-    $config = Get-CanonicalModConfig
-    Assert-Condition `
-        -Condition ([int]$config.Disabled -eq 1) `
-        -Message 'M2 must remain disabled while the service starts.'
-    $null = Assert-TargetMappingState `
-        -ExplorerProcessId $ExpectedExplorerProcessId `
-        -ExpectedCount 0
-
-    $serviceStarted = $false
-    try {
-        # Starting the service through SCM preserves its Manual start mode.
-        $script:mutationPerformed = $true
-        Start-Service -Name $serviceName -ErrorAction Stop
-        $serviceStarted = $true
-        $service = Wait-ServiceState -State 'Running' -TimeoutSeconds 8
-        Assert-Condition `
-            -Condition (
-                [string]$service.StartMode -ceq 'Manual' -and
-                [int]$service.ProcessId -gt 0
-            ) `
-            -Message 'Windhawk did not remain Running / Manual after start.'
-        $planLease = Assert-PlanAndRecoveryLease
-        $compatibility = Get-CompatibilityReport
-        Assert-ExplorerIdentity $compatibility $ExpectedExplorerProcessId
-        Assert-Condition `
-            -Condition (
-                [string]$compatibility.host.killSwitchState -ceq 'armed' -and
-                [string]$compatibility.host.activeModuleState -ceq 'absent'
-            ) `
-            -Message 'Locked state changed while starting disabled Windhawk.'
-        $config = Get-CanonicalModConfig
-        Assert-Condition `
-            -Condition ([int]$config.Disabled -eq 1) `
-            -Message 'M2 became enabled while starting the service.'
-        $null = Assert-TargetMappingState `
-            -ExplorerProcessId $ExpectedExplorerProcessId `
-            -ExpectedCount 0
-    }
-    catch {
-        $startError = $_.Exception
-        if ($serviceStarted) {
-            try {
-                Stop-Service -Name $serviceName -ErrorAction Stop
-                $null = Wait-ServiceState -State 'Stopped' -TimeoutSeconds 8
-            }
-            catch {
-                $script:stopRequired = $true
-                throw [AggregateException]::new(
-                    'Disabled Windhawk start failed and normal service stop also failed.',
-                    @($startError, $_.Exception))
-            }
-        }
-        throw $startError
-    }
-
-    return New-ControllerResult `
-        -Result 'passed-disabled-host-running' `
-        -MutationPerformed $true `
-        -StopRequired $false `
-        -Detail ([ordered]@{
-            sessionPlanRunId = [string]$planLease.Plan.runId
-            sessionPlanSha256 = [string]$planLease.PlanSha256
-            recoveryTerminalProcessId = [int]$planLease.Lease.processId
-            explorerProcessId = $ExpectedExplorerProcessId
-            serviceState = [string]$service.State
-            serviceStartMode = [string]$service.StartMode
-            serviceProcessId = [int]$service.ProcessId
-            targetDisabled = $true
-            permitPresent = $false
-            killSwitchArmed = $true
-            targetMappingCount = 0
-        })
+    throw [InvalidOperationException]::new(
+        "$hostActivationQuarantineMessage " +
+        "Quarantine: $hostActivationQuarantineReason")
 }
 
 function Invoke-FailClosedAfterEnableError {
@@ -1382,93 +1299,9 @@ function Invoke-EnableOnceAction {
     Assert-Condition `
         -Condition $ConfirmEnableOnce `
         -Message 'EnableOnce is inert without -ConfirmEnableOnce.'
-    $script:stopRequired = $true
-    try {
-        Assert-Administrator
-        $planLease = Assert-PlanAndRecoveryLease
-        $compatibility = Get-CompatibilityReport
-        Assert-ExplorerIdentity $compatibility $ExpectedExplorerProcessId
-        Assert-Condition `
-            -Condition (
-                [string]$compatibility.host.killSwitchState -ceq 'disarmed'
-            ) `
-            -Message (
-                'The exact clear-kill-switch command must succeed immediately ' +
-                'before EnableOnce.'
-            )
-        Assert-Condition `
-            -Condition (
-                [string]$compatibility.host.activeModuleState -ceq 'valid' -and
-                [string]$compatibility.host.activeModuleId -ceq $moduleId
-            ) `
-            -Message 'A fresh exact M2 one-shot permit is required.'
-        Assert-ExactPermit
-        $service = Get-ServiceSnapshot
-        Assert-Condition `
-            -Condition (
-                [string]$service.State -ceq 'Running' -and
-                [string]$service.StartMode -ceq 'Manual' -and
-                [int]$service.ProcessId -gt 0
-            ) `
-            -Message 'Windhawk must already be Running / Manual.'
-        $config = Get-CanonicalModConfig
-        Assert-Condition `
-            -Condition ([int]$config.Disabled -eq 1) `
-            -Message 'M2 must still be disabled before the one-shot enable.'
-        $null = Assert-TargetMappingState `
-            -ExplorerProcessId $ExpectedExplorerProcessId `
-            -ExpectedCount 0
-
-        $script:mutationPerformed = $true
-        Set-ItemProperty `
-            -LiteralPath $modRegistryPath `
-            -Name Disabled `
-            -Value 0
-
-        $deadline = [DateTime]::UtcNow.AddSeconds(10)
-        $activeState = $null
-        do {
-            try {
-                $activeState = Assert-ActiveState
-                break
-            }
-            catch {
-                $lastActivationCheckError = $_.Exception
-                Start-Sleep -Milliseconds 500
-            }
-        } while ([DateTime]::UtcNow -lt $deadline)
-
-        if ($null -eq $activeState) {
-            throw [TimeoutException]::new(
-                'M2 did not reach the exact one-shot active state within 10 seconds.',
-                $lastActivationCheckError)
-        }
-    }
-    catch {
-        Invoke-FailClosedAfterEnableError -ActivationError $_.Exception
-    }
-    $script:stopRequired = $false
-    $script:liveExplorerObserved = $true
-
-    return New-ControllerResult `
-        -Result 'passed-one-shot-m2-active' `
-        -MutationPerformed $true `
-        -StopRequired $false `
-        -Detail ([ordered]@{
-            sessionPlanRunId = [string]$planLease.Plan.runId
-            sessionPlanSha256 = [string]$planLease.PlanSha256
-            recoveryTerminalProcessId = [int]$planLease.Lease.processId
-            explorerProcessId = $ExpectedExplorerProcessId
-            serviceState = [string]$activeState.Service.State
-            serviceStartMode = [string]$activeState.Service.StartMode
-            serviceProcessId = [int]$activeState.Service.ProcessId
-            targetDisabled = $false
-            permitConsumed = $true
-            killSwitchArmed = $false
-            targetMappingCount =
-                @($activeState.TargetMappings).Count
-            targetDllSha256 = Get-Sha256 $installedDllPath
-        })
+    throw [InvalidOperationException]::new(
+        "$hostActivationQuarantineMessage " +
+        "Quarantine: $hostActivationQuarantineReason")
 }
 
 function Invoke-ObserveAction {

@@ -8,6 +8,15 @@ JARVIS2 不替换系统文件、不修改 `Shell` 注册表项，也不把自己
 
 用户随后自行重启。2026-07-24 的[历史只读主机收据](receipts/host-safety-2026-07-24.json)曾确认全系统 Windhawk/JARVIS 映射为 0；同日后续受控实验留下的 `ShellExperienceHost.exe` 基础惰性映射也已自然消失。2026-07-27 02:35（Asia/Shanghai）的[最新只读主机收据](receipts/host-safety-2026-07-27.json)确认 `%LOCALAPPDATA%\JARVIS2\disabled.flag` 存在、`active-module.txt` 和恢复租约不存在、Windhawk 服务 Stopped / Manual / PID 0、Explorer PID 11640 与全系统匹配映射均为 0、Supervisor 23/23 compatible。readiness 只抵达 `readyForExactApproval=true`，不构成激活授权。事故时间线见[安全事件记录](SECURITY-INCIDENT-2026-07-22.md)。
 
+2026-07-27 后续受控会话启动了仍禁用 M2 的 Windhawk 主机，并发现
+Windhawk 基础运行库被映射进 Explorer 和大量非目标进程。M2 本身从未
+加载，急停从未清除；正常 Recover 停止服务、保持 Manual、保持 Explorer
+PID 11640，并记录零目标映射。Phase 6 已隔离这条宿主路径：
+`StartDisabledHost`、`EnableOnce` 和 `clear-kill-switch` 均不可继续。
+ChatGPT 与 `wslservice` 的两个非 Jarvis 基础残留不会通过结束进程来强制
+清除。详见
+[Phase 6 宿主隔离任务](PHASE-6-WINDHAWK-HOST-QUARANTINE-TASK.md)。
+
 ## 正常恢复
 
 ```powershell

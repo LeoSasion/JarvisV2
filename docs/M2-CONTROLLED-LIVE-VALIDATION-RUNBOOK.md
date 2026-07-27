@@ -1,10 +1,25 @@
 # M2 controlled live-validation runbook
 
-Status: **PREPARED — NOT AUTHORIZED TO ACTIVATE**
+Status: **QUARANTINED — DO NOT START WINDHAWK OR ACTIVATE**
 
 Target module: `jarvis-taskbar-icon-size`
 Host: verified desktop `explorer.exe` only
 Maximum scope: one module, one permit, one validation session
+
+## Phase 6 quarantine
+
+The 2026-07-27 controlled disabled-host start proved that the Windhawk service
+maps its base runtime into Explorer and many unrelated processes even while M2
+remains disabled. M2 itself was never loaded, the kill switch was never
+cleared, and normal recovery restored Windhawk to Stopped / Manual / PID 0
+without restarting Explorer. The service-host path nevertheless violates the
+project's no-global-injection boundary.
+
+The current readiness script therefore reports
+`windhawk-host-activation-quarantined`; the controller cannot start the service
+or enable M2; and Supervisor rejects `clear-kill-switch`. The historical
+authorized-session sequence below is retained only to explain the recovered
+experiment. It is not an executable runbook.
 
 ## What this runbook does not authorize
 
@@ -29,7 +44,8 @@ pwsh -NoLogo -NoProfile -File .\scripts\Test-M2LiveReadiness.ps1 `
   -OutputPath .\artifacts\m2-live-readiness\runs\<unique-name>.json
 ```
 
-A passing receipt means only `readyForExactApproval=true`. It must still say:
+While the host quarantine is active, a receipt must fail and say
+`readyForExactApproval=false`. It must also say:
 
 - `activationPermitted=false`;
 - `liveExplorer=not-run`;

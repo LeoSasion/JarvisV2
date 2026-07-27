@@ -532,6 +532,13 @@ $m2ReadinessSchemaContract =
     $m2ReadinessSchema.properties.mutationPerformed.const -eq $false -and
     $m2ReadinessSchema.properties.requestedModule.const -eq
         'jarvis-taskbar-icon-size' -and
+    @($m2ReadinessSchema.required) -contains 'hostActivation' -and
+    $m2ReadinessSchema.properties.hostActivation.properties.state.const -eq
+        'quarantined' -and
+    $m2ReadinessSchema.properties.hostActivation.properties.reason.const -eq
+        'windhawk-service-global-runtime-injection-observed-20260727' -and
+    $m2ReadinessSchema.properties.hostActivation.properties.activationPermitted.const -eq
+        $false -and
     $m2ReadinessSchema.properties.approval.properties.exactCommandApproved.const -eq
         $false -and
     $m2ReadinessSchema.properties.approval.properties.recoveryTerminalAvailable.const -eq
@@ -576,6 +583,10 @@ $m2ReadinessScriptContract =
     $m2ReadinessScript.Contains(
         'unexpected-windhawk-runtime-mapped') -and
     $m2ReadinessScript.Contains(
+        "Add-Failure 'windhawk-host-activation-quarantined'") -and
+    $m2ReadinessScript.Contains(
+        'windhawk-service-global-runtime-injection-observed-20260727') -and
+    $m2ReadinessScript.Contains(
         'Refusing to overwrite an existing readiness receipt') -and
     [regex]::Matches(
         $m2ReadinessScript,
@@ -612,7 +623,9 @@ Add-Check `
     'The M2 host baseline must sample only the verified locked Shell and must not activate or mutate the host.'
 
 $m2RunbookContract =
-    $m2Runbook.Contains('PREPARED — NOT AUTHORIZED TO ACTIVATE') -and
+    $m2Runbook.Contains(
+        'QUARANTINED — DO NOT START WINDHAWK OR ACTIVATE') -and
+    $m2Runbook.Contains('windhawk-host-activation-quarantined') -and
     $m2Runbook.Contains('exactCommandApproved=false') -and
     $m2Runbook.Contains('recoveryTerminalAvailable=false') -and
     $m2Runbook.Contains('canExecuteNow=false') -and
@@ -800,7 +813,7 @@ $phase5ReviewContract =
     $phase5Review.Contains(
         'P2 — Offline gates are intentionally serialized') -and
     $phase5Review.Contains(
-        'Live activation during review: **not performed**') -and
+        'M2 activation during review: **not performed**') -and
     $phase5Review.Contains(
         'explicit approval of the exact activation command plus loading only M2')
 Add-Check `
@@ -921,6 +934,40 @@ Add-Check `
     'phase5.supervisor-double-recovery-lease-gate' `
     $phase5SupervisorLeaseContract `
     'Supervisor must validate a fresh bound lease twice and expose only a read-only inspection command.'
+
+$clearMethodStart = $programSource.IndexOf(
+    'private static int RunClearKillSwitch',
+    [StringComparison]::Ordinal)
+$clearQuarantineIndex = $programSource.IndexOf(
+    'if (KillSwitch.IsLiveActivationQuarantined)',
+    $clearMethodStart,
+    [StringComparison]::Ordinal)
+$clearStateGateIndex = $programSource.IndexOf(
+    'using StateGateLease lease = KillSwitch.AcquireStateGate()',
+    $clearMethodStart,
+    [StringComparison]::Ordinal)
+$phase6HostQuarantineContract =
+    $killSwitchSource.Contains(
+        'private static readonly bool LiveActivationQuarantined = true') -and
+    $killSwitchSource.Contains(
+        'windhawk-service-global-runtime-injection-observed-20260727') -and
+    $killSwitchSource.Contains('if (LiveActivationQuarantined)') -and
+    $killSwitchSource.IndexOf(
+        'if (LiveActivationQuarantined)',
+        [StringComparison]::Ordinal) -lt
+        $killSwitchSource.IndexOf(
+            'RecoveryTerminalLease.RequireReady(moduleId)',
+            [StringComparison]::Ordinal) -and
+    $clearMethodStart -ge 0 -and
+    $clearQuarantineIndex -gt $clearMethodStart -and
+    $clearStateGateIndex -gt $clearQuarantineIndex -and
+    $programSource.Contains('error = "live_activation_quarantined"') -and
+    $programSource.Contains(
+        'Quarantined after prohibited Windhawk global-runtime injection')
+Add-Check `
+    'phase6.windhawk-host-activation-quarantined' `
+    $phase6HostQuarantineContract `
+    'Supervisor must reject clear-kill-switch before state-gate acquisition while the Windhawk service host is quarantined.'
 
 $phase5NativeLeaseWatchdogContract =
     $iconSize.Contains(

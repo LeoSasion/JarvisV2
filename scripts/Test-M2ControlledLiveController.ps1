@@ -153,14 +153,13 @@ $confirmationsBeforeMutation =
     )) -and
     (Test-MarkersInOrder $startText @(
         '-Condition $ConfirmStartDisabledHost',
-        'Assert-PlanAndRecoveryLease',
-        'Start-Service -Name $serviceName'
+        'throw [InvalidOperationException]',
+        '$hostActivationQuarantineMessage'
     )) -and
     (Test-MarkersInOrder $enableText @(
         '-Condition $ConfirmEnableOnce',
-        'Assert-PlanAndRecoveryLease',
-        'Assert-ExactPermit',
-        'Set-ItemProperty'
+        'throw [InvalidOperationException]',
+        '$hostActivationQuarantineMessage'
     )) -and
     (Test-MarkersInOrder $recoverText @(
         '-Condition $ConfirmRecover',
@@ -203,35 +202,28 @@ Add-Check `
     -Detail 'The plan-bound disabled installer must require exact old/new hashes, zero Jarvis/target mappings, an unchanged exact base-runtime residual set, no service start and verified rollback.'
 
 $startDisabledContract =
-    $startText.Contains("'Stopped'") -and
-    $startText.Contains("'Manual'") -and
-    $startText.Contains('M2 must remain disabled') -and
-    $startText.Contains('Start-Service -Name $serviceName') -and
-    $startText.Contains('Stop-Service -Name $serviceName') -and
-    $startText.Contains('ExpectedCount 0') -and
-    -not $startText.Contains('Set-Service')
+    $controller.Contains(
+        'windhawk-service-global-runtime-injection-observed-20260727') -and
+    $startText.Contains('$hostActivationQuarantineMessage') -and
+    $startText.Contains('$hostActivationQuarantineReason') -and
+    -not [regex]::IsMatch(
+        $startText,
+        '(?i)\b(?:Start-Service|Stop-Service|Set-ItemProperty|Stop-Process)\b')
 Add-Check `
-    -Name 'controller.start-disabled-scm-only' `
+    -Name 'controller.start-disabled-host-quarantined' `
     -Passed $startDisabledContract `
-    -Detail 'Windhawk may start only through SCM with M2 disabled and Manual mode preserved; a failed start is normally stopped.'
+    -Detail 'StartDisabledHost must fail before any host mutation after prohibited Windhawk global-runtime injection was observed.'
 
 $enableFailClosedContract =
-    $enableText.Contains('$script:stopRequired = $true') -and
-    $enableText.Contains('Invoke-FailClosedAfterEnableError') -and
-    $enableText.Contains('ExpectedCount 0') -and
-    $enableText.Contains('-Value 0') -and
-    $enableText.Contains('Assert-ActiveState') -and
-    $enableText.Contains('$script:stopRequired = $false') -and
-    (Test-MarkersInOrder $failClosedText @(
-        'Invoke-ArmKillSwitch',
-        'Set-ItemProperty',
-        '-Value 1',
-        'Stop-Service -Name $serviceName'
-    ))
+    $enableText.Contains('$hostActivationQuarantineMessage') -and
+    $enableText.Contains('$hostActivationQuarantineReason') -and
+    -not [regex]::IsMatch(
+        $enableText,
+        '(?i)\b(?:Start-Service|Stop-Service|Set-ItemProperty|Stop-Process)\b')
 Add-Check `
-    -Name 'controller.enable-once-fails-closed' `
+    -Name 'controller.enable-once-quarantined' `
     -Passed $enableFailClosedContract `
-    -Detail 'EnableOnce must require a zero-mapping prestate and recover in arm-disable-stop order after any failed preflight or load.'
+    -Detail 'EnableOnce must fail before permit consumption, registry enable or any host mutation while the Windhawk host is quarantined.'
 
 $observationContract =
     $observeText.Contains('Assert-ActiveState') -and
@@ -291,7 +283,7 @@ $receiptSchemaContract =
     $controllerReceiptSchema.properties.serviceStartModeMutationRequested.const -eq
         $false -and
     @($controllerReceiptSchema.properties.action.enum).Count -eq 6 -and
-    @($controllerReceiptSchema.oneOf).Count -eq 9 -and
+    @($controllerReceiptSchema.oneOf).Count -eq 7 -and
     $controller.Contains('$controllerReceiptSchemaPath') -and
     $controller.Contains(
         'Controller result failed its committed receipt schema.') -and
@@ -475,8 +467,8 @@ $recoverNeedsDetail.errors = @('mapping residual')
 $positiveReceiptFixtures = @(
     (New-ReceiptFixture 'Inspect' 'passed-read-only' 'not-run' $false $false $inspectDetail),
     (New-ReceiptFixture 'UpdateDisabledInstallation' 'passed-disabled-installation-updated' 'not-run' $true $false $updateDetail),
-    (New-ReceiptFixture 'StartDisabledHost' 'passed-disabled-host-running' 'not-run' $true $false $startDetail),
-    (New-ReceiptFixture 'EnableOnce' 'passed-one-shot-m2-active' 'controlled-session' $true $false $enableDetail),
+    (New-ReceiptFixture 'StartDisabledHost' 'failed' 'not-run' $false $false $failureDetail),
+    (New-ReceiptFixture 'EnableOnce' 'failed' 'not-run' $false $false $failureDetail),
     (New-ReceiptFixture 'Observe' 'passed-bounded-idle-observation' 'controlled-session' $false $false $observeDetail),
     (New-ReceiptFixture 'Recover' 'passed-locked-zero-mappings' 'controlled-session' $true $false $recoverZeroDetail),
     (New-ReceiptFixture 'Recover' 'passed-locked-runtime-residual-recorded' 'controlled-session' $true $false $recoverDetail),
@@ -494,7 +486,7 @@ Add-Check `
             $positiveReceiptFixtures.Count -and
         @($positiveReceiptResults | Where-Object { -not $_ }).Count -eq 0
     ) `
-    -Detail 'Representative Inspect, update, start, enable, observe, recovery, residual and failure receipts must all validate.'
+    -Detail 'Inspect, update, quarantined start/enable failures, observe and recovery receipts must validate.'
 
 $negativeReceiptFixtures = [System.Collections.Generic.List[object]]::new()
 foreach ($mutation in @(
@@ -531,10 +523,10 @@ foreach ($mutation in @(
     $negativeReceiptFixtures.Add($fixture)
 }
 $wrongActionResult =
-    $positiveReceiptFixtures[2] |
+    $positiveReceiptFixtures[1] |
         ConvertTo-Json -Depth 30 |
         ConvertFrom-Json -Depth 30
-$wrongActionResult.result = 'passed-one-shot-m2-active'
+$wrongActionResult.result = 'passed-bounded-idle-observation'
 $negativeReceiptFixtures.Add($wrongActionResult)
 $unexpectedProperty =
     $positiveReceiptFixtures[0] |
@@ -543,7 +535,9 @@ $unexpectedProperty =
 $unexpectedProperty | Add-Member -NotePropertyName unexpected -NotePropertyValue $true
 $negativeReceiptFixtures.Add($unexpectedProperty)
 $zeroWithResidual =
-    $positiveReceiptFixtures[5] |
+    @($positiveReceiptFixtures | Where-Object {
+        $_.result -eq 'passed-locked-zero-mappings'
+    })[0] |
         ConvertTo-Json -Depth 30 |
         ConvertFrom-Json -Depth 30
 $zeroWithResidual.detail.allWindhawkAndJarvisMappings = @($fixtureMapping)
@@ -554,14 +548,26 @@ $wrongUpdateHash =
         ConvertFrom-Json -Depth 30
 $wrongUpdateHash.detail.sourceSha256 = $fixtureSha
 $negativeReceiptFixtures.Add($wrongUpdateHash)
-$wrongEnableHash =
-    $positiveReceiptFixtures[3] |
-        ConvertTo-Json -Depth 30 |
-        ConvertFrom-Json -Depth 30
-$wrongEnableHash.detail.targetDllSha256 = $fixtureSha
-$negativeReceiptFixtures.Add($wrongEnableHash)
+$negativeReceiptFixtures.Add(
+    (New-ReceiptFixture `
+        'StartDisabledHost' `
+        'passed-disabled-host-running' `
+        'not-run' `
+        $true `
+        $false `
+        $startDetail))
+$negativeReceiptFixtures.Add(
+    (New-ReceiptFixture `
+        'EnableOnce' `
+        'passed-one-shot-m2-active' `
+        'controlled-session' `
+        $true `
+        $false `
+        $enableDetail))
 $residualClaimWithJarvis =
-    $positiveReceiptFixtures[6] |
+    @($positiveReceiptFixtures | Where-Object {
+        $_.result -eq 'passed-locked-runtime-residual-recorded'
+    })[0] |
         ConvertTo-Json -Depth 30 |
         ConvertFrom-Json -Depth 30
 $residualClaimWithJarvis.detail.allWindhawkAndJarvisMappings[0].isJarvis =
@@ -578,7 +584,7 @@ Add-Check `
             $negativeReceiptFixtures.Count -and
         @($negativeReceiptResults | Where-Object { $_ }).Count -eq 0
     ) `
-    -Detail 'The schema must reject activation authority, restart, termination, start-mode mutation, false live or mutation claims, action/result mismatch, extra properties, zero-mapping contradictions, Jarvis residuals and non-canonical installation or active DLL hashes.'
+    -Detail 'The schema must reject activation authority, old start/enable success claims, restart, termination, false mutation claims, contradictions, Jarvis residuals and non-canonical hashes.'
 
 $planRequired = @($planSchema.properties.sourceIdentity.required)
 $planBinding =

@@ -30,6 +30,7 @@
     "docs/PHASE-4-M2-RECOVERY-AND-OBSERVATION-TASK.md",
     "docs/PHASE-5-M2-RECOVERY-LEASE-TASK.md",
     "docs/PHASE-5-SAFETY-REVIEW.md",
+    "docs/PHASE-6-WINDHAWK-HOST-QUARANTINE-TASK.md",
     "docs/receipts/host-safety-2026-07-27.json",
     "scripts/Measure-M2HostBaseline.ps1",
     "scripts/Invoke-M2ControlledLiveValidation.ps1",

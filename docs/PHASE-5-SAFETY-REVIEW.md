@@ -6,9 +6,39 @@ the controlled-live handoff.
 
 Review date: 2026-07-27 (Asia/Shanghai)
 
-Live activation during review: **not performed**
+M2 activation during review: **not performed**
+
+Disabled Windhawk host start: **performed once, then recovered**
 
 ## Findings
+
+### P0 — Disabled Windhawk host still performed broad base-runtime injection
+
+The plan-bound controller started Windhawk through SCM with M2 disabled, the
+kill switch armed and the permit absent. The immediate inventory showed the
+Windhawk 1.7.3 base runtime mapped into Explorer and many unrelated processes.
+The target Jarvis DLL remained unmapped, but the base-runtime spread itself
+violated the no-global-injection safety contract.
+
+Recovery occurred before `clear-kill-switch`:
+
+- M2 remained disabled and was never mapped;
+- the service stopped normally and remained Manual;
+- Explorer PID 11640 remained stable;
+- no process was terminated and Explorer was not restarted;
+- the elevated recovery receipt recorded only non-Jarvis residuals in ChatGPT
+  and `wslservice`.
+
+Resolution:
+
+- Phase 5 live activation is superseded by the Phase 6 host quarantine;
+- readiness always records a fixed host-quarantine failure;
+- `StartDisabledHost` and `EnableOnce` have no reachable mutation path;
+- Supervisor rejects `clear-kill-switch` before acquiring the state gate;
+- successful start/enable claims are removed from the current receipt schema;
+- future work must use an independently reviewed Explorer-only host.
+
+Status: **contained; replacement host required**.
 
 ### P0 — Recovery heartbeat conflicted with the native state-root watcher
 

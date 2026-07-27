@@ -114,6 +114,22 @@ internal static class Program
             return InvalidUsage($"Module id isn't allowlisted: {moduleId}");
         }
 
+        if (KillSwitch.IsLiveActivationQuarantined)
+        {
+            WriteJson(
+                Console.Error,
+                new
+                {
+                    error = "live_activation_quarantined",
+                    message =
+                        "The kill switch remains armed because the Windhawk " +
+                        "service host was observed injecting its base runtime " +
+                        "into Explorer and many non-target processes.",
+                    quarantine = KillSwitch.LiveActivationQuarantineReason,
+                });
+            return ExitCodes.SafetyInterlock;
+        }
+
         using StateGateLease lease = KillSwitch.AcquireStateGate();
         CompatibilityReport report = CompatibilityInspector.Inspect();
         if (!report.Compatible)
@@ -207,7 +223,7 @@ internal static class Program
               inspect-recovery-terminal
                                       Read-only proof that the visible recovery terminal has a fresh lease.
               arm-kill-switch         Arms disabled.flag, then revokes the module permit.
-              clear-kill-switch       Atomically permits one allowlisted module after exact host and recovery-lease checks.
+              clear-kill-switch       Quarantined after prohibited Windhawk global-runtime injection was observed.
               restart-explorer        Holds disabled.flag against deletion for the entire recovery.
 
             Allowed module ids:

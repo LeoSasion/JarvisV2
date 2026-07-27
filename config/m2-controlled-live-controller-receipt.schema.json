@@ -45,8 +45,6 @@
       "enum": [
         "passed-read-only",
         "passed-disabled-installation-updated",
-        "passed-disabled-host-running",
-        "passed-one-shot-m2-active",
         "passed-bounded-idle-observation",
         "passed-locked-zero-mappings",
         "passed-locked-runtime-residual-recorded",
@@ -111,12 +109,6 @@
     },
     {
       "$ref": "#/$defs/updatePassed"
-    },
-    {
-      "$ref": "#/$defs/startPassed"
-    },
-    {
-      "$ref": "#/$defs/enablePassed"
     },
     {
       "$ref": "#/$defs/observePassed"

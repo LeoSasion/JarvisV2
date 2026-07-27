@@ -25,6 +25,9 @@ $expectedWindhawkBaseDllPath =
 $expectedWindhawkBaseDllSize = 979544
 $expectedWindhawkBaseDllSha256 =
     '0AAD074CAF156200BE7A77E4615F9171CEA884CDE96BAF90397366C28C4F10A1'
+$hostActivationQuarantineReason =
+    'windhawk-service-global-runtime-injection-observed-20260727'
+$hostActivationIncidentAtUtc = '2026-07-27T05:28:39.5311113Z'
 $exactCommand = (
     'dotnet run --project .\src\Jarvis.Supervisor ' +
     '--configuration Release --no-build -- clear-kill-switch ' +
@@ -43,6 +46,8 @@ function Add-Failure {
         $errors.Add($Code)
     }
 }
+
+Add-Failure 'windhawk-host-activation-quarantined'
 
 function Get-FileIdentity {
     param(
@@ -546,6 +551,12 @@ $receipt = [ordered]@{
     liveExplorer = 'not-run'
     mutationPerformed = $false
     requestedModule = $moduleId
+    hostActivation = [ordered]@{
+        state = 'quarantined'
+        reason = $hostActivationQuarantineReason
+        incidentAtUtc = $hostActivationIncidentAtUtc
+        activationPermitted = $false
+    }
     sourceIdentity = $sourceIdentity
     killSwitch = [ordered]@{
         path = $killSwitchPath
