@@ -29,6 +29,7 @@ JarvisV2 是一个独立于旧版 JARVIS 的 Windows 原生桌面改造实验。
 - Phase 4：增加短时、单模块、源码绑定的 M2 session plan，默认 inert 的恢复终端入口，以及把真实宿主状态和内存故障评估副本分开的只读观测演练。正常路径不得出现停止条件；kill switch、permit、Windhawk、Explorer PID、module mapping 和 CPU 六类模拟漂移必须各自生成 reasoned stop。该阶段只抵达精确人工批准门，仍不打开恢复终端、不清除急停、不加载 M2。
 - Phase 5：修复实机观察中“恢复终端曾打开但随后消失”的缺口。可见终端每秒在 `JARVIS2\Recovery` 子目录原子发布短租约；关闭、4 秒无心跳、计划过期、PID 复用、reparse point、计划/源码漂移或运行 DLL 不一致都会阻断许可。M2 原生 watchdog 再以六秒窗口约束解锁后的终端丢失。离线故障与路径隔离实验室 7/7 通过，固定 `stateDirectoryTouched=false`、`activationPermitted=false`、`liveExplorer=not-run`；详见 [Phase 5 长任务](docs/PHASE-5-M2-RECOVERY-LEASE-TASK.md)与[安全审查](docs/PHASE-5-SAFETY-REVIEW.md)。
 - Phase 6：禁用宿主演练证明 Windhawk 服务会在 Mod 禁用时仍把基础运行库映射到 Explorer 和非目标进程。readiness、受控控制器与 Supervisor 现已三层固定拒绝旧激活路径。[ADR-0001](docs/ADR-0001-EXPLORER-ONLY-HOST.md)记录上游链路和 Explorer-only 边界；`Jarvis.ExplorerHostModel` 只评估离线 fixture，不含进程、服务、注册表、远程内存、P/Invoke 或 Hook 安装 API。20 项模型回归覆盖精确 Shell PID/TID、零 TID、`dwm.exe`、多候选、会话与签名漂移、Windhawk 残留和当前 Windhawk Mod 契约；所有输出都固定禁止执行和激活。
+- Phase 9：新增独立的 `Jarvis.ExplorerFrameModel`，为原生资源管理器标签栏、命令栏和导航栏建立离线 XAML 样式事务。候选选择器只使用明确标注为未实机验证的 fixture，三类属性必须先完整保存原值，部分应用会立即按相反顺序恢复；29/29 故障场景通过。该阶段没有 XAML Diagnostics 连接、进程访问、Hook、P/Invoke 或实机写入，下一步仍须先经过单个新开 `C:\` 窗口的只读发现门。详见 [Phase 9 长任务](docs/PHASE-9-EXPLORER-FRAME-STYLER-TASK.md)。
 
 ## 验证与构建
 
@@ -38,6 +39,7 @@ pwsh -File .\scripts\Test-PublicationBoundary.ps1
 pwsh -File .\scripts\Test-M2LiveReadiness.ps1
 pwsh -File .\scripts\Test-M2RecoveryLeaseLab.ps1
 pwsh -File .\scripts\Test-ExplorerHostModel.ps1
+pwsh -File .\scripts\Test-ExplorerFrameModel.ps1
 pwsh -File .\scripts\New-M2ValidationSessionPlan.ps1 -OutputPath `
   .\artifacts\m2-validation-session-plans\runs\<unique-name>.json
 pwsh -File .\scripts\Test-M2ObservationRehearsal.ps1 -SessionPlanPath `

@@ -119,6 +119,12 @@ jobs:
           .\scripts\Test-ExplorerBridgeModel.ps1
           -StaticOnly
 
+      - name: Audit offline Explorer frame transaction model
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerFrameModel.ps1
+
       - name: Audit controlled-live controller
         shell: pwsh
         run: >-

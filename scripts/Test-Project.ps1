@@ -59,6 +59,12 @@ $explorerBridgeHarnessPath =
     Join-Path $root 'tests\native\jarvis_explorer_bridge_model_harness.cpp'
 $explorerBridgeAuditPath =
     Join-Path $root 'scripts\Test-ExplorerBridgeModel.ps1'
+$explorerFrameModelProject =
+    Join-Path $root 'src\Jarvis.ExplorerFrameModel\Jarvis.ExplorerFrameModel.csproj'
+$explorerFrameModelSourceRoot =
+    Join-Path $root 'src\Jarvis.ExplorerFrameModel'
+$explorerFrameModelAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerFrameModel.ps1'
 $buildScriptPath = Join-Path $root 'scripts\Build-NativeMod.ps1'
 $testScriptPath = $PSCommandPath
 $artifactsRoot = Join-Path $root 'artifacts\native'
@@ -122,6 +128,8 @@ $phase8DesktopSessionTaskPath =
     Join-Path $root 'docs\PHASE-8-DESKTOP-TEXT-COLOR-SESSION-TASK.md'
 $phase8NativeWindowSessionTaskPath =
     Join-Path $root 'docs\PHASE-8-NATIVE-EXPLORER-WINDOW-STYLE-TASK.md'
+$phase9TaskPath =
+    Join-Path $root 'docs\PHASE-9-EXPLORER-FRAME-STYLER-TASK.md'
 $m2RecoveryLeaseSchemaPath =
     Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $m2RecoveryLeaseLabSchemaPath =
@@ -414,6 +422,16 @@ $explorerBridgeSource = @(
         }
     [IO.File]::ReadAllText($explorerBridgeHarnessPath)
 ) -join [Environment]::NewLine
+$explorerFrameModelSource = @(
+    Get-ChildItem `
+        -LiteralPath $explorerFrameModelSourceRoot `
+        -Filter '*.cs' `
+        -File |
+        Sort-Object Name |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
 $phase8Task = [System.IO.File]::ReadAllText($phase8TaskPath)
 $nativeStyleLabSource = @(
     Get-ChildItem -LiteralPath $nativeStyleLabSourceRoot -File -Recurse |
@@ -447,6 +465,7 @@ $nativeWindowStyleSessionSource = @(
             [IO.File]::ReadAllText($_.FullName)
         }
 ) -join [Environment]::NewLine
+$phase9Task = [System.IO.File]::ReadAllText($phase9TaskPath)
 $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
 $phase2ExpectedSourceIdentity = [ordered]@{
@@ -773,6 +792,7 @@ $publicCiContract =
     $publicCi.Contains('Test-DesktopStyleSession.ps1') -and
     $publicCi.Contains('Test-NativeWindowStyleSession.ps1') -and
     $publicCi.Contains('Test-ExplorerBridgeModel.ps1') -and
+    $publicCi.Contains('Test-ExplorerFrameModel.ps1') -and
     $publicCi.Contains('-StaticOnly') -and
     $publicCi.Contains('dotnet build') -and
     $publicCi.Contains('Canonical native compilation is intentionally not run') -and
@@ -1522,6 +1542,72 @@ Add-Check `
     'phase8.native-window-style-session-static-audit' `
     $phase8NativeWindowSessionAuditPassed `
     'Canonical checks must audit the temporary Explorer DWM session without touching a live window.'
+
+$phase9FrameModelStaticContract =
+    $phase9Task.Contains(
+        'OFFLINE MODEL COMPLETE — LIVE XAML CONNECTION NOT AUTHORIZED') -and
+    $phase9Task.Contains('No live XAML connection exists.') -and
+    $explorerFrameModelSource.Contains(
+        'public const string TabStrip = "tab-strip"') -and
+    $explorerFrameModelSource.Contains(
+        'public const string CommandBar = "command-bar"') -and
+    $explorerFrameModelSource.Contains(
+        'public const string NavigationPane = "navigation-pane"') -and
+    $explorerFrameModelSource.Contains(
+        'public const string Background = "Background"') -and
+    $explorerFrameModelSource.Contains(
+        'public const string Foreground = "Foreground"') -and
+    $explorerFrameModelSource.Contains(
+        'public const string BorderBrush = "BorderBrush"') -and
+    $explorerFrameModelSource.Contains(
+        'offline-fixture-candidate-pending-live-discovery') -and
+    $explorerFrameModelSource.Contains(
+        'int last = _applied.Count - 1;') -and
+    $explorerFrameModelSource.Contains(
+        'FrameTransactionState.RestoreRequired') -and
+    -not [regex]::IsMatch(
+        $explorerFrameModelSource,
+        '(?i)\b(?:DllImport|LibraryImport|ComImport|Marshal\.|' +
+        'InitializeXamlDiagnosticsEx|IXamlDiagnostics|IVisualTreeService|' +
+        'OpenProcess|CreateRemoteThread|VirtualAllocEx|WriteProcessMemory|' +
+        'SetWindowsHookEx|LoadLibrary|StartService|ServiceController|' +
+        'Microsoft\.Win32\.Registry|System\.Diagnostics\.Process)\b')
+Add-Check `
+    'phase9.explorer-frame-model-static-offline' `
+    $phase9FrameModelStaticContract `
+    'The Phase 9 model must remain fixture-only, cover exactly three native frame roles, snapshot originals and contain no live XAML or process transport.'
+
+$explorerFrameAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerFrameModelAuditPath 2>&1
+)
+$explorerFrameAuditExitCode = $LASTEXITCODE
+$explorerFrameAudit = $null
+try {
+    $explorerFrameAudit =
+        ($explorerFrameAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerFrameAudit = $null
+}
+$phase9FrameModelAuditPassed =
+    $explorerFrameAuditExitCode -eq 0 -and
+    $null -ne $explorerFrameAudit -and
+    $explorerFrameAudit.result -eq 'passed' -and
+    $explorerFrameAudit.checkCount -eq 7 -and
+    $explorerFrameAudit.passedCount -eq 7 -and
+    -not $explorerFrameAudit.executionSupported -and
+    -not $explorerFrameAudit.activationPermitted -and
+    $explorerFrameAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerFrameAudit.mutationPerformed
+Add-Check `
+    'phase9.explorer-frame-model-executable-audit' `
+    $phase9FrameModelAuditPassed `
+    'The 29-case frame transaction matrix and seven-check audit must pass without creating a live Explorer execution path.'
 
 $phase5NativeLeaseWatchdogContract =
     $iconSize.Contains(
@@ -6724,6 +6810,13 @@ if (-not $SkipManagedBuild) {
         'native-window-style-session.release-build' `
         ($nativeWindowSessionBuildExitCode -eq 0) `
         (($nativeWindowSessionBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $explorerFrameModelBuildOutput =
+        & dotnet build $explorerFrameModelProject --configuration Release --nologo 2>&1
+    $explorerFrameModelBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'explorer-frame-model.release-build' `
+        ($explorerFrameModelBuildExitCode -eq 0) `
+        (($explorerFrameModelBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
     $buildExitCode = if (
         $supervisorBuildExitCode -eq 0 -and
         $hostModelBuildExitCode -eq 0 -and
@@ -6731,7 +6824,8 @@ if (-not $SkipManagedBuild) {
         $nativeStyleBuildExitCode -eq 0 -and
         $desktopProbeBuildExitCode -eq 0 -and
         $desktopSessionBuildExitCode -eq 0 -and
-        $nativeWindowSessionBuildExitCode -eq 0
+        $nativeWindowSessionBuildExitCode -eq 0 -and
+        $explorerFrameModelBuildExitCode -eq 0
     ) {
         0
     }
@@ -6746,6 +6840,7 @@ if (-not $SkipManagedBuild) {
         $desktopProbeBuildOutput
         $desktopSessionBuildOutput
         $nativeWindowSessionBuildOutput
+        $explorerFrameModelBuildOutput
     )
     $managedBuild = [pscustomobject]@{
         status = if ($buildExitCode -eq 0) { 'passed' } else { 'failed' }
