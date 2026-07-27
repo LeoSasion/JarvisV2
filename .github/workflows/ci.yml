@@ -99,6 +99,13 @@ jobs:
           .\scripts\Test-DesktopStyleSession.ps1
           -StaticOnly
 
+      - name: Audit native Explorer window style without live inspection
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-NativeWindowStyleSession.ps1
+          -StaticOnly
+
       - name: Audit offline Explorer host model
         shell: pwsh
         run: >-

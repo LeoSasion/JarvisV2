@@ -47,6 +47,12 @@ $desktopStyleSessionSourceRoot =
     Join-Path $root 'src\Jarvis.DesktopStyleSession'
 $desktopStyleSessionAuditPath =
     Join-Path $root 'scripts\Test-DesktopStyleSession.ps1'
+$nativeWindowStyleSessionProject =
+    Join-Path $root 'src\Jarvis.NativeWindowStyleSession\Jarvis.NativeWindowStyleSession.csproj'
+$nativeWindowStyleSessionSourceRoot =
+    Join-Path $root 'src\Jarvis.NativeWindowStyleSession'
+$nativeWindowStyleSessionAuditPath =
+    Join-Path $root 'scripts\Test-NativeWindowStyleSession.ps1'
 $explorerBridgeSourceRoot =
     Join-Path $root 'src\Jarvis.ExplorerBridgeModel'
 $explorerBridgeHarnessPath =
@@ -114,6 +120,8 @@ $phase8TaskPath =
     Join-Path $root 'docs\PHASE-8-NATIVE-STYLE-LAB-AND-DESKTOP-PROBE-TASK.md'
 $phase8DesktopSessionTaskPath =
     Join-Path $root 'docs\PHASE-8-DESKTOP-TEXT-COLOR-SESSION-TASK.md'
+$phase8NativeWindowSessionTaskPath =
+    Join-Path $root 'docs\PHASE-8-NATIVE-EXPLORER-WINDOW-STYLE-TASK.md'
 $m2RecoveryLeaseSchemaPath =
     Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $m2RecoveryLeaseLabSchemaPath =
@@ -425,6 +433,15 @@ $phase8DesktopSessionTask =
     [System.IO.File]::ReadAllText($phase8DesktopSessionTaskPath)
 $desktopStyleSessionSource = @(
     Get-ChildItem -LiteralPath $desktopStyleSessionSourceRoot -File -Recurse |
+        Where-Object Extension -In @('.cs', '.csproj') |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$phase8NativeWindowSessionTask =
+    [System.IO.File]::ReadAllText($phase8NativeWindowSessionTaskPath)
+$nativeWindowStyleSessionSource = @(
+    Get-ChildItem -LiteralPath $nativeWindowStyleSessionSourceRoot -File -Recurse |
         Where-Object Extension -In @('.cs', '.csproj') |
         ForEach-Object {
             [IO.File]::ReadAllText($_.FullName)
@@ -754,6 +771,7 @@ $publicCiContract =
     $publicCi.Contains('Test-NativeStyleLab.ps1') -and
     $publicCi.Contains('Test-DesktopStyleProbe.ps1') -and
     $publicCi.Contains('Test-DesktopStyleSession.ps1') -and
+    $publicCi.Contains('Test-NativeWindowStyleSession.ps1') -and
     $publicCi.Contains('Test-ExplorerBridgeModel.ps1') -and
     $publicCi.Contains('-StaticOnly') -and
     $publicCi.Contains('dotnet build') -and
@@ -1433,6 +1451,77 @@ Add-Check `
     'phase8.desktop-style-session-static-audit' `
     $phase8DesktopSessionAuditPassed `
     'Canonical project checks must audit all desktop session guards without reading or mutating live Explorer.'
+
+$phase8NativeWindowSessionStaticContract =
+    $phase8NativeWindowSessionTask.Contains(
+        'LIVE APPLY REQUIRES SEPARATE EXACT APPROVAL') -and
+    $phase8NativeWindowSessionTask.Contains(
+        'pixel-identical') -and
+    $phase8NativeWindowSessionTask.Contains(
+        'DWMWA_COLOR_DEFAULT') -and
+    $nativeWindowStyleSessionSource.Contains(
+        'BorderColor = 34') -and
+    $nativeWindowStyleSessionSource.Contains(
+        'CaptionColor = 35') -and
+    $nativeWindowStyleSessionSource.Contains(
+        'TextColor = 36') -and
+    $nativeWindowStyleSessionSource.Contains(
+        '--baseline-system-default') -and
+    $nativeWindowStyleSessionSource.Contains(
+        '--confirm-live-native-window-style') -and
+    $nativeWindowStyleSessionSource.Contains(
+        'store.Prepare(journal);') -and
+    $nativeWindowStyleSessionSource.Contains(
+        'ResetExactTarget(') -and
+    [regex]::Matches(
+        $nativeWindowStyleSessionSource,
+        '\[DllImport\(').Count -eq 7 -and
+    -not [regex]::IsMatch(
+        $nativeWindowStyleSessionSource,
+        '(?i)\b(?:OpenProcess|CreateRemoteThread|VirtualAllocEx|' +
+        'WriteProcessMemory|SetWindowsHookEx|TerminateProcess|' +
+        'SendMessage|PostMessage|SetWindowLong|SetWindowPos|' +
+        'MoveWindow|ShowWindow|DestroyWindow|' +
+        'System\.Diagnostics\.Process|ServiceController|' +
+        'Microsoft\.Win32\.Registry|SetWindowCompositionAttribute)\b')
+Add-Check `
+    'phase8.native-window-style-session-narrow-static' `
+    $phase8NativeWindowSessionStaticContract `
+    'The native Explorer window session must remain a bounded, exact-HWND, DWM-color-only experiment with system-default reset.'
+
+$nativeWindowSessionAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $nativeWindowStyleSessionAuditPath `
+        -StaticOnly 2>&1
+)
+$nativeWindowSessionAuditExitCode = $LASTEXITCODE
+$nativeWindowSessionAudit = $null
+try {
+    $nativeWindowSessionAudit =
+        ($nativeWindowSessionAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $nativeWindowSessionAudit = $null
+}
+$phase8NativeWindowSessionAuditPassed =
+    $nativeWindowSessionAuditExitCode -eq 0 -and
+    $null -ne $nativeWindowSessionAudit -and
+    $nativeWindowSessionAudit.result -eq 'passed' -and
+    $nativeWindowSessionAudit.staticOnly -and
+    $nativeWindowSessionAudit.checkCount -eq 9 -and
+    $nativeWindowSessionAudit.passedCount -eq 9 -and
+    -not $nativeWindowSessionAudit.liveMutationRun -and
+    -not $nativeWindowSessionAudit.activationPermitted -and
+    -not $nativeWindowSessionAudit.mutationPerformed -and
+    $nativeWindowSessionAudit.liveExplorer -eq 'not-run'
+Add-Check `
+    'phase8.native-window-style-session-static-audit' `
+    $phase8NativeWindowSessionAuditPassed `
+    'Canonical checks must audit the temporary Explorer DWM session without touching a live window.'
 
 $phase5NativeLeaseWatchdogContract =
     $iconSize.Contains(
@@ -6628,13 +6717,21 @@ if (-not $SkipManagedBuild) {
         'desktop-style-session.release-build' `
         ($desktopSessionBuildExitCode -eq 0) `
         (($desktopSessionBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $nativeWindowSessionBuildOutput =
+        & dotnet build $nativeWindowStyleSessionProject --configuration Release --nologo 2>&1
+    $nativeWindowSessionBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'native-window-style-session.release-build' `
+        ($nativeWindowSessionBuildExitCode -eq 0) `
+        (($nativeWindowSessionBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
     $buildExitCode = if (
         $supervisorBuildExitCode -eq 0 -and
         $hostModelBuildExitCode -eq 0 -and
         $controlCenterBuildExitCode -eq 0 -and
         $nativeStyleBuildExitCode -eq 0 -and
         $desktopProbeBuildExitCode -eq 0 -and
-        $desktopSessionBuildExitCode -eq 0
+        $desktopSessionBuildExitCode -eq 0 -and
+        $nativeWindowSessionBuildExitCode -eq 0
     ) {
         0
     }
@@ -6648,6 +6745,7 @@ if (-not $SkipManagedBuild) {
         $nativeStyleBuildOutput
         $desktopProbeBuildOutput
         $desktopSessionBuildOutput
+        $nativeWindowSessionBuildOutput
     )
     $managedBuild = [pscustomobject]@{
         status = if ($buildExitCode -eq 0) { 'passed' } else { 'failed' }
