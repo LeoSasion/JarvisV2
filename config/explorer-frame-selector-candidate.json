@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "profileId": "win11-25h2-26200.8875-x64-explorer-frame-candidate-v1",
+  "lifecycleState": "offline-candidate",
+  "hostProfileId": "win11-25h2-26200.8875-x64",
+  "hostFingerprint": {
+    "windowsBuild": 26200,
+    "ubr": 8875,
+    "architecture": "AMD64",
+    "explorerProductVersion": "10.0.26100.8875",
+    "explorerSize": 3385624,
+    "explorerSha256": "80B21E6F70524EFD84037A4EDA479DDC4BC55C0D6C1A33439B85A554E740F30C"
+  },
+  "upstreamIdentity": {
+    "name": "Windows 11 File Explorer Styler",
+    "version": "1.5",
+    "repository": "https://github.com/ramensoftware/windhawk-mods",
+    "commit": "109589023dde428deaee2fe80e4ce446283a7935",
+    "sourcePath": "mods/windows-11-file-explorer-styler.wh.cpp",
+    "gitBlob": "6f67b714c271db1235a5f937c30c5cae55b180bf",
+    "sourceSize": 326922,
+    "sourceSha256": "ECD6189A76439518E84938F4CA42FDB7F78AA1CCE3151EE0FE93638918D2DCED",
+    "license": "GPL-3.0"
+  },
+  "surfaces": [
+    {
+      "role": "tab-strip",
+      "selector": "FileExplorerExtensions.FileExplorerTabControl > * > Microsoft.UI.Xaml.Controls.Grid#TabContainerGrid",
+      "expectedMatchCount": 1,
+      "evidenceState": "upstream-theme-candidate"
+    },
+    {
+      "role": "command-bar",
+      "selector": "FileExplorerExtensions.CommandBarControl > * > Microsoft.UI.Xaml.Controls.Grid#CommandBarControlRootGrid",
+      "expectedMatchCount": 1,
+      "evidenceState": "upstream-theme-candidate"
+    },
+    {
+      "role": "navigation-pane",
+      "selector": "Microsoft.UI.Xaml.Controls.NavigationView",
+      "expectedMatchCount": 1,
+      "evidenceState": "inferred-candidate-requires-readonly-discovery"
+    }
+  ],
+  "allowedProperties": [
+    "Background",
+    "Foreground",
+    "BorderBrush"
+  ],
+  "previewPolicy": {
+    "durationSeconds": 60,
+    "requireSeparateExplorerProcess": true,
+    "requireCompleteOriginalSnapshot": true,
+    "restoreOrder": "strict-reverse",
+    "screenshotCheckpoints": [
+      "before",
+      "during",
+      "after"
+    ],
+    "closeTemporaryWindowAfterRestore": true
+  },
+  "liveEvidence": "not-run",
+  "executionSupported": false,
+  "activationPermitted": false,
+  "mutationPerformed": false
+}

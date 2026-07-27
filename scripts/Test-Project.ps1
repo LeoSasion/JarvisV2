@@ -65,6 +65,18 @@ $explorerFrameModelSourceRoot =
     Join-Path $root 'src\Jarvis.ExplorerFrameModel'
 $explorerFrameModelAuditPath =
     Join-Path $root 'scripts\Test-ExplorerFrameModel.ps1'
+$explorerPreviewModelProject =
+    Join-Path $root 'src\Jarvis.ExplorerPreviewModel\Jarvis.ExplorerPreviewModel.csproj'
+$explorerPreviewModelSourceRoot =
+    Join-Path $root 'src\Jarvis.ExplorerPreviewModel'
+$explorerPreviewModelAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerPreviewModel.ps1'
+$explorerSurfaceProbeProject =
+    Join-Path $root 'src\Jarvis.ExplorerSurfaceProbe\Jarvis.ExplorerSurfaceProbe.csproj'
+$explorerSurfaceProbeSourceRoot =
+    Join-Path $root 'src\Jarvis.ExplorerSurfaceProbe'
+$explorerSurfaceProbeAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerSurfaceProbe.ps1'
 $buildScriptPath = Join-Path $root 'scripts\Build-NativeMod.ps1'
 $testScriptPath = $PSCommandPath
 $artifactsRoot = Join-Path $root 'artifacts\native'
@@ -130,6 +142,12 @@ $phase8NativeWindowSessionTaskPath =
     Join-Path $root 'docs\PHASE-8-NATIVE-EXPLORER-WINDOW-STYLE-TASK.md'
 $phase9TaskPath =
     Join-Path $root 'docs\PHASE-9-EXPLORER-FRAME-STYLER-TASK.md'
+$phase10TaskPath =
+    Join-Path $root 'docs\PHASE-10-BATCHED-EXPLORER-PREVIEW-PREP-TASK.md'
+$explorerFrameSelectorProfilePath =
+    Join-Path $root 'config\explorer-frame-selector-candidate.json'
+$explorerFrameSelectorSchemaPath =
+    Join-Path $root 'config\explorer-frame-selector-candidate.schema.json'
 $m2RecoveryLeaseSchemaPath =
     Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $m2RecoveryLeaseLabSchemaPath =
@@ -466,6 +484,34 @@ $nativeWindowStyleSessionSource = @(
         }
 ) -join [Environment]::NewLine
 $phase9Task = [System.IO.File]::ReadAllText($phase9TaskPath)
+$phase10Task = [System.IO.File]::ReadAllText($phase10TaskPath)
+$explorerFrameSelectorProfile =
+    Get-Content -LiteralPath $explorerFrameSelectorProfilePath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerFrameSelectorSchema =
+    Get-Content -LiteralPath $explorerFrameSelectorSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerPreviewModelSource = @(
+    Get-ChildItem `
+        -LiteralPath $explorerPreviewModelSourceRoot `
+        -Filter '*.cs' `
+        -File |
+        Sort-Object Name |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$explorerSurfaceProbeSource = @(
+    Get-ChildItem `
+        -LiteralPath $explorerSurfaceProbeSourceRoot `
+        -File `
+        -Recurse |
+        Where-Object Extension -In @('.cs', '.csproj') |
+        Sort-Object FullName |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
 $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
 $phase2ExpectedSourceIdentity = [ordered]@{
@@ -793,6 +839,8 @@ $publicCiContract =
     $publicCi.Contains('Test-NativeWindowStyleSession.ps1') -and
     $publicCi.Contains('Test-ExplorerBridgeModel.ps1') -and
     $publicCi.Contains('Test-ExplorerFrameModel.ps1') -and
+    $publicCi.Contains('Test-ExplorerPreviewModel.ps1') -and
+    $publicCi.Contains('Test-ExplorerSurfaceProbe.ps1') -and
     $publicCi.Contains('-StaticOnly') -and
     $publicCi.Contains('dotnet build') -and
     $publicCi.Contains('Canonical native compilation is intentionally not run') -and
@@ -1608,6 +1656,105 @@ Add-Check `
     'phase9.explorer-frame-model-executable-audit' `
     $phase9FrameModelAuditPassed `
     'The 29-case frame transaction matrix and seven-check audit must pass without creating a live Explorer execution path.'
+
+$fileExplorerStylerLock = @(
+    $upstreamLock.dependencies |
+        Where-Object name -eq 'Windows 11 File Explorer Styler'
+)
+$phase10ProfileStaticContract =
+    $phase10Task.Contains(
+        'OFFLINE DEVELOPMENT COMPLETE — VISUAL APPROVAL NOT REQUESTED') -and
+    $fileExplorerStylerLock.Count -eq 1 -and
+    $fileExplorerStylerLock[0].version -eq '1.5' -and
+    $fileExplorerStylerLock[0].auditedCommit -eq
+        '109589023dde428deaee2fe80e4ce446283a7935' -and
+    $fileExplorerStylerLock[0].gitBlob -eq
+        '6f67b714c271db1235a5f937c30c5cae55b180bf' -and
+    $fileExplorerStylerLock[0].sourceSize -eq 326922 -and
+    $fileExplorerStylerLock[0].sourceSha256 -eq
+        'ECD6189A76439518E84938F4CA42FDB7F78AA1CCE3151EE0FE93638918D2DCED' -and
+    $explorerFrameSelectorProfile.lifecycleState -eq
+        'offline-candidate' -and
+    $explorerFrameSelectorProfile.liveEvidence -eq 'not-run' -and
+    -not $explorerFrameSelectorProfile.executionSupported -and
+    -not $explorerFrameSelectorProfile.activationPermitted -and
+    -not $explorerFrameSelectorProfile.mutationPerformed -and
+    $explorerFrameSelectorSchema.properties.executionSupported.const -eq
+        $false -and
+    $explorerFrameSelectorSchema.properties.activationPermitted.const -eq
+        $false -and
+    $explorerFrameSelectorSchema.properties.mutationPerformed.const -eq
+        $false
+Add-Check `
+    'phase10.gpl-selector-profile-static-offline' `
+    $phase10ProfileStaticContract `
+    'Phase 10 must pin the GPL File Explorer Styler source and keep the exact three-surface candidate schema offline and non-authorizing.'
+
+$explorerPreviewAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerPreviewModelAuditPath 2>&1
+)
+$explorerPreviewAuditExitCode = $LASTEXITCODE
+$explorerPreviewAudit = $null
+try {
+    $explorerPreviewAudit =
+        ($explorerPreviewAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerPreviewAudit = $null
+}
+$phase10PreviewAuditPassed =
+    $explorerPreviewAuditExitCode -eq 0 -and
+    $null -ne $explorerPreviewAudit -and
+    $explorerPreviewAudit.result -eq 'passed' -and
+    $explorerPreviewAudit.checkCount -eq 8 -and
+    $explorerPreviewAudit.passedCount -eq 8 -and
+    -not $explorerPreviewAudit.executionSupported -and
+    -not $explorerPreviewAudit.activationPermitted -and
+    $explorerPreviewAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerPreviewAudit.mutationPerformed
+Add-Check `
+    'phase10.selector-preview-model-executable-audit' `
+    $phase10PreviewAuditPassed `
+    'The real candidate compiler and 43-case preview-plan matrix must pass without exposing a live style transport.'
+
+$explorerSurfaceProbeAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerSurfaceProbeAuditPath 2>&1
+)
+$explorerSurfaceProbeAuditExitCode = $LASTEXITCODE
+$explorerSurfaceProbeAudit = $null
+try {
+    $explorerSurfaceProbeAudit =
+        ($explorerSurfaceProbeAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerSurfaceProbeAudit = $null
+}
+$phase10SurfaceProbeAuditPassed =
+    $explorerSurfaceProbeAuditExitCode -eq 0 -and
+    $null -ne $explorerSurfaceProbeAudit -and
+    $explorerSurfaceProbeAudit.result -eq 'passed' -and
+    $explorerSurfaceProbeAudit.checkCount -eq 6 -and
+    $explorerSurfaceProbeAudit.passedCount -eq 6 -and
+    -not $explorerSurfaceProbeAudit.liveInspectionRun -and
+    -not $explorerSurfaceProbeAudit.executionSupported -and
+    -not $explorerSurfaceProbeAudit.mutationSupported -and
+    -not $explorerSurfaceProbeAudit.activationPermitted -and
+    $explorerSurfaceProbeAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerSurfaceProbeAudit.mutationPerformed
+Add-Check `
+    'phase10.exact-readonly-surface-probe-static-audit' `
+    $phase10SurfaceProbeAuditPassed `
+    'The exact-HWND UIA topology probe must pass its six static checks without running a live inspection.'
 
 $phase5NativeLeaseWatchdogContract =
     $iconSize.Contains(
@@ -6817,6 +6964,20 @@ if (-not $SkipManagedBuild) {
         'explorer-frame-model.release-build' `
         ($explorerFrameModelBuildExitCode -eq 0) `
         (($explorerFrameModelBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $explorerPreviewModelBuildOutput =
+        & dotnet build $explorerPreviewModelProject --configuration Release --nologo 2>&1
+    $explorerPreviewModelBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'explorer-preview-model.release-build' `
+        ($explorerPreviewModelBuildExitCode -eq 0) `
+        (($explorerPreviewModelBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $explorerSurfaceProbeBuildOutput =
+        & dotnet build $explorerSurfaceProbeProject --configuration Release --nologo 2>&1
+    $explorerSurfaceProbeBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'explorer-surface-probe.release-build' `
+        ($explorerSurfaceProbeBuildExitCode -eq 0) `
+        (($explorerSurfaceProbeBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
     $buildExitCode = if (
         $supervisorBuildExitCode -eq 0 -and
         $hostModelBuildExitCode -eq 0 -and
@@ -6825,7 +6986,9 @@ if (-not $SkipManagedBuild) {
         $desktopProbeBuildExitCode -eq 0 -and
         $desktopSessionBuildExitCode -eq 0 -and
         $nativeWindowSessionBuildExitCode -eq 0 -and
-        $explorerFrameModelBuildExitCode -eq 0
+        $explorerFrameModelBuildExitCode -eq 0 -and
+        $explorerPreviewModelBuildExitCode -eq 0 -and
+        $explorerSurfaceProbeBuildExitCode -eq 0
     ) {
         0
     }
@@ -6841,6 +7004,8 @@ if (-not $SkipManagedBuild) {
         $desktopSessionBuildOutput
         $nativeWindowSessionBuildOutput
         $explorerFrameModelBuildOutput
+        $explorerPreviewModelBuildOutput
+        $explorerSurfaceProbeBuildOutput
     )
     $managedBuild = [pscustomobject]@{
         status = if ($buildExitCode -eq 0) { 'passed' } else { 'failed' }

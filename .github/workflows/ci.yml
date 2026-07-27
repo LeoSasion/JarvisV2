@@ -125,6 +125,18 @@ jobs:
           pwsh -NoLogo -NoProfile -File
           .\scripts\Test-ExplorerFrameModel.ps1
 
+      - name: Audit offline Explorer selector and preview model
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerPreviewModel.ps1
+
+      - name: Audit exact read-only Explorer surface probe without running it
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerSurfaceProbe.ps1
+
       - name: Audit controlled-live controller
         shell: pwsh
         run: >-

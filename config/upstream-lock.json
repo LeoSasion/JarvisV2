@@ -35,6 +35,18 @@
       "role": "narrow derivation of the modern native taskbar icon-size calculation"
     },
     {
+      "name": "Windows 11 File Explorer Styler",
+      "repository": "https://github.com/ramensoftware/windhawk-mods",
+      "version": "1.5",
+      "auditedCommit": "109589023dde428deaee2fe80e4ce446283a7935",
+      "sourcePath": "mods/windows-11-file-explorer-styler.wh.cpp",
+      "gitBlob": "6f67b714c271db1235a5f937c30c5cae55b180bf",
+      "sourceSize": 326922,
+      "sourceSha256": "ECD6189A76439518E84938F4CA42FDB7F78AA1CCE3151EE0FE93638918D2DCED",
+      "license": "GPL-3.0",
+      "role": "selector grammar, integrated Explorer theme targets and reversible XAML property semantics; runtime injection code is not vendored"
+    },
+    {
       "name": "Windows 11 Taskbar Styling Guide",
       "repository": "https://github.com/ramensoftware/windows-11-taskbar-styling-guide",
       "commit": "12a3c7900eb6581901548961b369e87541fcdd04",
