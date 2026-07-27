@@ -117,6 +117,11 @@ void jarvis_tap_fingerprint_reset(
 [[nodiscard]] jarvis_tap_fingerprint_response
 jarvis_tap_fingerprint_query_contract() noexcept;
 
+[[nodiscard]] jarvis_tap_fingerprint_result
+jarvis_tap_fingerprint_compute_canonical(
+    const jarvis_tap_fingerprint_request* request,
+    jarvis_transport_hash256* output) noexcept;
+
 [[nodiscard]] jarvis_tap_fingerprint_response
 jarvis_tap_fingerprint_bind(
     jarvis_tap_fingerprint_instance* instance,

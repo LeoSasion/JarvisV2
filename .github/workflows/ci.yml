@@ -165,6 +165,13 @@ jobs:
           .\scripts\Test-ExplorerInspectableAdapter.ps1
           -StaticOnly
 
+      - name: Audit offline reversible Explorer style transaction
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerStyleTransaction.ps1
+          -StaticOnly
+
       - name: Audit controlled-live controller
         shell: pwsh
         run: >-

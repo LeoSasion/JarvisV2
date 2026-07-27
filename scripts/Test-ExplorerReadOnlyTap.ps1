@@ -24,6 +24,12 @@ $adapterHeaderPath = Join-Path (
 $adapterPath = Join-Path (
     $sourceRoot
 ) 'jarvis_explorer_tap_inspectable_adapter.cpp'
+$transactionHeaderPath = Join-Path (
+    $sourceRoot
+) 'jarvis_explorer_tap_style_transaction.h'
+$transactionPath = Join-Path (
+    $sourceRoot
+) 'jarvis_explorer_tap_style_transaction.cpp'
 $targetPath = Join-Path $sourceRoot 'jarvis_explorer_tap_target.cpp'
 $tapPath = Join-Path $sourceRoot 'jarvis_explorer_tap_readonly.cpp'
 $controllerPath = Join-Path $sourceRoot 'jarvis_explorer_tap_controller.cpp'
@@ -417,6 +423,8 @@ $fingerprintHeaderText = [IO.File]::ReadAllText($fingerprintHeaderPath)
 $fingerprintText = [IO.File]::ReadAllText($fingerprintPath)
 $adapterHeaderText = [IO.File]::ReadAllText($adapterHeaderPath)
 $adapterText = [IO.File]::ReadAllText($adapterPath)
+$transactionHeaderText = [IO.File]::ReadAllText($transactionHeaderPath)
+$transactionText = [IO.File]::ReadAllText($transactionPath)
 $targetText = [IO.File]::ReadAllText($targetPath)
 $tapText = [IO.File]::ReadAllText($tapPath)
 $controllerText = [IO.File]::ReadAllText($controllerPath)
@@ -435,6 +443,8 @@ $allSourceText = @(
     $fingerprintText,
     $adapterHeaderText,
     $adapterText,
+    $transactionHeaderText,
+    $transactionText,
     $targetText,
     $tapText,
     $controllerText,
@@ -720,6 +730,7 @@ if (-not $StaticOnly) {
                     $admissionPath `
                     $fingerprintPath `
                     $adapterPath `
+                    $transactionPath `
                     $controllerPath `
                     -o $controllerExecutable 2>&1
             )
@@ -766,7 +777,9 @@ if (-not $StaticOnly) {
                             1 -and
                         $controllerReceipt.offlineFingerprintModelSupported -and
                         $controllerReceipt.offlineInspectableAdapterModelSupported -and
+                        $controllerReceipt.offlineStyleTransactionModelSupported -and
                         -not $controllerReceipt.propertyReadSupported -and
+                        -not $controllerReceipt.propertyWriteSupported -and
                         -not $controllerReceipt.liveConnectionCompiled -and
                         -not $controllerReceipt.executionSupported -and
                         -not $controllerReceipt.activationPermitted -and
@@ -782,10 +795,12 @@ if (-not $StaticOnly) {
                     -shared `
                     -DJARVIS_ENABLE_LIVE_XAML_READONLY=0 `
                     -DJARVIS_ENABLE_LIVE_XAML_PROPERTY_READ=0 `
+                    -DJARVIS_ENABLE_LIVE_XAML_PROPERTY_WRITE=0 `
                     $protocolPath `
                     $admissionPath `
                     $fingerprintPath `
                     $adapterPath `
+                    $transactionPath `
                     $targetPath `
                     $tapPath `
                     -lole32 `

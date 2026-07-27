@@ -1,4 +1,4 @@
-#include "jarvis_explorer_tap_inspectable_adapter.h"
+#include "jarvis_explorer_tap_style_transaction.h"
 
 #include <iostream>
 #include <string_view>
@@ -41,7 +41,9 @@ int wmain(const int argument_count, wchar_t** const arguments) {
         << "\"offlineEndpointCandidateLimit\":1,"
         << "\"offlineFingerprintModelSupported\":true,"
         << "\"offlineInspectableAdapterModelSupported\":true,"
+        << "\"offlineStyleTransactionModelSupported\":true,"
         << "\"propertyReadSupported\":false,"
+        << "\"propertyWriteSupported\":false,"
         << "\"liveConnectionCompiled\":false,"
         << "\"executionSupported\":false,"
         << "\"activationPermitted\":false,"

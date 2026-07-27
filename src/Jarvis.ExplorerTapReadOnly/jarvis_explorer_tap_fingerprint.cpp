@@ -274,6 +274,49 @@ jarvis_tap_fingerprint_query_contract() noexcept {
         {});
 }
 
+jarvis_tap_fingerprint_result
+jarvis_tap_fingerprint_compute_canonical(
+    const jarvis_tap_fingerprint_request* const request,
+    jarvis_transport_hash256* const output) noexcept {
+    if (request == nullptr || output == nullptr) {
+        return JARVIS_TAP_FINGERPRINT_RESULT_INVALID_ARGUMENT;
+    }
+    *output = {};
+    if (request->size != sizeof(jarvis_tap_fingerprint_request)) {
+        return JARVIS_TAP_FINGERPRINT_RESULT_SIZE_MISMATCH;
+    }
+    if (request->abi_version !=
+        JARVIS_EXPLORER_TRANSPORT_ABI_VERSION) {
+        return JARVIS_TAP_FINGERPRINT_RESULT_ABI_MISMATCH;
+    }
+    if (request->surface_slot >=
+            JARVIS_TRANSPORT_REQUIRED_SURFACE_COUNT ||
+        request->property_slot >=
+            JARVIS_TRANSPORT_REQUIRED_PROPERTY_COUNT) {
+        return JARVIS_TAP_FINGERPRINT_RESULT_SLOT_INVALID;
+    }
+    if (request->instance_handle == 0U) {
+        return JARVIS_TAP_FINGERPRINT_RESULT_INSTANCE_INVALID;
+    }
+    if (request->reserved != 0U ||
+        (request->value_kind != JARVIS_TAP_PROPERTY_VALUE_NULL &&
+         request->value_kind !=
+             JARVIS_TAP_PROPERTY_VALUE_SOLID_COLOR)) {
+        return JARVIS_TAP_FINGERPRINT_RESULT_VALUE_UNSUPPORTED;
+    }
+    if ((request->value_kind == JARVIS_TAP_PROPERTY_VALUE_NULL &&
+         (request->argb != 0U ||
+          request->opacity_millionths != 0U)) ||
+        (request->value_kind ==
+             JARVIS_TAP_PROPERTY_VALUE_SOLID_COLOR &&
+         request->opacity_millionths >
+             JARVIS_TAP_OPACITY_MILLIONTHS_MAX)) {
+        return JARVIS_TAP_FINGERPRINT_RESULT_VALUE_NONCANONICAL;
+    }
+    *output = Fingerprint(*request);
+    return JARVIS_TAP_FINGERPRINT_RESULT_ACCEPTED;
+}
+
 jarvis_tap_fingerprint_response jarvis_tap_fingerprint_bind(
     jarvis_tap_fingerprint_instance* const instance,
     const jarvis_tap_admission_instance* const admission,

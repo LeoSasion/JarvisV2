@@ -1,0 +1,57 @@
+{
+  "$schema": "./explorer-style-transaction-contract.schema.json",
+  "schemaVersion": 1,
+  "contractId": "jarvis-explorer-style-transaction-v1",
+  "lifecycleState": "offline-reversible-transaction-model-only",
+  "transportAbiVersion": 1,
+  "compileGate": {
+    "macro": "JARVIS_ENABLE_LIVE_XAML_PROPERTY_WRITE",
+    "requiredValue": 0,
+    "livePropertyWriteCompiled": false
+  },
+  "prepare": {
+    "completePhase14SnapshotRequired": true,
+    "originalValueCountRequired": 9,
+    "styledValueCountRequired": 9,
+    "completeAdmissionBindByteMatchRequired": true,
+    "styledFingerprintMatchRequired": true,
+    "atLeastOneChangeRequired": true,
+    "previewDurationMilliseconds": 60000,
+    "deadlineMustFitCapability": true
+  },
+  "apply": {
+    "order": "surface-major-property-minor",
+    "writeAttemptSetsDirtyBeforeResult": true,
+    "readAfterWriteVerificationRequired": true,
+    "identityGenerationSelectorAndInstanceRevalidationRequired": true,
+    "writeOrVerificationFailurePolicy": "restore-required",
+    "dirtyPropertyCountMaximum": 9
+  },
+  "restore": {
+    "order": "strict-reverse-last-dirty-first",
+    "originalCanonicalValueRequired": true,
+    "readAfterRestoreVerificationRequired": true,
+    "failedRestoreRemainsDirty": true,
+    "retrySameDirtySlotAllowed": true,
+    "identityDriftPolicy": "no-write-restore-required",
+    "restoredRequiresDirtyMaskZero": true
+  },
+  "integration": {
+    "controllerContainsOfflineTransactionModel": true,
+    "tapDllContainsOfflineTransactionModel": true,
+    "transactionEntryPointsExported": false,
+    "setSiteResult": "E_ACCESSDENIED",
+    "simulatedWriteAttemptsOnly": true,
+    "platformWriteAttemptedDuringValidation": false,
+    "endpointAttemptedDuringValidation": false,
+    "tapDllLoadedDuringValidation": false
+  },
+  "propertyReadSupported": false,
+  "propertyWriteSupported": false,
+  "executionSupported": false,
+  "readyForLiveConnection": false,
+  "readyForExactApproval": false,
+  "activationPermitted": false,
+  "liveExplorer": "not-run",
+  "mutationPerformed": false
+}

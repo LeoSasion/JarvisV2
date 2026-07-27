@@ -35,6 +35,7 @@ JarvisV2 是一个独立于旧版 JARVIS 的 Windows 原生桌面改造实验。
 - Phase 12：首次离线构建独立的 AMD64 TAP 形态 DLL 与控制器，但把连接能力从编译期彻底封死。初始化数据只能是 Phase 11 固定 ABI 的 1,251 字符规范编码；TAP 只有 `DllCanUnloadNow` / `DllGetClassObject` 两个导出，`SetSite` 永久返回 `E_ACCESSDENIED`；控制器只接受 `--describe`，端点尝试数为 0，不能接受 PID 或加载 DLL。协议矩阵 38/38、离线构建与 PE 导入/导出审计 18/18；验证只检查磁盘文件，DLL 从未加载，尚不能读取 XAML 属性，更不构成实机只读验证。详见 [Phase 12 离线 TAP 构建任务](docs/PHASE-12-EXPLORER-READONLY-TAP-OFFLINE-BUILD-TASK.md)。
 - Phase 13：新增单 PID、单端点的离线准入模型和固定三表面九属性的只读指纹核心。准入必须绑定完整 616-byte bind、控制器/TAP/XAML Diagnostics/端点四个哈希，要求既有消费者为 0、候选端点恰好为 1，并一次性消费计划；指纹只接受 `null` 或规范纯色值，绑定目标树代际、选择器、实例句柄和固定槽位。故障矩阵 50/50，通过后两个模型分别编入 describe-only 控制器和仍拒绝 `SetSite` 的 TAP DLL，但不导出、不调用；端点尝试、DLL 加载和属性读取仍均为 false。详见 [Phase 13 准入与指纹任务](docs/PHASE-13-EXPLORER-READONLY-ADMISSION-AND-FINGERPRINT-TASK.md)。
 - Phase 14：新增不可达的 `IInspectable` 投影适配模型，只允许本地 `null` 或已精确核验类名的纯色 Brush 投影进入 Phase 13 指纹，并保存九个有界规范原值；继承、样式、资源、字符串、渐变、亚克力和未知对象全部锁死。编译门固定为 0，模型不含 COM/XAML/属性读取 API，故障矩阵 29/29；仍未读取 Explorer。详见 [Phase 14 投影适配任务](docs/PHASE-14-EXPLORER-INSPECTABLE-ADAPTER-TASK.md)。
+- Phase 15：新增九属性可逆样式事务模型，准备阶段冻结全部原值和精确样式哈希；任何报告过的写入尝试都会先置脏，逐项后读不一致、部分应用或 60 秒超时都要求恢复，且只能从最后脏项严格逆序、验证原值后清位。故障矩阵 65/65；所有写入均为内存模拟，`propertyWriteSupported=false`，没有修改 Explorer。详见 [Phase 15 可逆事务任务](docs/PHASE-15-EXPLORER-REVERSIBLE-STYLE-TRANSACTION-TASK.md)。
 
 ## 验证与构建
 
@@ -51,6 +52,7 @@ pwsh -File .\scripts\Test-ExplorerTransportModel.ps1
 pwsh -File .\scripts\Test-ExplorerReadOnlyTap.ps1
 pwsh -File .\scripts\Test-ExplorerReadOnlyAdmission.ps1
 pwsh -File .\scripts\Test-ExplorerInspectableAdapter.ps1
+pwsh -File .\scripts\Test-ExplorerStyleTransaction.ps1
 pwsh -File .\scripts\New-M2ValidationSessionPlan.ps1 -OutputPath `
   .\artifacts\m2-validation-session-plans\runs\<unique-name>.json
 pwsh -File .\scripts\Test-M2ObservationRehearsal.ps1 -SessionPlanPath `

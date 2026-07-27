@@ -97,6 +97,10 @@ $explorerInspectableAdapterHarnessPath =
     Join-Path $root 'tests\native\jarvis_explorer_tap_inspectable_adapter_harness.cpp'
 $explorerInspectableAdapterAuditPath =
     Join-Path $root 'scripts\Test-ExplorerInspectableAdapter.ps1'
+$explorerStyleTransactionHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_tap_style_transaction_harness.cpp'
+$explorerStyleTransactionAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerStyleTransaction.ps1'
 $buildScriptPath = Join-Path $root 'scripts\Build-NativeMod.ps1'
 $testScriptPath = $PSCommandPath
 $artifactsRoot = Join-Path $root 'artifacts\native'
@@ -172,6 +176,8 @@ $phase13TaskPath =
     Join-Path $root 'docs\PHASE-13-EXPLORER-READONLY-ADMISSION-AND-FINGERPRINT-TASK.md'
 $phase14TaskPath =
     Join-Path $root 'docs\PHASE-14-EXPLORER-INSPECTABLE-ADAPTER-TASK.md'
+$phase15TaskPath =
+    Join-Path $root 'docs\PHASE-15-EXPLORER-REVERSIBLE-STYLE-TRANSACTION-TASK.md'
 $explorerFrameSelectorProfilePath =
     Join-Path $root 'config\explorer-frame-selector-candidate.json'
 $explorerFrameSelectorSchemaPath =
@@ -192,6 +198,10 @@ $explorerInspectableAdapterContractPath =
     Join-Path $root 'config\explorer-inspectable-adapter-contract.json'
 $explorerInspectableAdapterContractSchemaPath =
     Join-Path $root 'config\explorer-inspectable-adapter-contract.schema.json'
+$explorerStyleTransactionContractPath =
+    Join-Path $root 'config\explorer-style-transaction-contract.json'
+$explorerStyleTransactionContractSchemaPath =
+    Join-Path $root 'config\explorer-style-transaction-contract.schema.json'
 $m2RecoveryLeaseSchemaPath =
     Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $m2RecoveryLeaseLabSchemaPath =
@@ -533,6 +543,7 @@ $phase11Task = [System.IO.File]::ReadAllText($phase11TaskPath)
 $phase12Task = [System.IO.File]::ReadAllText($phase12TaskPath)
 $phase13Task = [System.IO.File]::ReadAllText($phase13TaskPath)
 $phase14Task = [System.IO.File]::ReadAllText($phase14TaskPath)
+$phase15Task = [System.IO.File]::ReadAllText($phase15TaskPath)
 $explorerFrameSelectorProfile =
     Get-Content -LiteralPath $explorerFrameSelectorProfilePath -Raw |
         ConvertFrom-Json -Depth 100
@@ -633,6 +644,23 @@ $explorerInspectableAdapterSource = @(
         (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_inspectable_adapter.cpp')
     )
     [IO.File]::ReadAllText($explorerInspectableAdapterHarnessPath)
+) -join [Environment]::NewLine
+$explorerStyleTransactionContract =
+    Get-Content -LiteralPath $explorerStyleTransactionContractPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerStyleTransactionContractSchema =
+    Get-Content `
+        -LiteralPath $explorerStyleTransactionContractSchemaPath `
+        -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerStyleTransactionSource = @(
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_style_transaction.h')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_style_transaction.cpp')
+    )
+    [IO.File]::ReadAllText($explorerStyleTransactionHarnessPath)
 ) -join [Environment]::NewLine
 $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
@@ -967,6 +995,7 @@ $publicCiContract =
     $publicCi.Contains('Test-ExplorerReadOnlyTap.ps1') -and
     $publicCi.Contains('Test-ExplorerReadOnlyAdmission.ps1') -and
     $publicCi.Contains('Test-ExplorerInspectableAdapter.ps1') -and
+    $publicCi.Contains('Test-ExplorerStyleTransaction.ps1') -and
     $publicCi.Contains('-StaticOnly') -and
     $publicCi.Contains('dotnet build') -and
     $publicCi.Contains('Canonical native compilation is intentionally not run') -and
@@ -2224,6 +2253,99 @@ Add-Check `
     'phase14.inspectable-adapter-executable-audit' `
     $phase14AdapterAuditPassed `
     'The portable projection adapter must pass 11/11 checks and 29/29 fault scenarios without a COM object, property read, endpoint attempt or DLL load.'
+
+$phase15TransactionStaticContract =
+    $phase15Task.Contains(
+        'OFFLINE TRANSACTION MODEL COMPLETE — NO PLATFORM WRITE'
+    ) -and
+    $explorerStyleTransactionContract.schemaVersion -eq 1 -and
+    $explorerStyleTransactionContract.contractId -eq
+        'jarvis-explorer-style-transaction-v1' -and
+    $explorerStyleTransactionContract.lifecycleState -eq
+        'offline-reversible-transaction-model-only' -and
+    $explorerStyleTransactionContract.compileGate.requiredValue -eq 0 -and
+    -not $explorerStyleTransactionContract.compileGate.livePropertyWriteCompiled -and
+    $explorerStyleTransactionContract.prepare.originalValueCountRequired -eq
+        9 -and
+    $explorerStyleTransactionContract.prepare.styledValueCountRequired -eq
+        9 -and
+    $explorerStyleTransactionContract.prepare.previewDurationMilliseconds -eq
+        60000 -and
+    $explorerStyleTransactionContract.apply.writeAttemptSetsDirtyBeforeResult -and
+    $explorerStyleTransactionContract.apply.readAfterWriteVerificationRequired -and
+    $explorerStyleTransactionContract.restore.order -eq
+        'strict-reverse-last-dirty-first' -and
+    $explorerStyleTransactionContract.restore.failedRestoreRemainsDirty -and
+    $explorerStyleTransactionContract.restore.restoredRequiresDirtyMaskZero -and
+    -not $explorerStyleTransactionContract.integration.transactionEntryPointsExported -and
+    -not $explorerStyleTransactionContract.integration.platformWriteAttemptedDuringValidation -and
+    -not $explorerStyleTransactionContract.integration.endpointAttemptedDuringValidation -and
+    -not $explorerStyleTransactionContract.integration.tapDllLoadedDuringValidation -and
+    -not $explorerStyleTransactionContract.propertyReadSupported -and
+    -not $explorerStyleTransactionContract.propertyWriteSupported -and
+    -not $explorerStyleTransactionContract.executionSupported -and
+    -not $explorerStyleTransactionContract.readyForLiveConnection -and
+    -not $explorerStyleTransactionContract.readyForExactApproval -and
+    -not $explorerStyleTransactionContract.activationPermitted -and
+    $explorerStyleTransactionContract.liveExplorer -eq 'not-run' -and
+    -not $explorerStyleTransactionContract.mutationPerformed -and
+    $explorerStyleTransactionContractSchema.additionalProperties -eq
+        $false -and
+    $explorerStyleTransactionSource.Contains(
+        'static_assert(sizeof(jarvis_tap_style_transaction_instance) == 1072U)'
+    ) -and
+    $explorerStyleTransactionSource.Contains(
+        'instance->dirty_mask |= 1U << index'
+    ) -and
+    $explorerStyleTransactionSource.Contains(
+        'HighestDirtyIndex('
+    ) -and
+    -not $explorerStyleTransactionSource.Contains(
+        'InitializeXamlDiagnosticsEx'
+    )
+Add-Check `
+    'phase15.style-transaction-static-offline-contract' `
+    $phase15TransactionStaticContract `
+    'Phase 15 must snapshot all nine values, dirty every reported write attempt, verify each value and restore strictly in reverse while the live write gate stays closed.'
+
+$explorerStyleTransactionAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerStyleTransactionAuditPath 2>&1
+)
+$explorerStyleTransactionAuditExitCode = $LASTEXITCODE
+try {
+    $explorerStyleTransactionAudit = (
+        $explorerStyleTransactionAuditOutput -join [Environment]::NewLine
+    ) | ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerStyleTransactionAudit = $null
+}
+$phase15TransactionAuditPassed =
+    $explorerStyleTransactionAuditExitCode -eq 0 -and
+    $null -ne $explorerStyleTransactionAudit -and
+    $explorerStyleTransactionAudit.result -eq 'passed' -and
+    $explorerStyleTransactionAudit.checkCount -eq 13 -and
+    $explorerStyleTransactionAudit.passedCount -eq 13 -and
+    $explorerStyleTransactionAudit.scenarioCount -eq 65 -and
+    $explorerStyleTransactionAudit.scenarioPassedCount -eq 65 -and
+    $explorerStyleTransactionAudit.simulatedWriteAttempts -and
+    -not $explorerStyleTransactionAudit.platformWriteAttempted -and
+    -not $explorerStyleTransactionAudit.propertyWriteSupported -and
+    -not $explorerStyleTransactionAudit.propertyReadSupported -and
+    -not $explorerStyleTransactionAudit.endpointAttempted -and
+    -not $explorerStyleTransactionAudit.tapDllLoaded -and
+    -not $explorerStyleTransactionAudit.executionSupported -and
+    -not $explorerStyleTransactionAudit.activationPermitted -and
+    $explorerStyleTransactionAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerStyleTransactionAudit.mutationPerformed
+Add-Check `
+    'phase15.style-transaction-executable-audit' `
+    $phase15TransactionAuditPassed `
+    'The reversible transaction core must pass 13/13 checks and 65/65 fault scenarios while every write remains simulated and no endpoint or DLL is touched.'
 
 $phase5NativeLeaseWatchdogContract =
     $iconSize.Contains(
