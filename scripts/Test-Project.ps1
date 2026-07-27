@@ -83,6 +83,12 @@ $explorerTransportModelHarnessPath =
     Join-Path $root 'tests\native\jarvis_explorer_transport_model_harness.cpp'
 $explorerTransportModelAuditPath =
     Join-Path $root 'scripts\Test-ExplorerTransportModel.ps1'
+$explorerReadOnlyTapSourceRoot =
+    Join-Path $root 'src\Jarvis.ExplorerTapReadOnly'
+$explorerReadOnlyTapHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_tap_protocol_harness.cpp'
+$explorerReadOnlyTapAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerReadOnlyTap.ps1'
 $buildScriptPath = Join-Path $root 'scripts\Build-NativeMod.ps1'
 $testScriptPath = $PSCommandPath
 $artifactsRoot = Join-Path $root 'artifacts\native'
@@ -152,6 +158,8 @@ $phase10TaskPath =
     Join-Path $root 'docs\PHASE-10-BATCHED-EXPLORER-PREVIEW-PREP-TASK.md'
 $phase11TaskPath =
     Join-Path $root 'docs\PHASE-11-EXPLORER-XAML-TRANSPORT-CORE-TASK.md'
+$phase12TaskPath =
+    Join-Path $root 'docs\PHASE-12-EXPLORER-READONLY-TAP-OFFLINE-BUILD-TASK.md'
 $explorerFrameSelectorProfilePath =
     Join-Path $root 'config\explorer-frame-selector-candidate.json'
 $explorerFrameSelectorSchemaPath =
@@ -160,6 +168,10 @@ $explorerTransportContractPath =
     Join-Path $root 'config\explorer-xaml-transport-contract.json'
 $explorerTransportContractSchemaPath =
     Join-Path $root 'config\explorer-xaml-transport-contract.schema.json'
+$explorerReadOnlyTapContractPath =
+    Join-Path $root 'config\explorer-readonly-tap-build-contract.json'
+$explorerReadOnlyTapContractSchemaPath =
+    Join-Path $root 'config\explorer-readonly-tap-build-contract.schema.json'
 $m2RecoveryLeaseSchemaPath =
     Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $m2RecoveryLeaseLabSchemaPath =
@@ -498,6 +510,7 @@ $nativeWindowStyleSessionSource = @(
 $phase9Task = [System.IO.File]::ReadAllText($phase9TaskPath)
 $phase10Task = [System.IO.File]::ReadAllText($phase10TaskPath)
 $phase11Task = [System.IO.File]::ReadAllText($phase11TaskPath)
+$phase12Task = [System.IO.File]::ReadAllText($phase12TaskPath)
 $explorerFrameSelectorProfile =
     Get-Content -LiteralPath $explorerFrameSelectorProfilePath -Raw |
         ConvertFrom-Json -Depth 100
@@ -541,6 +554,23 @@ $explorerTransportModelSource = @(
             [IO.File]::ReadAllText($_.FullName)
         }
     [IO.File]::ReadAllText($explorerTransportModelHarnessPath)
+) -join [Environment]::NewLine
+$explorerReadOnlyTapContract =
+    Get-Content -LiteralPath $explorerReadOnlyTapContractPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerReadOnlyTapContractSchema =
+    Get-Content -LiteralPath $explorerReadOnlyTapContractSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerReadOnlyTapSource = @(
+    Get-ChildItem `
+        -LiteralPath $explorerReadOnlyTapSourceRoot `
+        -File `
+        -Recurse |
+        Sort-Object FullName |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+    [IO.File]::ReadAllText($explorerReadOnlyTapHarnessPath)
 ) -join [Environment]::NewLine
 $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
@@ -872,6 +902,7 @@ $publicCiContract =
     $publicCi.Contains('Test-ExplorerPreviewModel.ps1') -and
     $publicCi.Contains('Test-ExplorerSurfaceProbe.ps1') -and
     $publicCi.Contains('Test-ExplorerTransportModel.ps1') -and
+    $publicCi.Contains('Test-ExplorerReadOnlyTap.ps1') -and
     $publicCi.Contains('-StaticOnly') -and
     $publicCi.Contains('dotnet build') -and
     $publicCi.Contains('Canonical native compilation is intentionally not run') -and
@@ -1861,6 +1892,88 @@ Add-Check `
     'phase11.xaml-transport-model-executable-audit' `
     $phase11TransportAuditPassed `
     'The portable exact-target transport state machine must pass 85/85 fault scenarios while every receipt remains non-live and non-authorizing.'
+
+$phase12ReadOnlyTapStaticContract =
+    $phase12Task.Contains(
+        'OFFLINE TAP BUILD COMPLETE — DLL NEVER LOADED'
+    ) -and
+    $explorerReadOnlyTapContract.schemaVersion -eq 1 -and
+    $explorerReadOnlyTapContract.contractId -eq
+        'jarvis-explorer-readonly-tap-offline-build-v1' -and
+    $explorerReadOnlyTapContract.lifecycleState -eq
+        'offline-build-only' -and
+    $explorerReadOnlyTapContract.tap.liveCompileSwitchValue -eq 0 -and
+    $explorerReadOnlyTapContract.tap.setSiteResult -eq
+        'E_ACCESSDENIED' -and
+    -not $explorerReadOnlyTapContract.tap.dllLoadedDuringValidation -and
+    $explorerReadOnlyTapContract.controller.mode -eq 'describe-only' -and
+    $explorerReadOnlyTapContract.controller.existingDiagnosticsConsumerPolicy -eq
+        'reject' -and
+    $explorerReadOnlyTapContract.controller.endpointAttemptLimit -eq 0 -and
+    -not $explorerReadOnlyTapContract.controller.tapDllLoadSupported -and
+    -not $explorerReadOnlyTapContract.propertyReadSupported -and
+    -not $explorerReadOnlyTapContract.executionSupported -and
+    -not $explorerReadOnlyTapContract.readyForLiveConnection -and
+    -not $explorerReadOnlyTapContract.readyForExactApproval -and
+    -not $explorerReadOnlyTapContract.activationPermitted -and
+    $explorerReadOnlyTapContract.liveExplorer -eq 'not-run' -and
+    -not $explorerReadOnlyTapContract.mutationPerformed -and
+    $explorerReadOnlyTapContractSchema.additionalProperties -eq
+        $false -and
+    $explorerReadOnlyTapContractSchema.properties.executionSupported.const -eq
+        $false -and
+    $explorerReadOnlyTapSource.Contains(
+        '#if JARVIS_ENABLE_LIVE_XAML_READONLY != 0'
+    ) -and
+    $explorerReadOnlyTapSource.Contains(
+        'static_assert(JARVIS_ENABLE_LIVE_XAML_READONLY == 0)'
+    ) -and
+    $explorerReadOnlyTapSource.Contains('return E_ACCESSDENIED;') -and
+    -not $explorerReadOnlyTapSource.Contains(
+        'InitializeXamlDiagnosticsEx('
+    )
+Add-Check `
+    'phase12.readonly-tap-static-offline-contract' `
+    $phase12ReadOnlyTapStaticContract `
+    'Phase 12 must remain a disk-only AMD64 TAP build with SetSite permanently refused, a describe-only controller, zero endpoint/load support and no live diagnostics call.'
+
+$explorerReadOnlyTapAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerReadOnlyTapAuditPath 2>&1
+)
+$explorerReadOnlyTapAuditExitCode = $LASTEXITCODE
+try {
+    $explorerReadOnlyTapAudit = (
+        $explorerReadOnlyTapAuditOutput -join [Environment]::NewLine
+    ) | ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerReadOnlyTapAudit = $null
+}
+$phase12ReadOnlyTapAuditPassed =
+    $explorerReadOnlyTapAuditExitCode -eq 0 -and
+    $null -ne $explorerReadOnlyTapAudit -and
+    $explorerReadOnlyTapAudit.result -eq 'passed' -and
+    $explorerReadOnlyTapAudit.checkCount -eq 18 -and
+    $explorerReadOnlyTapAudit.passedCount -eq 18 -and
+    $explorerReadOnlyTapAudit.scenarioCount -eq 38 -and
+    $explorerReadOnlyTapAudit.scenarioPassedCount -eq 38 -and
+    $explorerReadOnlyTapAudit.tapDllBuilt -and
+    $explorerReadOnlyTapAudit.controllerBuilt -and
+    $explorerReadOnlyTapAudit.controllerExecutedDescribeOnly -and
+    -not $explorerReadOnlyTapAudit.tapDllLoaded -and
+    -not $explorerReadOnlyTapAudit.liveConnectionCompiled -and
+    -not $explorerReadOnlyTapAudit.executionSupported -and
+    -not $explorerReadOnlyTapAudit.activationPermitted -and
+    $explorerReadOnlyTapAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerReadOnlyTapAudit.mutationPerformed
+Add-Check `
+    'phase12.readonly-tap-offline-build-and-pe-audit' `
+    $phase12ReadOnlyTapAuditPassed `
+    'The portable TAP/controller build must pass 18/18 checks and 38/38 protocol scenarios, inspect exact exports/imports, and prove the DLL was never loaded.'
 
 $phase5NativeLeaseWatchdogContract =
     $iconSize.Contains(

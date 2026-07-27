@@ -1,0 +1,60 @@
+{
+  "$schema": "./explorer-readonly-tap-build-contract.schema.json",
+  "schemaVersion": 1,
+  "contractId": "jarvis-explorer-readonly-tap-offline-build-v1",
+  "lifecycleState": "offline-build-only",
+  "transportAbiVersion": 1,
+  "initializationProtocol": {
+    "prefix": "JARVIS2-XAML-RO-V1:",
+    "characterCount": 1251,
+    "canonicalUppercaseHexOnly": true,
+    "arbitraryOperationPayloadAllowed": false
+  },
+  "tap": {
+    "classId": "A57A77E1-A9B3-4AA1-8D41-E4FBB3B1D72F",
+    "architecture": "AMD64",
+    "exports": [
+      "DllCanUnloadNow",
+      "DllGetClassObject"
+    ],
+    "liveCompileSwitchValue": 0,
+    "setSiteResult": "E_ACCESSDENIED",
+    "visualTreeCallbackMode": "bounded-event-count-only",
+    "dllLoadedDuringValidation": false
+  },
+  "targetIdentity": {
+    "processEnumerationAllowed": false,
+    "windowEnumerationAllowed": false,
+    "exactCurrentProcessIdRequired": true,
+    "desktopShellRejected": true,
+    "exactWindowThreadIdRequired": true,
+    "exactWindowHandleRequired": true,
+    "exactWindowClass": "CabinetWClass",
+    "exactWindowTitle": "C:\\",
+    "exactProcessStartTimeRequired": true
+  },
+  "controller": {
+    "mode": "describe-only",
+    "acceptedArgument": "--describe",
+    "targetArgumentsAccepted": false,
+    "existingDiagnosticsConsumerPolicy": "reject",
+    "endpointAttemptLimit": 0,
+    "tapDllLoadSupported": false,
+    "xamlDiagnosticsEntryPointLinked": false
+  },
+  "binaryAudit": {
+    "portableCompilerRequired": true,
+    "warningsAllowed": 0,
+    "exactTapExportSetRequired": true,
+    "importTableInspected": true,
+    "xamlRuntimeImportAllowed": false,
+    "loaderOrInjectionImportAllowed": false
+  },
+  "propertyReadSupported": false,
+  "executionSupported": false,
+  "readyForLiveConnection": false,
+  "readyForExactApproval": false,
+  "activationPermitted": false,
+  "liveExplorer": "not-run",
+  "mutationPerformed": false
+}

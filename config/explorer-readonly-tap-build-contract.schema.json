@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvisv2.invalid/schemas/explorer-readonly-tap-build-contract.schema.json",
+  "title": "JarvisV2 Explorer read-only TAP offline build contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "contractId",
+    "lifecycleState",
+    "transportAbiVersion",
+    "initializationProtocol",
+    "tap",
+    "targetIdentity",
+    "controller",
+    "binaryAudit",
+    "propertyReadSupported",
+    "executionSupported",
+    "readyForLiveConnection",
+    "readyForExactApproval",
+    "activationPermitted",
+    "liveExplorer",
+    "mutationPerformed"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./explorer-readonly-tap-build-contract.schema.json"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "contractId": {
+      "const": "jarvis-explorer-readonly-tap-offline-build-v1"
+    },
+    "lifecycleState": {
+      "const": "offline-build-only"
+    },
+    "transportAbiVersion": {
+      "const": 1
+    },
+    "initializationProtocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prefix",
+        "characterCount",
+        "canonicalUppercaseHexOnly",
+        "arbitraryOperationPayloadAllowed"
+      ],
+      "properties": {
+        "prefix": {
+          "const": "JARVIS2-XAML-RO-V1:"
+        },
+        "characterCount": {
+          "const": 1251
+        },
+        "canonicalUppercaseHexOnly": {
+          "const": true
+        },
+        "arbitraryOperationPayloadAllowed": {
+          "const": false
+        }
+      }
+    },
+    "tap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classId",
+        "architecture",
+        "exports",
+        "liveCompileSwitchValue",
+        "setSiteResult",
+        "visualTreeCallbackMode",
+        "dllLoadedDuringValidation"
+      ],
+      "properties": {
+        "classId": {
+          "const": "A57A77E1-A9B3-4AA1-8D41-E4FBB3B1D72F"
+        },
+        "architecture": {
+          "const": "AMD64"
+        },
+        "exports": {
+          "const": [
+            "DllCanUnloadNow",
+            "DllGetClassObject"
+          ]
+        },
+        "liveCompileSwitchValue": {
+          "const": 0
+        },
+        "setSiteResult": {
+          "const": "E_ACCESSDENIED"
+        },
+        "visualTreeCallbackMode": {
+          "const": "bounded-event-count-only"
+        },
+        "dllLoadedDuringValidation": {
+          "const": false
+        }
+      }
+    },
+    "targetIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "processEnumerationAllowed",
+        "windowEnumerationAllowed",
+        "exactCurrentProcessIdRequired",
+        "desktopShellRejected",
+        "exactWindowThreadIdRequired",
+        "exactWindowHandleRequired",
+        "exactWindowClass",
+        "exactWindowTitle",
+        "exactProcessStartTimeRequired"
+      ],
+      "properties": {
+        "processEnumerationAllowed": {
+          "const": false
+        },
+        "windowEnumerationAllowed": {
+          "const": false
+        },
+        "exactCurrentProcessIdRequired": {
+          "const": true
+        },
+        "desktopShellRejected": {
+          "const": true
+        },
+        "exactWindowThreadIdRequired": {
+          "const": true
+        },
+        "exactWindowHandleRequired": {
+          "const": true
+        },
+        "exactWindowClass": {
+          "const": "CabinetWClass"
+        },
+        "exactWindowTitle": {
+          "const": "C:\\"
+        },
+        "exactProcessStartTimeRequired": {
+          "const": true
+        }
+      }
+    },
+    "controller": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "acceptedArgument",
+        "targetArgumentsAccepted",
+        "existingDiagnosticsConsumerPolicy",
+        "endpointAttemptLimit",
+        "tapDllLoadSupported",
+        "xamlDiagnosticsEntryPointLinked"
+      ],
+      "properties": {
+        "mode": {
+          "const": "describe-only"
+        },
+        "acceptedArgument": {
+          "const": "--describe"
+        },
+        "targetArgumentsAccepted": {
+          "const": false
+        },
+        "existingDiagnosticsConsumerPolicy": {
+          "const": "reject"
+        },
+        "endpointAttemptLimit": {
+          "const": 0
+        },
+        "tapDllLoadSupported": {
+          "const": false
+        },
+        "xamlDiagnosticsEntryPointLinked": {
+          "const": false
+        }
+      }
+    },
+    "binaryAudit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "portableCompilerRequired",
+        "warningsAllowed",
+        "exactTapExportSetRequired",
+        "importTableInspected",
+        "xamlRuntimeImportAllowed",
+        "loaderOrInjectionImportAllowed"
+      ],
+      "properties": {
+        "portableCompilerRequired": {
+          "const": true
+        },
+        "warningsAllowed": {
+          "const": 0
+        },
+        "exactTapExportSetRequired": {
+          "const": true
+        },
+        "importTableInspected": {
+          "const": true
+        },
+        "xamlRuntimeImportAllowed": {
+          "const": false
+        },
+        "loaderOrInjectionImportAllowed": {
+          "const": false
+        }
+      }
+    },
+    "propertyReadSupported": {
+      "const": false
+    },
+    "executionSupported": {
+      "const": false
+    },
+    "readyForLiveConnection": {
+      "const": false
+    },
+    "readyForExactApproval": {
+      "const": false
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "liveExplorer": {
+      "const": "not-run"
+    },
+    "mutationPerformed": {
+      "const": false
+    }
+  }
+}

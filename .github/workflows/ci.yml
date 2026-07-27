@@ -144,6 +144,13 @@ jobs:
           .\scripts\Test-ExplorerTransportModel.ps1
           -StaticOnly
 
+      - name: Audit disk-only Explorer read-only TAP boundary
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerReadOnlyTap.ps1
+          -StaticOnly
+
       - name: Audit controlled-live controller
         shell: pwsh
         run: >-
