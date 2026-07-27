@@ -77,6 +77,12 @@ $explorerSurfaceProbeSourceRoot =
     Join-Path $root 'src\Jarvis.ExplorerSurfaceProbe'
 $explorerSurfaceProbeAuditPath =
     Join-Path $root 'scripts\Test-ExplorerSurfaceProbe.ps1'
+$explorerTransportModelSourceRoot =
+    Join-Path $root 'src\Jarvis.ExplorerTransportModel'
+$explorerTransportModelHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_transport_model_harness.cpp'
+$explorerTransportModelAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerTransportModel.ps1'
 $buildScriptPath = Join-Path $root 'scripts\Build-NativeMod.ps1'
 $testScriptPath = $PSCommandPath
 $artifactsRoot = Join-Path $root 'artifacts\native'
@@ -144,10 +150,16 @@ $phase9TaskPath =
     Join-Path $root 'docs\PHASE-9-EXPLORER-FRAME-STYLER-TASK.md'
 $phase10TaskPath =
     Join-Path $root 'docs\PHASE-10-BATCHED-EXPLORER-PREVIEW-PREP-TASK.md'
+$phase11TaskPath =
+    Join-Path $root 'docs\PHASE-11-EXPLORER-XAML-TRANSPORT-CORE-TASK.md'
 $explorerFrameSelectorProfilePath =
     Join-Path $root 'config\explorer-frame-selector-candidate.json'
 $explorerFrameSelectorSchemaPath =
     Join-Path $root 'config\explorer-frame-selector-candidate.schema.json'
+$explorerTransportContractPath =
+    Join-Path $root 'config\explorer-xaml-transport-contract.json'
+$explorerTransportContractSchemaPath =
+    Join-Path $root 'config\explorer-xaml-transport-contract.schema.json'
 $m2RecoveryLeaseSchemaPath =
     Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $m2RecoveryLeaseLabSchemaPath =
@@ -485,6 +497,7 @@ $nativeWindowStyleSessionSource = @(
 ) -join [Environment]::NewLine
 $phase9Task = [System.IO.File]::ReadAllText($phase9TaskPath)
 $phase10Task = [System.IO.File]::ReadAllText($phase10TaskPath)
+$phase11Task = [System.IO.File]::ReadAllText($phase11TaskPath)
 $explorerFrameSelectorProfile =
     Get-Content -LiteralPath $explorerFrameSelectorProfilePath -Raw |
         ConvertFrom-Json -Depth 100
@@ -511,6 +524,23 @@ $explorerSurfaceProbeSource = @(
         ForEach-Object {
             [IO.File]::ReadAllText($_.FullName)
         }
+) -join [Environment]::NewLine
+$explorerTransportContract =
+    Get-Content -LiteralPath $explorerTransportContractPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerTransportContractSchema =
+    Get-Content -LiteralPath $explorerTransportContractSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerTransportModelSource = @(
+    Get-ChildItem `
+        -LiteralPath $explorerTransportModelSourceRoot `
+        -File `
+        -Recurse |
+        Sort-Object FullName |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+    [IO.File]::ReadAllText($explorerTransportModelHarnessPath)
 ) -join [Environment]::NewLine
 $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
@@ -841,6 +871,7 @@ $publicCiContract =
     $publicCi.Contains('Test-ExplorerFrameModel.ps1') -and
     $publicCi.Contains('Test-ExplorerPreviewModel.ps1') -and
     $publicCi.Contains('Test-ExplorerSurfaceProbe.ps1') -and
+    $publicCi.Contains('Test-ExplorerTransportModel.ps1') -and
     $publicCi.Contains('-StaticOnly') -and
     $publicCi.Contains('dotnet build') -and
     $publicCi.Contains('Canonical native compilation is intentionally not run') -and
@@ -1755,6 +1786,81 @@ Add-Check `
     'phase10.exact-readonly-surface-probe-static-audit' `
     $phase10SurfaceProbeAuditPassed `
     'The exact-HWND UIA topology probe must pass its six static checks without running a live inspection.'
+
+$phase11TransportStaticContract =
+    $phase11Task.Contains(
+        'OFFLINE TRANSPORT CORE COMPLETE — NO TAP DLL OR LIVE CONNECTION'
+    ) -and
+    $explorerTransportContract.schemaVersion -eq 1 -and
+    $explorerTransportContract.contractId -eq
+        'jarvis-explorer-xaml-transport-v1' -and
+    $explorerTransportContract.lifecycleState -eq 'offline-model-only' -and
+    $explorerTransportContract.connectionCandidate.api -eq
+        'InitializeXamlDiagnosticsEx' -and
+    $explorerTransportContract.connectionCandidate.targetSelection -eq
+        'caller-supplied-exact-pid-only' -and
+    -not $explorerTransportContract.connectionCandidate.liveConnectionImplemented -and
+    -not $explorerTransportContract.targetIdentity.processEnumerationAllowed -and
+    -not $explorerTransportContract.targetIdentity.windowEnumerationAllowed -and
+    $explorerTransportContract.targetIdentity.identityRecheckBeforeEveryCommand -and
+    $explorerTransportContract.capability.oneShot -and
+    -not $explorerTransportContract.capability.selfApprovalAllowed -and
+    $explorerTransportContract.surfacePolicy.requiredOriginalJournalEntryCount -eq 9 -and
+    -not $explorerTransportContract.executionSupported -and
+    -not $explorerTransportContract.readyForLiveConnection -and
+    -not $explorerTransportContract.readyForExactApproval -and
+    -not $explorerTransportContract.activationPermitted -and
+    $explorerTransportContract.liveExplorer -eq 'not-run' -and
+    -not $explorerTransportContract.mutationPerformed -and
+    $explorerTransportContractSchema.properties.executionSupported.const -eq
+        $false -and
+    $explorerTransportContractSchema.properties.readyForLiveConnection.const -eq
+        $false -and
+    $explorerTransportContractSchema.properties.activationPermitted.const -eq
+        $false -and
+    $explorerTransportModelSource.Contains(
+        'JARVIS_EXPLORER_TRANSPORT_ABI_VERSION = 1U'
+    ) -and
+    $explorerTransportModelSource.Contains(
+        'static_assert(sizeof(jarvis_transport_response) == 64U)'
+    )
+Add-Check `
+    'phase11.xaml-transport-contract-static-offline' `
+    $phase11TransportStaticContract `
+    'Phase 11 must keep the exact-PID XAML transport ABI machine-bound, model-only, non-enumerating and incapable of live connection or self-approval.'
+
+$explorerTransportAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerTransportModelAuditPath 2>&1
+)
+$explorerTransportAuditExitCode = $LASTEXITCODE
+try {
+    $explorerTransportAudit = (
+        $explorerTransportAuditOutput -join [Environment]::NewLine
+    ) | ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerTransportAudit = $null
+}
+$phase11TransportAuditPassed =
+    $explorerTransportAuditExitCode -eq 0 -and
+    $null -ne $explorerTransportAudit -and
+    $explorerTransportAudit.result -eq 'passed' -and
+    $explorerTransportAudit.checkCount -eq 12 -and
+    $explorerTransportAudit.passedCount -eq 12 -and
+    $explorerTransportAudit.scenarioCount -eq 85 -and
+    $explorerTransportAudit.scenarioPassedCount -eq 85 -and
+    -not $explorerTransportAudit.executionSupported -and
+    -not $explorerTransportAudit.activationPermitted -and
+    $explorerTransportAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerTransportAudit.mutationPerformed
+Add-Check `
+    'phase11.xaml-transport-model-executable-audit' `
+    $phase11TransportAuditPassed `
+    'The portable exact-target transport state machine must pass 85/85 fault scenarios while every receipt remains non-live and non-authorizing.'
 
 $phase5NativeLeaseWatchdogContract =
     $iconSize.Contains(

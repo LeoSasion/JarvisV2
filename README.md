@@ -31,6 +31,7 @@ JarvisV2 是一个独立于旧版 JARVIS 的 Windows 原生桌面改造实验。
 - Phase 6：禁用宿主演练证明 Windhawk 服务会在 Mod 禁用时仍把基础运行库映射到 Explorer 和非目标进程。readiness、受控控制器与 Supervisor 现已三层固定拒绝旧激活路径。[ADR-0001](docs/ADR-0001-EXPLORER-ONLY-HOST.md)记录上游链路和 Explorer-only 边界；`Jarvis.ExplorerHostModel` 只评估离线 fixture，不含进程、服务、注册表、远程内存、P/Invoke 或 Hook 安装 API。20 项模型回归覆盖精确 Shell PID/TID、零 TID、`dwm.exe`、多候选、会话与签名漂移、Windhawk 残留和当前 Windhawk Mod 契约；所有输出都固定禁止执行和激活。
 - Phase 9：新增独立的 `Jarvis.ExplorerFrameModel`，为原生资源管理器标签栏、命令栏和导航栏建立离线 XAML 样式事务。候选选择器只使用明确标注为未实机验证的 fixture，三类属性必须先完整保存原值，部分应用会立即按相反顺序恢复；29/29 故障场景通过。该阶段没有 XAML Diagnostics 连接、进程访问、Hook、P/Invoke 或实机写入，下一步仍须先经过单个新开 `C:\` 窗口的只读发现门。详见 [Phase 9 长任务](docs/PHASE-9-EXPLORER-FRAME-STYLER-TASK.md)。
 - Phase 10：把视觉验收前的开发合并为一批。仓库固定了 GPL Windows 11 File Explorer Styler 1.5 的 commit/blob/SHA-256，增加与当前兼容档绑定的三表面选择器编译器、只接受精确 HWND/PID/TID/启动时间且拒绝桌面 Shell 的只读 UI Automation 拓扑探针，以及 60 秒、三次截图、完整原值日志和严格逆序恢复的统一预览计划。配置/计划模型 43/43、审计 8/8，探针静态审计 6/6；探针未运行，选择器仍未获得实机 XAML 证明，视觉写入仍不可用。详见 [Phase 10 批量开发任务](docs/PHASE-10-BATCHED-EXPLORER-PREVIEW-PREP-TASK.md)。
+- Phase 11：新增单进程 XAML 传输核心，把微软 `InitializeXamlDiagnosticsEx` 的“按 PID 连接并加载 TAP DLL”现实边界固化为机器合同和固定宽度 ABI。一次性能力绑定精确 PID/TID/HWND/启动时间/标题哈希/树代际/选择器、计划、三条精确选择器及九个目标样式值哈希；三表面九属性必须完整记录原值，60 秒到期或部分应用会锁定严格逆序恢复。便携式原生故障矩阵 85/85、审计 12/12；当前没有 TAP DLL、COM 导出、XAML Diagnostics 调用、Explorer 连接或实机写入。详见 [Phase 11 传输核心任务](docs/PHASE-11-EXPLORER-XAML-TRANSPORT-CORE-TASK.md)。
 
 ## 验证与构建
 
@@ -43,6 +44,7 @@ pwsh -File .\scripts\Test-ExplorerHostModel.ps1
 pwsh -File .\scripts\Test-ExplorerFrameModel.ps1
 pwsh -File .\scripts\Test-ExplorerPreviewModel.ps1
 pwsh -File .\scripts\Test-ExplorerSurfaceProbe.ps1
+pwsh -File .\scripts\Test-ExplorerTransportModel.ps1
 pwsh -File .\scripts\New-M2ValidationSessionPlan.ps1 -OutputPath `
   .\artifacts\m2-validation-session-plans\runs\<unique-name>.json
 pwsh -File .\scripts\Test-M2ObservationRehearsal.ps1 -SessionPlanPath `

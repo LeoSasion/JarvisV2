@@ -137,6 +137,13 @@ jobs:
           pwsh -NoLogo -NoProfile -File
           .\scripts\Test-ExplorerSurfaceProbe.ps1
 
+      - name: Audit offline exact-target Explorer XAML transport core
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerTransportModel.ps1
+          -StaticOnly
+
       - name: Audit controlled-live controller
         shell: pwsh
         run: >-
