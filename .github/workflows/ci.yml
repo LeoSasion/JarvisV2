@@ -79,6 +79,19 @@ jobs:
           pwsh -NoLogo -NoProfile -File
           .\scripts\Test-ControlCenter.ps1
 
+      - name: Audit and build own-process native style lab
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-NativeStyleLab.ps1
+
+      - name: Audit desktop host probe without live inspection
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-DesktopStyleProbe.ps1
+          -StaticOnly
+
       - name: Audit offline Explorer host model
         shell: pwsh
         run: >-

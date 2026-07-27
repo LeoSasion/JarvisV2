@@ -29,6 +29,18 @@ $controlCenterSourceRoot =
     Join-Path $root 'src\Jarvis.ControlCenter'
 $controlCenterAuditPath =
     Join-Path $root 'scripts\Test-ControlCenter.ps1'
+$nativeStyleLabProject =
+    Join-Path $root 'src\Jarvis.NativeStyleLab\Jarvis.NativeStyleLab.csproj'
+$nativeStyleLabSourceRoot =
+    Join-Path $root 'src\Jarvis.NativeStyleLab'
+$nativeStyleLabAuditPath =
+    Join-Path $root 'scripts\Test-NativeStyleLab.ps1'
+$desktopStyleProbeProject =
+    Join-Path $root 'src\Jarvis.DesktopStyleProbe\Jarvis.DesktopStyleProbe.csproj'
+$desktopStyleProbeSourceRoot =
+    Join-Path $root 'src\Jarvis.DesktopStyleProbe'
+$desktopStyleProbeAuditPath =
+    Join-Path $root 'scripts\Test-DesktopStyleProbe.ps1'
 $explorerBridgeSourceRoot =
     Join-Path $root 'src\Jarvis.ExplorerBridgeModel'
 $explorerBridgeHarnessPath =
@@ -92,6 +104,8 @@ $phase6AdrPath =
     Join-Path $root 'docs\ADR-0001-EXPLORER-ONLY-HOST.md'
 $phase7TaskPath =
     Join-Path $root 'docs\PHASE-7-CONTROL-CENTER-AND-BRIDGE-CONTRACT-TASK.md'
+$phase8TaskPath =
+    Join-Path $root 'docs\PHASE-8-NATIVE-STYLE-LAB-AND-DESKTOP-PROBE-TASK.md'
 $m2RecoveryLeaseSchemaPath =
     Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $m2RecoveryLeaseLabSchemaPath =
@@ -383,6 +397,21 @@ $explorerBridgeSource = @(
             [IO.File]::ReadAllText($_.FullName)
         }
     [IO.File]::ReadAllText($explorerBridgeHarnessPath)
+) -join [Environment]::NewLine
+$phase8Task = [System.IO.File]::ReadAllText($phase8TaskPath)
+$nativeStyleLabSource = @(
+    Get-ChildItem -LiteralPath $nativeStyleLabSourceRoot -File -Recurse |
+        Where-Object Extension -In @('.cs', '.xaml', '.csproj') |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$desktopStyleProbeSource = @(
+    Get-ChildItem -LiteralPath $desktopStyleProbeSourceRoot -File -Recurse |
+        Where-Object Extension -In @('.cs', '.csproj') |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
 ) -join [Environment]::NewLine
 $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
@@ -705,6 +734,8 @@ $publicCiContract =
         '(?m)^\s*uses:\s+[^@\r\n]+@[A-Fa-f0-9]{40}\s*$').Count -eq 2 -and
     $publicCi.Contains('Test-PublicationBoundary.ps1') -and
     $publicCi.Contains('Test-ControlCenter.ps1') -and
+    $publicCi.Contains('Test-NativeStyleLab.ps1') -and
+    $publicCi.Contains('Test-DesktopStyleProbe.ps1') -and
     $publicCi.Contains('Test-ExplorerBridgeModel.ps1') -and
     $publicCi.Contains('-StaticOnly') -and
     $publicCi.Contains('dotnet build') -and
@@ -1204,6 +1235,119 @@ Add-Check `
     'phase7.explorer-bridge-contract-executable-audit' `
     $phase7BridgeAuditPassed `
     'The portable 16-case bridge fault matrix must compile and pass while every response remains non-live and non-mutating.'
+
+$phase8NativeStyleStaticContract =
+    $phase8Task.Contains(
+        'OWN-PROCESS LIVE / EXPLORER READ-ONLY') -and
+    $phase8Task.Contains(
+        'Changing the real Explorer desktop view is not authorized') -and
+    $nativeStyleLabSource.Contains(
+        'new WindowInteropHelper(ownedWindow).Handle') -and
+    $nativeStyleLabSource.Contains(
+        '[DllImport("dwmapi.dll", ExactSpelling = true)]') -and
+    [regex]::Matches(
+        $nativeStyleLabSource,
+        '\[DllImport\(').Count -eq 2 -and
+    -not [regex]::IsMatch(
+        $nativeStyleLabSource,
+        '(?i)\b(?:user32|kernel32|OpenProcess|CreateRemoteThread|' +
+        'VirtualAllocEx|WriteProcessMemory|SetWindowsHookEx|SendMessage|' +
+        'PostMessage|SetWindowLong|SetWindowPos|FindWindow|EnumWindows|' +
+        'System\.Diagnostics\.Process|ServiceController|' +
+        'Microsoft\.Win32\.Registry)\b')
+Add-Check `
+    'phase8.native-style-lab-own-hwnd-static' `
+    $phase8NativeStyleStaticContract `
+    'The native style lab may apply reviewed DWM attributes only to the HWND owned by its own ordinary window.'
+
+$nativeStyleAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $nativeStyleLabAuditPath 2>&1
+)
+$nativeStyleAuditExitCode = $LASTEXITCODE
+$nativeStyleAudit = $null
+try {
+    $nativeStyleAudit =
+        ($nativeStyleAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $nativeStyleAudit = $null
+}
+$phase8NativeStyleAuditPassed =
+    $nativeStyleAuditExitCode -eq 0 -and
+    $null -ne $nativeStyleAudit -and
+    $nativeStyleAudit.result -eq 'passed' -and
+    $nativeStyleAudit.checkCount -eq 6 -and
+    $nativeStyleAudit.passedCount -eq 6 -and
+    $nativeStyleAudit.scope -eq 'own-process-hwnd-only' -and
+    -not $nativeStyleAudit.explorerMutationSupported -and
+    -not $nativeStyleAudit.activationPermitted -and
+    -not $nativeStyleAudit.mutationPerformed
+Add-Check `
+    'phase8.native-style-lab-executable-audit' `
+    $phase8NativeStyleAuditPassed `
+    'The own-process style lab audit must pass all six checks without enabling any Explorer mutation path.'
+
+$phase8DesktopProbeStaticContract =
+    $desktopStyleProbeSource.Contains(
+        '"exact-shell-defview-child"') -and
+    $desktopStyleProbeSource.Contains(
+        'mutationSupported = false') -and
+    $desktopStyleProbeSource.Contains(
+        'liveExplorer = "read-only-inspection"') -and
+    [regex]::Matches(
+        $desktopStyleProbeSource,
+        '\[DllImport\(').Count -eq 5 -and
+    -not [regex]::IsMatch(
+        $desktopStyleProbeSource,
+        '(?i)\b(?:SendMessage|PostMessage|SetWindowLong|SetWindowPos|' +
+        'MoveWindow|ShowWindow|DestroyWindow|OpenProcess|' +
+        'CreateRemoteThread|VirtualAllocEx|WriteProcessMemory|' +
+        'SetWindowsHookEx|TerminateProcess|System\.Diagnostics\.Process|' +
+        'ServiceController|Microsoft\.Win32\.Registry)\b')
+Add-Check `
+    'phase8.desktop-style-probe-readonly-static' `
+    $phase8DesktopProbeStaticContract `
+    'The desktop probe must expose only exact read-only window discovery and a hard non-mutation receipt.'
+
+$desktopProbeAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $desktopStyleProbeAuditPath `
+        -StaticOnly 2>&1
+)
+$desktopProbeAuditExitCode = $LASTEXITCODE
+$desktopProbeAudit = $null
+try {
+    $desktopProbeAudit =
+        ($desktopProbeAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $desktopProbeAudit = $null
+}
+$phase8DesktopProbeAuditPassed =
+    $desktopProbeAuditExitCode -eq 0 -and
+    $null -ne $desktopProbeAudit -and
+    $desktopProbeAudit.result -eq 'passed' -and
+    $desktopProbeAudit.staticOnly -and
+    $desktopProbeAudit.checkCount -eq 4 -and
+    $desktopProbeAudit.passedCount -eq 4 -and
+    -not $desktopProbeAudit.executionSupported -and
+    -not $desktopProbeAudit.mutationSupported -and
+    -not $desktopProbeAudit.activationPermitted -and
+    -not $desktopProbeAudit.mutationPerformed -and
+    $desktopProbeAudit.liveExplorer -eq 'not-run'
+Add-Check `
+    'phase8.desktop-style-probe-static-audit' `
+    $phase8DesktopProbeAuditPassed `
+    'Canonical project checks must audit the desktop probe without inspecting live Explorer.'
 
 $phase5NativeLeaseWatchdogContract =
     $iconSize.Contains(
@@ -6378,10 +6522,26 @@ if (-not $SkipManagedBuild) {
         'control-center.release-build' `
         ($controlCenterBuildExitCode -eq 0) `
         (($controlCenterBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $nativeStyleBuildOutput =
+        & dotnet build $nativeStyleLabProject --configuration Release --nologo 2>&1
+    $nativeStyleBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'native-style-lab.release-build' `
+        ($nativeStyleBuildExitCode -eq 0) `
+        (($nativeStyleBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $desktopProbeBuildOutput =
+        & dotnet build $desktopStyleProbeProject --configuration Release --nologo 2>&1
+    $desktopProbeBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'desktop-style-probe.release-build' `
+        ($desktopProbeBuildExitCode -eq 0) `
+        (($desktopProbeBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
     $buildExitCode = if (
         $supervisorBuildExitCode -eq 0 -and
         $hostModelBuildExitCode -eq 0 -and
-        $controlCenterBuildExitCode -eq 0
+        $controlCenterBuildExitCode -eq 0 -and
+        $nativeStyleBuildExitCode -eq 0 -and
+        $desktopProbeBuildExitCode -eq 0
     ) {
         0
     }
@@ -6392,6 +6552,8 @@ if (-not $SkipManagedBuild) {
         $supervisorBuildOutput
         $hostModelBuildOutput
         $controlCenterBuildOutput
+        $nativeStyleBuildOutput
+        $desktopProbeBuildOutput
     )
     $managedBuild = [pscustomobject]@{
         status = if ($buildExitCode -eq 0) { 'passed' } else { 'failed' }
