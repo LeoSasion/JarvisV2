@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "receiptType": "jarvis2-read-only-host-snapshot",
+  "inspectedAtUtc": "2026-07-26T18:35:46.5796992Z",
+  "inspectedAtAsiaShanghai": "2026-07-27 02:35:46 +08:00",
+  "mutationPerformed": false,
+  "supervisorInspect": {
+    "profileId": "win11-25h2-26200.8875-x64",
+    "inspectedAtUtc": "2026-07-26T18:35:46.5796992Z",
+    "compatible": true,
+    "checkCount": 23,
+    "passed": 23,
+    "explorerProcessId": 11640,
+    "killSwitchState": "armed",
+    "activeModuleState": "absent"
+  },
+  "killSwitch": {
+    "path": "C:\\Users\\Administrator\\AppData\\Local\\JARVIS2\\disabled.flag",
+    "exists": true,
+    "size": 146,
+    "sha256": "7512DACFC5BDA30CD61E3C3F2B4678139E7BCCB38CECF9EBE4F1ADB7E48594F3",
+    "lastWriteTimeUtc": "2026-07-24T12:19:46.1024762Z"
+  },
+  "activeModulePermit": {
+    "path": "C:\\Users\\Administrator\\AppData\\Local\\JARVIS2\\active-module.txt",
+    "exists": false
+  },
+  "recoveryTerminalLease": {
+    "path": "C:\\Users\\Administrator\\AppData\\Local\\JARVIS2\\Recovery\\m2-recovery-terminal.json",
+    "exists": false
+  },
+  "windhawkService": {
+    "name": "Windhawk",
+    "state": "Stopped",
+    "startMode": "Manual",
+    "processId": 0
+  },
+  "processInspection": {
+    "processCount": 368,
+    "moduleEnumerableProcessCount": 185,
+    "moduleNotEnumerableProcessCount": 183,
+    "windhawkOrJarvisProcessCount": 0,
+    "matchingModuleMappingCount": 0,
+    "moduleEnumerationErrorCount": 0
+  },
+  "explorer": {
+    "processId": 11640,
+    "path": "C:\\WINDOWS\\Explorer.EXE",
+    "startTimeUtc": "2026-07-23T07:37:39.1327858Z",
+    "matchingModuleCount": 0
+  },
+  "installedM2": {
+    "state": "disabled-old-phase4-build",
+    "sourceSha256": "4A0278E2BC1CC81D616AC885F87BB51CE26DD044E4F44DDB8341E0C6D79087C4",
+    "dllSha256": "DBABD5BEDAB2A2CF1BA0592A1742C2E31FF91E2F9CD4EEF440E0E2A82AF8C490"
+  },
+  "canonicalBuild": {
+    "runId": "20260726T183340920Z-efe8b4b3",
+    "receiptSha256": "32A523BF4F9CC3B1A0BEAC230DC2068AB684A2E3404F604B09408E24B595A4E8",
+    "runSummarySha256": "5F716102F28D9542D38B613F055374F668E35955AED7438D89A90EA93F2FC558",
+    "m2SourceSha256": "9F955ADD6B9CE1E087F8DCB97093C392B17845BEF2DBD31688A17B7D1B9B0C31",
+    "m2DllSha256": "747F17F4DF5974222218DE716661416A934F86CF10DC15BEA50FB18E72327F5B",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "readiness": {
+    "runId": "20260726T183546575Z-be11c021",
+    "result": "passed",
+    "readyForExactApproval": true,
+    "receiptRelativePath": "artifacts/m2-live-readiness/runs/phase5-json-date-fix-closure-20260727T0235CST.json",
+    "receiptSize": 3582,
+    "receiptSha256": "27AD5FCD72F1AF2D294E2D0A665FF4D4577E47884E804923A4B37DF1E04B507C"
+  },
+  "disabledUpdateScript": {
+    "relativePath": "artifacts/live/Update-M2Disabled-Phase5.ps1",
+    "size": 11730,
+    "sha256": "48D7F6A4E3CFBBAEF697892BCDEECB4423DABE4B2AA4B1C3D861FAF8C1C6B2BB",
+    "parseErrors": 0,
+    "executed": false
+  },
+  "evidenceBoundary": {
+    "releaseReady": false,
+    "activationPermitted": false,
+    "liveExplorer": "not-run",
+    "uninstallPerformed": false,
+    "moduleActivationPerformed": false,
+    "explorerRestartPerformed": false
+  }
+}

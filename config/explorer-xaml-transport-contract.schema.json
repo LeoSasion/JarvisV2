@@ -1,0 +1,398 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvisv2.local/schemas/explorer-xaml-transport-contract.schema.json",
+  "title": "JarvisV2 Explorer XAML Transport Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "contractId",
+    "lifecycleState",
+    "evidenceBasis",
+    "connectionCandidate",
+    "targetIdentity",
+    "capability",
+    "surfacePolicy",
+    "operationPolicy",
+    "recoveryPolicy",
+    "executionSupported",
+    "readyForLiveConnection",
+    "readyForExactApproval",
+    "activationPermitted",
+    "liveExplorer",
+    "mutationPerformed"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "contractId": {
+      "const": "jarvis-explorer-xaml-transport-v1"
+    },
+    "lifecycleState": {
+      "const": "offline-model-only"
+    },
+    "evidenceBasis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "microsoftInitializeXamlDiagnosticsEx",
+        "microsoftXamlDiagnosticsApi",
+        "gplUpstreamRepository",
+        "gplUpstreamCommit",
+        "gplUpstreamSourcePath",
+        "gplUpstreamSourceSha256"
+      ],
+      "properties": {
+        "microsoftInitializeXamlDiagnosticsEx": {
+          "const": "https://learn.microsoft.com/en-us/windows/win32/api/xamlom/nf-xamlom-initializexamldiagnosticsex"
+        },
+        "microsoftXamlDiagnosticsApi": {
+          "const": "https://learn.microsoft.com/en-us/windows/win32/api/_xaml_diagnostics/"
+        },
+        "gplUpstreamRepository": {
+          "const": "https://github.com/ramensoftware/windhawk-mods"
+        },
+        "gplUpstreamCommit": {
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "gplUpstreamSourcePath": {
+          "const": "mods/windows-11-file-explorer-styler.wh.cpp"
+        },
+        "gplUpstreamSourceSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "connectionCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "api",
+        "officialContractLibrary",
+        "reviewedExplorerExportCandidate",
+        "runtimeResolutionState",
+        "targetSelection",
+        "tapLoadEffect",
+        "xamlDiagnosticsConsumerLimit",
+        "endpointDiscovery",
+        "liveConnectionImplemented"
+      ],
+      "properties": {
+        "api": {
+          "const": "InitializeXamlDiagnosticsEx"
+        },
+        "officialContractLibrary": {
+          "const": "Windows.UI.Xaml.dll"
+        },
+        "reviewedExplorerExportCandidate": {
+          "const": "Microsoft.Internal.FrameworkUdk.dll"
+        },
+        "runtimeResolutionState": {
+          "const": "future-exact-hash-and-export-inspection-required"
+        },
+        "targetSelection": {
+          "const": "caller-supplied-exact-pid-only"
+        },
+        "tapLoadEffect": {
+          "const": "injects-one-reviewed-tap-dll-into-exact-target-process"
+        },
+        "xamlDiagnosticsConsumerLimit": {
+          "const": "one-consumer-at-a-time"
+        },
+        "endpointDiscovery": {
+          "const": "not-implemented"
+        },
+        "liveConnectionImplemented": {
+          "const": false
+        }
+      }
+    },
+    "targetIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "processName",
+        "windowClass",
+        "exactWindowTitle",
+        "requireSeparateDesktopShellProcess",
+        "callerSuppliedFields",
+        "processEnumerationAllowed",
+        "windowEnumerationAllowed",
+        "identityRecheckBeforeEveryCommand"
+      ],
+      "properties": {
+        "processName": {
+          "const": "explorer.exe"
+        },
+        "windowClass": {
+          "const": "CabinetWClass"
+        },
+        "exactWindowTitle": {
+          "const": "C:\\"
+        },
+        "requireSeparateDesktopShellProcess": {
+          "const": true
+        },
+        "callerSuppliedFields": {
+          "type": "array",
+          "minItems": 7,
+          "maxItems": 7,
+          "uniqueItems": true,
+          "prefixItems": [
+            {
+              "const": "explorerProcessId"
+            },
+            {
+              "const": "desktopShellProcessId"
+            },
+            {
+              "const": "windowThreadId"
+            },
+            {
+              "const": "windowHandle"
+            },
+            {
+              "const": "processStartTimeUtc"
+            },
+            {
+              "const": "visualTreeGenerationSha256"
+            },
+            {
+              "const": "exactWindowTitleSha256"
+            }
+          ],
+          "items": false
+        },
+        "processEnumerationAllowed": {
+          "const": false
+        },
+        "windowEnumerationAllowed": {
+          "const": false
+        },
+        "identityRecheckBeforeEveryCommand": {
+          "const": true
+        }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "oneShot",
+        "maximumAgeMilliseconds",
+        "previewDurationMilliseconds",
+        "strictMonotonicSequence",
+        "requiredBindings",
+        "selfApprovalAllowed",
+        "replayAllowed"
+      ],
+      "properties": {
+        "oneShot": {
+          "const": true
+        },
+        "maximumAgeMilliseconds": {
+          "const": 120000
+        },
+        "previewDurationMilliseconds": {
+          "const": 60000
+        },
+        "strictMonotonicSequence": {
+          "const": true
+        },
+        "requiredBindings": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "prefixItems": [
+            {
+              "const": "sessionNonce"
+            },
+            {
+              "const": "selectorProfileSha256"
+            },
+            {
+              "const": "previewPlanSha256"
+            },
+            {
+              "const": "exactSelectorHashes"
+            },
+            {
+              "const": "exactStyledValueHashes"
+            },
+            {
+              "const": "exactTargetIdentity"
+            }
+          ],
+          "items": false
+        },
+        "selfApprovalAllowed": {
+          "const": false
+        },
+        "replayAllowed": {
+          "const": false
+        }
+      }
+    },
+    "surfacePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rolesInApplyOrder",
+        "propertiesInApplyOrder",
+        "requiredUniqueMatchCountPerRole",
+        "requiredOriginalJournalEntryCount",
+        "restoreOrder",
+        "arbitrarySelectorAllowed",
+        "arbitraryPropertyAllowed",
+        "arbitraryXamlAllowed"
+      ],
+      "properties": {
+        "rolesInApplyOrder": {
+          "$ref": "#/$defs/roles"
+        },
+        "propertiesInApplyOrder": {
+          "$ref": "#/$defs/properties"
+        },
+        "requiredUniqueMatchCountPerRole": {
+          "const": 1
+        },
+        "requiredOriginalJournalEntryCount": {
+          "const": 9
+        },
+        "restoreOrder": {
+          "const": "strict-reverse"
+        },
+        "arbitrarySelectorAllowed": {
+          "const": false
+        },
+        "arbitraryPropertyAllowed": {
+          "const": false
+        },
+        "arbitraryXamlAllowed": {
+          "const": false
+        }
+      }
+    },
+    "operationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowedOfflineModelOperations",
+        "forbiddenImplementationShortcuts"
+      ],
+      "properties": {
+        "allowedOfflineModelOperations": {
+          "type": "array",
+          "minItems": 9,
+          "maxItems": 9,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "forbiddenImplementationShortcuts": {
+          "type": "array",
+          "minItems": 14,
+          "uniqueItems": true,
+          "contains": {
+            "const": "global-injection"
+          }
+        }
+      }
+    },
+    "recoveryPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deadlineAction",
+        "partialApplyAction",
+        "identityOrGenerationDriftAfterWrite",
+        "quiesceWithOutstandingWrites",
+        "automaticExplorerRestartAllowed",
+        "forceUnloadAllowed"
+      ],
+      "properties": {
+        "deadlineAction": {
+          "const": "latch-restore-required"
+        },
+        "partialApplyAction": {
+          "const": "strict-reverse-restore-applied-prefix"
+        },
+        "identityOrGenerationDriftAfterWrite": {
+          "const": "retain-restore-required-and-stop"
+        },
+        "quiesceWithOutstandingWrites": {
+          "const": "forbidden"
+        },
+        "automaticExplorerRestartAllowed": {
+          "const": false
+        },
+        "forceUnloadAllowed": {
+          "const": false
+        }
+      }
+    },
+    "executionSupported": {
+      "const": false
+    },
+    "readyForLiveConnection": {
+      "const": false
+    },
+    "readyForExactApproval": {
+      "const": false
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "liveExplorer": {
+      "const": "not-run"
+    },
+    "mutationPerformed": {
+      "const": false
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9A-F]{64}$"
+    },
+    "roles": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "prefixItems": [
+        {
+          "const": "tab-strip"
+        },
+        {
+          "const": "command-bar"
+        },
+        {
+          "const": "navigation-pane"
+        }
+      ],
+      "items": false
+    },
+    "properties": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "prefixItems": [
+        {
+          "const": "Background"
+        },
+        {
+          "const": "Foreground"
+        },
+        {
+          "const": "BorderBrush"
+        }
+      ],
+      "items": false
+    }
+  }
+}

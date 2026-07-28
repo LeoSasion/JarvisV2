@@ -7,7 +7,7 @@
 // @license         GPL-3.0
 // @include         %SystemRoot%\explorer.exe
 // @architecture    amd64
-// @compilerOptions -D_WIN32_WINNT=0x0A00 -lcomctl32 -lole32 -loleaut32 -lruntimeobject -ladvapi32 -lversion -lshell32
+// @compilerOptions -D_WIN32_WINNT=0x0A00 -Wl,--no-insert-timestamp -lcomctl32 -lole32 -loleaut32 -lruntimeobject -ladvapi32 -lversion -lshell32
 // ==/WindhawkMod==
 
 // Source code is published under The GNU General Public License v3.0.

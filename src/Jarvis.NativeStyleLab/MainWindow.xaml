@@ -1,0 +1,250 @@
+<Window
+    x:Class="Jarvis.NativeStyleLab.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="JARVIS V2 · Native Style Lab"
+    Width="1180"
+    Height="760"
+    MinWidth="980"
+    MinHeight="640"
+    WindowStartupLocation="CenterScreen"
+    WindowStyle="SingleBorderWindow"
+    ResizeMode="CanResizeWithGrip"
+    Background="#0A0F13"
+    TextOptions.TextFormattingMode="Display"
+    TextOptions.TextRenderingMode="ClearType">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="Panel" Color="#10191F" />
+        <SolidColorBrush x:Key="PanelAlt" Color="#142128" />
+        <SolidColorBrush x:Key="Line" Color="#27404A" />
+        <SolidColorBrush x:Key="Text" Color="#E7F0F2" />
+        <SolidColorBrush x:Key="Muted" Color="#8297A0" />
+        <SolidColorBrush x:Key="Cyan" Color="#55D9D0" />
+        <SolidColorBrush x:Key="Amber" Color="#F0B85B" />
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Text}" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+        </Style>
+        <Style x:Key="PresetButton" TargetType="Button">
+            <Setter Property="Height" Value="46" />
+            <Setter Property="Margin" Value="0,0,10,0" />
+            <Setter Property="Padding" Value="16,0" />
+            <Setter Property="Foreground" Value="{StaticResource Text}" />
+            <Setter Property="Background" Value="#14232A" />
+            <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontFamily" Value="Consolas" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock
+                    Foreground="{StaticResource Cyan}"
+                    FontFamily="Consolas"
+                    FontSize="11"
+                    Text="PHASE 8 / OWNED HWND" />
+                <TextBlock
+                    Margin="0,8,0,0"
+                    FontSize="30"
+                    FontWeight="Light"
+                    Text="Native window style laboratory" />
+                <TextBlock
+                    Margin="0,8,0,0"
+                    Foreground="{StaticResource Muted}"
+                    FontSize="13"
+                    Text="Real DWM non-client rendering on this process only — no Explorer or desktop mutation." />
+            </StackPanel>
+            <Border
+                Grid.Column="1"
+                Padding="13,8"
+                VerticalAlignment="Top"
+                Background="#173331"
+                BorderBrush="#2B6F69"
+                BorderThickness="1"
+                CornerRadius="3">
+                <TextBlock
+                    Foreground="{StaticResource Cyan}"
+                    FontFamily="Consolas"
+                    FontSize="11"
+                    Text="OWN PROCESS ONLY" />
+            </Border>
+        </Grid>
+
+        <Border
+            Grid.Row="1"
+            Margin="0,24,0,0"
+            Padding="18"
+            Background="{StaticResource Panel}"
+            BorderBrush="{StaticResource Line}"
+            BorderThickness="1"
+            CornerRadius="4">
+            <StackPanel>
+                <TextBlock
+                    Foreground="{StaticResource Muted}"
+                    FontFamily="Consolas"
+                    FontSize="10"
+                    Text="DWM PRESETS" />
+                <WrapPanel Margin="0,14,0,0">
+                    <Button
+                        Style="{StaticResource PresetButton}"
+                        Tag="GraphiteMica"
+                        Click="PresetButton_OnClick"
+                        Content="GRAPHITE MICA" />
+                    <Button
+                        Style="{StaticResource PresetButton}"
+                        Tag="NightAcrylic"
+                        Click="PresetButton_OnClick"
+                        Content="NIGHT ACRYLIC" />
+                    <Button
+                        Style="{StaticResource PresetButton}"
+                        Tag="MicaAlt"
+                        Click="PresetButton_OnClick"
+                        Content="MICA ALT" />
+                    <Button
+                        Style="{StaticResource PresetButton}"
+                        Tag="SystemDefault"
+                        Click="PresetButton_OnClick"
+                        Content="SYSTEM DEFAULT" />
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="2" Margin="0,18,0,18">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.35*" />
+                <ColumnDefinition Width="18" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border
+                Padding="22"
+                Background="{StaticResource Panel}"
+                BorderBrush="{StaticResource Line}"
+                BorderThickness="1"
+                CornerRadius="4">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <StackPanel>
+                        <TextBlock
+                            Foreground="{StaticResource Muted}"
+                            FontFamily="Consolas"
+                            FontSize="10"
+                            Text="ACTIVE NATIVE FRAME" />
+                        <TextBlock
+                            x:Name="PresetName"
+                            Margin="0,10,0,0"
+                            FontSize="24"
+                            FontWeight="Light"
+                            Text="GRAPHITE MICA" />
+                        <TextBlock
+                            x:Name="PresetDescription"
+                            Margin="0,8,0,0"
+                            Foreground="{StaticResource Muted}"
+                            TextWrapping="Wrap"
+                            Text="Long-lived Windows system backdrop, dark native caption, rounded corners and a restrained cyan border." />
+                    </StackPanel>
+                    <Grid Grid.Row="1" Margin="0,26,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Foreground="{StaticResource Muted}" FontSize="11" Text="NON-CLIENT AREA" />
+                            <TextBlock Margin="0,7,0,0" FontSize="15" Text="System-owned caption" />
+                            <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Muted}" FontSize="11" Text="MIN / MAX / CLOSE remain native" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Foreground="{StaticResource Muted}" FontSize="11" Text="CLIENT SURFACE" />
+                            <TextBlock Margin="0,7,0,0" FontSize="15" Text="WPF-owned content" />
+                            <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Muted}" FontSize="11" Text="No transparent overlay" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border
+                Grid.Column="2"
+                Padding="22"
+                Background="{StaticResource PanelAlt}"
+                BorderBrush="{StaticResource Line}"
+                BorderThickness="1"
+                CornerRadius="4">
+                <StackPanel>
+                    <TextBlock
+                        Foreground="{StaticResource Muted}"
+                        FontFamily="Consolas"
+                        FontSize="10"
+                        Text="CALL RECEIPT" />
+                    <TextBlock
+                        x:Name="ReceiptSummary"
+                        Margin="0,10,0,0"
+                        Foreground="{StaticResource Cyan}"
+                        FontFamily="Consolas"
+                        FontSize="15"
+                        Text="6 / 6 S_OK" />
+                    <TextBox
+                        x:Name="ReceiptDetails"
+                        Margin="0,16,0,0"
+                        Padding="12"
+                        Height="250"
+                        IsReadOnly="True"
+                        VerticalScrollBarVisibility="Auto"
+                        Background="#0A1115"
+                        BorderBrush="{StaticResource Line}"
+                        BorderThickness="1"
+                        Foreground="{StaticResource Muted}"
+                        FontFamily="Consolas"
+                        FontSize="11"
+                        TextWrapping="NoWrap" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Border
+            Grid.Row="3"
+            Padding="14,11"
+            Background="#0C1418"
+            BorderBrush="{StaticResource Line}"
+            BorderThickness="1"
+            CornerRadius="3">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    VerticalAlignment="Center"
+                    Foreground="{StaticResource Muted}"
+                    FontFamily="Consolas"
+                    FontSize="10"
+                    Text="NO EXPLORER OR DESKTOP MUTATION · CLOSE WINDOW TO RELEASE ALL STYLE STATE" />
+                <TextBlock
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Foreground="{StaticResource Amber}"
+                    FontFamily="Consolas"
+                    FontSize="10"
+                    Text="LIVE: OWN HWND ONLY" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

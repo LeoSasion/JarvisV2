@@ -16,6 +16,7 @@
     "liveExplorer",
     "mutationPerformed",
     "requestedModule",
+    "hostActivation",
     "sourceIdentity",
     "killSwitch",
     "activeModulePermit",
@@ -64,6 +65,30 @@
     },
     "requestedModule": {
       "const": "jarvis-taskbar-icon-size"
+    },
+    "hostActivation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "reason",
+        "incidentAtUtc",
+        "activationPermitted"
+      ],
+      "properties": {
+        "state": {
+          "const": "quarantined"
+        },
+        "reason": {
+          "const": "windhawk-service-global-runtime-injection-observed-20260727"
+        },
+        "incidentAtUtc": {
+          "const": "2026-07-27T05:28:39.5311113Z"
+        },
+        "activationPermitted": {
+          "const": false
+        }
+      }
     },
     "sourceIdentity": {
       "type": "object",
@@ -323,7 +348,12 @@
         "moduleEnumerableProcessCount",
         "moduleNotEnumerableProcessCount",
         "moduleMappingCount",
+        "jarvisModuleMappingCount",
+        "acceptedBaseRuntimeMappingCount",
+        "unexpectedWindhawkRuntimeMappingCount",
         "moduleEnumerationErrorCount",
+        "safetyRelevantModuleEnumerationErrorCount",
+        "nonTargetModuleEnumerationErrorCount",
         "explorerProcessIds",
         "explorerMatchingModuleCount",
         "explorerModuleInspectionSucceeded"
@@ -349,7 +379,27 @@
           "type": "integer",
           "minimum": 0
         },
+        "jarvisModuleMappingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "acceptedBaseRuntimeMappingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unexpectedWindhawkRuntimeMappingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
         "moduleEnumerationErrorCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "safetyRelevantModuleEnumerationErrorCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nonTargetModuleEnumerationErrorCount": {
           "type": "integer",
           "minimum": 0
         },

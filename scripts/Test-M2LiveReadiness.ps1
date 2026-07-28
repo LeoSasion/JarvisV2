@@ -20,6 +20,14 @@ $supervisorDll = Join-Path $root (
 $recoveryPath = Join-Path $root 'docs\RECOVERY.md'
 $allowedOutputRoot =
     Join-Path $root 'artifacts\m2-live-readiness\runs'
+$expectedWindhawkBaseDllPath =
+    Join-Path $env:ProgramFiles 'Windhawk\Engine\1.7.3\64\windhawk.dll'
+$expectedWindhawkBaseDllSize = 979544
+$expectedWindhawkBaseDllSha256 =
+    '0AAD074CAF156200BE7A77E4615F9171CEA884CDE96BAF90397366C28C4F10A1'
+$hostActivationQuarantineReason =
+    'windhawk-service-global-runtime-injection-observed-20260727'
+$hostActivationIncidentAtUtc = '2026-07-27T05:28:39.5311113Z'
 $exactCommand = (
     'dotnet run --project .\src\Jarvis.Supervisor ' +
     '--configuration Release --no-build -- clear-kill-switch ' +
@@ -38,6 +46,8 @@ function Add-Failure {
         $errors.Add($Code)
     }
 }
+
+Add-Failure 'windhawk-host-activation-quarantined'
 
 function Get-FileIdentity {
     param(
@@ -337,6 +347,11 @@ $moduleEnumerationErrors =
 $moduleEnumerableProcessIds =
     [System.Collections.Generic.List[int]]::new()
 $moduleNotEnumerableProcessCount = 0
+$jarvisModuleMappings = @()
+$acceptedBaseRuntimeMappings = @()
+$unexpectedWindhawkRuntimeMappings = @()
+$safetyRelevantModuleEnumerationErrorCount = 0
+$nonTargetModuleEnumerationErrorCount = 0
 $mappingPattern = (
     '(?i)(windhawk|jarvis[-_]?native[-_]?taskbar|' +
     'jarvis[-_]?taskbar[-_]?icon[-_]?size|\\JARVIS2\\)'
@@ -368,10 +383,16 @@ try {
                 catch {
                 }
                 if ("$($module.ModuleName)|$fileName" -match $mappingPattern) {
+                    $isJarvis =
+                        [string]$module.ModuleName -match '(?i)^jarvis-' -or
+                        [string]$fileName -match
+                            '(?i)[\\/]jarvis-[^\\/]+\.dll$'
                     $moduleMappings.Add([ordered]@{
                         processId = [int]$process.Id
                         processName = [string]$process.ProcessName
                         moduleName = [string]$module.ModuleName
+                        path = [string]$fileName
+                        isJarvis = [bool]$isJarvis
                     })
                 }
             }
@@ -387,17 +408,88 @@ try {
     if ($namedProcesses.Count -ne 0) {
         Add-Failure 'windhawk-or-jarvis-process-running'
     }
-    if ($moduleMappings.Count -ne 0) {
-        Add-Failure 'windhawk-or-jarvis-module-mapped'
+    $jarvisModuleMappings =
+        @($moduleMappings | Where-Object { [bool]$_['isJarvis'] })
+    $windhawkBaseIdentityValid = $false
+    try {
+        $windhawkBaseItem =
+            Get-Item -LiteralPath $expectedWindhawkBaseDllPath -Force
+        $windhawkBaseIdentityValid =
+            -not (
+                $windhawkBaseItem.Attributes -band
+                [IO.FileAttributes]::ReparsePoint
+            ) -and
+            [string]$windhawkBaseItem.VersionInfo.ProductVersion -ceq
+                '1.7.3' -and
+            [int64]$windhawkBaseItem.Length -eq
+                $expectedWindhawkBaseDllSize -and
+            (Get-FileHash `
+                -LiteralPath $expectedWindhawkBaseDllPath `
+                -Algorithm SHA256).Hash -ceq
+                $expectedWindhawkBaseDllSha256
     }
-    if ($moduleEnumerationErrors.Count -ne 0) {
-        Add-Failure 'process-module-enumeration-incomplete'
+    catch {
+        $windhawkBaseIdentityValid = $false
+    }
+    $acceptedBaseRuntimeMappings = @(
+        $moduleMappings |
+            Where-Object {
+                -not [bool]$_['isJarvis'] -and
+                $windhawkBaseIdentityValid -and
+                [string]$_['moduleName'] -ceq 'windhawk.dll' -and
+                [string]$_['path'] -ieq $expectedWindhawkBaseDllPath -and
+                [int]$_['processId'] -notin
+                    @($compatibilityReceipt.explorerProcessIds) -and
+                [string]$_['processName'] -notmatch
+                    '(?i)^(windhawk|jarvis)'
+            }
+    )
+    $unexpectedWindhawkRuntimeMappings = @(
+        $moduleMappings |
+            Where-Object {
+                -not [bool]$_['isJarvis'] -and
+                (
+                    -not $windhawkBaseIdentityValid -or
+                    [string]$_['moduleName'] -cne 'windhawk.dll' -or
+                    [string]$_['path'] -ine $expectedWindhawkBaseDllPath -or
+                    [int]$_['processId'] -in
+                        @($compatibilityReceipt.explorerProcessIds) -or
+                    [string]$_['processName'] -match
+                        '(?i)^(windhawk|jarvis)'
+                )
+            }
+    )
+    if ($jarvisModuleMappings.Count -ne 0) {
+        Add-Failure 'jarvis-module-mapped'
+    }
+    if ($unexpectedWindhawkRuntimeMappings.Count -ne 0) {
+        Add-Failure 'unexpected-windhawk-runtime-mapped'
+    }
+    $explorerProcessIds =
+        @($compatibilityReceipt.explorerProcessIds | ForEach-Object { [int]$_ })
+    $safetyRelevantModuleEnumerationErrors = @(
+        $moduleEnumerationErrors |
+            Where-Object {
+                [int]$_['processId'] -in $explorerProcessIds -or
+                [string]$_['processName'] -match '(?i)^(windhawk|jarvis)'
+            }
+    )
+    $safetyRelevantModuleEnumerationErrorCount =
+        $safetyRelevantModuleEnumerationErrors.Count
+    $nonTargetModuleEnumerationErrorCount =
+        $moduleEnumerationErrors.Count -
+        $safetyRelevantModuleEnumerationErrorCount
+    if ($safetyRelevantModuleEnumerationErrorCount -ne 0) {
+        Add-Failure 'safety-relevant-process-module-enumeration-incomplete'
         foreach ($errorType in @(
-            $moduleEnumerationErrors |
+            $safetyRelevantModuleEnumerationErrors |
                 ForEach-Object { [string]$_['errorType'] } |
                 Sort-Object -Unique
         )) {
-            Add-Failure "process-module-enumeration-error:$errorType"
+            Add-Failure (
+                'safety-relevant-process-module-enumeration-error:' +
+                $errorType
+            )
         }
     }
 }
@@ -459,6 +551,12 @@ $receipt = [ordered]@{
     liveExplorer = 'not-run'
     mutationPerformed = $false
     requestedModule = $moduleId
+    hostActivation = [ordered]@{
+        state = 'quarantined'
+        reason = $hostActivationQuarantineReason
+        incidentAtUtc = $hostActivationIncidentAtUtc
+        activationPermitted = $false
+    }
     sourceIdentity = $sourceIdentity
     killSwitch = [ordered]@{
         path = $killSwitchPath
@@ -480,7 +578,16 @@ $receipt = [ordered]@{
         moduleEnumerableProcessCount = $moduleEnumerableProcessIds.Count
         moduleNotEnumerableProcessCount = $moduleNotEnumerableProcessCount
         moduleMappingCount = $moduleMappings.Count
+        jarvisModuleMappingCount = $jarvisModuleMappings.Count
+        acceptedBaseRuntimeMappingCount =
+            $acceptedBaseRuntimeMappings.Count
+        unexpectedWindhawkRuntimeMappingCount =
+            $unexpectedWindhawkRuntimeMappings.Count
         moduleEnumerationErrorCount = $moduleEnumerationErrors.Count
+        safetyRelevantModuleEnumerationErrorCount =
+            $safetyRelevantModuleEnumerationErrorCount
+        nonTargetModuleEnumerationErrorCount =
+            $nonTargetModuleEnumerationErrorCount
         explorerProcessIds = $explorerProcessIds
         explorerMatchingModuleCount = $explorerMatchingModuleCount
         explorerModuleInspectionSucceeded =

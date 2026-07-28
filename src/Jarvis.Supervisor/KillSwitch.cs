@@ -10,6 +10,9 @@ internal static class KillSwitch
 
     private const string FlagFileName = "disabled.flag";
     private const string ActiveModuleFileName = "active-module.txt";
+    private static readonly bool LiveActivationQuarantined = true;
+    public const string LiveActivationQuarantineReason =
+        "windhawk-service-global-runtime-injection-observed-20260727";
     private static readonly TimeSpan StateGateTimeout = TimeSpan.FromSeconds(15);
     public static readonly TimeSpan ActivationPermitLifetime =
         TimeSpan.FromMinutes(5);
@@ -27,6 +30,9 @@ internal static class KillSwitch
         Path.Combine(StateDirectory, ActiveModuleFileName);
 
     public static IReadOnlySet<string> AllowedModuleIds => AllowedModuleIdSet;
+
+    public static bool IsLiveActivationQuarantined =>
+        LiveActivationQuarantined;
 
     public static StateGateLease AcquireStateGate() =>
         StateGateLease.Acquire(StateGateName, StateGateTimeout);
@@ -205,12 +211,24 @@ internal static class KillSwitch
         string moduleId)
     {
         EnsureLeaseHeld(lease);
+        if (LiveActivationQuarantined)
+        {
+            throw new InvalidOperationException(
+                "Live module activation is quarantined because the controlled " +
+                "disabled-host session mapped the Windhawk base runtime into " +
+                "Explorer and many non-target processes. Quarantine: " +
+                LiveActivationQuarantineReason);
+        }
+
         if (!IsAllowedModuleId(moduleId))
         {
             throw new ArgumentException(
                 $"Module id isn't allowlisted: {moduleId}",
                 nameof(moduleId));
         }
+
+        RecoveryTerminalLeaseProbe recoveryTerminal =
+            RecoveryTerminalLease.RequireReady(moduleId);
 
         KillSwitchProbe initialProbe = Probe();
         if (initialProbe.State != KillSwitchState.Armed)
@@ -269,6 +287,11 @@ internal static class KillSwitch
                     throw new IOException(
                         $"The active-module permit changed while preparing activation: {permitAgain.Error ?? permitAgain.State.ToString()}.");
                 }
+
+                // Keep the final recovery-terminal check as close as possible to
+                // the intentional flag deletion. A closed terminal or stale
+                // heartbeat therefore rolls back while the host is still locked.
+                recoveryTerminal = RecoveryTerminalLease.RequireReady(moduleId);
             }
 
             File.Delete(FlagPath);
@@ -288,7 +311,11 @@ internal static class KillSwitch
                 finalProbe.State,
                 DateTimeOffset.UtcNow,
                 permitProbe.ExpiresAtUtc ??
-                    DateTimeOffset.UtcNow + ActivationPermitLifetime);
+                    DateTimeOffset.UtcNow + ActivationPermitLifetime,
+                recoveryTerminal.LeasePath,
+                recoveryTerminal.SessionPlanRunId!,
+                recoveryTerminal.ProcessId!.Value,
+                recoveryTerminal.HeartbeatAtUtc!.Value);
         }
         catch (Exception activationException)
         {
@@ -669,4 +696,8 @@ internal sealed record ModuleActivationResult(
     string KillSwitchPath,
     KillSwitchState KillSwitchState,
     DateTimeOffset ActivatedAtUtc,
-    DateTimeOffset PermitExpiresAtUtc);
+    DateTimeOffset PermitExpiresAtUtc,
+    string RecoveryTerminalLeasePath,
+    string RecoveryTerminalSessionPlanRunId,
+    int RecoveryTerminalProcessId,
+    DateTimeOffset RecoveryTerminalHeartbeatAtUtc);

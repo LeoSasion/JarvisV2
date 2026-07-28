@@ -1,0 +1,59 @@
+{
+  "$schema": "./explorer-readonly-admission-fingerprint-contract.schema.json",
+  "schemaVersion": 1,
+  "contractId": "jarvis-explorer-readonly-admission-fingerprint-v1",
+  "lifecycleState": "offline-model-only",
+  "transportAbiVersion": 1,
+  "admission": {
+    "callerSuppliedExactPidRequired": true,
+    "processEnumerationAllowed": false,
+    "windowEnumerationAllowed": false,
+    "existingDiagnosticsConsumerCountRequired": 0,
+    "endpointCandidateCountRequired": 1,
+    "runtimeEndpointAttemptLimit": 0,
+    "requiredBinaryHashes": [
+      "controller",
+      "tap-dll",
+      "xaml-diagnostics",
+      "endpoint-name"
+    ],
+    "requiredTapExportCount": 2,
+    "importPolicyMustPass": true,
+    "binaryIdentityMustPass": true,
+    "recoveryMustBeReady": true,
+    "oneShotPlanConsumedOnAdmission": true,
+    "completeBindByteMatchRequired": true,
+    "replayPolicy": "latch-blocked"
+  },
+  "fingerprint": {
+    "surfaceCount": 3,
+    "propertyCount": 3,
+    "observationCount": 9,
+    "observationOrder": "surface-major-property-minor",
+    "allowedValueKinds": [
+      "null",
+      "solid-color"
+    ],
+    "maximumOpacityMillionths": 1000000,
+    "sha256Domain": "JARVIS2-XAML-PROP-V1",
+    "bindsInstanceHandle": true,
+    "bindsSelectorHash": true,
+    "bindsVisualTreeGeneration": true,
+    "unsupportedValuePolicy": "latch-blocked",
+    "propertyReadSupported": false
+  },
+  "integration": {
+    "controllerContainsOfflineAdmissionModel": true,
+    "tapDllContainsOfflineFingerprintModel": true,
+    "modelEntryPointsExported": false,
+    "setSiteResult": "E_ACCESSDENIED",
+    "endpointAttemptedDuringValidation": false,
+    "tapDllLoadedDuringValidation": false
+  },
+  "executionSupported": false,
+  "readyForLiveConnection": false,
+  "readyForExactApproval": false,
+  "activationPermitted": false,
+  "liveExplorer": "not-run",
+  "mutationPerformed": false
+}

@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "contractId": "jarvis-explorer-xaml-transport-v1",
+  "lifecycleState": "offline-model-only",
+  "evidenceBasis": {
+    "microsoftInitializeXamlDiagnosticsEx": "https://learn.microsoft.com/en-us/windows/win32/api/xamlom/nf-xamlom-initializexamldiagnosticsex",
+    "microsoftXamlDiagnosticsApi": "https://learn.microsoft.com/en-us/windows/win32/api/_xaml_diagnostics/",
+    "gplUpstreamRepository": "https://github.com/ramensoftware/windhawk-mods",
+    "gplUpstreamCommit": "109589023dde428deaee2fe80e4ce446283a7935",
+    "gplUpstreamSourcePath": "mods/windows-11-file-explorer-styler.wh.cpp",
+    "gplUpstreamSourceSha256": "ECD6189A76439518E84938F4CA42FDB7F78AA1CCE3151EE0FE93638918D2DCED"
+  },
+  "connectionCandidate": {
+    "api": "InitializeXamlDiagnosticsEx",
+    "officialContractLibrary": "Windows.UI.Xaml.dll",
+    "reviewedExplorerExportCandidate": "Microsoft.Internal.FrameworkUdk.dll",
+    "runtimeResolutionState": "future-exact-hash-and-export-inspection-required",
+    "targetSelection": "caller-supplied-exact-pid-only",
+    "tapLoadEffect": "injects-one-reviewed-tap-dll-into-exact-target-process",
+    "xamlDiagnosticsConsumerLimit": "one-consumer-at-a-time",
+    "endpointDiscovery": "not-implemented",
+    "liveConnectionImplemented": false
+  },
+  "targetIdentity": {
+    "processName": "explorer.exe",
+    "windowClass": "CabinetWClass",
+    "exactWindowTitle": "C:\\",
+    "requireSeparateDesktopShellProcess": true,
+    "callerSuppliedFields": [
+      "explorerProcessId",
+      "desktopShellProcessId",
+      "windowThreadId",
+      "windowHandle",
+      "processStartTimeUtc",
+      "visualTreeGenerationSha256",
+      "exactWindowTitleSha256"
+    ],
+    "processEnumerationAllowed": false,
+    "windowEnumerationAllowed": false,
+    "identityRecheckBeforeEveryCommand": true
+  },
+  "capability": {
+    "oneShot": true,
+    "maximumAgeMilliseconds": 120000,
+    "previewDurationMilliseconds": 60000,
+    "strictMonotonicSequence": true,
+    "requiredBindings": [
+      "sessionNonce",
+      "selectorProfileSha256",
+      "previewPlanSha256",
+      "exactSelectorHashes",
+      "exactStyledValueHashes",
+      "exactTargetIdentity"
+    ],
+    "selfApprovalAllowed": false,
+    "replayAllowed": false
+  },
+  "surfacePolicy": {
+    "rolesInApplyOrder": [
+      "tab-strip",
+      "command-bar",
+      "navigation-pane"
+    ],
+    "propertiesInApplyOrder": [
+      "Background",
+      "Foreground",
+      "BorderBrush"
+    ],
+    "requiredUniqueMatchCountPerRole": 1,
+    "requiredOriginalJournalEntryCount": 9,
+    "restoreOrder": "strict-reverse",
+    "arbitrarySelectorAllowed": false,
+    "arbitraryPropertyAllowed": false,
+    "arbitraryXamlAllowed": false
+  },
+  "operationPolicy": {
+    "allowedOfflineModelOperations": [
+      "query-contract",
+      "bind",
+      "observe-surface",
+      "journal-original",
+      "record-apply-result",
+      "tick",
+      "record-restore-result",
+      "quiesce",
+      "query"
+    ],
+    "forbiddenImplementationShortcuts": [
+      "process-enumeration",
+      "window-enumeration",
+      "desktop-shell-targeting",
+      "multi-process-targeting",
+      "global-injection",
+      "remote-thread-injection",
+      "thread-hook-injection",
+      "arbitrary-code-execution",
+      "dynamic-operation-registration",
+      "windhawk-runtime",
+      "explorer-restart",
+      "process-termination",
+      "registry-write",
+      "service-install-or-start"
+    ]
+  },
+  "recoveryPolicy": {
+    "deadlineAction": "latch-restore-required",
+    "partialApplyAction": "strict-reverse-restore-applied-prefix",
+    "identityOrGenerationDriftAfterWrite": "retain-restore-required-and-stop",
+    "quiesceWithOutstandingWrites": "forbidden",
+    "automaticExplorerRestartAllowed": false,
+    "forceUnloadAllowed": false
+  },
+  "executionSupported": false,
+  "readyForLiveConnection": false,
+  "readyForExactApproval": false,
+  "activationPermitted": false,
+  "liveExplorer": "not-run",
+  "mutationPerformed": false
+}

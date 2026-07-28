@@ -53,13 +53,50 @@ JARVIS2 modifications on 2026-07-22:
 - kept unloading free of refresh messages, Explorer restarts and persistent
   system changes.
 
+## Windows 11 File Explorer Styler
+
+- Project: `ramensoftware/windhawk-mods`, mod by m417z and contributors
+- Source: `mods/windows-11-file-explorer-styler.wh.cpp` version 1.5
+- Audited repository commit:
+  `109589023dde428deaee2fe80e4ce446283a7935`
+- Git blob: `6f67b714c271db1235a5f937c30c5cae55b180bf`
+- Source size: `326922` bytes
+- Source SHA-256:
+  `ECD6189A76439518E84938F4CA42FDB7F78AA1CCE3151EE0FE93638918D2DCED`
+- License: GPL-3.0, declared in the source file
+- Upstream: <https://github.com/ramensoftware/windhawk-mods>
+
+JARVIS2 Phase 10 reuse boundary:
+
+- adopts the documented `Class#Name`, parent-chain and bounded wildcard
+  selector grammar;
+- records upstream Explorer candidates such as
+  `FileExplorerExtensions.FileExplorerTabControl`,
+  `Grid#TabContainerGrid`, `FileExplorerExtensions.CommandBarControl` and
+  `Grid#CommandBarControlRootGrid`;
+- models complete original-property capture and reverse-order restoration;
+- does not vendor or copy the Windhawk loader, service, process injector,
+  DLL entrypoint, hook installation, COM Global Interface Table lifecycle,
+  `InitializeXamlDiagnosticsEx` bootstrap, blur brush, telemetry, custom-code
+  execution or Explorer restart path;
+- treats every selector as unverified until a bounded read-only receipt from
+  the exact temporary Explorer window proves its match count.
+
 ## Windhawk
 
 - Version: 1.7.3
 - Commit: `b59b38cd77daec98830c0e5e2ad14a35c44f02a7`
+- Architecture research commit:
+  `61fc60dad607e6888d8de560d1b6add716f936c3`
 - License: GPL-3.0
-- Role: runtime and portable Clang build toolchain; not vendored
+- Role: quarantined historical injection runtime and portable Clang build
+  toolchain; no runtime source is vendored
 - Upstream: <https://github.com/ramensoftware/windhawk>
+
+Phase 6 uses the current upstream source only to document the service,
+all-process injector and loader boundary. No Windhawk injector, service,
+remote-memory, APC or remote-thread source was copied into the Explorer host
+model.
 
 ## Reference-only projects
 

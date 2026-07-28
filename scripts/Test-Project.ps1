@@ -15,6 +15,100 @@ $toolchainLockPath = Join-Path $root 'config\toolchain-lock.json'
 $licensePath = Join-Path $root 'LICENSE'
 $supervisorProject = Join-Path $root 'src\Jarvis.Supervisor\Jarvis.Supervisor.csproj'
 $supervisorSourcePath = Join-Path $root 'src\Jarvis.Supervisor\CompatibilityInspector.cs'
+$explorerHostModelProject =
+    Join-Path $root 'src\Jarvis.ExplorerHostModel\Jarvis.ExplorerHostModel.csproj'
+$explorerHostModelSourceRoot =
+    Join-Path $root 'src\Jarvis.ExplorerHostModel'
+$explorerHostModelAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerHostModel.ps1'
+$explorerHostPlanSchemaPath =
+    Join-Path $root 'config\explorer-host-offline-plan.schema.json'
+$controlCenterProject =
+    Join-Path $root 'src\Jarvis.ControlCenter\Jarvis.ControlCenter.csproj'
+$controlCenterSourceRoot =
+    Join-Path $root 'src\Jarvis.ControlCenter'
+$controlCenterAuditPath =
+    Join-Path $root 'scripts\Test-ControlCenter.ps1'
+$nativeStyleLabProject =
+    Join-Path $root 'src\Jarvis.NativeStyleLab\Jarvis.NativeStyleLab.csproj'
+$nativeStyleLabSourceRoot =
+    Join-Path $root 'src\Jarvis.NativeStyleLab'
+$nativeStyleLabAuditPath =
+    Join-Path $root 'scripts\Test-NativeStyleLab.ps1'
+$desktopStyleProbeProject =
+    Join-Path $root 'src\Jarvis.DesktopStyleProbe\Jarvis.DesktopStyleProbe.csproj'
+$desktopStyleProbeSourceRoot =
+    Join-Path $root 'src\Jarvis.DesktopStyleProbe'
+$desktopStyleProbeAuditPath =
+    Join-Path $root 'scripts\Test-DesktopStyleProbe.ps1'
+$desktopStyleSessionProject =
+    Join-Path $root 'src\Jarvis.DesktopStyleSession\Jarvis.DesktopStyleSession.csproj'
+$desktopStyleSessionSourceRoot =
+    Join-Path $root 'src\Jarvis.DesktopStyleSession'
+$desktopStyleSessionAuditPath =
+    Join-Path $root 'scripts\Test-DesktopStyleSession.ps1'
+$nativeWindowStyleSessionProject =
+    Join-Path $root 'src\Jarvis.NativeWindowStyleSession\Jarvis.NativeWindowStyleSession.csproj'
+$nativeWindowStyleSessionSourceRoot =
+    Join-Path $root 'src\Jarvis.NativeWindowStyleSession'
+$nativeWindowStyleSessionAuditPath =
+    Join-Path $root 'scripts\Test-NativeWindowStyleSession.ps1'
+$explorerBridgeSourceRoot =
+    Join-Path $root 'src\Jarvis.ExplorerBridgeModel'
+$explorerBridgeHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_bridge_model_harness.cpp'
+$explorerBridgeAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerBridgeModel.ps1'
+$explorerFrameModelProject =
+    Join-Path $root 'src\Jarvis.ExplorerFrameModel\Jarvis.ExplorerFrameModel.csproj'
+$explorerFrameModelSourceRoot =
+    Join-Path $root 'src\Jarvis.ExplorerFrameModel'
+$explorerFrameModelAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerFrameModel.ps1'
+$explorerPreviewModelProject =
+    Join-Path $root 'src\Jarvis.ExplorerPreviewModel\Jarvis.ExplorerPreviewModel.csproj'
+$explorerPreviewModelSourceRoot =
+    Join-Path $root 'src\Jarvis.ExplorerPreviewModel'
+$explorerPreviewModelAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerPreviewModel.ps1'
+$explorerSurfaceProbeProject =
+    Join-Path $root 'src\Jarvis.ExplorerSurfaceProbe\Jarvis.ExplorerSurfaceProbe.csproj'
+$explorerSurfaceProbeSourceRoot =
+    Join-Path $root 'src\Jarvis.ExplorerSurfaceProbe'
+$explorerSurfaceProbeAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerSurfaceProbe.ps1'
+$explorerTransportModelSourceRoot =
+    Join-Path $root 'src\Jarvis.ExplorerTransportModel'
+$explorerTransportModelHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_transport_model_harness.cpp'
+$explorerTransportModelAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerTransportModel.ps1'
+$explorerReadOnlyTapSourceRoot =
+    Join-Path $root 'src\Jarvis.ExplorerTapReadOnly'
+$explorerReadOnlyTapHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_tap_protocol_harness.cpp'
+$explorerReadOnlyTapAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerReadOnlyTap.ps1'
+$explorerReadOnlyAdmissionHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_tap_admission_harness.cpp'
+$explorerReadOnlyAdmissionAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerReadOnlyAdmission.ps1'
+$explorerInspectableAdapterHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_tap_inspectable_adapter_harness.cpp'
+$explorerInspectableAdapterAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerInspectableAdapter.ps1'
+$explorerStyleTransactionHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_tap_style_transaction_harness.cpp'
+$explorerStyleTransactionAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerStyleTransaction.ps1'
+$explorerXamlReadBridgeHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_tap_xaml_read_bridge_harness.cpp'
+$explorerXamlReadBridgeAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerXamlReadBridge.ps1'
+$explorerXamlSurfaceDiscoveryHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_tap_surface_discovery_harness.cpp'
+$explorerXamlSurfaceDiscoveryAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerXamlSurfaceDiscovery.ps1'
 $buildScriptPath = Join-Path $root 'scripts\Build-NativeMod.ps1'
 $testScriptPath = $PSCommandPath
 $artifactsRoot = Join-Path $root 'artifacts\native'
@@ -50,6 +144,96 @@ $m2ChecklistPath =
     Join-Path $root 'docs\M2-INTERACTION-CHECKLIST.md'
 $publicCiPath =
     Join-Path $root '.github\workflows\ci.yml'
+$phase4TaskPath =
+    Join-Path $root 'docs\PHASE-4-M2-RECOVERY-AND-OBSERVATION-TASK.md'
+$m2SessionPlanSchemaPath =
+    Join-Path $root 'config\m2-validation-session-plan.schema.json'
+$m2ObservationSchemaPath =
+    Join-Path $root 'config\m2-observation-rehearsal-receipt.schema.json'
+$m2SessionPlannerPath =
+    Join-Path $root 'scripts\New-M2ValidationSessionPlan.ps1'
+$m2RecoveryTerminalPath =
+    Join-Path $root 'scripts\Open-M2RecoveryTerminal.ps1'
+$m2ObservationRehearsalPath =
+    Join-Path $root 'scripts\Test-M2ObservationRehearsal.ps1'
+$phase5TaskPath =
+    Join-Path $root 'docs\PHASE-5-M2-RECOVERY-LEASE-TASK.md'
+$phase5ReviewPath =
+    Join-Path $root 'docs\PHASE-5-SAFETY-REVIEW.md'
+$phase6TaskPath =
+    Join-Path $root 'docs\PHASE-6-WINDHAWK-HOST-QUARANTINE-TASK.md'
+$phase6AdrPath =
+    Join-Path $root 'docs\ADR-0001-EXPLORER-ONLY-HOST.md'
+$phase7TaskPath =
+    Join-Path $root 'docs\PHASE-7-CONTROL-CENTER-AND-BRIDGE-CONTRACT-TASK.md'
+$phase8TaskPath =
+    Join-Path $root 'docs\PHASE-8-NATIVE-STYLE-LAB-AND-DESKTOP-PROBE-TASK.md'
+$phase8DesktopSessionTaskPath =
+    Join-Path $root 'docs\PHASE-8-DESKTOP-TEXT-COLOR-SESSION-TASK.md'
+$phase8NativeWindowSessionTaskPath =
+    Join-Path $root 'docs\PHASE-8-NATIVE-EXPLORER-WINDOW-STYLE-TASK.md'
+$phase9TaskPath =
+    Join-Path $root 'docs\PHASE-9-EXPLORER-FRAME-STYLER-TASK.md'
+$phase10TaskPath =
+    Join-Path $root 'docs\PHASE-10-BATCHED-EXPLORER-PREVIEW-PREP-TASK.md'
+$phase11TaskPath =
+    Join-Path $root 'docs\PHASE-11-EXPLORER-XAML-TRANSPORT-CORE-TASK.md'
+$phase12TaskPath =
+    Join-Path $root 'docs\PHASE-12-EXPLORER-READONLY-TAP-OFFLINE-BUILD-TASK.md'
+$phase13TaskPath =
+    Join-Path $root 'docs\PHASE-13-EXPLORER-READONLY-ADMISSION-AND-FINGERPRINT-TASK.md'
+$phase14TaskPath =
+    Join-Path $root 'docs\PHASE-14-EXPLORER-INSPECTABLE-ADAPTER-TASK.md'
+$phase15TaskPath =
+    Join-Path $root 'docs\PHASE-15-EXPLORER-REVERSIBLE-STYLE-TRANSACTION-TASK.md'
+$phase16TaskPath =
+    Join-Path $root 'docs\PHASE-16-EXPLORER-XAML-READ-BRIDGE-REVIEW-TASK.md'
+$phase17TaskPath =
+    Join-Path $root 'docs\PHASE-17-EXPLORER-XAML-SURFACE-DISCOVERY-TASK.md'
+$explorerFrameSelectorProfilePath =
+    Join-Path $root 'config\explorer-frame-selector-candidate.json'
+$explorerFrameSelectorSchemaPath =
+    Join-Path $root 'config\explorer-frame-selector-candidate.schema.json'
+$explorerTransportContractPath =
+    Join-Path $root 'config\explorer-xaml-transport-contract.json'
+$explorerTransportContractSchemaPath =
+    Join-Path $root 'config\explorer-xaml-transport-contract.schema.json'
+$explorerReadOnlyTapContractPath =
+    Join-Path $root 'config\explorer-readonly-tap-build-contract.json'
+$explorerReadOnlyTapContractSchemaPath =
+    Join-Path $root 'config\explorer-readonly-tap-build-contract.schema.json'
+$explorerReadOnlyAdmissionContractPath =
+    Join-Path $root 'config\explorer-readonly-admission-fingerprint-contract.json'
+$explorerReadOnlyAdmissionContractSchemaPath =
+    Join-Path $root 'config\explorer-readonly-admission-fingerprint-contract.schema.json'
+$explorerInspectableAdapterContractPath =
+    Join-Path $root 'config\explorer-inspectable-adapter-contract.json'
+$explorerInspectableAdapterContractSchemaPath =
+    Join-Path $root 'config\explorer-inspectable-adapter-contract.schema.json'
+$explorerStyleTransactionContractPath =
+    Join-Path $root 'config\explorer-style-transaction-contract.json'
+$explorerStyleTransactionContractSchemaPath =
+    Join-Path $root 'config\explorer-style-transaction-contract.schema.json'
+$explorerXamlReadBridgeContractPath =
+    Join-Path $root 'config\explorer-xaml-read-bridge-contract.json'
+$explorerXamlReadBridgeContractSchemaPath =
+    Join-Path $root 'config\explorer-xaml-read-bridge-contract.schema.json'
+$explorerXamlSurfaceDiscoveryContractPath =
+    Join-Path $root 'config\explorer-xaml-surface-discovery-contract.json'
+$explorerXamlSurfaceDiscoveryContractSchemaPath =
+    Join-Path $root 'config\explorer-xaml-surface-discovery-contract.schema.json'
+$m2RecoveryLeaseSchemaPath =
+    Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
+$m2RecoveryLeaseLabSchemaPath =
+    Join-Path $root 'config\m2-recovery-lease-lab-receipt.schema.json'
+$m2RecoveryLeaseLabPath =
+    Join-Path $root 'scripts\Test-M2RecoveryLeaseLab.ps1'
+$recoveryTerminalLeaseSourcePath =
+    Join-Path $root 'src\Jarvis.Supervisor\RecoveryTerminalLease.cs'
+$killSwitchSourcePath =
+    Join-Path $root 'src\Jarvis.Supervisor\KillSwitch.cs'
+$programSourcePath =
+    Join-Path $root 'src\Jarvis.Supervisor\Program.cs'
 
 $checks = [System.Collections.Generic.List[object]]::new()
 $failures = [System.Collections.Generic.List[string]]::new()
@@ -272,6 +456,276 @@ $m2BaselineScript =
 $m2Runbook = [System.IO.File]::ReadAllText($m2RunbookPath)
 $m2Checklist = [System.IO.File]::ReadAllText($m2ChecklistPath)
 $publicCi = [System.IO.File]::ReadAllText($publicCiPath)
+$phase4Task = [System.IO.File]::ReadAllText($phase4TaskPath)
+$m2SessionPlanSchema =
+    Get-Content -LiteralPath $m2SessionPlanSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$m2ObservationSchema =
+    Get-Content -LiteralPath $m2ObservationSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$m2SessionPlanner =
+    [System.IO.File]::ReadAllText($m2SessionPlannerPath)
+$m2RecoveryTerminal =
+    [System.IO.File]::ReadAllText($m2RecoveryTerminalPath)
+$m2ObservationRehearsal =
+    [System.IO.File]::ReadAllText($m2ObservationRehearsalPath)
+$phase5Task = [System.IO.File]::ReadAllText($phase5TaskPath)
+$phase5Review = [System.IO.File]::ReadAllText($phase5ReviewPath)
+$m2RecoveryLeaseSchema =
+    Get-Content -LiteralPath $m2RecoveryLeaseSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$m2RecoveryLeaseLabSchema =
+    Get-Content -LiteralPath $m2RecoveryLeaseLabSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$m2RecoveryLeaseLab =
+    [System.IO.File]::ReadAllText($m2RecoveryLeaseLabPath)
+$recoveryTerminalLeaseSource =
+    [System.IO.File]::ReadAllText($recoveryTerminalLeaseSourcePath)
+$killSwitchSource =
+    [System.IO.File]::ReadAllText($killSwitchSourcePath)
+$programSource =
+    [System.IO.File]::ReadAllText($programSourcePath)
+$phase6Task = [System.IO.File]::ReadAllText($phase6TaskPath)
+$phase6Adr = [System.IO.File]::ReadAllText($phase6AdrPath)
+$explorerHostModelSource = @(
+    Get-ChildItem `
+        -LiteralPath $explorerHostModelSourceRoot `
+        -Filter '*.cs' `
+        -File |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$explorerHostPlanSchema =
+    Get-Content -LiteralPath $explorerHostPlanSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$phase7Task = [System.IO.File]::ReadAllText($phase7TaskPath)
+$controlCenterSource = @(
+    Get-ChildItem -LiteralPath $controlCenterSourceRoot -File -Recurse |
+        Where-Object Extension -In @('.cs', '.xaml', '.csproj') |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$explorerBridgeSource = @(
+    Get-ChildItem -LiteralPath $explorerBridgeSourceRoot -File -Recurse |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+    [IO.File]::ReadAllText($explorerBridgeHarnessPath)
+) -join [Environment]::NewLine
+$explorerFrameModelSource = @(
+    Get-ChildItem `
+        -LiteralPath $explorerFrameModelSourceRoot `
+        -Filter '*.cs' `
+        -File |
+        Sort-Object Name |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$phase8Task = [System.IO.File]::ReadAllText($phase8TaskPath)
+$nativeStyleLabSource = @(
+    Get-ChildItem -LiteralPath $nativeStyleLabSourceRoot -File -Recurse |
+        Where-Object Extension -In @('.cs', '.xaml', '.csproj') |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$desktopStyleProbeSource = @(
+    Get-ChildItem -LiteralPath $desktopStyleProbeSourceRoot -File -Recurse |
+        Where-Object Extension -In @('.cs', '.csproj') |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$phase8DesktopSessionTask =
+    [System.IO.File]::ReadAllText($phase8DesktopSessionTaskPath)
+$desktopStyleSessionSource = @(
+    Get-ChildItem -LiteralPath $desktopStyleSessionSourceRoot -File -Recurse |
+        Where-Object Extension -In @('.cs', '.csproj') |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$phase8NativeWindowSessionTask =
+    [System.IO.File]::ReadAllText($phase8NativeWindowSessionTaskPath)
+$nativeWindowStyleSessionSource = @(
+    Get-ChildItem -LiteralPath $nativeWindowStyleSessionSourceRoot -File -Recurse |
+        Where-Object Extension -In @('.cs', '.csproj') |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$phase9Task = [System.IO.File]::ReadAllText($phase9TaskPath)
+$phase10Task = [System.IO.File]::ReadAllText($phase10TaskPath)
+$phase11Task = [System.IO.File]::ReadAllText($phase11TaskPath)
+$phase12Task = [System.IO.File]::ReadAllText($phase12TaskPath)
+$phase13Task = [System.IO.File]::ReadAllText($phase13TaskPath)
+$phase14Task = [System.IO.File]::ReadAllText($phase14TaskPath)
+$phase15Task = [System.IO.File]::ReadAllText($phase15TaskPath)
+$phase16Task = [System.IO.File]::ReadAllText($phase16TaskPath)
+$phase17Task = [System.IO.File]::ReadAllText($phase17TaskPath)
+$explorerFrameSelectorProfile =
+    Get-Content -LiteralPath $explorerFrameSelectorProfilePath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerFrameSelectorSchema =
+    Get-Content -LiteralPath $explorerFrameSelectorSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerPreviewModelSource = @(
+    Get-ChildItem `
+        -LiteralPath $explorerPreviewModelSourceRoot `
+        -Filter '*.cs' `
+        -File |
+        Sort-Object Name |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$explorerSurfaceProbeSource = @(
+    Get-ChildItem `
+        -LiteralPath $explorerSurfaceProbeSourceRoot `
+        -File `
+        -Recurse |
+        Where-Object Extension -In @('.cs', '.csproj') |
+        Sort-Object FullName |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$explorerTransportContract =
+    Get-Content -LiteralPath $explorerTransportContractPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerTransportContractSchema =
+    Get-Content -LiteralPath $explorerTransportContractSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerTransportModelSource = @(
+    Get-ChildItem `
+        -LiteralPath $explorerTransportModelSourceRoot `
+        -File `
+        -Recurse |
+        Sort-Object FullName |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+    [IO.File]::ReadAllText($explorerTransportModelHarnessPath)
+) -join [Environment]::NewLine
+$explorerReadOnlyTapContract =
+    Get-Content -LiteralPath $explorerReadOnlyTapContractPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerReadOnlyTapContractSchema =
+    Get-Content -LiteralPath $explorerReadOnlyTapContractSchemaPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerReadOnlyTapSource = @(
+    Get-ChildItem `
+        -LiteralPath $explorerReadOnlyTapSourceRoot `
+        -File `
+        -Recurse |
+        Sort-Object FullName |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+    [IO.File]::ReadAllText($explorerReadOnlyTapHarnessPath)
+) -join [Environment]::NewLine
+$explorerReadOnlyAdmissionContract =
+    Get-Content -LiteralPath $explorerReadOnlyAdmissionContractPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerReadOnlyAdmissionContractSchema =
+    Get-Content `
+        -LiteralPath $explorerReadOnlyAdmissionContractSchemaPath `
+        -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerReadOnlyAdmissionSource = @(
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_admission.h')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_admission.cpp')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_fingerprint.h')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_fingerprint.cpp')
+    )
+    [IO.File]::ReadAllText($explorerReadOnlyAdmissionHarnessPath)
+) -join [Environment]::NewLine
+$explorerInspectableAdapterContract =
+    Get-Content -LiteralPath $explorerInspectableAdapterContractPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerInspectableAdapterContractSchema =
+    Get-Content `
+        -LiteralPath $explorerInspectableAdapterContractSchemaPath `
+        -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerInspectableAdapterSource = @(
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_inspectable_adapter.h')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_inspectable_adapter.cpp')
+    )
+    [IO.File]::ReadAllText($explorerInspectableAdapterHarnessPath)
+) -join [Environment]::NewLine
+$explorerStyleTransactionContract =
+    Get-Content -LiteralPath $explorerStyleTransactionContractPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerStyleTransactionContractSchema =
+    Get-Content `
+        -LiteralPath $explorerStyleTransactionContractSchemaPath `
+        -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerStyleTransactionSource = @(
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_style_transaction.h')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_style_transaction.cpp')
+    )
+    [IO.File]::ReadAllText($explorerStyleTransactionHarnessPath)
+) -join [Environment]::NewLine
+$explorerXamlReadBridgeContract =
+    Get-Content -LiteralPath $explorerXamlReadBridgeContractPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerXamlReadBridgeContractSchema =
+    Get-Content `
+        -LiteralPath $explorerXamlReadBridgeContractSchemaPath `
+        -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerXamlReadBridgeSource = @(
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_xaml_read_bridge.h')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_xaml_read_bridge_policy.cpp')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_xaml_read_bridge_windows.cpp')
+    )
+    [IO.File]::ReadAllText($explorerXamlReadBridgeHarnessPath)
+) -join [Environment]::NewLine
+$explorerXamlSurfaceDiscoveryContract =
+    Get-Content `
+        -LiteralPath $explorerXamlSurfaceDiscoveryContractPath `
+        -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerXamlSurfaceDiscoveryContractSchema =
+    Get-Content `
+        -LiteralPath $explorerXamlSurfaceDiscoveryContractSchemaPath `
+        -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerXamlSurfaceDiscoverySource = @(
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_surface_discovery.h')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_surface_discovery.cpp')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_surface_discovery_windows.cpp')
+    )
+    [IO.File]::ReadAllText($explorerXamlSurfaceDiscoveryHarnessPath)
+) -join [Environment]::NewLine
 $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
 $phase2ExpectedSourceIdentity = [ordered]@{
@@ -475,6 +929,13 @@ $m2ReadinessSchemaContract =
     $m2ReadinessSchema.properties.mutationPerformed.const -eq $false -and
     $m2ReadinessSchema.properties.requestedModule.const -eq
         'jarvis-taskbar-icon-size' -and
+    @($m2ReadinessSchema.required) -contains 'hostActivation' -and
+    $m2ReadinessSchema.properties.hostActivation.properties.state.const -eq
+        'quarantined' -and
+    $m2ReadinessSchema.properties.hostActivation.properties.reason.const -eq
+        'windhawk-service-global-runtime-injection-observed-20260727' -and
+    $m2ReadinessSchema.properties.hostActivation.properties.activationPermitted.const -eq
+        $false -and
     $m2ReadinessSchema.properties.approval.properties.exactCommandApproved.const -eq
         $false -and
     $m2ReadinessSchema.properties.approval.properties.recoveryTerminalAvailable.const -eq
@@ -483,6 +944,16 @@ $m2ReadinessSchemaContract =
         $false -and
     @($m2ReadinessSchema.properties.runtime.required) -contains
         'moduleNotEnumerableProcessCount' -and
+    @($m2ReadinessSchema.properties.runtime.required) -contains
+        'jarvisModuleMappingCount' -and
+    @($m2ReadinessSchema.properties.runtime.required) -contains
+        'acceptedBaseRuntimeMappingCount' -and
+    @($m2ReadinessSchema.properties.runtime.required) -contains
+        'unexpectedWindhawkRuntimeMappingCount' -and
+    @($m2ReadinessSchema.properties.runtime.required) -contains
+        'safetyRelevantModuleEnumerationErrorCount' -and
+    @($m2ReadinessSchema.properties.runtime.required) -contains
+        'nonTargetModuleEnumerationErrorCount' -and
     @($m2ReadinessSchema.properties.runtime.required) -contains
         'explorerModuleInspectionSucceeded'
 Add-Check `
@@ -497,6 +968,21 @@ $m2ReadinessScriptContract =
     $m2ReadinessScript.Contains('mutationPerformed = $false') -and
     $m2ReadinessScript.Contains('canExecuteNow = $false') -and
     $m2ReadinessScript.Contains('explorerModuleInspectionSucceeded') -and
+    $m2ReadinessScript.Contains(
+        'safetyRelevantModuleEnumerationErrorCount') -and
+    $m2ReadinessScript.Contains(
+        'nonTargetModuleEnumerationErrorCount') -and
+    $m2ReadinessScript.Contains(
+        'safety-relevant-process-module-enumeration-incomplete') -and
+    $m2ReadinessScript.Contains(
+        '0AAD074CAF156200BE7A77E4615F9171CEA884CDE96BAF90397366C28C4F10A1') -and
+    $m2ReadinessScript.Contains('jarvis-module-mapped') -and
+    $m2ReadinessScript.Contains(
+        'unexpected-windhawk-runtime-mapped') -and
+    $m2ReadinessScript.Contains(
+        "Add-Failure 'windhawk-host-activation-quarantined'") -and
+    $m2ReadinessScript.Contains(
+        'windhawk-service-global-runtime-injection-observed-20260727') -and
     $m2ReadinessScript.Contains(
         'Refusing to overwrite an existing readiness receipt') -and
     [regex]::Matches(
@@ -534,7 +1020,9 @@ Add-Check `
     'The M2 host baseline must sample only the verified locked Shell and must not activate or mutate the host.'
 
 $m2RunbookContract =
-    $m2Runbook.Contains('PREPARED — NOT AUTHORIZED TO ACTIVATE') -and
+    $m2Runbook.Contains(
+        'QUARANTINED — DO NOT START WINDHAWK OR ACTIVATE') -and
+    $m2Runbook.Contains('windhawk-host-activation-quarantined') -and
     $m2Runbook.Contains('exactCommandApproved=false') -and
     $m2Runbook.Contains('recoveryTerminalAvailable=false') -and
     $m2Runbook.Contains('canExecuteNow=false') -and
@@ -558,6 +1046,21 @@ $publicCiContract =
         $publicCi,
         '(?m)^\s*uses:\s+[^@\r\n]+@[A-Fa-f0-9]{40}\s*$').Count -eq 2 -and
     $publicCi.Contains('Test-PublicationBoundary.ps1') -and
+    $publicCi.Contains('Test-ControlCenter.ps1') -and
+    $publicCi.Contains('Test-NativeStyleLab.ps1') -and
+    $publicCi.Contains('Test-DesktopStyleProbe.ps1') -and
+    $publicCi.Contains('Test-DesktopStyleSession.ps1') -and
+    $publicCi.Contains('Test-NativeWindowStyleSession.ps1') -and
+    $publicCi.Contains('Test-ExplorerBridgeModel.ps1') -and
+    $publicCi.Contains('Test-ExplorerFrameModel.ps1') -and
+    $publicCi.Contains('Test-ExplorerPreviewModel.ps1') -and
+    $publicCi.Contains('Test-ExplorerSurfaceProbe.ps1') -and
+    $publicCi.Contains('Test-ExplorerTransportModel.ps1') -and
+    $publicCi.Contains('Test-ExplorerReadOnlyTap.ps1') -and
+    $publicCi.Contains('Test-ExplorerReadOnlyAdmission.ps1') -and
+    $publicCi.Contains('Test-ExplorerInspectableAdapter.ps1') -and
+    $publicCi.Contains('Test-ExplorerStyleTransaction.ps1') -and
+    $publicCi.Contains('-StaticOnly') -and
     $publicCi.Contains('dotnet build') -and
     $publicCi.Contains('Canonical native compilation is intentionally not run') -and
     -not $publicCi.Contains('pull_request_target') -and
@@ -580,6 +1083,1649 @@ Add-Check `
     'phase3.public-name-runtime-identity-stable' `
     $publicNamingContract `
     'JarvisV2 may change the public name only; all runtime safety paths and synchronization identities must stay JARVIS2.'
+
+$phase4TaskContract =
+    $phase4Task.Contains(
+        'Live activation in this task: **FORBIDDEN UNTIL A SEPARATE EXACT APPROVAL**') -and
+    $phase4Task.Contains(
+        '`disabled.flag` 在全部开发与演练中保持 armed') -and
+    $phase4Task.Contains(
+        '`active-module.txt` 在全部开发与演练中保持 absent') -and
+    $phase4Task.Contains('不启动、配置或启用 Windhawk') -and
+    $phase4Task.Contains(
+        '不执行 `clear-kill-switch`、不加载模块、不重启 Explorer') -and
+    $phase4Task.Contains('恢复终端入口没有 `-ConfirmOpen` 时必须保持 inert') -and
+    $phase4Task.Contains('M1 继续 build-only')
+Add-Check `
+    'phase4.task-locked-exact-gate' `
+    $phase4TaskContract `
+    'Phase 4 must stop at the separate exact approval gate while M1 remains build-only and the host remains locked.'
+
+$phase4PlanSchemaRequired =
+    @($m2SessionPlanSchema.required)
+$phase4PlanSourceRequired =
+    @($m2SessionPlanSchema.properties.sourceIdentity.required)
+$phase4PlanSchemaContract =
+    $m2SessionPlanSchema.properties.schemaVersion.const -eq 1 -and
+    $m2SessionPlanSchema.properties.receiptType.const -eq
+        'jarvisv2-m2-validation-session-plan' -and
+    $m2SessionPlanSchema.properties.state.const -eq
+        'awaiting-exact-approval' -and
+    $m2SessionPlanSchema.properties.moduleId.const -eq
+        'jarvis-taskbar-icon-size' -and
+    $m2SessionPlanSchema.properties.activationPermitted.const -eq $false -and
+    $m2SessionPlanSchema.properties.liveExplorer.const -eq 'not-run' -and
+    $m2SessionPlanSchema.properties.mutationPerformed.const -eq $false -and
+    $m2SessionPlanSchema.properties.recoveryTerminal.properties.launchPerformed.const -eq
+        $false -and
+    $m2SessionPlanSchema.properties.recoveryTerminal.properties.terminalAvailable.const -eq
+        $false -and
+    $m2SessionPlanSchema.properties.approval.properties.exactCommandApproved.const -eq
+        $false -and
+    $m2SessionPlanSchema.properties.approval.properties.canExecuteNow.const -eq
+        $false -and
+    $phase4PlanSchemaRequired -contains 'sourceIdentity' -and
+    $phase4PlanSourceRequired -contains 'planner' -and
+    $phase4PlanSourceRequired -contains 'recoveryTerminalScript' -and
+    $phase4PlanSourceRequired -contains 'recoveryLeaseSchema' -and
+    $phase4PlanSourceRequired -contains 'observerScript' -and
+    $phase4PlanSourceRequired -contains 'nativeBuildReceipt' -and
+    $phase4PlanSourceRequired -contains 'm2Source' -and
+    $phase4PlanSourceRequired -contains 'supervisorAssembly'
+Add-Check `
+    'phase4.session-plan-schema-failclosed' `
+    $phase4PlanSchemaContract `
+    'The session plan must bind every controller and source while remaining non-live and incapable of granting execution.'
+
+$phase4PlannerContract =
+    $m2SessionPlanner.Contains(
+        '& pwsh -NoLogo -NoProfile -File $readinessScript') -and
+    $m2SessionPlanner.Contains(
+        'artifacts\m2-validation-session-plans\runs') -and
+    $m2SessionPlanner.Contains(
+        'Refusing to overwrite an existing session plan.') -and
+    $m2SessionPlanner.Contains('activationPermitted = $false') -and
+    $m2SessionPlanner.Contains("liveExplorer = 'not-run'") -and
+    $m2SessionPlanner.Contains('mutationPerformed = $false') -and
+    $m2SessionPlanner.Contains('exactCommandApproved = $false') -and
+    $m2SessionPlanner.Contains('canExecuteNow = $false') -and
+    -not [regex]::IsMatch(
+        $m2SessionPlanner,
+        '(?im)^\s*&\s*dotnet[^\r\n]*(?:clear-kill-switch|arm-kill-switch|restart-explorer)') -and
+    -not [regex]::IsMatch(
+        $m2SessionPlanner,
+        '(?i)\b(?:Start-Service|Stop-Service|Set-Service|Stop-Process|taskkill)\b')
+Add-Check `
+    'phase4.session-planner-no-activation' `
+    $phase4PlannerContract `
+    'The planner must consume fresh read-only evidence, bind a non-overwriting artifact and never execute recovery or activation.'
+
+$phase4RecoveryDryRunBeforeLaunch =
+    (Test-MarkersInOrder `
+        -Text $m2RecoveryTerminal `
+        -Markers @(
+            '$dryRun = -not $ConfirmOpen',
+            'if ($dryRun) {',
+            'launchPerformed = $false',
+            'terminalAvailable = $false',
+            'return',
+            '$startInfo = [Diagnostics.ProcessStartInfo]::new()',
+            '$process = [Diagnostics.Process]::Start($startInfo)'
+        ))
+$phase4RecoveryTerminalContract =
+    $phase4RecoveryDryRunBeforeLaunch -and
+    $m2RecoveryTerminal.Contains(
+        'JarvisV2 M2 recovery terminal - lease active; no command executed') -and
+    $m2RecoveryTerminal.Contains(
+        '--configuration Release --no-build -- arm-kill-switch') -and
+    $m2RecoveryTerminal.Contains('UseShellExecute = $true') -and
+    $m2RecoveryTerminal.Contains(
+        'The host was rechecked in the locked state.') -and
+    -not $m2RecoveryTerminal.Contains('clear-kill-switch') -and
+    -not [regex]::IsMatch(
+        $m2RecoveryTerminal,
+        '(?im)^\s*&\s*dotnet[^\r\n]*(?:arm-kill-switch|restart-explorer)') -and
+    -not [regex]::IsMatch(
+        $m2RecoveryTerminal,
+        '(?i)\b(?:Start-Service|Stop-Service|Set-Service|Stop-Process|taskkill)\b')
+Add-Check `
+    'phase4.recovery-terminal-default-inert' `
+    $phase4RecoveryTerminalContract `
+    'The recovery-terminal entry must recheck the locked plan, remain inert by default and only open a visible command display after exact ConfirmOpen.'
+
+$phase5TaskContract =
+    $phase5Task.Contains('Live activation in this task: **FORBIDDEN**') -and
+    $phase5Task.Contains(
+        '`disabled.flag` 在全部开发和故障注入中保持 armed') -and
+    $phase5Task.Contains(
+        '`active-module.txt` 在全部开发和故障注入中保持 absent') -and
+    $phase5Task.Contains(
+        '不执行 `clear-kill-switch` 或 `restart-explorer`') -and
+    $phase5Task.Contains('不启动、配置、启用或停止 Windhawk') -and
+    $phase5Task.Contains(
+        '不加载任何 Windhawk 模块，不终止任何 Windows Shell 进程') -and
+    $phase5Task.Contains('M1 继续 build-only') -and
+    $phase5Task.Contains('stateDirectoryTouched=false')
+Add-Check `
+    'phase5.task-locked-recovery-lease-boundary' `
+    $phase5TaskContract `
+    'Phase 5 must remain a locked, offline recovery-lease task with no host or Shell mutation.'
+
+$phase5ReviewContract =
+    $phase5Review.Contains(
+        'P0 — Recovery heartbeat conflicted with the native state-root watcher') -and
+    $phase5Review.Contains(
+        '%LOCALAPPDATA%\JARVIS2\Recovery\m2-recovery-terminal.json') -and
+    $phase5Review.Contains(
+        'P1 — Terminal loss after activation was not bounded') -and
+    $phase5Review.Contains(
+        'P1 — Lease and fixture paths followed reparse points') -and
+    $phase5Review.Contains(
+        'P1 — UTC plan timestamps were parsed as local time by PowerShell') -and
+    $phase5Review.Contains(
+        'P2 — Offline gates are intentionally serialized') -and
+    $phase5Review.Contains(
+        'M2 activation during review: **not performed**') -and
+    $phase5Review.Contains(
+        'explicit approval of the exact activation command plus loading only M2')
+Add-Check `
+    'phase5.safety-review-closure' `
+    $phase5ReviewContract `
+    'The Phase 5 review must record the watcher conflict, post-activation bound, reparse closure, serialized-gate constraint and separate live approval.'
+
+$phase5LeaseSchemaRequired = @($m2RecoveryLeaseSchema.required)
+$phase5LeaseSchemaContract =
+    $m2RecoveryLeaseSchema.properties.schemaVersion.const -eq 1 -and
+    $m2RecoveryLeaseSchema.properties.receiptType.const -eq
+        'jarvisv2-m2-recovery-terminal-lease' -and
+    $m2RecoveryLeaseSchema.properties.moduleId.const -eq
+        'jarvis-taskbar-icon-size' -and
+    @($m2RecoveryLeaseSchema.properties.state.enum).Count -eq 3 -and
+    @($m2RecoveryLeaseSchema.properties.state.enum) -contains 'ready' -and
+    @($m2RecoveryLeaseSchema.properties.state.enum) -contains 'closing' -and
+    @($m2RecoveryLeaseSchema.properties.state.enum) -contains 'expired' -and
+    $m2RecoveryLeaseSchema.properties.activationPermitted.const -eq $false -and
+    $m2RecoveryLeaseSchema.properties.mutationPerformed.const -eq $false -and
+    $phase5LeaseSchemaRequired -contains 'processStartTimeUtc' -and
+    $phase5LeaseSchemaRequired -contains 'heartbeatAtUtc' -and
+    $phase5LeaseSchemaRequired -contains 'heartbeatSequence' -and
+    $phase5LeaseSchemaRequired -contains 'planSha256' -and
+    $phase5LeaseSchemaRequired -contains 'planExpiresAtUtc'
+Add-Check `
+    'phase5.recovery-lease-schema-failclosed' `
+    $phase5LeaseSchemaContract `
+    'The lease schema must bind process identity, heartbeat, plan identity and non-activation boundaries.'
+
+$phase5HeartbeatContract =
+    $m2RecoveryTerminal.Contains(
+        '$heartbeatIntervalMilliseconds = 1000') -and
+    $m2RecoveryTerminal.Contains('$heartbeatFreshnessSeconds = 4') -and
+    $m2RecoveryTerminal.Contains(
+        "`$recoveryDirectory = Join-Path `$stateDirectory 'Recovery'") -and
+    $m2RecoveryTerminal.Contains(
+        '$temporaryPath = Join-Path $recoveryDirectory') -and
+    $m2RecoveryTerminal.Contains(
+        "[IO.File]::Move(`$temporaryPath, `$leasePath, `$true)") -and
+    $m2RecoveryTerminal.Contains("while ([DateTime]::UtcNow -lt `$expiresAt)") -and
+    $m2RecoveryTerminal.Contains("-State 'ready'") -and
+    $m2RecoveryTerminal.Contains("-State 'closing'") -and
+    $m2RecoveryTerminal.Contains("-State 'expired'") -and
+    $m2RecoveryTerminal.Contains(
+        'The recovery terminal did not publish a fresh lease within 8 seconds.') -and
+    $m2RecoveryTerminal.Contains('function Convert-JsonUtcDateTime') -and
+    ([regex]::Matches(
+        $m2RecoveryTerminal,
+        '\bConvert-JsonUtcDateTime\b').Count -eq 4) -and
+    -not $m2RecoveryTerminal.Contains('[DateTime]::Parse(') -and
+    $m2RecoveryTerminal.Contains('processStartTimeUtc') -and
+    -not $m2RecoveryTerminal.Contains('clear-kill-switch') -and
+    -not [regex]::IsMatch(
+        $m2RecoveryTerminal,
+        '(?im)^\s*&\s*dotnet[^\r\n]*(?:arm-kill-switch|restart-explorer)') -and
+    -not [regex]::IsMatch(
+        $m2RecoveryTerminal,
+        '(?i)\b(?:Start-Service|Stop-Service|Set-Service|Stop-Process|taskkill)\b')
+Add-Check `
+    'phase5.recovery-terminal-heartbeat-inert' `
+    $phase5HeartbeatContract `
+    'The visible recovery terminal must atomically heartbeat, expire closed and never execute recovery or activation itself.'
+
+$phase5UtcProbeText = '2026-07-26T18:54:15.6294166Z'
+$phase5UtcProbeValue =
+    ('{"timestamp":"' + $phase5UtcProbeText + '"}' |
+        ConvertFrom-Json).timestamp
+$phase5UtcProbe = if ($phase5UtcProbeValue -is [DateTime]) {
+    ([DateTime]$phase5UtcProbeValue).ToUniversalTime()
+}
+else {
+    [DateTimeOffset]::Parse(
+        [string]$phase5UtcProbeValue,
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::RoundtripKind).UtcDateTime
+}
+$phase5UtcParsingContract =
+    $phase5UtcProbe.Kind -eq [DateTimeKind]::Utc -and
+    $phase5UtcProbe.ToString(
+        'o',
+        [Globalization.CultureInfo]::InvariantCulture) -eq
+        $phase5UtcProbeText -and
+    $m2ObservationRehearsal.Contains(
+        'function Convert-JsonUtcDateTime') -and
+    ([regex]::Matches(
+        $m2ObservationRehearsal,
+        '\bConvert-JsonUtcDateTime\b').Count -eq 2) -and
+    -not $m2ObservationRehearsal.Contains('[DateTime]::Parse(')
+Add-Check `
+    'phase5.utc-timestamp-roundtrip' `
+    $phase5UtcParsingContract `
+    'Recovery and observation controllers must preserve Z timestamps as UTC instead of applying the local offset.'
+
+$phase5SupervisorLeaseContract =
+    $recoveryTerminalLeaseSource.Contains(
+        'private const string LeaseDirectoryName = "Recovery"') -and
+    $recoveryTerminalLeaseSource.Contains(
+        'MaximumHeartbeatAge = TimeSpan.FromSeconds(4)') -and
+    $recoveryTerminalLeaseSource.Contains('lease-heartbeat-stale') -and
+    $recoveryTerminalLeaseSource.Contains('lease-process-start-mismatch') -and
+    $recoveryTerminalLeaseSource.Contains(
+        'plan-supervisor-assembly-not-running') -and
+    $recoveryTerminalLeaseSource.Contains(
+        'lease-fixture-path-invalid') -and
+    $recoveryTerminalLeaseSource.Contains(
+        'lease-path-reparse-point') -and
+    $recoveryTerminalLeaseSource.Contains(
+        'plan-source-hash-mismatch:{key}') -and
+    $recoveryTerminalLeaseSource.Contains(
+        'm2-validation-session-plans') -and
+    [regex]::Matches(
+        $killSwitchSource,
+        'RecoveryTerminalLease\.RequireReady\(moduleId\)').Count -eq 2 -and
+    $programSource.Contains('"inspect-recovery-terminal"') -and
+    $programSource.Contains('ExitCodes.SafetyInterlock')
+Add-Check `
+    'phase5.supervisor-double-recovery-lease-gate' `
+    $phase5SupervisorLeaseContract `
+    'Supervisor must validate a fresh bound lease twice and expose only a read-only inspection command.'
+
+$clearMethodStart = $programSource.IndexOf(
+    'private static int RunClearKillSwitch',
+    [StringComparison]::Ordinal)
+$clearQuarantineIndex = $programSource.IndexOf(
+    'if (KillSwitch.IsLiveActivationQuarantined)',
+    $clearMethodStart,
+    [StringComparison]::Ordinal)
+$clearStateGateIndex = $programSource.IndexOf(
+    'using StateGateLease lease = KillSwitch.AcquireStateGate()',
+    $clearMethodStart,
+    [StringComparison]::Ordinal)
+$phase6HostQuarantineContract =
+    $killSwitchSource.Contains(
+        'private static readonly bool LiveActivationQuarantined = true') -and
+    $killSwitchSource.Contains(
+        'windhawk-service-global-runtime-injection-observed-20260727') -and
+    $killSwitchSource.Contains('if (LiveActivationQuarantined)') -and
+    $killSwitchSource.IndexOf(
+        'if (LiveActivationQuarantined)',
+        [StringComparison]::Ordinal) -lt
+        $killSwitchSource.IndexOf(
+            'RecoveryTerminalLease.RequireReady(moduleId)',
+            [StringComparison]::Ordinal) -and
+    $clearMethodStart -ge 0 -and
+    $clearQuarantineIndex -gt $clearMethodStart -and
+    $clearStateGateIndex -gt $clearQuarantineIndex -and
+    $programSource.Contains('error = "live_activation_quarantined"') -and
+    $programSource.Contains(
+        'Quarantined after prohibited Windhawk global-runtime injection')
+Add-Check `
+    'phase6.windhawk-host-activation-quarantined' `
+    $phase6HostQuarantineContract `
+    'Supervisor must reject clear-kill-switch before state-gate acquisition while the Windhawk service host is quarantined.'
+
+$phase6OfflineModelSourceContract =
+    $phase6Task.Contains(
+        '- [x] Build only an offline/mockable launcher skeleton first.') -and
+    $phase6Adr.Contains('Status: accepted for offline modelling only') -and
+    $phase6Adr.Contains('Live implementation: prohibited') -and
+    $phase6Adr.Contains(
+        'Thread-specific `SetWindowsHookEx`') -and
+    $explorerHostModelSource.Contains(
+        'thread-specific-window-hook-review-candidate') -and
+    $explorerHostModelSource.Contains(
+        'ExpectedSelectionMode = "shell-window-exact"') -and
+    $explorerHostModelSource.Contains(
+        'ExpectedModuleContract = "standalone-explicit-init-v1"') -and
+    $explorerHostModelSource.Contains('ExecutionSupported = false') -and
+    $explorerHostModelSource.Contains('ActivationPermitted = false') -and
+    -not [regex]::IsMatch(
+        $explorerHostModelSource,
+        '(?i)\b(?:DllImport|LibraryImport|OpenProcess|CreateRemoteThread|' +
+        'VirtualAllocEx|WriteProcessMemory|SetWindowsHookEx|' +
+        'NtQueueApcThread|StartService|ServiceController|' +
+        'Microsoft\.Win32\.Registry|System\.Diagnostics\.Process)\b') -and
+    $explorerHostPlanSchema.properties.executionSupported.const -eq $false -and
+    $explorerHostPlanSchema.properties.activationPermitted.const -eq $false -and
+    $explorerHostPlanSchema.properties.liveExplorer.const -eq 'not-run' -and
+    $explorerHostPlanSchema.properties.mutationPerformed.const -eq $false
+Add-Check `
+    'phase6.explorer-host-model-static-offline' `
+    $phase6OfflineModelSourceContract `
+    'The replacement-host skeleton must remain a fixture-only single PID/TID policy model with no live process or injection API.'
+
+$explorerHostAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerHostModelAuditPath 2>&1
+)
+$explorerHostAuditExitCode = $LASTEXITCODE
+$explorerHostAudit = $null
+try {
+    $explorerHostAudit =
+        ($explorerHostAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerHostAudit = $null
+}
+$phase6OfflineModelAuditPassed =
+    $explorerHostAuditExitCode -eq 0 -and
+    $null -ne $explorerHostAudit -and
+    $explorerHostAudit.result -eq 'passed' -and
+    $explorerHostAudit.checkCount -eq 20 -and
+    $explorerHostAudit.passedCount -eq 20 -and
+    -not $explorerHostAudit.executionSupported -and
+    -not $explorerHostAudit.activationPermitted -and
+    $explorerHostAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerHostAudit.mutationPerformed
+Add-Check `
+    'phase6.explorer-host-model-executable-audit' `
+    $phase6OfflineModelAuditPassed `
+    'The 20-case host-model matrix must pass while every receipt remains non-executable, non-live and non-mutating.'
+
+$phase7ControlCenterStaticContract =
+    $phase7Task.Contains(
+        'Status: **COMPLETE — LOCKED / OFFLINE**') -and
+    $phase7Task.Contains(
+        'must never be described as a live modified taskbar or Explorer surface') -and
+    $controlCenterSource.Contains('<OutputType>WinExe</OutputType>') -and
+    $controlCenterSource.Contains('<UseWPF>true</UseWPF>') -and
+    $controlCenterSource.Contains('LOCKED') -and
+    $controlCenterSource.Contains('/ FAIL-CLOSED') -and
+    $controlCenterSource.Contains('QUARANTINED') -and
+    $controlCenterSource.Contains('READ-ONLY CONTROL SURFACE') -and
+    -not [regex]::IsMatch(
+        $controlCenterSource,
+        '(?i)\b(?:DllImport|LibraryImport|OpenProcess|CreateRemoteThread|' +
+        'VirtualAllocEx|WriteProcessMemory|SetWindowsHookEx|' +
+        'NtQueueApcThread|StartService|ServiceController|' +
+        'Microsoft\.Win32\.Registry|System\.Diagnostics\.Process)\b') -and
+    -not [regex]::IsMatch(
+        $controlCenterSource,
+        '(?i)(?:Topmost\s*=\s*"True"|AllowsTransparency\s*=\s*"True"|' +
+        'WindowState\s*=\s*"Maximized"|ShowInTaskbar\s*=\s*"False")')
+Add-Check `
+    'phase7.control-center-static-readonly' `
+    $phase7ControlCenterStaticContract `
+    'The visible Control Center must remain an ordinary read-only WPF window with explicit locked state and no shell mutation API.'
+
+$controlCenterAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $controlCenterAuditPath 2>&1
+)
+$controlCenterAuditExitCode = $LASTEXITCODE
+$controlCenterAudit = $null
+try {
+    $controlCenterAudit =
+        ($controlCenterAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $controlCenterAudit = $null
+}
+$phase7ControlCenterAuditPassed =
+    $controlCenterAuditExitCode -eq 0 -and
+    $null -ne $controlCenterAudit -and
+    $controlCenterAudit.result -eq 'passed' -and
+    $controlCenterAudit.checkCount -eq 6 -and
+    $controlCenterAudit.passedCount -eq 6 -and
+    -not $controlCenterAudit.executionSupported -and
+    -not $controlCenterAudit.activationPermitted -and
+    $controlCenterAudit.liveExplorer -eq 'not-run' -and
+    -not $controlCenterAudit.mutationPerformed
+Add-Check `
+    'phase7.control-center-executable-audit' `
+    $phase7ControlCenterAuditPassed `
+    'The Control Center safety/build audit must pass all six checks without enabling live execution.'
+
+$phase7BridgeStaticContract =
+    $explorerBridgeSource.Contains(
+        'JARVIS_EXPLORER_BRIDGE_ABI_VERSION = 1U') -and
+    $explorerBridgeSource.Contains(
+        'jarvis_bridge_model_query_contract') -and
+    $explorerBridgeSource.Contains(
+        'jarvis_bridge_model_initialize') -and
+    $explorerBridgeSource.Contains(
+        'jarvis_bridge_model_quiesce') -and
+    $explorerBridgeSource.Contains(
+        'jarvis_bridge_model_query') -and
+    $explorerBridgeSource.Contains('.activation_permitted = 0U') -and
+    $explorerBridgeSource.Contains('.mutation_performed = 0U') -and
+    $explorerBridgeSource.Contains('.live_explorer_touched = 0U') -and
+    -not [regex]::IsMatch(
+        $explorerBridgeSource,
+        '(?i)\b(?:windows\.h|DllMain|__declspec\s*\(\s*dllexport|' +
+        'LoadLibrary|OpenProcess|CreateRemoteThread|VirtualAllocEx|' +
+        'WriteProcessMemory|SetWindowsHookEx|UnhookWindowsHookEx|' +
+        'NtQueueApcThread|TerminateProcess)\b')
+Add-Check `
+    'phase7.explorer-bridge-contract-static-offline' `
+    $phase7BridgeStaticContract `
+    'Bridge ABI v1 must expose only an offline fail-closed model, never a DLL export, hook, loader or process API.'
+
+$explorerBridgeAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerBridgeAuditPath 2>&1
+)
+$explorerBridgeAuditExitCode = $LASTEXITCODE
+$explorerBridgeAudit = $null
+try {
+    $explorerBridgeAudit =
+        ($explorerBridgeAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerBridgeAudit = $null
+}
+$phase7BridgeAuditPassed =
+    $explorerBridgeAuditExitCode -eq 0 -and
+    $null -ne $explorerBridgeAudit -and
+    $explorerBridgeAudit.result -eq 'passed' -and
+    -not $explorerBridgeAudit.staticOnly -and
+    $explorerBridgeAudit.checkCount -eq 6 -and
+    $explorerBridgeAudit.passedCount -eq 6 -and
+    -not $explorerBridgeAudit.executionSupported -and
+    -not $explorerBridgeAudit.activationPermitted -and
+    $explorerBridgeAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerBridgeAudit.mutationPerformed
+Add-Check `
+    'phase7.explorer-bridge-contract-executable-audit' `
+    $phase7BridgeAuditPassed `
+    'The portable 16-case bridge fault matrix must compile and pass while every response remains non-live and non-mutating.'
+
+$phase8NativeStyleStaticContract =
+    $phase8Task.Contains(
+        'OWN-PROCESS LIVE / EXPLORER READ-ONLY') -and
+    $phase8Task.Contains(
+        'Changing the real Explorer desktop view is not authorized') -and
+    $nativeStyleLabSource.Contains(
+        'new WindowInteropHelper(ownedWindow).Handle') -and
+    $nativeStyleLabSource.Contains(
+        '[DllImport("dwmapi.dll", ExactSpelling = true)]') -and
+    [regex]::Matches(
+        $nativeStyleLabSource,
+        '\[DllImport\(').Count -eq 2 -and
+    -not [regex]::IsMatch(
+        $nativeStyleLabSource,
+        '(?i)\b(?:user32|kernel32|OpenProcess|CreateRemoteThread|' +
+        'VirtualAllocEx|WriteProcessMemory|SetWindowsHookEx|SendMessage|' +
+        'PostMessage|SetWindowLong|SetWindowPos|FindWindow|EnumWindows|' +
+        'System\.Diagnostics\.Process|ServiceController|' +
+        'Microsoft\.Win32\.Registry)\b')
+Add-Check `
+    'phase8.native-style-lab-own-hwnd-static' `
+    $phase8NativeStyleStaticContract `
+    'The native style lab may apply reviewed DWM attributes only to the HWND owned by its own ordinary window.'
+
+$nativeStyleAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $nativeStyleLabAuditPath 2>&1
+)
+$nativeStyleAuditExitCode = $LASTEXITCODE
+$nativeStyleAudit = $null
+try {
+    $nativeStyleAudit =
+        ($nativeStyleAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $nativeStyleAudit = $null
+}
+$phase8NativeStyleAuditPassed =
+    $nativeStyleAuditExitCode -eq 0 -and
+    $null -ne $nativeStyleAudit -and
+    $nativeStyleAudit.result -eq 'passed' -and
+    $nativeStyleAudit.checkCount -eq 6 -and
+    $nativeStyleAudit.passedCount -eq 6 -and
+    $nativeStyleAudit.scope -eq 'own-process-hwnd-only' -and
+    -not $nativeStyleAudit.explorerMutationSupported -and
+    -not $nativeStyleAudit.activationPermitted -and
+    -not $nativeStyleAudit.mutationPerformed
+Add-Check `
+    'phase8.native-style-lab-executable-audit' `
+    $phase8NativeStyleAuditPassed `
+    'The own-process style lab audit must pass all six checks without enabling any Explorer mutation path.'
+
+$phase8DesktopProbeStaticContract =
+    $desktopStyleProbeSource.Contains(
+        '"exact-shell-defview-child"') -and
+    $desktopStyleProbeSource.Contains(
+        'mutationSupported = false') -and
+    $desktopStyleProbeSource.Contains(
+        'liveExplorer = "read-only-inspection"') -and
+    [regex]::Matches(
+        $desktopStyleProbeSource,
+        '\[DllImport\(').Count -eq 5 -and
+    -not [regex]::IsMatch(
+        $desktopStyleProbeSource,
+        '(?i)\b(?:SendMessage|PostMessage|SetWindowLong|SetWindowPos|' +
+        'MoveWindow|ShowWindow|DestroyWindow|OpenProcess|' +
+        'CreateRemoteThread|VirtualAllocEx|WriteProcessMemory|' +
+        'SetWindowsHookEx|TerminateProcess|System\.Diagnostics\.Process|' +
+        'ServiceController|Microsoft\.Win32\.Registry)\b')
+Add-Check `
+    'phase8.desktop-style-probe-readonly-static' `
+    $phase8DesktopProbeStaticContract `
+    'The desktop probe must expose only exact read-only window discovery and a hard non-mutation receipt.'
+
+$desktopProbeAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $desktopStyleProbeAuditPath `
+        -StaticOnly 2>&1
+)
+$desktopProbeAuditExitCode = $LASTEXITCODE
+$desktopProbeAudit = $null
+try {
+    $desktopProbeAudit =
+        ($desktopProbeAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $desktopProbeAudit = $null
+}
+$phase8DesktopProbeAuditPassed =
+    $desktopProbeAuditExitCode -eq 0 -and
+    $null -ne $desktopProbeAudit -and
+    $desktopProbeAudit.result -eq 'passed' -and
+    $desktopProbeAudit.staticOnly -and
+    $desktopProbeAudit.checkCount -eq 4 -and
+    $desktopProbeAudit.passedCount -eq 4 -and
+    -not $desktopProbeAudit.executionSupported -and
+    -not $desktopProbeAudit.mutationSupported -and
+    -not $desktopProbeAudit.activationPermitted -and
+    -not $desktopProbeAudit.mutationPerformed -and
+    $desktopProbeAudit.liveExplorer -eq 'not-run'
+Add-Check `
+    'phase8.desktop-style-probe-static-audit' `
+    $phase8DesktopProbeAuditPassed `
+    'Canonical project checks must audit the desktop probe without inspecting live Explorer.'
+
+$phase8DesktopSessionStaticContract =
+    $phase8DesktopSessionTask.Contains(
+        'LIVE APPLY NOT YET AUTHORIZED') -and
+    $phase8DesktopSessionTask.Contains(
+        'LVM_GETTEXTCOLOR') -and
+    $phase8DesktopSessionTask.Contains(
+        'LVM_SETTEXTCOLOR') -and
+    $desktopStyleSessionSource.Contains(
+        'MessageTimeoutMilliseconds = 250') -and
+    $desktopStyleSessionSource.Contains(
+        'MaximumTtlSeconds = 60') -and
+    $desktopStyleSessionSource.Contains(
+        '--confirm-live-desktop-text-color') -and
+    $desktopStyleSessionSource.Contains(
+        'store.Prepare(journal);') -and
+    $desktopStyleSessionSource.Contains(
+        'RollBackExactTarget(') -and
+    [regex]::Matches(
+        $desktopStyleSessionSource,
+        '\[DllImport\(').Count -eq 6 -and
+    -not [regex]::IsMatch(
+        $desktopStyleSessionSource,
+        '(?i)\b(?:PostMessage|SetWindowLong|SetWindowPos|MoveWindow|' +
+        'ShowWindow|DestroyWindow|OpenProcess|CreateRemoteThread|' +
+        'VirtualAllocEx|WriteProcessMemory|SetWindowsHookEx|' +
+        'TerminateProcess|System\.Diagnostics\.Process|' +
+        'ServiceController|Microsoft\.Win32\.Registry|' +
+        'DwmSetWindowAttribute|SystemParametersInfo)\b')
+Add-Check `
+    'phase8.desktop-style-session-narrow-static' `
+    $phase8DesktopSessionStaticContract `
+    'The desktop style session must remain a journaled, bounded, text-color-only ListView experiment.'
+
+$desktopSessionAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $desktopStyleSessionAuditPath `
+        -StaticOnly 2>&1
+)
+$desktopSessionAuditExitCode = $LASTEXITCODE
+$desktopSessionAudit = $null
+try {
+    $desktopSessionAudit =
+        ($desktopSessionAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $desktopSessionAudit = $null
+}
+$phase8DesktopSessionAuditPassed =
+    $desktopSessionAuditExitCode -eq 0 -and
+    $null -ne $desktopSessionAudit -and
+    $desktopSessionAudit.result -eq 'passed' -and
+    $desktopSessionAudit.staticOnly -and
+    $desktopSessionAudit.checkCount -eq 10 -and
+    $desktopSessionAudit.passedCount -eq 10 -and
+    -not $desktopSessionAudit.liveMutationRun -and
+    -not $desktopSessionAudit.activationPermitted -and
+    -not $desktopSessionAudit.mutationPerformed -and
+    $desktopSessionAudit.liveExplorer -eq 'not-run'
+Add-Check `
+    'phase8.desktop-style-session-static-audit' `
+    $phase8DesktopSessionAuditPassed `
+    'Canonical project checks must audit all desktop session guards without reading or mutating live Explorer.'
+
+$phase8NativeWindowSessionStaticContract =
+    $phase8NativeWindowSessionTask.Contains(
+        'LIVE APPLY REQUIRES SEPARATE EXACT APPROVAL') -and
+    $phase8NativeWindowSessionTask.Contains(
+        'pixel-identical') -and
+    $phase8NativeWindowSessionTask.Contains(
+        'DWMWA_COLOR_DEFAULT') -and
+    $nativeWindowStyleSessionSource.Contains(
+        'BorderColor = 34') -and
+    $nativeWindowStyleSessionSource.Contains(
+        'CaptionColor = 35') -and
+    $nativeWindowStyleSessionSource.Contains(
+        'TextColor = 36') -and
+    $nativeWindowStyleSessionSource.Contains(
+        '--baseline-system-default') -and
+    $nativeWindowStyleSessionSource.Contains(
+        '--confirm-live-native-window-style') -and
+    $nativeWindowStyleSessionSource.Contains(
+        'store.Prepare(journal);') -and
+    $nativeWindowStyleSessionSource.Contains(
+        'ResetExactTarget(') -and
+    [regex]::Matches(
+        $nativeWindowStyleSessionSource,
+        '\[DllImport\(').Count -eq 7 -and
+    -not [regex]::IsMatch(
+        $nativeWindowStyleSessionSource,
+        '(?i)\b(?:OpenProcess|CreateRemoteThread|VirtualAllocEx|' +
+        'WriteProcessMemory|SetWindowsHookEx|TerminateProcess|' +
+        'SendMessage|PostMessage|SetWindowLong|SetWindowPos|' +
+        'MoveWindow|ShowWindow|DestroyWindow|' +
+        'System\.Diagnostics\.Process|ServiceController|' +
+        'Microsoft\.Win32\.Registry|SetWindowCompositionAttribute)\b')
+Add-Check `
+    'phase8.native-window-style-session-narrow-static' `
+    $phase8NativeWindowSessionStaticContract `
+    'The native Explorer window session must remain a bounded, exact-HWND, DWM-color-only experiment with system-default reset.'
+
+$nativeWindowSessionAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $nativeWindowStyleSessionAuditPath `
+        -StaticOnly 2>&1
+)
+$nativeWindowSessionAuditExitCode = $LASTEXITCODE
+$nativeWindowSessionAudit = $null
+try {
+    $nativeWindowSessionAudit =
+        ($nativeWindowSessionAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $nativeWindowSessionAudit = $null
+}
+$phase8NativeWindowSessionAuditPassed =
+    $nativeWindowSessionAuditExitCode -eq 0 -and
+    $null -ne $nativeWindowSessionAudit -and
+    $nativeWindowSessionAudit.result -eq 'passed' -and
+    $nativeWindowSessionAudit.staticOnly -and
+    $nativeWindowSessionAudit.checkCount -eq 9 -and
+    $nativeWindowSessionAudit.passedCount -eq 9 -and
+    -not $nativeWindowSessionAudit.liveMutationRun -and
+    -not $nativeWindowSessionAudit.activationPermitted -and
+    -not $nativeWindowSessionAudit.mutationPerformed -and
+    $nativeWindowSessionAudit.liveExplorer -eq 'not-run'
+Add-Check `
+    'phase8.native-window-style-session-static-audit' `
+    $phase8NativeWindowSessionAuditPassed `
+    'Canonical checks must audit the temporary Explorer DWM session without touching a live window.'
+
+$phase9FrameModelStaticContract =
+    $phase9Task.Contains(
+        'OFFLINE MODEL COMPLETE — LIVE XAML CONNECTION NOT AUTHORIZED') -and
+    $phase9Task.Contains('No live XAML connection exists.') -and
+    $explorerFrameModelSource.Contains(
+        'public const string TabStrip = "tab-strip"') -and
+    $explorerFrameModelSource.Contains(
+        'public const string CommandBar = "command-bar"') -and
+    $explorerFrameModelSource.Contains(
+        'public const string NavigationPane = "navigation-pane"') -and
+    $explorerFrameModelSource.Contains(
+        'public const string Background = "Background"') -and
+    $explorerFrameModelSource.Contains(
+        'public const string Foreground = "Foreground"') -and
+    $explorerFrameModelSource.Contains(
+        'public const string BorderBrush = "BorderBrush"') -and
+    $explorerFrameModelSource.Contains(
+        'offline-fixture-candidate-pending-live-discovery') -and
+    $explorerFrameModelSource.Contains(
+        'int last = _applied.Count - 1;') -and
+    $explorerFrameModelSource.Contains(
+        'FrameTransactionState.RestoreRequired') -and
+    -not [regex]::IsMatch(
+        $explorerFrameModelSource,
+        '(?i)\b(?:DllImport|LibraryImport|ComImport|Marshal\.|' +
+        'InitializeXamlDiagnosticsEx|IXamlDiagnostics|IVisualTreeService|' +
+        'OpenProcess|CreateRemoteThread|VirtualAllocEx|WriteProcessMemory|' +
+        'SetWindowsHookEx|LoadLibrary|StartService|ServiceController|' +
+        'Microsoft\.Win32\.Registry|System\.Diagnostics\.Process)\b')
+Add-Check `
+    'phase9.explorer-frame-model-static-offline' `
+    $phase9FrameModelStaticContract `
+    'The Phase 9 model must remain fixture-only, cover exactly three native frame roles, snapshot originals and contain no live XAML or process transport.'
+
+$explorerFrameAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerFrameModelAuditPath 2>&1
+)
+$explorerFrameAuditExitCode = $LASTEXITCODE
+$explorerFrameAudit = $null
+try {
+    $explorerFrameAudit =
+        ($explorerFrameAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerFrameAudit = $null
+}
+$phase9FrameModelAuditPassed =
+    $explorerFrameAuditExitCode -eq 0 -and
+    $null -ne $explorerFrameAudit -and
+    $explorerFrameAudit.result -eq 'passed' -and
+    $explorerFrameAudit.checkCount -eq 7 -and
+    $explorerFrameAudit.passedCount -eq 7 -and
+    -not $explorerFrameAudit.executionSupported -and
+    -not $explorerFrameAudit.activationPermitted -and
+    $explorerFrameAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerFrameAudit.mutationPerformed
+Add-Check `
+    'phase9.explorer-frame-model-executable-audit' `
+    $phase9FrameModelAuditPassed `
+    'The 29-case frame transaction matrix and seven-check audit must pass without creating a live Explorer execution path.'
+
+$fileExplorerStylerLock = @(
+    $upstreamLock.dependencies |
+        Where-Object name -eq 'Windows 11 File Explorer Styler'
+)
+$phase10ProfileStaticContract =
+    $phase10Task.Contains(
+        'OFFLINE DEVELOPMENT COMPLETE — VISUAL APPROVAL NOT REQUESTED') -and
+    $fileExplorerStylerLock.Count -eq 1 -and
+    $fileExplorerStylerLock[0].version -eq '1.5' -and
+    $fileExplorerStylerLock[0].auditedCommit -eq
+        '109589023dde428deaee2fe80e4ce446283a7935' -and
+    $fileExplorerStylerLock[0].gitBlob -eq
+        '6f67b714c271db1235a5f937c30c5cae55b180bf' -and
+    $fileExplorerStylerLock[0].sourceSize -eq 326922 -and
+    $fileExplorerStylerLock[0].sourceSha256 -eq
+        'ECD6189A76439518E84938F4CA42FDB7F78AA1CCE3151EE0FE93638918D2DCED' -and
+    $explorerFrameSelectorProfile.lifecycleState -eq
+        'offline-candidate' -and
+    $explorerFrameSelectorProfile.liveEvidence -eq 'not-run' -and
+    -not $explorerFrameSelectorProfile.executionSupported -and
+    -not $explorerFrameSelectorProfile.activationPermitted -and
+    -not $explorerFrameSelectorProfile.mutationPerformed -and
+    $explorerFrameSelectorSchema.properties.executionSupported.const -eq
+        $false -and
+    $explorerFrameSelectorSchema.properties.activationPermitted.const -eq
+        $false -and
+    $explorerFrameSelectorSchema.properties.mutationPerformed.const -eq
+        $false
+Add-Check `
+    'phase10.gpl-selector-profile-static-offline' `
+    $phase10ProfileStaticContract `
+    'Phase 10 must pin the GPL File Explorer Styler source and keep the exact three-surface candidate schema offline and non-authorizing.'
+
+$explorerPreviewAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerPreviewModelAuditPath 2>&1
+)
+$explorerPreviewAuditExitCode = $LASTEXITCODE
+$explorerPreviewAudit = $null
+try {
+    $explorerPreviewAudit =
+        ($explorerPreviewAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerPreviewAudit = $null
+}
+$phase10PreviewAuditPassed =
+    $explorerPreviewAuditExitCode -eq 0 -and
+    $null -ne $explorerPreviewAudit -and
+    $explorerPreviewAudit.result -eq 'passed' -and
+    $explorerPreviewAudit.checkCount -eq 8 -and
+    $explorerPreviewAudit.passedCount -eq 8 -and
+    -not $explorerPreviewAudit.executionSupported -and
+    -not $explorerPreviewAudit.activationPermitted -and
+    $explorerPreviewAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerPreviewAudit.mutationPerformed
+Add-Check `
+    'phase10.selector-preview-model-executable-audit' `
+    $phase10PreviewAuditPassed `
+    'The real candidate compiler and 43-case preview-plan matrix must pass without exposing a live style transport.'
+
+$explorerSurfaceProbeAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerSurfaceProbeAuditPath 2>&1
+)
+$explorerSurfaceProbeAuditExitCode = $LASTEXITCODE
+$explorerSurfaceProbeAudit = $null
+try {
+    $explorerSurfaceProbeAudit =
+        ($explorerSurfaceProbeAuditOutput -join [Environment]::NewLine) |
+        ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerSurfaceProbeAudit = $null
+}
+$phase10SurfaceProbeAuditPassed =
+    $explorerSurfaceProbeAuditExitCode -eq 0 -and
+    $null -ne $explorerSurfaceProbeAudit -and
+    $explorerSurfaceProbeAudit.result -eq 'passed' -and
+    $explorerSurfaceProbeAudit.checkCount -eq 6 -and
+    $explorerSurfaceProbeAudit.passedCount -eq 6 -and
+    -not $explorerSurfaceProbeAudit.liveInspectionRun -and
+    -not $explorerSurfaceProbeAudit.executionSupported -and
+    -not $explorerSurfaceProbeAudit.mutationSupported -and
+    -not $explorerSurfaceProbeAudit.activationPermitted -and
+    $explorerSurfaceProbeAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerSurfaceProbeAudit.mutationPerformed
+Add-Check `
+    'phase10.exact-readonly-surface-probe-static-audit' `
+    $phase10SurfaceProbeAuditPassed `
+    'The exact-HWND UIA topology probe must pass its six static checks without running a live inspection.'
+
+$phase11TransportStaticContract =
+    $phase11Task.Contains(
+        'OFFLINE TRANSPORT CORE COMPLETE — NO TAP DLL OR LIVE CONNECTION'
+    ) -and
+    $explorerTransportContract.schemaVersion -eq 1 -and
+    $explorerTransportContract.contractId -eq
+        'jarvis-explorer-xaml-transport-v1' -and
+    $explorerTransportContract.lifecycleState -eq 'offline-model-only' -and
+    $explorerTransportContract.connectionCandidate.api -eq
+        'InitializeXamlDiagnosticsEx' -and
+    $explorerTransportContract.connectionCandidate.targetSelection -eq
+        'caller-supplied-exact-pid-only' -and
+    -not $explorerTransportContract.connectionCandidate.liveConnectionImplemented -and
+    -not $explorerTransportContract.targetIdentity.processEnumerationAllowed -and
+    -not $explorerTransportContract.targetIdentity.windowEnumerationAllowed -and
+    $explorerTransportContract.targetIdentity.identityRecheckBeforeEveryCommand -and
+    $explorerTransportContract.capability.oneShot -and
+    -not $explorerTransportContract.capability.selfApprovalAllowed -and
+    $explorerTransportContract.surfacePolicy.requiredOriginalJournalEntryCount -eq 9 -and
+    -not $explorerTransportContract.executionSupported -and
+    -not $explorerTransportContract.readyForLiveConnection -and
+    -not $explorerTransportContract.readyForExactApproval -and
+    -not $explorerTransportContract.activationPermitted -and
+    $explorerTransportContract.liveExplorer -eq 'not-run' -and
+    -not $explorerTransportContract.mutationPerformed -and
+    $explorerTransportContractSchema.properties.executionSupported.const -eq
+        $false -and
+    $explorerTransportContractSchema.properties.readyForLiveConnection.const -eq
+        $false -and
+    $explorerTransportContractSchema.properties.activationPermitted.const -eq
+        $false -and
+    $explorerTransportModelSource.Contains(
+        'JARVIS_EXPLORER_TRANSPORT_ABI_VERSION = 1U'
+    ) -and
+    $explorerTransportModelSource.Contains(
+        'static_assert(sizeof(jarvis_transport_response) == 64U)'
+    )
+Add-Check `
+    'phase11.xaml-transport-contract-static-offline' `
+    $phase11TransportStaticContract `
+    'Phase 11 must keep the exact-PID XAML transport ABI machine-bound, model-only, non-enumerating and incapable of live connection or self-approval.'
+
+$explorerTransportAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerTransportModelAuditPath 2>&1
+)
+$explorerTransportAuditExitCode = $LASTEXITCODE
+try {
+    $explorerTransportAudit = (
+        $explorerTransportAuditOutput -join [Environment]::NewLine
+    ) | ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerTransportAudit = $null
+}
+$phase11TransportAuditPassed =
+    $explorerTransportAuditExitCode -eq 0 -and
+    $null -ne $explorerTransportAudit -and
+    $explorerTransportAudit.result -eq 'passed' -and
+    $explorerTransportAudit.checkCount -eq 12 -and
+    $explorerTransportAudit.passedCount -eq 12 -and
+    $explorerTransportAudit.scenarioCount -eq 85 -and
+    $explorerTransportAudit.scenarioPassedCount -eq 85 -and
+    -not $explorerTransportAudit.executionSupported -and
+    -not $explorerTransportAudit.activationPermitted -and
+    $explorerTransportAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerTransportAudit.mutationPerformed
+Add-Check `
+    'phase11.xaml-transport-model-executable-audit' `
+    $phase11TransportAuditPassed `
+    'The portable exact-target transport state machine must pass 85/85 fault scenarios while every receipt remains non-live and non-authorizing.'
+
+$phase12ReadOnlyTapStaticContract =
+    $phase12Task.Contains(
+        'OFFLINE TAP BUILD COMPLETE — DLL NEVER LOADED'
+    ) -and
+    $explorerReadOnlyTapContract.schemaVersion -eq 1 -and
+    $explorerReadOnlyTapContract.contractId -eq
+        'jarvis-explorer-readonly-tap-offline-build-v1' -and
+    $explorerReadOnlyTapContract.lifecycleState -eq
+        'offline-build-only' -and
+    $explorerReadOnlyTapContract.tap.liveCompileSwitchValue -eq 0 -and
+    $explorerReadOnlyTapContract.tap.setSiteResult -eq
+        'E_ACCESSDENIED' -and
+    -not $explorerReadOnlyTapContract.tap.dllLoadedDuringValidation -and
+    $explorerReadOnlyTapContract.controller.mode -eq 'describe-only' -and
+    $explorerReadOnlyTapContract.controller.existingDiagnosticsConsumerPolicy -eq
+        'reject' -and
+    $explorerReadOnlyTapContract.controller.endpointAttemptLimit -eq 0 -and
+    -not $explorerReadOnlyTapContract.controller.tapDllLoadSupported -and
+    -not $explorerReadOnlyTapContract.propertyReadSupported -and
+    -not $explorerReadOnlyTapContract.executionSupported -and
+    -not $explorerReadOnlyTapContract.readyForLiveConnection -and
+    -not $explorerReadOnlyTapContract.readyForExactApproval -and
+    -not $explorerReadOnlyTapContract.activationPermitted -and
+    $explorerReadOnlyTapContract.liveExplorer -eq 'not-run' -and
+    -not $explorerReadOnlyTapContract.mutationPerformed -and
+    $explorerReadOnlyTapContractSchema.additionalProperties -eq
+        $false -and
+    $explorerReadOnlyTapContractSchema.properties.executionSupported.const -eq
+        $false -and
+    $explorerReadOnlyTapSource.Contains(
+        '#if JARVIS_ENABLE_LIVE_XAML_READONLY != 0'
+    ) -and
+    $explorerReadOnlyTapSource.Contains(
+        'static_assert(JARVIS_ENABLE_LIVE_XAML_READONLY == 0)'
+    ) -and
+    $explorerReadOnlyTapSource.Contains('return E_ACCESSDENIED;') -and
+    -not $explorerReadOnlyTapSource.Contains(
+        'InitializeXamlDiagnosticsEx('
+    )
+Add-Check `
+    'phase12.readonly-tap-static-offline-contract' `
+    $phase12ReadOnlyTapStaticContract `
+    'Phase 12 must remain a disk-only AMD64 TAP build with SetSite permanently refused, a describe-only controller, zero endpoint/load support and no live diagnostics call.'
+
+$explorerReadOnlyTapAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerReadOnlyTapAuditPath 2>&1
+)
+$explorerReadOnlyTapAuditExitCode = $LASTEXITCODE
+try {
+    $explorerReadOnlyTapAudit = (
+        $explorerReadOnlyTapAuditOutput -join [Environment]::NewLine
+    ) | ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerReadOnlyTapAudit = $null
+}
+$phase12ReadOnlyTapAuditPassed =
+    $explorerReadOnlyTapAuditExitCode -eq 0 -and
+    $null -ne $explorerReadOnlyTapAudit -and
+    $explorerReadOnlyTapAudit.result -eq 'passed' -and
+    $explorerReadOnlyTapAudit.checkCount -eq 18 -and
+    $explorerReadOnlyTapAudit.passedCount -eq 18 -and
+    $explorerReadOnlyTapAudit.scenarioCount -eq 38 -and
+    $explorerReadOnlyTapAudit.scenarioPassedCount -eq 38 -and
+    $explorerReadOnlyTapAudit.tapDllBuilt -and
+    $explorerReadOnlyTapAudit.controllerBuilt -and
+    $explorerReadOnlyTapAudit.controllerExecutedDescribeOnly -and
+    -not $explorerReadOnlyTapAudit.tapDllLoaded -and
+    -not $explorerReadOnlyTapAudit.liveConnectionCompiled -and
+    -not $explorerReadOnlyTapAudit.executionSupported -and
+    -not $explorerReadOnlyTapAudit.activationPermitted -and
+    $explorerReadOnlyTapAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerReadOnlyTapAudit.mutationPerformed
+Add-Check `
+    'phase12.readonly-tap-offline-build-and-pe-audit' `
+    $phase12ReadOnlyTapAuditPassed `
+    'The portable TAP/controller build must pass 18/18 checks and 38/38 protocol scenarios, inspect exact exports/imports, and prove the DLL was never loaded.'
+
+$phase13AdmissionStaticContract =
+    $phase13Task.Contains(
+        'OFFLINE MODELS COMPLETE — NO ENDPOINT ATTEMPT OR PROPERTY READ'
+    ) -and
+    $explorerReadOnlyAdmissionContract.schemaVersion -eq 1 -and
+    $explorerReadOnlyAdmissionContract.contractId -eq
+        'jarvis-explorer-readonly-admission-fingerprint-v1' -and
+    $explorerReadOnlyAdmissionContract.lifecycleState -eq
+        'offline-model-only' -and
+    $explorerReadOnlyAdmissionContract.admission.existingDiagnosticsConsumerCountRequired -eq
+        0 -and
+    $explorerReadOnlyAdmissionContract.admission.endpointCandidateCountRequired -eq
+        1 -and
+    $explorerReadOnlyAdmissionContract.admission.runtimeEndpointAttemptLimit -eq
+        0 -and
+    @($explorerReadOnlyAdmissionContract.admission.requiredBinaryHashes).Count -eq
+        4 -and
+    $explorerReadOnlyAdmissionContract.admission.requiredTapExportCount -eq
+        2 -and
+    $explorerReadOnlyAdmissionContract.admission.oneShotPlanConsumedOnAdmission -and
+    $explorerReadOnlyAdmissionContract.admission.completeBindByteMatchRequired -and
+    $explorerReadOnlyAdmissionContract.fingerprint.surfaceCount -eq 3 -and
+    $explorerReadOnlyAdmissionContract.fingerprint.propertyCount -eq 3 -and
+    $explorerReadOnlyAdmissionContract.fingerprint.observationCount -eq 9 -and
+    @($explorerReadOnlyAdmissionContract.fingerprint.allowedValueKinds).Count -eq
+        2 -and
+    -not $explorerReadOnlyAdmissionContract.fingerprint.propertyReadSupported -and
+    -not $explorerReadOnlyAdmissionContract.integration.modelEntryPointsExported -and
+    -not $explorerReadOnlyAdmissionContract.integration.endpointAttemptedDuringValidation -and
+    -not $explorerReadOnlyAdmissionContract.integration.tapDllLoadedDuringValidation -and
+    -not $explorerReadOnlyAdmissionContract.executionSupported -and
+    -not $explorerReadOnlyAdmissionContract.readyForLiveConnection -and
+    -not $explorerReadOnlyAdmissionContract.readyForExactApproval -and
+    -not $explorerReadOnlyAdmissionContract.activationPermitted -and
+    $explorerReadOnlyAdmissionContract.liveExplorer -eq 'not-run' -and
+    -not $explorerReadOnlyAdmissionContract.mutationPerformed -and
+    $explorerReadOnlyAdmissionContractSchema.additionalProperties -eq
+        $false -and
+    $explorerReadOnlyAdmissionSource.Contains(
+        'static_assert(sizeof(jarvis_tap_admission_request) == 792U)'
+    ) -and
+    $explorerReadOnlyAdmissionSource.Contains(
+        'static_assert(sizeof(jarvis_tap_fingerprint_request) == 176U)'
+    ) -and
+    $explorerReadOnlyAdmissionSource.Contains(
+        'instance->bind = request->bind'
+    ) -and
+    $explorerReadOnlyAdmissionSource.Contains(
+        'JARVIS_TAP_FINGERPRINT_RESULT_VALUE_UNSUPPORTED'
+    ) -and
+    $explorerReadOnlyAdmissionSource.Contains(
+        'kSha256RoundConstants'
+    ) -and
+    -not $explorerReadOnlyAdmissionSource.Contains(
+        'InitializeXamlDiagnosticsEx'
+    )
+Add-Check `
+    'phase13.admission-fingerprint-static-offline-contract' `
+    $phase13AdmissionStaticContract `
+    'Phase 13 must require zero consumers and one offline endpoint candidate, consume the full exact bind once, fingerprint only nine canonical values, and retain every non-live claim.'
+
+$explorerReadOnlyAdmissionAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerReadOnlyAdmissionAuditPath 2>&1
+)
+$explorerReadOnlyAdmissionAuditExitCode = $LASTEXITCODE
+try {
+    $explorerReadOnlyAdmissionAudit = (
+        $explorerReadOnlyAdmissionAuditOutput -join [Environment]::NewLine
+    ) | ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerReadOnlyAdmissionAudit = $null
+}
+$phase13AdmissionAuditPassed =
+    $explorerReadOnlyAdmissionAuditExitCode -eq 0 -and
+    $null -ne $explorerReadOnlyAdmissionAudit -and
+    $explorerReadOnlyAdmissionAudit.result -eq 'passed' -and
+    $explorerReadOnlyAdmissionAudit.checkCount -eq 11 -and
+    $explorerReadOnlyAdmissionAudit.passedCount -eq 11 -and
+    $explorerReadOnlyAdmissionAudit.scenarioCount -eq 50 -and
+    $explorerReadOnlyAdmissionAudit.scenarioPassedCount -eq 50 -and
+    $explorerReadOnlyAdmissionAudit.firstFingerprintSha256 -eq
+        '00542DB9887A4CE9FA17AD0B42EC164D5E38FDD3BFE410D9517B2814CC264560' -and
+    -not $explorerReadOnlyAdmissionAudit.endpointAttempted -and
+    -not $explorerReadOnlyAdmissionAudit.tapDllLoaded -and
+    -not $explorerReadOnlyAdmissionAudit.propertyReadSupported -and
+    -not $explorerReadOnlyAdmissionAudit.liveConnectionCompiled -and
+    -not $explorerReadOnlyAdmissionAudit.executionSupported -and
+    -not $explorerReadOnlyAdmissionAudit.activationPermitted -and
+    $explorerReadOnlyAdmissionAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerReadOnlyAdmissionAudit.mutationPerformed
+Add-Check `
+    'phase13.admission-fingerprint-executable-audit' `
+    $phase13AdmissionAuditPassed `
+    'The portable admission/fingerprint core must pass 11/11 checks and 50/50 fault scenarios with the independently frozen SHA-256 vector and no endpoint, DLL or property access.'
+
+$phase14AdapterStaticContract =
+    $phase14Task.Contains(
+        'OFFLINE PROJECTION MODEL COMPLETE — NO IINSPECTABLE READ'
+    ) -and
+    $explorerInspectableAdapterContract.schemaVersion -eq 1 -and
+    $explorerInspectableAdapterContract.contractId -eq
+        'jarvis-explorer-inspectable-adapter-v1' -and
+    $explorerInspectableAdapterContract.lifecycleState -eq
+        'offline-projection-model-only' -and
+    $explorerInspectableAdapterContract.compileGate.requiredValue -eq 0 -and
+    -not $explorerInspectableAdapterContract.compileGate.livePropertyReadCompiled -and
+    $explorerInspectableAdapterContract.projection.snapshotBytes -eq 192 -and
+    $explorerInspectableAdapterContract.projection.acceptedValueOrigin -eq
+        'local' -and
+    $explorerInspectableAdapterContract.projection.exactRuntimeClassNameMatchRequiredForObject -and
+    $explorerInspectableAdapterContract.projection.maximumOpacityMillionths -eq
+        1000000 -and
+    $explorerInspectableAdapterContract.fingerprint.canonicalValueCountRequired -eq
+        9 -and
+    -not $explorerInspectableAdapterContract.integration.adapterEntryPointsExported -and
+    -not $explorerInspectableAdapterContract.integration.iInspectableReadAttemptedDuringValidation -and
+    -not $explorerInspectableAdapterContract.integration.endpointAttemptedDuringValidation -and
+    -not $explorerInspectableAdapterContract.integration.tapDllLoadedDuringValidation -and
+    -not $explorerInspectableAdapterContract.propertyReadSupported -and
+    -not $explorerInspectableAdapterContract.executionSupported -and
+    -not $explorerInspectableAdapterContract.readyForLiveConnection -and
+    -not $explorerInspectableAdapterContract.readyForExactApproval -and
+    -not $explorerInspectableAdapterContract.activationPermitted -and
+    $explorerInspectableAdapterContract.liveExplorer -eq 'not-run' -and
+    -not $explorerInspectableAdapterContract.mutationPerformed -and
+    $explorerInspectableAdapterContractSchema.additionalProperties -eq
+        $false -and
+    $explorerInspectableAdapterSource.Contains(
+        'static_assert(sizeof(jarvis_tap_runtime_property_snapshot) == 192U)'
+    ) -and
+    $explorerInspectableAdapterSource.Contains(
+        'snapshot->exact_runtime_class_name_matched != 1U'
+    ) -and
+    $explorerInspectableAdapterSource.Contains(
+        'instance->fingerprint.state ='
+    ) -and
+    -not $explorerInspectableAdapterSource.Contains(
+        'InitializeXamlDiagnosticsEx'
+    )
+Add-Check `
+    'phase14.inspectable-adapter-static-offline-contract' `
+    $phase14AdapterStaticContract `
+    'Phase 14 must accept only bounded local null or exact solid-color projections, own one Phase 13 fingerprint, and keep the live read gate closed.'
+
+$explorerInspectableAdapterAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerInspectableAdapterAuditPath 2>&1
+)
+$explorerInspectableAdapterAuditExitCode = $LASTEXITCODE
+try {
+    $explorerInspectableAdapterAudit = (
+        $explorerInspectableAdapterAuditOutput -join [Environment]::NewLine
+    ) | ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerInspectableAdapterAudit = $null
+}
+$phase14AdapterAuditPassed =
+    $explorerInspectableAdapterAuditExitCode -eq 0 -and
+    $null -ne $explorerInspectableAdapterAudit -and
+    $explorerInspectableAdapterAudit.result -eq 'passed' -and
+    $explorerInspectableAdapterAudit.checkCount -eq 11 -and
+    $explorerInspectableAdapterAudit.passedCount -eq 11 -and
+    $explorerInspectableAdapterAudit.scenarioCount -eq 29 -and
+    $explorerInspectableAdapterAudit.scenarioPassedCount -eq 29 -and
+    -not $explorerInspectableAdapterAudit.iInspectableReadAttempted -and
+    -not $explorerInspectableAdapterAudit.propertyReadSupported -and
+    -not $explorerInspectableAdapterAudit.endpointAttempted -and
+    -not $explorerInspectableAdapterAudit.tapDllLoaded -and
+    -not $explorerInspectableAdapterAudit.executionSupported -and
+    -not $explorerInspectableAdapterAudit.activationPermitted -and
+    $explorerInspectableAdapterAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerInspectableAdapterAudit.mutationPerformed
+Add-Check `
+    'phase14.inspectable-adapter-executable-audit' `
+    $phase14AdapterAuditPassed `
+    'The portable projection adapter must pass 11/11 checks and 29/29 fault scenarios without a COM object, property read, endpoint attempt or DLL load.'
+
+$phase15TransactionStaticContract =
+    $phase15Task.Contains(
+        'OFFLINE TRANSACTION MODEL COMPLETE — NO PLATFORM WRITE'
+    ) -and
+    $explorerStyleTransactionContract.schemaVersion -eq 1 -and
+    $explorerStyleTransactionContract.contractId -eq
+        'jarvis-explorer-style-transaction-v1' -and
+    $explorerStyleTransactionContract.lifecycleState -eq
+        'offline-reversible-transaction-model-only' -and
+    $explorerStyleTransactionContract.compileGate.requiredValue -eq 0 -and
+    -not $explorerStyleTransactionContract.compileGate.livePropertyWriteCompiled -and
+    $explorerStyleTransactionContract.prepare.originalValueCountRequired -eq
+        9 -and
+    $explorerStyleTransactionContract.prepare.styledValueCountRequired -eq
+        9 -and
+    $explorerStyleTransactionContract.prepare.previewDurationMilliseconds -eq
+        60000 -and
+    $explorerStyleTransactionContract.apply.writeAttemptSetsDirtyBeforeResult -and
+    $explorerStyleTransactionContract.apply.readAfterWriteVerificationRequired -and
+    $explorerStyleTransactionContract.restore.order -eq
+        'strict-reverse-last-dirty-first' -and
+    $explorerStyleTransactionContract.restore.failedRestoreRemainsDirty -and
+    $explorerStyleTransactionContract.restore.restoredRequiresDirtyMaskZero -and
+    -not $explorerStyleTransactionContract.integration.transactionEntryPointsExported -and
+    -not $explorerStyleTransactionContract.integration.platformWriteAttemptedDuringValidation -and
+    -not $explorerStyleTransactionContract.integration.endpointAttemptedDuringValidation -and
+    -not $explorerStyleTransactionContract.integration.tapDllLoadedDuringValidation -and
+    -not $explorerStyleTransactionContract.propertyReadSupported -and
+    -not $explorerStyleTransactionContract.propertyWriteSupported -and
+    -not $explorerStyleTransactionContract.executionSupported -and
+    -not $explorerStyleTransactionContract.readyForLiveConnection -and
+    -not $explorerStyleTransactionContract.readyForExactApproval -and
+    -not $explorerStyleTransactionContract.activationPermitted -and
+    $explorerStyleTransactionContract.liveExplorer -eq 'not-run' -and
+    -not $explorerStyleTransactionContract.mutationPerformed -and
+    $explorerStyleTransactionContractSchema.additionalProperties -eq
+        $false -and
+    $explorerStyleTransactionSource.Contains(
+        'static_assert(sizeof(jarvis_tap_style_transaction_instance) == 1072U)'
+    ) -and
+    $explorerStyleTransactionSource.Contains(
+        'instance->dirty_mask |= 1U << index'
+    ) -and
+    $explorerStyleTransactionSource.Contains(
+        'HighestDirtyIndex('
+    ) -and
+    -not $explorerStyleTransactionSource.Contains(
+        'InitializeXamlDiagnosticsEx'
+    )
+Add-Check `
+    'phase15.style-transaction-static-offline-contract' `
+    $phase15TransactionStaticContract `
+    'Phase 15 must snapshot all nine values, dirty every reported write attempt, verify each value and restore strictly in reverse while the live write gate stays closed.'
+
+$explorerStyleTransactionAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerStyleTransactionAuditPath 2>&1
+)
+$explorerStyleTransactionAuditExitCode = $LASTEXITCODE
+try {
+    $explorerStyleTransactionAudit = (
+        $explorerStyleTransactionAuditOutput -join [Environment]::NewLine
+    ) | ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerStyleTransactionAudit = $null
+}
+$phase15TransactionAuditPassed =
+    $explorerStyleTransactionAuditExitCode -eq 0 -and
+    $null -ne $explorerStyleTransactionAudit -and
+    $explorerStyleTransactionAudit.result -eq 'passed' -and
+    $explorerStyleTransactionAudit.checkCount -eq 13 -and
+    $explorerStyleTransactionAudit.passedCount -eq 13 -and
+    $explorerStyleTransactionAudit.scenarioCount -eq 65 -and
+    $explorerStyleTransactionAudit.scenarioPassedCount -eq 65 -and
+    $explorerStyleTransactionAudit.simulatedWriteAttempts -and
+    -not $explorerStyleTransactionAudit.platformWriteAttempted -and
+    -not $explorerStyleTransactionAudit.propertyWriteSupported -and
+    -not $explorerStyleTransactionAudit.propertyReadSupported -and
+    -not $explorerStyleTransactionAudit.endpointAttempted -and
+    -not $explorerStyleTransactionAudit.tapDllLoaded -and
+    -not $explorerStyleTransactionAudit.executionSupported -and
+    -not $explorerStyleTransactionAudit.activationPermitted -and
+    $explorerStyleTransactionAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerStyleTransactionAudit.mutationPerformed
+Add-Check `
+    'phase15.style-transaction-executable-audit' `
+    $phase15TransactionAuditPassed `
+    'The reversible transaction core must pass 13/13 checks and 65/65 fault scenarios while every write remains simulated and no endpoint or DLL is touched.'
+
+$phase16ReadBridgeStaticContract =
+    $phase16Task.Contains(
+        'REAL INTERFACE REVIEW OBJECT COMPLETE — UNLINKED AND NOT RUN'
+    ) -and
+    $explorerXamlReadBridgeContract.schemaVersion -eq 1 -and
+    $explorerXamlReadBridgeContract.contractId -eq
+        'jarvis-explorer-xaml-read-bridge-review-v1' -and
+    $explorerXamlReadBridgeContract.lifecycleState -eq
+        'unlinked-review-object-only' -and
+    $explorerXamlReadBridgeContract.compileGate.reviewObjectValue -eq
+        1 -and
+    $explorerXamlReadBridgeContract.compileGate.shippingTapValue -eq
+        0 -and
+    -not $explorerXamlReadBridgeContract.compileGate.reviewObjectLinkedIntoTap -and
+    $explorerXamlReadBridgeContract.readBoundary.siteInterface -eq
+        'IXamlDiagnostics' -and
+    $explorerXamlReadBridgeContract.readBoundary.serviceInterface -eq
+        'IVisualTreeService2' -and
+    $explorerXamlReadBridgeContract.readBoundary.requiredValueOrigin -eq
+        'BaseValueSourceLocal' -and
+    $explorerXamlReadBridgeContract.projection.outputSnapshotBytes -eq
+        192 -and
+    $explorerXamlReadBridgeContract.projection.exactRuntimeClassNameRequired -and
+    $explorerXamlReadBridgeContract.ownership.releaseAttemptAndCompletionCountsMustMatch -and
+    $explorerXamlReadBridgeContract.integration.portablePolicyHarnessScenarioCount -eq
+        56 -and
+    -not $explorerXamlReadBridgeContract.integration.windowsInterfaceReviewObjectExecuted -and
+    -not $explorerXamlReadBridgeContract.integration.windowsInterfaceReviewObjectLinked -and
+    $explorerXamlReadBridgeContract.approval.status -eq
+        'blocked-fresh-host-package-required' -and
+    -not $explorerXamlReadBridgeContract.approval.exactCommandGenerated -and
+    -not $explorerXamlReadBridgeContract.propertyReadSupported -and
+    -not $explorerXamlReadBridgeContract.propertyWriteSupported -and
+    -not $explorerXamlReadBridgeContract.executionSupported -and
+    -not $explorerXamlReadBridgeContract.readyForLiveConnection -and
+    -not $explorerXamlReadBridgeContract.readyForExactApproval -and
+    -not $explorerXamlReadBridgeContract.activationPermitted -and
+    $explorerXamlReadBridgeContract.liveExplorer -eq 'not-run' -and
+    -not $explorerXamlReadBridgeContract.mutationPerformed -and
+    $explorerXamlReadBridgeContractSchema.additionalProperties -eq
+        $false -and
+    $explorerXamlReadBridgeSource.Contains(
+        '#define JARVIS_COMPILE_REVIEWED_XAML_READ_BRIDGE 0'
+    ) -and
+    $explorerXamlReadBridgeSource.Contains(
+        'service->GetPropertyValuesChain('
+    ) -and
+    $explorerXamlReadBridgeSource.Contains(
+        'diagnostics->GetIInspectableFromHandle('
+    ) -and
+    $explorerXamlReadBridgeSource.Contains(
+        'JARVIS_TAP_XAML_READ_RESULT_FOREIGN_OUTCOME_UNCERTAIN'
+    ) -and
+    -not $explorerXamlReadBridgeSource.Contains(
+        'InitializeXamlDiagnosticsEx('
+    ) -and
+    -not $explorerXamlReadBridgeSource.Contains('SetProperty(') -and
+    -not $explorerXamlReadBridgeSource.Contains('ClearProperty(')
+Add-Check `
+    'phase16.xaml-read-bridge-static-unlinked-contract' `
+    $phase16ReadBridgeStaticContract `
+    'Phase 16 must compile only a separate real-interface read review object, retain local exact-type and ownership gates, and remain unlinked and unapproved.'
+
+$explorerXamlReadBridgeAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerXamlReadBridgeAuditPath 2>&1
+)
+$explorerXamlReadBridgeAuditExitCode = $LASTEXITCODE
+try {
+    $explorerXamlReadBridgeAudit = (
+        $explorerXamlReadBridgeAuditOutput -join [Environment]::NewLine
+    ) | ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerXamlReadBridgeAudit = $null
+}
+$phase16ReadBridgeAuditPassed =
+    $explorerXamlReadBridgeAuditExitCode -eq 0 -and
+    $null -ne $explorerXamlReadBridgeAudit -and
+    $explorerXamlReadBridgeAudit.result -eq 'passed' -and
+    $explorerXamlReadBridgeAudit.checkCount -eq 15 -and
+    $explorerXamlReadBridgeAudit.passedCount -eq 15 -and
+    $explorerXamlReadBridgeAudit.scenarioCount -eq 56 -and
+    $explorerXamlReadBridgeAudit.scenarioPassedCount -eq 56 -and
+    $explorerXamlReadBridgeAudit.policyHarnessBuilt -and
+    $explorerXamlReadBridgeAudit.windowsReviewObjectBuilt -and
+    -not $explorerXamlReadBridgeAudit.windowsReviewObjectExecuted -and
+    $explorerXamlReadBridgeAudit.disabledObjectBuilt -and
+    -not $explorerXamlReadBridgeAudit.endpointAttempted -and
+    -not $explorerXamlReadBridgeAudit.tapDllLoaded -and
+    -not $explorerXamlReadBridgeAudit.propertyReadSupported -and
+    -not $explorerXamlReadBridgeAudit.propertyWriteSupported -and
+    -not $explorerXamlReadBridgeAudit.executionSupported -and
+    -not $explorerXamlReadBridgeAudit.readyForLiveConnection -and
+    -not $explorerXamlReadBridgeAudit.readyForExactApproval -and
+    -not $explorerXamlReadBridgeAudit.activationPermitted -and
+    $explorerXamlReadBridgeAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerXamlReadBridgeAudit.mutationPerformed
+Add-Check `
+    'phase16.xaml-read-bridge-compile-and-policy-audit' `
+    $phase16ReadBridgeAuditPassed `
+    'The separate Windows read object must compile warning-free while 56/56 synthetic foreign-call observations pass without executing it or touching Explorer.'
+
+$phase17SurfaceDiscoveryStaticContract =
+    $phase17Task.Contains(
+        'BOUNDED DISCOVERY CORE COMPLETE — CALLBACK UNLINKED AND NOT RUN'
+    ) -and
+    $explorerXamlSurfaceDiscoveryContract.schemaVersion -eq 1 -and
+    $explorerXamlSurfaceDiscoveryContract.contractId -eq
+        'jarvis-explorer-xaml-surface-discovery-review-v1' -and
+    $explorerXamlSurfaceDiscoveryContract.lifecycleState -eq
+        'offline-core-and-unlinked-callback-review-object' -and
+    @($explorerXamlSurfaceDiscoveryContract.selectors).Count -eq 3 -and
+    $explorerXamlSurfaceDiscoveryContract.boundedModel.maximumNodeCount -eq
+        512 -and
+    $explorerXamlSurfaceDiscoveryContract.boundedModel.maximumEventCount -eq
+        2048 -and
+    $explorerXamlSurfaceDiscoveryContract.boundedModel.maximumAncestorDepth -eq
+        64 -and
+    $explorerXamlSurfaceDiscoveryContract.boundedModel.fixedCapacity -and
+    -not $explorerXamlSurfaceDiscoveryContract.boundedModel.heapAllocationRequired -and
+    $explorerXamlSurfaceDiscoveryContract.callbackReview.interface -eq
+        'IVisualTreeServiceCallback2' -and
+    -not $explorerXamlSurfaceDiscoveryContract.callbackReview.linkedIntoTap -and
+    -not $explorerXamlSurfaceDiscoveryContract.callbackReview.executed -and
+    -not $explorerXamlSurfaceDiscoveryContract.callbackReview.subscriptionAttempted -and
+    $explorerXamlSurfaceDiscoveryContract.readSession.requestCount -eq 9 -and
+    $explorerXamlSurfaceDiscoveryContract.readSession.feedsPhase16ReadRequest -and
+    -not $explorerXamlSurfaceDiscoveryContract.hostReviewPackage.exactCommandGenerated -and
+    -not $explorerXamlSurfaceDiscoveryContract.callbackReviewObjectLinked -and
+    -not $explorerXamlSurfaceDiscoveryContract.callbackReviewObjectExecuted -and
+    -not $explorerXamlSurfaceDiscoveryContract.readyForLiveConnection -and
+    -not $explorerXamlSurfaceDiscoveryContract.readyForExactApproval -and
+    -not $explorerXamlSurfaceDiscoveryContract.executionSupported -and
+    -not $explorerXamlSurfaceDiscoveryContract.activationPermitted -and
+    $explorerXamlSurfaceDiscoveryContract.liveExplorer -eq 'not-run' -and
+    -not $explorerXamlSurfaceDiscoveryContract.mutationPerformed -and
+    $explorerXamlSurfaceDiscoveryContractSchema.additionalProperties -eq
+        $false -and
+    $explorerXamlSurfaceDiscoverySource.Contains(
+        '#define JARVIS_COMPILE_REVIEWED_XAML_SURFACE_CALLBACK 0'
+    ) -and
+    $explorerXamlSurfaceDiscoverySource.Contains(
+        'IVisualTreeServiceCallback2'
+    ) -and
+    $explorerXamlSurfaceDiscoverySource.Contains(
+        'jarvis_tap_surface_discovery_build_read_request('
+    ) -and
+    -not $explorerXamlSurfaceDiscoverySource.Contains(
+        'InitializeXamlDiagnosticsEx('
+    ) -and
+    -not $explorerXamlSurfaceDiscoverySource.Contains(
+        'AdviseVisualTreeChange('
+    ) -and
+    -not $explorerXamlSurfaceDiscoverySource.Contains('SetProperty(') -and
+    -not $explorerXamlSurfaceDiscoverySource.Contains('ClearProperty(')
+Add-Check `
+    'phase17.xaml-surface-discovery-static-unlinked-contract' `
+    $phase17SurfaceDiscoveryStaticContract `
+    'Phase 17 must bind the exact three candidate selectors to a fixed-capacity fail-closed discovery core and compile only an unlinked callback review object.'
+
+$explorerXamlSurfaceDiscoveryAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerXamlSurfaceDiscoveryAuditPath 2>&1
+)
+$explorerXamlSurfaceDiscoveryAuditExitCode = $LASTEXITCODE
+try {
+    $explorerXamlSurfaceDiscoveryAudit = (
+        $explorerXamlSurfaceDiscoveryAuditOutput -join [Environment]::NewLine
+    ) | ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerXamlSurfaceDiscoveryAudit = $null
+}
+$phase17SurfaceDiscoveryAuditPassed =
+    $explorerXamlSurfaceDiscoveryAuditExitCode -eq 0 -and
+    $null -ne $explorerXamlSurfaceDiscoveryAudit -and
+    $explorerXamlSurfaceDiscoveryAudit.result -eq 'passed' -and
+    $explorerXamlSurfaceDiscoveryAudit.checkCount -eq 16 -and
+    $explorerXamlSurfaceDiscoveryAudit.passedCount -eq 16 -and
+    $explorerXamlSurfaceDiscoveryAudit.scenarioCount -eq 58 -and
+    $explorerXamlSurfaceDiscoveryAudit.scenarioPassedCount -eq 58 -and
+    $explorerXamlSurfaceDiscoveryAudit.harnessBuilt -and
+    $explorerXamlSurfaceDiscoveryAudit.windowsReviewObjectBuilt -and
+    -not $explorerXamlSurfaceDiscoveryAudit.windowsCallbackExecuted -and
+    $explorerXamlSurfaceDiscoveryAudit.disabledObjectBuilt -and
+    -not $explorerXamlSurfaceDiscoveryAudit.hostReviewPackageExecuted -and
+    -not $explorerXamlSurfaceDiscoveryAudit.callbackSubscriptionAttempted -and
+    -not $explorerXamlSurfaceDiscoveryAudit.propertyReadAttempted -and
+    -not $explorerXamlSurfaceDiscoveryAudit.propertyWriteSupported -and
+    -not $explorerXamlSurfaceDiscoveryAudit.executionSupported -and
+    -not $explorerXamlSurfaceDiscoveryAudit.readyForLiveConnection -and
+    -not $explorerXamlSurfaceDiscoveryAudit.readyForExactApproval -and
+    -not $explorerXamlSurfaceDiscoveryAudit.activationPermitted -and
+    $explorerXamlSurfaceDiscoveryAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerXamlSurfaceDiscoveryAudit.mutationPerformed
+Add-Check `
+    'phase17.xaml-surface-discovery-compile-and-fault-audit' `
+    $phase17SurfaceDiscoveryAuditPassed `
+    'The fixed-capacity discovery core must pass 58/58 synthetic topology scenarios and the real callback object must compile without being linked, subscribed or executed.'
+
+$phase5NativeLeaseWatchdogContract =
+    $iconSize.Contains(
+        'L"\\Recovery\\m2-recovery-terminal.json"') -and
+    $iconSize.Contains(
+        'constexpr DWORD kRecoveryLeasePollIntervalMs = 1000') -and
+    $iconSize.Contains(
+        'constexpr ULONGLONG kRecoveryLeaseMaxAgeTicks') -and
+    $iconSize.Contains('bool IsRecoveryLeaseHeartbeatFresh()') -and
+    $iconSize.Contains(
+        'FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT') -and
+    $iconSize.Contains(
+        'waitResult == WAIT_TIMEOUT') -and
+    $iconSize.Contains(
+        'LatchRuntimeBlocked(L"recovery-terminal heartbeat expired")') -and
+    $iconSize.Contains(
+        'FindFirstChangeNotificationW(') -and
+    $iconSize.Contains(
+        'g_stateDirectoryPath.data(), FALSE, FILE_NOTIFY_CHANGE_FILE_NAME')
+Add-Check `
+    'phase5.native-recovery-lease-watchdog' `
+    $phase5NativeLeaseWatchdogContract `
+    'M2 must keep recovery heartbeats below the non-recursive state-root watch and latch pass-through when the heartbeat expires.'
+
+$phase5LabSchemaContract =
+    $m2RecoveryLeaseLabSchema.properties.schemaVersion.const -eq 1 -and
+    $m2RecoveryLeaseLabSchema.properties.receiptType.const -eq
+        'jarvisv2-m2-recovery-lease-lab' -and
+    $m2RecoveryLeaseLabSchema.properties.mode.const -eq
+        'offline-read-only-inspection' -and
+    $m2RecoveryLeaseLabSchema.properties.scenarioCount.const -eq 7 -and
+    $m2RecoveryLeaseLabSchema.properties.activationPermitted.const -eq $false -and
+    $m2RecoveryLeaseLabSchema.properties.liveExplorer.const -eq 'not-run' -and
+    $m2RecoveryLeaseLabSchema.properties.mutationPerformed.const -eq $false -and
+    $m2RecoveryLeaseLabSchema.properties.stateDirectoryTouched.const -eq $false
+Add-Check `
+    'phase5.recovery-lease-lab-schema' `
+    $phase5LabSchemaContract `
+    'The lab receipt must remain offline, read-only and incapable of claiming live Explorer evidence.'
+
+$phase5LabScriptContract =
+    $m2RecoveryLeaseLab.Contains("ScenarioId 'fresh-valid'") -and
+    $m2RecoveryLeaseLab.Contains("ScenarioId 'stale-heartbeat'") -and
+    $m2RecoveryLeaseLab.Contains("ScenarioId 'closing-state'") -and
+    $m2RecoveryLeaseLab.Contains("ScenarioId 'plan-hash-mismatch'") -and
+    $m2RecoveryLeaseLab.Contains("ScenarioId 'process-start-mismatch'") -and
+    $m2RecoveryLeaseLab.Contains("ScenarioId 'source-identity-drift'") -and
+    $m2RecoveryLeaseLab.Contains(
+        "id = 'recovery-child-path-isolation'") -and
+    $m2RecoveryLeaseLab.Contains('--lease-path $fixtureLeasePath') -and
+    $m2RecoveryLeaseLab.Contains('stateDirectoryTouched = $false') -and
+    -not [regex]::IsMatch(
+        $m2RecoveryLeaseLab,
+        '(?im)^\s*&\s*dotnet[^\r\n]*(?:clear-kill-switch|arm-kill-switch|restart-explorer)') -and
+    -not [regex]::IsMatch(
+        $m2RecoveryLeaseLab,
+        '(?i)\b(?:Start-Service|Stop-Service|Set-Service|Stop-Process|taskkill)\b')
+Add-Check `
+    'phase5.recovery-lease-lab-fault-matrix' `
+    $phase5LabScriptContract `
+    'The lab must cover six deterministic lease failures plus non-recursive recovery-child path isolation using only read-only fixture paths.'
+
+$phase4ObservationFaults =
+    @($m2ObservationSchema.properties.faultInjection.enum)
+$phase4ObservationSchemaContract =
+    $m2ObservationSchema.properties.schemaVersion.const -eq 1 -and
+    $m2ObservationSchema.properties.receiptType.const -eq
+        'jarvisv2-m2-observation-rehearsal' -and
+    $m2ObservationSchema.properties.mode.const -eq 'locked-rehearsal' -and
+    $m2ObservationSchema.properties.activationPermitted.const -eq $false -and
+    $m2ObservationSchema.properties.liveExplorer.const -eq 'not-run' -and
+    $m2ObservationSchema.properties.mutationPerformed.const -eq $false -and
+    $phase4ObservationFaults.Count -eq 7 -and
+    $phase4ObservationFaults -contains 'none' -and
+    $phase4ObservationFaults -contains 'kill-switch-missing' -and
+    $phase4ObservationFaults -contains 'permit-present' -and
+    $phase4ObservationFaults -contains 'windhawk-running' -and
+    $phase4ObservationFaults -contains 'explorer-changed' -and
+    $phase4ObservationFaults -contains 'module-mapped' -and
+    $phase4ObservationFaults -contains 'elevated-cpu'
+Add-Check `
+    'phase4.observation-schema-stop-matrix' `
+    $phase4ObservationSchemaContract `
+    'The locked rehearsal receipt must distinguish the normal path from every required simulated stop condition.'
+
+$phase4ObservationScriptContract =
+    $m2ObservationRehearsal.Contains(
+        '-ScriptPath $readinessScript') -and
+    $m2ObservationRehearsal.Contains(
+        '-ScriptPath $baselineScript') -and
+    $m2ObservationRehearsal.Contains('$actualHost = [ordered]@{') -and
+    $m2ObservationRehearsal.Contains('$evaluationState = [ordered]@{') -and
+    $m2ObservationRehearsal.Contains(
+        'injected-fault-did-not-trigger-expected-stop') -and
+    $m2ObservationRehearsal.Contains(
+        'artifacts\m2-observation-rehearsal\runs') -and
+    $m2ObservationRehearsal.Contains('activationPermitted = $false') -and
+    $m2ObservationRehearsal.Contains("liveExplorer = 'not-run'") -and
+    $m2ObservationRehearsal.Contains('mutationPerformed = $false') -and
+    -not [regex]::IsMatch(
+        $m2ObservationRehearsal,
+        '(?im)^\s*&\s*dotnet[^\r\n]*(?:clear-kill-switch|arm-kill-switch|restart-explorer)') -and
+    -not [regex]::IsMatch(
+        $m2ObservationRehearsal,
+        '(?i)\b(?:Start-Service|Stop-Service|Set-Service|Stop-Process|taskkill)\b')
+Add-Check `
+    'phase4.observation-rehearsal-readonly' `
+    $phase4ObservationScriptContract `
+    'Fault injection must alter only an evaluation copy while locked host sampling and all receipts remain read-only.'
 
 foreach ($module in @(
     [pscustomobject]@{ Id = 'jarvis-native-taskbar'; Text = $styler },
@@ -606,6 +2752,7 @@ foreach ($module in @(
     Test-NoPattern "module.$($module.Id).no-legacy-permit-payload" $module.Text 'JARVIS2-ACTIVATION-PERMIT-V1|activation-permits\\' 'Legacy per-module permit files and multi-line payloads are forbidden.'
     Test-NoPattern "module.$($module.Id).no-layered-overlay" $module.Text 'WS_EX_LAYERED|UpdateLayeredWindow|SetLayeredWindowAttributes' 'Native modules must not create a layered overlay.'
     Test-NoPattern "module.$($module.Id).no-self-restart" $module.Text 'taskkill|TerminateProcess|ShellExecuteW\(|CreateProcessW?\(' 'Injected modules must leave Explorer recovery to the supervisor.'
+    Test-Pattern "module.$($module.Id).stable-link-timestamp" $module.Text '(?m)^// @compilerOptions [^\r\n]*-Wl,--no-insert-timestamp(?:\s|$)' 'Every native module must suppress the known volatile PE and debug-directory timestamps.'
 }
 
 Test-Pattern 'styler.build-gate' $styler ("constexpr DWORD kValidatedBuild = {0};" -f $compatibility.host.minimumWindowsBuild) 'M1 source build gate must match compatibility.json.'
@@ -5623,9 +7770,105 @@ $managedBuild = [pscustomobject]@{
     detail = 'Managed build was explicitly skipped.'
 }
 if (-not $SkipManagedBuild) {
-    $buildOutput = & dotnet build $supervisorProject --configuration Release --nologo 2>&1
-    $buildExitCode = $LASTEXITCODE
-    Add-Check 'supervisor.release-build' ($buildExitCode -eq 0) (($buildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $supervisorBuildOutput =
+        & dotnet build $supervisorProject --configuration Release --nologo 2>&1
+    $supervisorBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'supervisor.release-build' `
+        ($supervisorBuildExitCode -eq 0) `
+        (($supervisorBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $hostModelBuildOutput =
+        & dotnet build $explorerHostModelProject --configuration Release --nologo 2>&1
+    $hostModelBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'explorer-host-model.release-build' `
+        ($hostModelBuildExitCode -eq 0) `
+        (($hostModelBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $controlCenterBuildOutput =
+        & dotnet build $controlCenterProject --configuration Release --nologo 2>&1
+    $controlCenterBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'control-center.release-build' `
+        ($controlCenterBuildExitCode -eq 0) `
+        (($controlCenterBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $nativeStyleBuildOutput =
+        & dotnet build $nativeStyleLabProject --configuration Release --nologo 2>&1
+    $nativeStyleBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'native-style-lab.release-build' `
+        ($nativeStyleBuildExitCode -eq 0) `
+        (($nativeStyleBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $desktopProbeBuildOutput =
+        & dotnet build $desktopStyleProbeProject --configuration Release --nologo 2>&1
+    $desktopProbeBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'desktop-style-probe.release-build' `
+        ($desktopProbeBuildExitCode -eq 0) `
+        (($desktopProbeBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $desktopSessionBuildOutput =
+        & dotnet build $desktopStyleSessionProject --configuration Release --nologo 2>&1
+    $desktopSessionBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'desktop-style-session.release-build' `
+        ($desktopSessionBuildExitCode -eq 0) `
+        (($desktopSessionBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $nativeWindowSessionBuildOutput =
+        & dotnet build $nativeWindowStyleSessionProject --configuration Release --nologo 2>&1
+    $nativeWindowSessionBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'native-window-style-session.release-build' `
+        ($nativeWindowSessionBuildExitCode -eq 0) `
+        (($nativeWindowSessionBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $explorerFrameModelBuildOutput =
+        & dotnet build $explorerFrameModelProject --configuration Release --nologo 2>&1
+    $explorerFrameModelBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'explorer-frame-model.release-build' `
+        ($explorerFrameModelBuildExitCode -eq 0) `
+        (($explorerFrameModelBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $explorerPreviewModelBuildOutput =
+        & dotnet build $explorerPreviewModelProject --configuration Release --nologo 2>&1
+    $explorerPreviewModelBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'explorer-preview-model.release-build' `
+        ($explorerPreviewModelBuildExitCode -eq 0) `
+        (($explorerPreviewModelBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $explorerSurfaceProbeBuildOutput =
+        & dotnet build $explorerSurfaceProbeProject --configuration Release --nologo 2>&1
+    $explorerSurfaceProbeBuildExitCode = $LASTEXITCODE
+    Add-Check `
+        'explorer-surface-probe.release-build' `
+        ($explorerSurfaceProbeBuildExitCode -eq 0) `
+        (($explorerSurfaceProbeBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
+    $buildExitCode = if (
+        $supervisorBuildExitCode -eq 0 -and
+        $hostModelBuildExitCode -eq 0 -and
+        $controlCenterBuildExitCode -eq 0 -and
+        $nativeStyleBuildExitCode -eq 0 -and
+        $desktopProbeBuildExitCode -eq 0 -and
+        $desktopSessionBuildExitCode -eq 0 -and
+        $nativeWindowSessionBuildExitCode -eq 0 -and
+        $explorerFrameModelBuildExitCode -eq 0 -and
+        $explorerPreviewModelBuildExitCode -eq 0 -and
+        $explorerSurfaceProbeBuildExitCode -eq 0
+    ) {
+        0
+    }
+    else {
+        1
+    }
+    $buildOutput = @(
+        $supervisorBuildOutput
+        $hostModelBuildOutput
+        $controlCenterBuildOutput
+        $nativeStyleBuildOutput
+        $desktopProbeBuildOutput
+        $desktopSessionBuildOutput
+        $nativeWindowSessionBuildOutput
+        $explorerFrameModelBuildOutput
+        $explorerPreviewModelBuildOutput
+        $explorerSurfaceProbeBuildOutput
+    )
     $managedBuild = [pscustomobject]@{
         status = if ($buildExitCode -eq 0) { 'passed' } else { 'failed' }
         exitCode = $buildExitCode

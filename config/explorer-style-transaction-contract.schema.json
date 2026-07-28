@@ -1,0 +1,235 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JarvisV2 offline reversible style transaction contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "contractId",
+    "lifecycleState",
+    "transportAbiVersion",
+    "compileGate",
+    "prepare",
+    "apply",
+    "restore",
+    "integration",
+    "propertyReadSupported",
+    "propertyWriteSupported",
+    "executionSupported",
+    "readyForLiveConnection",
+    "readyForExactApproval",
+    "activationPermitted",
+    "liveExplorer",
+    "mutationPerformed"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./explorer-style-transaction-contract.schema.json"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "contractId": {
+      "const": "jarvis-explorer-style-transaction-v1"
+    },
+    "lifecycleState": {
+      "const": "offline-reversible-transaction-model-only"
+    },
+    "transportAbiVersion": {
+      "const": 1
+    },
+    "compileGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "macro",
+        "requiredValue",
+        "livePropertyWriteCompiled"
+      ],
+      "properties": {
+        "macro": {
+          "const": "JARVIS_ENABLE_LIVE_XAML_PROPERTY_WRITE"
+        },
+        "requiredValue": {
+          "const": 0
+        },
+        "livePropertyWriteCompiled": {
+          "const": false
+        }
+      }
+    },
+    "prepare": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completePhase14SnapshotRequired",
+        "originalValueCountRequired",
+        "styledValueCountRequired",
+        "completeAdmissionBindByteMatchRequired",
+        "styledFingerprintMatchRequired",
+        "atLeastOneChangeRequired",
+        "previewDurationMilliseconds",
+        "deadlineMustFitCapability"
+      ],
+      "properties": {
+        "completePhase14SnapshotRequired": {
+          "const": true
+        },
+        "originalValueCountRequired": {
+          "const": 9
+        },
+        "styledValueCountRequired": {
+          "const": 9
+        },
+        "completeAdmissionBindByteMatchRequired": {
+          "const": true
+        },
+        "styledFingerprintMatchRequired": {
+          "const": true
+        },
+        "atLeastOneChangeRequired": {
+          "const": true
+        },
+        "previewDurationMilliseconds": {
+          "const": 60000
+        },
+        "deadlineMustFitCapability": {
+          "const": true
+        }
+      }
+    },
+    "apply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "order",
+        "writeAttemptSetsDirtyBeforeResult",
+        "readAfterWriteVerificationRequired",
+        "identityGenerationSelectorAndInstanceRevalidationRequired",
+        "writeOrVerificationFailurePolicy",
+        "dirtyPropertyCountMaximum"
+      ],
+      "properties": {
+        "order": {
+          "const": "surface-major-property-minor"
+        },
+        "writeAttemptSetsDirtyBeforeResult": {
+          "const": true
+        },
+        "readAfterWriteVerificationRequired": {
+          "const": true
+        },
+        "identityGenerationSelectorAndInstanceRevalidationRequired": {
+          "const": true
+        },
+        "writeOrVerificationFailurePolicy": {
+          "const": "restore-required"
+        },
+        "dirtyPropertyCountMaximum": {
+          "const": 9
+        }
+      }
+    },
+    "restore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "order",
+        "originalCanonicalValueRequired",
+        "readAfterRestoreVerificationRequired",
+        "failedRestoreRemainsDirty",
+        "retrySameDirtySlotAllowed",
+        "identityDriftPolicy",
+        "restoredRequiresDirtyMaskZero"
+      ],
+      "properties": {
+        "order": {
+          "const": "strict-reverse-last-dirty-first"
+        },
+        "originalCanonicalValueRequired": {
+          "const": true
+        },
+        "readAfterRestoreVerificationRequired": {
+          "const": true
+        },
+        "failedRestoreRemainsDirty": {
+          "const": true
+        },
+        "retrySameDirtySlotAllowed": {
+          "const": true
+        },
+        "identityDriftPolicy": {
+          "const": "no-write-restore-required"
+        },
+        "restoredRequiresDirtyMaskZero": {
+          "const": true
+        }
+      }
+    },
+    "integration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "controllerContainsOfflineTransactionModel",
+        "tapDllContainsOfflineTransactionModel",
+        "transactionEntryPointsExported",
+        "setSiteResult",
+        "simulatedWriteAttemptsOnly",
+        "platformWriteAttemptedDuringValidation",
+        "endpointAttemptedDuringValidation",
+        "tapDllLoadedDuringValidation"
+      ],
+      "properties": {
+        "controllerContainsOfflineTransactionModel": {
+          "const": true
+        },
+        "tapDllContainsOfflineTransactionModel": {
+          "const": true
+        },
+        "transactionEntryPointsExported": {
+          "const": false
+        },
+        "setSiteResult": {
+          "const": "E_ACCESSDENIED"
+        },
+        "simulatedWriteAttemptsOnly": {
+          "const": true
+        },
+        "platformWriteAttemptedDuringValidation": {
+          "const": false
+        },
+        "endpointAttemptedDuringValidation": {
+          "const": false
+        },
+        "tapDllLoadedDuringValidation": {
+          "const": false
+        }
+      }
+    },
+    "propertyReadSupported": {
+      "const": false
+    },
+    "propertyWriteSupported": {
+      "const": false
+    },
+    "executionSupported": {
+      "const": false
+    },
+    "readyForLiveConnection": {
+      "const": false
+    },
+    "readyForExactApproval": {
+      "const": false
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "liveExplorer": {
+      "const": "not-run"
+    },
+    "mutationPerformed": {
+      "const": false
+    }
+  }
+}

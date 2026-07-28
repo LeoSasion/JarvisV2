@@ -2,9 +2,11 @@
 
 ## 原生优先边界
 
-JARVIS2 的“桌面”不是一个新的顶层窗口。M1 的运行链路是：
+JARVIS2 的“桌面”不是一个新的顶层窗口。下列 M1 链路描述的是模块进入目标进程后的内部安全契约，不再代表获准使用 Windhawk 服务作为传输宿主。2026-07-27 的受控会话证明该服务会把基础运行库注入 Explorer 和非目标进程，因此整个服务宿主已被 Phase 6 隔离。
 
-1. Windhawk 只把模块加载到 `%SystemRoot%\explorer.exe`。
+M1 的模块内链路是：
+
+1. 模块元数据只接受 `%SystemRoot%\explorer.exe`；这不能限制 Windhawk 基础运行库自身的全局注入范围。
 2. `Wh_ModInit` 的第一项操作以 CAS 认领当前 DLL 映射唯一的初始化 generation；重复进入会不可逆转为 `Quiesced`，不能建立第二代。随后模块从 Windows LocalAppData Known Folder 解析固定状态目录，并以 0 ms 等待同一个命名状态门；状态门繁忙就立即失败关闭，绝不阻塞 Explorer 启动。
 3. 模块先检查 `disabled.flag`，再独占读取与自身 ID 精确匹配的 `active-module.txt` 一次性许可。
 4. 模块核对 Windows build/UBR、精确产品版本，以及 Explorer 和 `Taskbar.View.dll` 当前映射映像的 PE timestamp、`SizeOfImage`、CodeView GUID/age。`Taskbar.View.dll` 的模块引用在整个生命周期内固定。
@@ -70,10 +72,16 @@ M1 当前只允许离线编译。共享协议与便携 harness 已在无 Explore
 - 通过 `GetShellWindow` 与 `Shell_TrayWnd` 的共同 PID 识别真实桌面 Shell，不按进程名聚合或终止文件夹窗口；
 - 逐该 Shell PID 核对实际加载的 Taskbar.View、SystemTray、SearchUx 路径，并确认 legacy `ExplorerExtensions.dll` 未加载；
 - 在命名 Semaphore 下原子创建急停文件、撤销许可；任何无法确认的文件状态都按 Unknown 失败关闭；
-- 只在全部指纹匹配时，为一个 allowlisted 模块写入严格 ASCII 一次性许可，再删除急停文件；当前 allowlist 只有 `jarvis-taskbar-icon-size`；
+- 历史设计只在全部指纹匹配时为一个 allowlisted 模块写入严格 ASCII 一次性许可；Phase 6 现于状态门之前固定拒绝 `clear-kill-switch`，因此该写许可/删急停路径不可达；
 - 只在急停已开启、调用者显式传入 `--confirm` 时恢复真实 Shell PID；终止或等待异常后仍执行一次有界恢复。
 
 Supervisor 不是常驻 watchdog。M1 的状态 watcher 是等待目录文件名变化的一次性事件线程，不轮询、不恢复激活，也不重启 Explorer；项目没有后台自愈重启，以避免故障循环。
+
+### Explorer host offline model
+
+`src/Jarvis.ExplorerHostModel` 是 portable `net8.0` 离线准入模型，不是 loader。它只接受显式 `offline-fixture`，并且源码中没有 P/Invoke、进程枚举、服务、注册表、远程内存或 Hook 安装 API。候选身份必须来自 Shell desktop window 的单一 PID 和非零 TID，并继续匹配会话、Explorer 路径、版本、哈希、架构、启动时间与未来 standalone bridge 哈希。
+
+当前 Windhawk Mod 契约会被模型拒绝。即使 fixture 全部匹配，收据也只产生 `thread-specific-window-hook-review-candidate`，固定 `executionSupported=false`、`activationPermitted=false`、`liveExplorer=not-run` 和 `mutationPerformed=false`。完整机制取舍和未来 ABI 边界见 [ADR-0001](ADR-0001-EXPLORER-ONLY-HOST.md)。
 
 ## 急停状态机
 
@@ -81,7 +89,7 @@ Supervisor 不是常驻 watchdog。M1 的状态 watcher 是等待目录文件名
 |---|---:|---:|---|
 | Locked | 有 | 无 | 所有模块在 Hook 前退出；这是默认和恢复状态。 |
 | Prepared | 有 | 指定模块 | Supervisor 事务中的短暂内部状态；急停仍阻止加载。 |
-| One-shot released | 无 | 指定模块 | 只有指定模块在许可写入后 5 分钟内的一次初始化可以继续。 |
+| One-shot released | 无 | 指定模块 | 历史设计状态；Phase 6 隔离下 Supervisor 不再允许进入。 |
 | Consumed | 无 | 无 | 当前模块可能已运行，但 Explorer 崩溃/重启后没有许可，不能形成自动注入循环。 |
 | Re-armed | 有 | 无 | 新初始化全部阻止；M2 已加载 Hook 转为 pass-through，M1 锁进 latched no-new-work。M1 若曾发布外部回调会保留 HMODULE pin 到 Explorer 自然退出；现有 XAML 属性可能仍保留，完整 UI 恢复与安全卸载尚未证明。 |
 

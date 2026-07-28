@@ -29,6 +29,14 @@
 
 M2 已具备：真实 Shell PID 绑定、精确磁盘和映射映像身份、5 分钟逐模块一次性许可、后台急停监视、热路径纯原子 pass-through，以及 Explorer 重启后无许可自动复载阻断。离线门禁通过不等于实机稳定性通过。
 
+Phase 4 在锁定态增加了短时 session plan、默认 inert 的恢复终端入口和只读观测演练。计划把 readiness、canonical build、M2 源码、恢复入口和观测器的 SHA-256 绑定到唯一 run ID；任何源码漂移或过期都会拒绝继续。观测演练分别保留真实宿主快照和内存评估副本，可以无副作用地注入 kill switch、permit、Windhawk service、Explorer PID、module mapping 和 CPU 六类漂移，并要求每类都触发明确 stop reason。它没有打开恢复终端、创建许可、启动 Windhawk、清除急停或加载模块，因此仍不是实机稳定性证据。
+
+Phase 5 把恢复终端从启动瞬间的 PID 快照升级为一秒心跳、四秒 managed 失效的短租约。安全审查修复了心跳写入 state root 会触发原生 watcher 的 P0 冲突：lease 现在位于非递归 watcher 下的 `JARVIS2\Recovery` 子目录；M2 自身每秒轮询，超过六秒即永久 pass-through。Supervisor 在写许可前和删除急停前两次验证终端 PID/启动时间、计划哈希/过期时间、固定源码身份、reparse boundary 和当前 Release 程序。七场景离线故障/路径隔离实验室全部通过，但不会写真实状态目录，也不执行恢复或激活。
+
+2026-07-27 的受控会话随后证明：即使 M2 保持禁用，Windhawk 服务仍会把基础运行库映射进 Explorer 和大量非目标进程。会话在清除急停前终止，正常恢复保持 Explorer PID 稳定且 M2 映射为 0。Phase 6 因此隔离整个 Windhawk 服务宿主：readiness 固定失败，控制器不再具备启动服务或把 M2 设为启用的可达路径，Supervisor 也在状态锁之前拒绝 `clear-kill-switch`。
+
+[ADR-0001](ADR-0001-EXPLORER-ONLY-HOST.md) 已从 Windhawk 官方源码确认 service → engine → all-process injector 链路，并把未来候选收窄为 Shell 窗口绑定的单一非零线程 ID；它不是实机授权。`Jarvis.ExplorerHostModel` 目前只读取 `offline-fixture`，不含 P/Invoke、进程枚举、服务、注册表、远程内存或 Hook 安装 API。即使 fixture 全部匹配，输出仍固定 `executionSupported=false`、`activationPermitted=false`、`liveExplorer=not-run`。下一步必须先把 M2 的 Windhawk API 契约拆成独立 bridge ABI，并在便携 native fault lab 证明 quiesce/ownership，才可以讨论真实 collector 或 transport。
+
 在单符号切片完成独立实机稳定性验证之前，不增加任务栏高度、按钮宽度、badge、overflow、托盘或搜索联动。验收必须一次只加载一个 Explorer 模块，并覆盖 100%-200% DPI、双屏、自动隐藏、应用启动/关闭、睡眠唤醒、卸载与急停恢复。任何一项异常都回到 pass-through，不把第二项功能叠上去。
 
 ## M3 — Start and system surfaces
@@ -38,6 +46,8 @@ M2 已具备：真实 Shell PID 绑定、精确磁盘和映射映像身份、5 �
 ## M4 — Explorer chrome
 
 改造文件资源管理器标题栏、导航区和上下文表面。ExplorerBlurMica 可作为 LGPL/GPL 研究对象，但不直接把其配置或二进制混入 M1。
+
+Phase 11–15 已把精确单窗口传输、只读 TAP 外壳、一次性 admission/fingerprint、属性投影和严格逆序恢复建成离线模型。Phase 16 进一步增加了一个针对真实 `IXamlDiagnostics` / `IVisualTreeService2` 接口的独立只读 review object：它只编译、不链接、不执行，便携策略核以 56/56 合成外部调用场景验证本地值来源、精确 `SolidColorBrush` 类型、数组释放和 COM 引用收口。Phase 17 又把视觉树事件收敛为固定容量的三表面唯一发现：512 个句柄、2,048 个事件、64 层祖先上限，58/58 合成拓扑场景通过；真实 `IVisualTreeServiceCallback2` 仍只编译为独立对象，不订阅、不链接、不执行。新鲜主机 review package 已能只读确认 23/23 兼容、急停、许可、Windhawk 服务和 Explorer 映射基线，但会因精确 `C:\` 窗口、visual-tree generation、既有 consumer、恢复终端、链接和控制器六项缺口固定阻断，也不生成命令。现有 TAP 仍在 `SetSite` 返回 `E_ACCESSDENIED`；下一步是审查 connectable 的单窗口只读控制器，获得当次明确批准前不连接 Explorer。
 
 ## M5 — DWM laboratory
 

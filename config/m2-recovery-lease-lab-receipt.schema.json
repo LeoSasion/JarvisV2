@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JarvisV2 M2 recovery lease lab receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "receiptType",
+    "runId",
+    "startedAtUtc",
+    "completedAtUtc",
+    "result",
+    "mode",
+    "scenarioCount",
+    "scenariosPassed",
+    "activationPermitted",
+    "liveExplorer",
+    "mutationPerformed",
+    "stateDirectoryTouched",
+    "transientFixturesRemoved",
+    "scenarios",
+    "errors"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "receiptType": {
+      "const": "jarvisv2-m2-recovery-lease-lab"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9]{8}T[0-9]{9}Z-[a-f0-9]{8}$"
+    },
+    "startedAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completedAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "result": {
+      "enum": [
+        "passed",
+        "failed"
+      ]
+    },
+    "mode": {
+      "const": "offline-read-only-inspection"
+    },
+    "scenarioCount": {
+      "const": 7
+    },
+    "scenariosPassed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 7
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "liveExplorer": {
+      "const": "not-run"
+    },
+    "mutationPerformed": {
+      "const": false
+    },
+    "stateDirectoryTouched": {
+      "const": false
+    },
+    "transientFixturesRemoved": {
+      "type": "boolean"
+    },
+    "scenarios": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "expectedExitCode",
+          "actualExitCode",
+          "expectedReady",
+          "actualReady",
+          "expectedError",
+          "actualError",
+          "passed"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expectedExitCode": {
+            "type": "integer"
+          },
+          "actualExitCode": {
+            "type": "integer"
+          },
+          "expectedReady": {
+            "type": "boolean"
+          },
+          "actualReady": {
+            "type": "boolean"
+          },
+          "expectedError": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actualError": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "passed": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    }
+  }
+}

@@ -1,0 +1,995 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JarvisV2 M2 controlled-live controller receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "receiptType",
+    "action",
+    "result",
+    "moduleId",
+    "controllerSha256",
+    "receiptSchemaSha256",
+    "observedAtUtc",
+    "expectedExplorerProcessId",
+    "activationPermitted",
+    "liveExplorer",
+    "mutationPerformed",
+    "stopRequired",
+    "explorerRestartRequested",
+    "processTerminationRequested",
+    "serviceStartModeMutationRequested",
+    "exactClearCommand",
+    "emergencyArmCommand",
+    "detail"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "receiptType": {
+      "const": "jarvisv2-m2-controlled-live-controller"
+    },
+    "action": {
+      "enum": [
+        "Inspect",
+        "UpdateDisabledInstallation",
+        "StartDisabledHost",
+        "EnableOnce",
+        "Observe",
+        "Recover"
+      ]
+    },
+    "result": {
+      "enum": [
+        "passed-read-only",
+        "passed-disabled-installation-updated",
+        "passed-bounded-idle-observation",
+        "passed-locked-zero-mappings",
+        "passed-locked-runtime-residual-recorded",
+        "failed-locked-state-needs-attention",
+        "failed"
+      ]
+    },
+    "moduleId": {
+      "const": "jarvis-taskbar-icon-size"
+    },
+    "controllerSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "receiptSchemaSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "observedAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expectedExplorerProcessId": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "liveExplorer": {
+      "enum": [
+        "not-run",
+        "controlled-session"
+      ]
+    },
+    "mutationPerformed": {
+      "type": "boolean"
+    },
+    "stopRequired": {
+      "type": "boolean"
+    },
+    "explorerRestartRequested": {
+      "const": false
+    },
+    "processTerminationRequested": {
+      "const": false
+    },
+    "serviceStartModeMutationRequested": {
+      "const": false
+    },
+    "exactClearCommand": {
+      "const": "dotnet run --project .\\src\\Jarvis.Supervisor --configuration Release --no-build -- clear-kill-switch --module jarvis-taskbar-icon-size --confirm"
+    },
+    "emergencyArmCommand": {
+      "const": "dotnet run --project .\\src\\Jarvis.Supervisor --configuration Release --no-build -- arm-kill-switch"
+    },
+    "detail": {
+      "type": "object"
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/inspectPassed"
+    },
+    {
+      "$ref": "#/$defs/updatePassed"
+    },
+    {
+      "$ref": "#/$defs/observePassed"
+    },
+    {
+      "$ref": "#/$defs/recoverZeroMappings"
+    },
+    {
+      "$ref": "#/$defs/recoverRuntimeResidual"
+    },
+    {
+      "$ref": "#/$defs/recoverNeedsAttention"
+    },
+    {
+      "$ref": "#/$defs/genericFailure"
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[A-F0-9]{64}$"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9]{8}T[0-9]{9}Z-[a-f0-9]{8}$"
+    },
+    "mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "process",
+        "processId",
+        "module",
+        "path",
+        "isJarvis"
+      ],
+      "properties": {
+        "process": {
+          "type": "string"
+        },
+        "processId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "module": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "isJarvis": {
+          "type": "boolean"
+        }
+      }
+    },
+    "windhawkBaseMapping": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/mapping"
+        },
+        {
+          "properties": {
+            "isJarvis": {
+              "const": false
+            }
+          }
+        }
+      ]
+    },
+    "planInspection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "path",
+        "sha256",
+        "controllerSha256",
+        "lockedDryRunPassed",
+        "activationPermitted",
+        "mutationPerformed"
+      ],
+      "properties": {
+        "runId": {
+          "$ref": "#/$defs/runId"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "controllerSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "lockedDryRunPassed": {
+          "const": true
+        },
+        "activationPermitted": {
+          "const": false
+        },
+        "mutationPerformed": {
+          "const": false
+        }
+      }
+    },
+    "inspectDetail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compatibilityPassed",
+        "compatibilityCheckCount",
+        "explorerProcessId",
+        "killSwitchState",
+        "permitState",
+        "permitModuleId",
+        "serviceState",
+        "serviceStartMode",
+        "serviceProcessId",
+        "configuredModule",
+        "installedGeneration",
+        "targetDisabled",
+        "configError",
+        "recoveryTerminalReady",
+        "recoveryTerminalStatus",
+        "recoveryTerminalError",
+        "explorerJarvisMappings",
+        "allJarvisMappings",
+        "allWindhawkAndJarvisMappings",
+        "planInspection"
+      ],
+      "properties": {
+        "compatibilityPassed": {
+          "const": true
+        },
+        "compatibilityCheckCount": {
+          "const": 23
+        },
+        "explorerProcessId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "killSwitchState": {
+          "enum": [
+            "armed",
+            "disarmed",
+            "unknown"
+          ]
+        },
+        "permitState": {
+          "enum": [
+            "absent",
+            "valid",
+            "invalid",
+            "unknown"
+          ]
+        },
+        "permitModuleId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "serviceState": {
+          "type": "string"
+        },
+        "serviceStartMode": {
+          "type": "string"
+        },
+        "serviceProcessId": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "configuredModule": {
+          "const": "local@jarvis-taskbar-icon-size"
+        },
+        "installedGeneration": {
+          "enum": [
+            "phase4-reviewed-old",
+            "phase5-canonical",
+            "unknown"
+          ]
+        },
+        "targetDisabled": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "configError": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recoveryTerminalReady": {
+          "type": "boolean"
+        },
+        "recoveryTerminalStatus": {
+          "type": "string"
+        },
+        "recoveryTerminalError": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "explorerJarvisMappings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mapping"
+          }
+        },
+        "allJarvisMappings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mapping"
+          }
+        },
+        "allWindhawkAndJarvisMappings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mapping"
+          }
+        },
+        "planInspection": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/planInspection"
+            }
+          ]
+        }
+      }
+    },
+    "updateDetail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionPlanRunId",
+        "sessionPlanSha256",
+        "explorerProcessId",
+        "staleRecoveryLeaseRetired",
+        "targetDisabled",
+        "serviceState",
+        "serviceStartMode",
+        "serviceProcessId",
+        "killSwitchArmed",
+        "permitPresent",
+        "sourceSha256",
+        "dllSha256",
+        "backupDirectory",
+        "targetMappingCount",
+        "acceptedBaseRuntimeMappingCount"
+      ],
+      "properties": {
+        "sessionPlanRunId": {
+          "$ref": "#/$defs/runId"
+        },
+        "sessionPlanSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "explorerProcessId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "staleRecoveryLeaseRetired": {
+          "type": "boolean"
+        },
+        "targetDisabled": {
+          "const": true
+        },
+        "serviceState": {
+          "const": "Stopped"
+        },
+        "serviceStartMode": {
+          "const": "Manual"
+        },
+        "serviceProcessId": {
+          "const": 0
+        },
+        "killSwitchArmed": {
+          "const": true
+        },
+        "permitPresent": {
+          "const": false
+        },
+        "sourceSha256": {
+          "const": "CD7760DBC1111B0608599D49F8694AAA1C53D2A828AF362D3383995853D38CFB"
+        },
+        "dllSha256": {
+          "const": "C2DB007E2FDCDA145463E2D0355BD4F7E18ACC9CE414D77652EED33DD5532865"
+        },
+        "backupDirectory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "targetMappingCount": {
+          "const": 0
+        },
+        "acceptedBaseRuntimeMappingCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "startDetail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionPlanRunId",
+        "sessionPlanSha256",
+        "recoveryTerminalProcessId",
+        "explorerProcessId",
+        "serviceState",
+        "serviceStartMode",
+        "serviceProcessId",
+        "targetDisabled",
+        "permitPresent",
+        "killSwitchArmed",
+        "targetMappingCount"
+      ],
+      "properties": {
+        "sessionPlanRunId": {
+          "$ref": "#/$defs/runId"
+        },
+        "sessionPlanSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "recoveryTerminalProcessId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "explorerProcessId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "serviceState": {
+          "const": "Running"
+        },
+        "serviceStartMode": {
+          "const": "Manual"
+        },
+        "serviceProcessId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "targetDisabled": {
+          "const": true
+        },
+        "permitPresent": {
+          "const": false
+        },
+        "killSwitchArmed": {
+          "const": true
+        },
+        "targetMappingCount": {
+          "const": 0
+        }
+      }
+    },
+    "enableDetail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionPlanRunId",
+        "sessionPlanSha256",
+        "recoveryTerminalProcessId",
+        "explorerProcessId",
+        "serviceState",
+        "serviceStartMode",
+        "serviceProcessId",
+        "targetDisabled",
+        "permitConsumed",
+        "killSwitchArmed",
+        "targetMappingCount",
+        "targetDllSha256"
+      ],
+      "properties": {
+        "sessionPlanRunId": {
+          "$ref": "#/$defs/runId"
+        },
+        "sessionPlanSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "recoveryTerminalProcessId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "explorerProcessId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "serviceState": {
+          "const": "Running"
+        },
+        "serviceStartMode": {
+          "const": "Manual"
+        },
+        "serviceProcessId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "targetDisabled": {
+          "const": false
+        },
+        "permitConsumed": {
+          "const": true
+        },
+        "killSwitchArmed": {
+          "const": false
+        },
+        "targetMappingCount": {
+          "const": 1
+        },
+        "targetDllSha256": {
+          "const": "C2DB007E2FDCDA145463E2D0355BD4F7E18ACC9CE414D77652EED33DD5532865"
+        }
+      }
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sampledAtUtc",
+        "approximateSingleCoreCpuPercent",
+        "workingSetBytes",
+        "handleCount",
+        "threadCount",
+        "recoveryTerminalProcessId"
+      ],
+      "properties": {
+        "sampledAtUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "approximateSingleCoreCpuPercent": {
+          "type": "number",
+          "minimum": 0
+        },
+        "workingSetBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "handleCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "threadCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "recoveryTerminalProcessId": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "observeDetail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionPlanRunId",
+        "sessionPlanSha256",
+        "explorerProcessId",
+        "observationSeconds",
+        "maxAllowedSingleCoreCpuPercent",
+        "maximumObservedSingleCoreCpuPercent",
+        "sampleCount",
+        "samples"
+      ],
+      "properties": {
+        "sessionPlanRunId": {
+          "$ref": "#/$defs/runId"
+        },
+        "sessionPlanSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "explorerProcessId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "observationSeconds": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 60
+        },
+        "maxAllowedSingleCoreCpuPercent": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "maximumObservedSingleCoreCpuPercent": {
+          "type": "number",
+          "minimum": 0
+        },
+        "sampleCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "samples": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/sample"
+          }
+        }
+      }
+    },
+    "recoverDetail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "errors",
+        "expectedExplorerProcessId",
+        "actualExplorerProcessId",
+        "explorerProcessIdStable",
+        "targetDisabled",
+        "serviceState",
+        "serviceStartMode",
+        "serviceProcessId",
+        "killSwitchArmed",
+        "permitPresent",
+        "targetExplorerMappingCount",
+        "allWindhawkAndJarvisMappings",
+        "explorerRestartRequested",
+        "forceStopRequested"
+      ],
+      "properties": {
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expectedExplorerProcessId": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "actualExplorerProcessId": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "explorerProcessIdStable": {
+          "type": "boolean"
+        },
+        "targetDisabled": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "serviceState": {
+          "type": "string"
+        },
+        "serviceStartMode": {
+          "type": "string"
+        },
+        "serviceProcessId": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "killSwitchArmed": {
+          "type": "boolean"
+        },
+        "permitPresent": {
+          "type": "boolean"
+        },
+        "targetExplorerMappingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "allWindhawkAndJarvisMappings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mapping"
+          }
+        },
+        "explorerRestartRequested": {
+          "const": false
+        },
+        "forceStopRequested": {
+          "const": false
+        }
+      }
+    },
+    "failureDetail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "error",
+        "exceptionType"
+      ],
+      "properties": {
+        "error": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exceptionType": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "inspectPassed": {
+      "properties": {
+        "action": {
+          "const": "Inspect"
+        },
+        "result": {
+          "const": "passed-read-only"
+        },
+        "liveExplorer": {
+          "const": "not-run"
+        },
+        "mutationPerformed": {
+          "const": false
+        },
+        "stopRequired": {
+          "const": false
+        },
+        "detail": {
+          "$ref": "#/$defs/inspectDetail"
+        }
+      }
+    },
+    "updatePassed": {
+      "properties": {
+        "action": {
+          "const": "UpdateDisabledInstallation"
+        },
+        "result": {
+          "const": "passed-disabled-installation-updated"
+        },
+        "liveExplorer": {
+          "const": "not-run"
+        },
+        "mutationPerformed": {
+          "const": true
+        },
+        "stopRequired": {
+          "const": false
+        },
+        "detail": {
+          "$ref": "#/$defs/updateDetail"
+        }
+      }
+    },
+    "startPassed": {
+      "properties": {
+        "action": {
+          "const": "StartDisabledHost"
+        },
+        "result": {
+          "const": "passed-disabled-host-running"
+        },
+        "liveExplorer": {
+          "const": "not-run"
+        },
+        "mutationPerformed": {
+          "const": true
+        },
+        "stopRequired": {
+          "const": false
+        },
+        "detail": {
+          "$ref": "#/$defs/startDetail"
+        }
+      }
+    },
+    "enablePassed": {
+      "properties": {
+        "action": {
+          "const": "EnableOnce"
+        },
+        "result": {
+          "const": "passed-one-shot-m2-active"
+        },
+        "liveExplorer": {
+          "const": "controlled-session"
+        },
+        "mutationPerformed": {
+          "const": true
+        },
+        "stopRequired": {
+          "const": false
+        },
+        "detail": {
+          "$ref": "#/$defs/enableDetail"
+        }
+      }
+    },
+    "observePassed": {
+      "properties": {
+        "action": {
+          "const": "Observe"
+        },
+        "result": {
+          "const": "passed-bounded-idle-observation"
+        },
+        "liveExplorer": {
+          "const": "controlled-session"
+        },
+        "mutationPerformed": {
+          "const": false
+        },
+        "stopRequired": {
+          "const": false
+        },
+        "detail": {
+          "$ref": "#/$defs/observeDetail"
+        }
+      }
+    },
+    "recoverZeroMappings": {
+      "properties": {
+        "action": {
+          "const": "Recover"
+        },
+        "result": {
+          "const": "passed-locked-zero-mappings"
+        },
+        "liveExplorer": {
+          "const": "controlled-session"
+        },
+        "mutationPerformed": {
+          "const": true
+        },
+        "stopRequired": {
+          "const": false
+        },
+        "detail": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/recoverDetail"
+            },
+            {
+              "properties": {
+                "errors": {
+                  "maxItems": 0
+                },
+                "explorerProcessIdStable": {
+                  "const": true
+                },
+                "targetDisabled": {
+                  "const": true
+                },
+                "serviceState": {
+                  "const": "Stopped"
+                },
+                "serviceStartMode": {
+                  "const": "Manual"
+                },
+                "serviceProcessId": {
+                  "const": 0
+                },
+                "killSwitchArmed": {
+                  "const": true
+                },
+                "permitPresent": {
+                  "const": false
+                },
+                "targetExplorerMappingCount": {
+                  "const": 0
+                },
+                "allWindhawkAndJarvisMappings": {
+                  "maxItems": 0
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "recoverRuntimeResidual": {
+      "properties": {
+        "action": {
+          "const": "Recover"
+        },
+        "result": {
+          "const": "passed-locked-runtime-residual-recorded"
+        },
+        "liveExplorer": {
+          "const": "controlled-session"
+        },
+        "mutationPerformed": {
+          "const": true
+        },
+        "stopRequired": {
+          "const": false
+        },
+        "detail": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/recoverDetail"
+            },
+            {
+              "properties": {
+                "errors": {
+                  "maxItems": 0
+                },
+                "explorerProcessIdStable": {
+                  "const": true
+                },
+                "targetDisabled": {
+                  "const": true
+                },
+                "serviceState": {
+                  "const": "Stopped"
+                },
+                "serviceStartMode": {
+                  "const": "Manual"
+                },
+                "serviceProcessId": {
+                  "const": 0
+                },
+                "killSwitchArmed": {
+                  "const": true
+                },
+                "permitPresent": {
+                  "const": false
+                },
+                "targetExplorerMappingCount": {
+                  "const": 0
+                },
+                "allWindhawkAndJarvisMappings": {
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "#/$defs/windhawkBaseMapping"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "recoverNeedsAttention": {
+      "properties": {
+        "action": {
+          "const": "Recover"
+        },
+        "result": {
+          "const": "failed-locked-state-needs-attention"
+        },
+        "liveExplorer": {
+          "const": "controlled-session"
+        },
+        "mutationPerformed": {
+          "const": true
+        },
+        "stopRequired": {
+          "const": true
+        },
+        "detail": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/recoverDetail"
+            },
+            {
+              "properties": {
+                "errors": {
+                  "minItems": 1
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "genericFailure": {
+      "properties": {
+        "result": {
+          "const": "failed"
+        },
+        "detail": {
+          "$ref": "#/$defs/failureDetail"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,1050 @@
+<Window
+    x:Class="Jarvis.ControlCenter.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="JarvisV2 Control Center"
+    Width="1440"
+    Height="900"
+    MinWidth="1180"
+    MinHeight="760"
+    WindowStartupLocation="CenterScreen"
+    WindowStyle="None"
+    ResizeMode="CanResizeWithGrip"
+    Background="#070A0D"
+    TextOptions.TextFormattingMode="Display"
+    TextOptions.TextRenderingMode="ClearType">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="BackgroundBrush" Color="#070A0D" />
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#0B1116" />
+        <SolidColorBrush x:Key="PanelBrush" Color="#0E161C" />
+        <SolidColorBrush x:Key="PanelAltBrush" Color="#111C23" />
+        <SolidColorBrush x:Key="LineBrush" Color="#20313A" />
+        <SolidColorBrush x:Key="LineBrightBrush" Color="#34515C" />
+        <SolidColorBrush x:Key="TextBrush" Color="#E8F0F2" />
+        <SolidColorBrush x:Key="TextMutedBrush" Color="#7F949E" />
+        <SolidColorBrush x:Key="TextFaintBrush" Color="#51636B" />
+        <SolidColorBrush x:Key="CyanBrush" Color="#52D9CF" />
+        <SolidColorBrush x:Key="CyanDimBrush" Color="#173A3A" />
+        <SolidColorBrush x:Key="AmberBrush" Color="#F0B958" />
+        <SolidColorBrush x:Key="AmberDimBrush" Color="#3A2B17" />
+        <SolidColorBrush x:Key="RedBrush" Color="#F07167" />
+        <SolidColorBrush x:Key="RedDimBrush" Color="#3A2020" />
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+        </Style>
+
+        <Style x:Key="EyebrowText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <Style x:Key="MonoLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+            <Setter Property="FontFamily" Value="Consolas" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+
+        <Style x:Key="PanelBorder" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+
+        <Style x:Key="CardBorder" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource PanelAltBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="16" />
+        </Style>
+
+        <Style x:Key="WindowButton" TargetType="Button">
+            <Setter Property="Width" Value="38" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="ButtonBorder"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="2">
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter
+                                    TargetName="ButtonBorder"
+                                    Property="Background"
+                                    Value="#172229" />
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter
+                                    TargetName="ButtonBorder"
+                                    Property="Background"
+                                    Value="#20313A" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border BorderBrush="#2A414B" BorderThickness="1">
+        <Grid Background="{StaticResource BackgroundBrush}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="64" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="58" />
+            </Grid.RowDefinitions>
+
+            <!-- Title bar -->
+            <Border
+                Grid.Row="0"
+                Background="#090E12"
+                BorderBrush="{StaticResource LineBrush}"
+                BorderThickness="0,0,0,1"
+                MouseLeftButtonDown="TitleBar_OnMouseLeftButtonDown">
+                <Grid Margin="18,0,10,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Width="32" Height="32" VerticalAlignment="Center">
+                        <Ellipse
+                            Stroke="{StaticResource CyanBrush}"
+                            StrokeThickness="1"
+                            Opacity="0.75" />
+                        <Ellipse
+                            Width="18"
+                            Height="18"
+                            Stroke="{StaticResource CyanBrush}"
+                            StrokeThickness="2" />
+                        <Rectangle
+                            Width="4"
+                            Height="4"
+                            Fill="{StaticResource CyanBrush}" />
+                    </Grid>
+
+                    <StackPanel
+                        Grid.Column="1"
+                        Margin="12,0,0,0"
+                        VerticalAlignment="Center">
+                        <TextBlock
+                            FontSize="14"
+                            FontWeight="Bold"
+                            Text="JARVIS V2" />
+                        <TextBlock
+                            Margin="0,2,0,0"
+                            Style="{StaticResource MonoLabel}"
+                            FontSize="9"
+                            Text="NATIVE SHELL LAB / CONTROL CENTER" />
+                    </StackPanel>
+
+                    <Border
+                        Grid.Column="2"
+                        Height="1"
+                        Margin="28,0"
+                        VerticalAlignment="Center"
+                        Background="{StaticResource LineBrush}" />
+
+                    <StackPanel
+                        Grid.Column="3"
+                        Margin="0,0,16,0"
+                        VerticalAlignment="Center">
+                        <TextBlock
+                            Style="{StaticResource MonoLabel}"
+                            HorizontalAlignment="Right"
+                            Text="OFFLINE OPERATOR VIEW" />
+                        <TextBlock
+                            Margin="0,2,0,0"
+                            Foreground="{StaticResource CyanBrush}"
+                            FontFamily="Consolas"
+                            FontSize="10"
+                            HorizontalAlignment="Right"
+                            Text="NO LIVE TRANSPORT" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="4" Orientation="Horizontal">
+                        <Button
+                            Style="{StaticResource WindowButton}"
+                            Click="MinimizeButton_OnClick"
+                            Content="—" />
+                        <Button
+                            Style="{StaticResource WindowButton}"
+                            Click="CloseButton_OnClick"
+                            Content="×" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Main shell -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="218" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Navigation -->
+                <Border
+                    Grid.Column="0"
+                    Background="#090E12"
+                    BorderBrush="{StaticResource LineBrush}"
+                    BorderThickness="0,0,1,0">
+                    <Grid Margin="18,22,18,18">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource EyebrowText}" Text="WORKSPACE" />
+
+                            <Border
+                                Margin="0,14,0,4"
+                                Padding="12,10"
+                                Background="#14252A"
+                                BorderBrush="{StaticResource CyanBrush}"
+                                BorderThickness="2,0,0,0"
+                                CornerRadius="2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="24" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock
+                                        Foreground="{StaticResource CyanBrush}"
+                                        FontFamily="Consolas"
+                                        Text="01" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        Text="Overview" />
+                                </Grid>
+                            </Border>
+
+                            <Border Margin="0,2" Padding="12,10" CornerRadius="2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="24" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource MonoLabel}" Text="02" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Foreground="{StaticResource TextMutedBrush}"
+                                        FontSize="12"
+                                        Text="Shell surfaces" />
+                                </Grid>
+                            </Border>
+
+                            <Border Margin="0,2" Padding="12,10" CornerRadius="2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="24" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource MonoLabel}" Text="03" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Foreground="{StaticResource TextMutedBrush}"
+                                        FontSize="12"
+                                        Text="Modules" />
+                                </Grid>
+                            </Border>
+
+                            <Border Margin="0,2" Padding="12,10" CornerRadius="2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="24" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource MonoLabel}" Text="04" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Foreground="{StaticResource TextMutedBrush}"
+                                        FontSize="12"
+                                        Text="Safety gates" />
+                                </Grid>
+                            </Border>
+
+                            <Border Margin="0,2" Padding="12,10" CornerRadius="2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="24" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource MonoLabel}" Text="05" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Foreground="{StaticResource TextMutedBrush}"
+                                        FontSize="12"
+                                        Text="Evidence" />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="2">
+                            <Border
+                                Style="{StaticResource PanelBorder}"
+                                Padding="12">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource EyebrowText}" Text="LOCAL TIME" />
+                                        <Ellipse
+                                            Grid.Column="1"
+                                            Width="6"
+                                            Height="6"
+                                            Fill="{StaticResource CyanBrush}" />
+                                    </Grid>
+                                    <TextBlock
+                                        x:Name="LocalClock"
+                                        Margin="0,10,0,0"
+                                        FontFamily="Consolas"
+                                        FontSize="22"
+                                        FontWeight="SemiBold"
+                                        Text="00:00:00" />
+                                    <TextBlock
+                                        x:Name="LocalDate"
+                                        Margin="0,2,0,0"
+                                        Style="{StaticResource MonoLabel}"
+                                        Text="2026.07.27" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock
+                                Margin="2,12,0,0"
+                                Foreground="{StaticResource TextFaintBrush}"
+                                FontFamily="Consolas"
+                                FontSize="9"
+                                Text="BUILD // PHASE 7&#x0a;VIEW // READ ONLY" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Content -->
+                <Grid Grid.Column="1" Margin="22">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="330" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Margin="0,0,18,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="126" />
+                            <RowDefinition Height="132" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="112" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Hero -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="154" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource EyebrowText}" Text="SYSTEM POSTURE / PHASE 7" />
+                                <StackPanel Margin="0,9,0,0" Orientation="Horizontal">
+                                    <TextBlock
+                                        FontSize="31"
+                                        FontWeight="Light"
+                                        Text="LOCKED" />
+                                    <TextBlock
+                                        Margin="12,7,0,0"
+                                        Foreground="{StaticResource CyanBrush}"
+                                        FontFamily="Consolas"
+                                        FontSize="13"
+                                        Text="/ FAIL-CLOSED" />
+                                </StackPanel>
+                                <TextBlock
+                                    Margin="0,9,0,0"
+                                    Foreground="{StaticResource TextMutedBrush}"
+                                    FontSize="12"
+                                    Text="No live host is armed. Every mutation path remains quarantined." />
+                            </StackPanel>
+
+                            <Grid Grid.Column="1" HorizontalAlignment="Right">
+                                <Ellipse
+                                    Width="104"
+                                    Height="104"
+                                    Stroke="{StaticResource LineBrush}"
+                                    StrokeThickness="1" />
+                                <Ellipse
+                                    Width="82"
+                                    Height="82"
+                                    Stroke="{StaticResource CyanDimBrush}"
+                                    StrokeThickness="8" />
+                                <Ellipse
+                                    Width="62"
+                                    Height="62"
+                                    Stroke="{StaticResource CyanBrush}"
+                                    StrokeThickness="1"
+                                    StrokeDashArray="2,4" />
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock
+                                        HorizontalAlignment="Center"
+                                        Foreground="{StaticResource CyanBrush}"
+                                        FontFamily="Consolas"
+                                        FontSize="13"
+                                        FontWeight="Bold"
+                                        Text="LCK" />
+                                    <TextBlock
+                                        Margin="0,3,0,0"
+                                        HorizontalAlignment="Center"
+                                        Foreground="{StaticResource TextMutedBrush}"
+                                        FontFamily="Consolas"
+                                        FontSize="8"
+                                        Text="ARMED" />
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+
+                        <!-- Status cards -->
+                        <UniformGrid Grid.Row="1" Columns="3">
+                            <Border
+                                Style="{StaticResource CardBorder}"
+                                Margin="0,0,8,10">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource EyebrowText}" Text="HOST TRANSPORT" />
+                                        <Border
+                                            Grid.Column="1"
+                                            Padding="7,3"
+                                            Background="{StaticResource AmberDimBrush}"
+                                            CornerRadius="2">
+                                            <TextBlock
+                                                Foreground="{StaticResource AmberBrush}"
+                                                FontFamily="Consolas"
+                                                FontSize="9"
+                                                Text="QUARANTINED" />
+                                        </Border>
+                                    </Grid>
+                                    <TextBlock
+                                        Grid.Row="1"
+                                        Margin="0,10,0,0"
+                                        FontSize="16"
+                                        FontWeight="SemiBold"
+                                        Text="Windhawk service" />
+                                    <TextBlock
+                                        Grid.Row="2"
+                                        Style="{StaticResource MonoLabel}"
+                                        Text="STOPPED / MANUAL / PID 0" />
+                                </Grid>
+                            </Border>
+
+                            <Border
+                                Style="{StaticResource CardBorder}"
+                                Margin="4,0,4,10">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource EyebrowText}" Text="SHELL IDENTITY" />
+                                        <Border
+                                            Grid.Column="1"
+                                            Padding="7,3"
+                                            Background="{StaticResource CyanDimBrush}"
+                                            CornerRadius="2">
+                                            <TextBlock
+                                                Foreground="{StaticResource CyanBrush}"
+                                                FontFamily="Consolas"
+                                                FontSize="9"
+                                                Text="VERIFIED" />
+                                        </Border>
+                                    </Grid>
+                                    <TextBlock
+                                        Grid.Row="1"
+                                        Margin="0,10,0,0"
+                                        FontSize="16"
+                                        FontWeight="SemiBold"
+                                        Text="Explorer / 11640" />
+                                    <TextBlock
+                                        Grid.Row="2"
+                                        Style="{StaticResource MonoLabel}"
+                                        Text="TARGET MAPPINGS // 0" />
+                                </Grid>
+                            </Border>
+
+                            <Border
+                                Style="{StaticResource CardBorder}"
+                                Margin="8,0,0,10">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource EyebrowText}" Text="RECOVERY LEASE" />
+                                        <Border
+                                            Grid.Column="1"
+                                            Padding="7,3"
+                                            Background="{StaticResource RedDimBrush}"
+                                            CornerRadius="2">
+                                            <TextBlock
+                                                Foreground="{StaticResource RedBrush}"
+                                                FontFamily="Consolas"
+                                                FontSize="9"
+                                                Text="BLOCKED" />
+                                        </Border>
+                                    </Grid>
+                                    <TextBlock
+                                        Grid.Row="1"
+                                        Margin="0,10,0,0"
+                                        FontSize="16"
+                                        FontWeight="SemiBold"
+                                        Text="Heartbeat stale" />
+                                    <TextBlock
+                                        Grid.Row="2"
+                                        Style="{StaticResource MonoLabel}"
+                                        Text="TERMINAL // CLOSED" />
+                                </Grid>
+                            </Border>
+                        </UniformGrid>
+
+                        <!-- Surface matrix -->
+                        <Border
+                            Grid.Row="2"
+                            Style="{StaticResource PanelBorder}"
+                            Padding="18"
+                            Margin="0,0,0,12">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource EyebrowText}" Text="NATIVE SURFACE MAP" />
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            Foreground="{StaticResource TextMutedBrush}"
+                                            FontSize="11"
+                                            Text="Ownership, transport and evidence are separate gates." />
+                                    </StackPanel>
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Style="{StaticResource MonoLabel}"
+                                        Text="4 SURFACES / 0 LIVE" />
+                                </Grid>
+
+                                <Grid Grid.Row="1" Margin="0,14,0,0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border
+                                        Grid.Row="0"
+                                        Grid.Column="0"
+                                        Style="{StaticResource CardBorder}"
+                                        Margin="0,0,6,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="42" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border
+                                                Width="30"
+                                                Height="30"
+                                                BorderBrush="{StaticResource CyanBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="15">
+                                                <TextBlock
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    Foreground="{StaticResource CyanBrush}"
+                                                    FontFamily="Consolas"
+                                                    Text="M2" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Taskbar geometry" />
+                                                <TextBlock
+                                                    Margin="0,3,0,0"
+                                                    Style="{StaticResource MonoLabel}"
+                                                    Text="ONE PRIVATE SYMBOL / BUILD-ONLY" />
+                                            </StackPanel>
+                                            <TextBlock
+                                                Grid.Column="2"
+                                                Foreground="{StaticResource AmberBrush}"
+                                                FontFamily="Consolas"
+                                                FontSize="10"
+                                                Text="HOST BLOCKED" />
+                                        </Grid>
+                                    </Border>
+
+                                    <Border
+                                        Grid.Row="0"
+                                        Grid.Column="1"
+                                        Style="{StaticResource CardBorder}"
+                                        Margin="6,0,0,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="42" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border
+                                                Width="30"
+                                                Height="30"
+                                                BorderBrush="{StaticResource LineBrightBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="15">
+                                                <TextBlock
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    Foreground="{StaticResource TextMutedBrush}"
+                                                    FontFamily="Consolas"
+                                                    Text="S" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Start surface" />
+                                                <TextBlock
+                                                    Margin="0,3,0,0"
+                                                    Style="{StaticResource MonoLabel}"
+                                                    Text="SEPARATE CRASH DOMAIN" />
+                                            </StackPanel>
+                                            <TextBlock
+                                                Grid.Column="2"
+                                                Foreground="{StaticResource TextFaintBrush}"
+                                                FontFamily="Consolas"
+                                                FontSize="10"
+                                                Text="UNPLANNED" />
+                                        </Grid>
+                                    </Border>
+
+                                    <Border
+                                        Grid.Row="1"
+                                        Grid.Column="0"
+                                        Style="{StaticResource CardBorder}"
+                                        Margin="0,6,6,0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="42" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border
+                                                Width="30"
+                                                Height="30"
+                                                BorderBrush="{StaticResource LineBrightBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="15">
+                                                <TextBlock
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    Foreground="{StaticResource TextMutedBrush}"
+                                                    FontFamily="Consolas"
+                                                    Text="E" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Explorer chrome" />
+                                                <TextBlock
+                                                    Margin="0,3,0,0"
+                                                    Style="{StaticResource MonoLabel}"
+                                                    Text="TITLE / NAV / CONTEXT" />
+                                            </StackPanel>
+                                            <TextBlock
+                                                Grid.Column="2"
+                                                Foreground="{StaticResource TextFaintBrush}"
+                                                FontFamily="Consolas"
+                                                FontSize="10"
+                                                Text="RESEARCH" />
+                                        </Grid>
+                                    </Border>
+
+                                    <Border
+                                        Grid.Row="1"
+                                        Grid.Column="1"
+                                        Style="{StaticResource CardBorder}"
+                                        Margin="6,6,0,0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="42" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border
+                                                Width="30"
+                                                Height="30"
+                                                BorderBrush="{StaticResource RedBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="15"
+                                                Opacity="0.7">
+                                                <TextBlock
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    Foreground="{StaticResource RedBrush}"
+                                                    FontFamily="Consolas"
+                                                    Text="D" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Desktop compositor" />
+                                                <TextBlock
+                                                    Margin="0,3,0,0"
+                                                    Style="{StaticResource MonoLabel}"
+                                                    Text="DWM / ISOLATED BRANCH" />
+                                            </StackPanel>
+                                            <TextBlock
+                                                Grid.Column="2"
+                                                Foreground="{StaticResource RedBrush}"
+                                                FontFamily="Consolas"
+                                                FontSize="10"
+                                                Text="FORBIDDEN" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <!-- Evidence strip -->
+                        <Border
+                            Grid.Row="3"
+                            Style="{StaticResource PanelBorder}"
+                            Padding="16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="155" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource EyebrowText}" Text="LATEST EVIDENCE" />
+                                    <TextBlock
+                                        Margin="0,7,0,0"
+                                        Foreground="{StaticResource CyanBrush}"
+                                        FontFamily="Consolas"
+                                        FontSize="18"
+                                        FontWeight="Bold"
+                                        Text="208 / 208" />
+                                </StackPanel>
+                                <StackPanel
+                                    Grid.Column="1"
+                                    Margin="12,0,0,0"
+                                    VerticalAlignment="Center">
+                                    <TextBlock FontSize="13" FontWeight="SemiBold" Text="Offline release gate passed" />
+                                    <TextBlock
+                                        Margin="0,5,0,0"
+                                        Style="{StaticResource MonoLabel}"
+                                        Text="RELEASE READY // FALSE    ACTIVATION // FALSE    LIVE EXPLORER // NOT-RUN" />
+                                </StackPanel>
+                                <Border
+                                    Grid.Column="2"
+                                    Padding="11,7"
+                                    VerticalAlignment="Center"
+                                    Background="#132228"
+                                    BorderBrush="{StaticResource LineBrightBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="2">
+                                    <TextBlock
+                                        Foreground="{StaticResource TextMutedBrush}"
+                                        FontFamily="Consolas"
+                                        FontSize="10"
+                                        Text="RECEIPT VERIFIED" />
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- Inspector -->
+                    <Border
+                        Grid.Column="1"
+                        Style="{StaticResource PanelBorder}"
+                        Padding="18">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource EyebrowText}" Text="CONTEXT INSPECTOR" />
+                                <TextBlock
+                                    Margin="0,8,0,0"
+                                    FontSize="20"
+                                    FontWeight="Light"
+                                    Text="Explorer host model" />
+                                <TextBlock
+                                    Margin="0,5,0,0"
+                                    Foreground="{StaticResource TextMutedBrush}"
+                                    FontSize="11"
+                                    TextWrapping="Wrap"
+                                    Text="A policy model, not a loader. Passing evidence can only produce a review candidate." />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="1" Margin="0,20,0,0">
+                                <Border
+                                    Padding="12"
+                                    Background="#0A1216"
+                                    BorderBrush="{StaticResource LineBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource MonoLabel}" Text="SELECTION" />
+                                            <TextBlock
+                                                Grid.Column="1"
+                                                Foreground="{StaticResource CyanBrush}"
+                                                FontFamily="Consolas"
+                                                FontSize="10"
+                                                Text="EXACT" />
+                                        </Grid>
+                                        <Grid Margin="0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11" Text="Scope" />
+                                            <TextBlock Grid.Column="1" FontFamily="Consolas" FontSize="11" Text="SHELL WINDOW" />
+                                        </Grid>
+                                        <Grid Margin="0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11" Text="PID / TID" />
+                                            <TextBlock Grid.Column="1" FontFamily="Consolas" FontSize="11" Text="FIXTURE ONLY" />
+                                        </Grid>
+                                        <Grid Margin="0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11" Text="Enumeration" />
+                                            <TextBlock Grid.Column="1" FontFamily="Consolas" FontSize="11" Text="FORBIDDEN" />
+                                        </Grid>
+                                        <Grid Margin="0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11" Text="Execution" />
+                                            <TextBlock
+                                                Grid.Column="1"
+                                                Foreground="{StaticResource RedBrush}"
+                                                FontFamily="Consolas"
+                                                FontSize="11"
+                                                Text="UNSUPPORTED" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="2" Margin="0,22,0,0">
+                                <TextBlock Style="{StaticResource EyebrowText}" Text="NEXT GATE" />
+                                <Border
+                                    Margin="0,12,0,0"
+                                    Padding="14"
+                                    Background="{StaticResource AmberDimBrush}"
+                                    BorderBrush="#5A4324"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <StackPanel>
+                                        <TextBlock
+                                            Foreground="{StaticResource AmberBrush}"
+                                            FontFamily="Consolas"
+                                            FontSize="10"
+                                            Text="PHASE 7 / PREVIEW" />
+                                        <TextBlock
+                                            Margin="0,8,0,0"
+                                            FontSize="15"
+                                            FontWeight="SemiBold"
+                                            Text="Human visual review" />
+                                        <TextBlock
+                                            Margin="0,7,0,0"
+                                            Foreground="#B9A27B"
+                                            FontSize="11"
+                                            TextWrapping="Wrap"
+                                            Text="Review the real WPF surface and information density before any live data adapter exists." />
+                                    </StackPanel>
+                                </Border>
+
+                                <StackPanel Margin="2,18,0,0">
+                                    <Grid Margin="0,5">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="18" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Foreground="{StaticResource CyanBrush}" FontFamily="Consolas" Text="✓" />
+                                        <TextBlock Grid.Column="1" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Text="Global host quarantined" />
+                                    </Grid>
+                                    <Grid Margin="0,5">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="18" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Foreground="{StaticResource CyanBrush}" FontFamily="Consolas" Text="✓" />
+                                        <TextBlock Grid.Column="1" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Text="Offline target policy model" />
+                                    </Grid>
+                                    <Grid Margin="0,5">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="18" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Foreground="{StaticResource CyanBrush}" FontFamily="Consolas" Text="✓" />
+                                        <TextBlock Grid.Column="1" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Text="Bridge fault lab · 16 / 16" />
+                                    </Grid>
+                                    <Grid Margin="0,5">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="18" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Foreground="{StaticResource TextFaintBrush}" FontFamily="Consolas" Text="×" />
+                                        <TextBlock Grid.Column="1" Foreground="{StaticResource TextFaintBrush}" FontSize="11" Text="Live transport unavailable" />
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <Border
+                                Grid.Row="3"
+                                Margin="0,18,0,0"
+                                Padding="12"
+                                Background="#0A1216"
+                                BorderBrush="{StaticResource LineBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Ellipse
+                                        Width="8"
+                                        Height="8"
+                                        Margin="0,2,10,0"
+                                        VerticalAlignment="Top"
+                                        Fill="{StaticResource CyanBrush}" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Foreground="{StaticResource TextMutedBrush}"
+                                        FontFamily="Consolas"
+                                        FontSize="9"
+                                        TextWrapping="Wrap"
+                                        Text="THIS WINDOW IS A READ-ONLY CONTROL SURFACE. IT DOES NOT MODIFY THE WINDOWS SHELL." />
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- Command dock -->
+            <Border
+                Grid.Row="2"
+                Background="#090E12"
+                BorderBrush="{StaticResource LineBrush}"
+                BorderThickness="0,1,0,0">
+                <Grid Margin="18,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="200" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource EyebrowText}" Text="COMMAND DOCK" />
+                        <TextBlock
+                            Margin="0,3,0,0"
+                            Style="{StaticResource MonoLabel}"
+                            FontSize="9"
+                            Text="READ-ONLY / NO EXECUTOR" />
+                    </StackPanel>
+                    <Border
+                        Grid.Column="1"
+                        Margin="0,0,14,0"
+                        Padding="12,7"
+                        Background="#0C1419"
+                        BorderBrush="{StaticResource LineBrush}"
+                        BorderThickness="1"
+                        CornerRadius="2">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock
+                                Foreground="{StaticResource CyanBrush}"
+                                FontFamily="Consolas"
+                                FontSize="11"
+                                Text="›" />
+                            <TextBlock
+                                Margin="10,0,0,0"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                FontFamily="Consolas"
+                                FontSize="11"
+                                Text="inspect explorer-host --fixture phase7-overview" />
+                        </StackPanel>
+                    </Border>
+                    <Border
+                        Grid.Column="2"
+                        Padding="14,8"
+                        VerticalAlignment="Center"
+                        Background="#151B1E"
+                        BorderBrush="#313B3F"
+                        BorderThickness="1"
+                        CornerRadius="2">
+                        <TextBlock
+                            Foreground="{StaticResource TextFaintBrush}"
+                            FontFamily="Consolas"
+                            FontSize="10"
+                            Text="EXECUTION DISABLED" />
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

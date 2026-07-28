@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvisv2.local/schemas/explorer-frame-selector-candidate.schema.json",
+  "title": "JarvisV2 Explorer frame selector candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profileId",
+    "lifecycleState",
+    "hostProfileId",
+    "hostFingerprint",
+    "upstreamIdentity",
+    "surfaces",
+    "allowedProperties",
+    "previewPolicy",
+    "liveEvidence",
+    "executionSupported",
+    "activationPermitted",
+    "mutationPerformed"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "profileId": {
+      "const": "win11-25h2-26200.8875-x64-explorer-frame-candidate-v1"
+    },
+    "lifecycleState": {
+      "const": "offline-candidate"
+    },
+    "hostProfileId": {
+      "const": "win11-25h2-26200.8875-x64"
+    },
+    "hostFingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "windowsBuild",
+        "ubr",
+        "architecture",
+        "explorerProductVersion",
+        "explorerSize",
+        "explorerSha256"
+      ],
+      "properties": {
+        "windowsBuild": {
+          "const": 26200
+        },
+        "ubr": {
+          "const": 8875
+        },
+        "architecture": {
+          "const": "AMD64"
+        },
+        "explorerProductVersion": {
+          "const": "10.0.26100.8875"
+        },
+        "explorerSize": {
+          "const": 3385624
+        },
+        "explorerSha256": {
+          "const": "80B21E6F70524EFD84037A4EDA479DDC4BC55C0D6C1A33439B85A554E740F30C"
+        }
+      }
+    },
+    "upstreamIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "repository",
+        "commit",
+        "sourcePath",
+        "gitBlob",
+        "sourceSize",
+        "sourceSha256",
+        "license"
+      ],
+      "properties": {
+        "name": {
+          "const": "Windows 11 File Explorer Styler"
+        },
+        "version": {
+          "const": "1.5"
+        },
+        "repository": {
+          "const": "https://github.com/ramensoftware/windhawk-mods"
+        },
+        "commit": {
+          "const": "109589023dde428deaee2fe80e4ce446283a7935"
+        },
+        "sourcePath": {
+          "const": "mods/windows-11-file-explorer-styler.wh.cpp"
+        },
+        "gitBlob": {
+          "const": "6f67b714c271db1235a5f937c30c5cae55b180bf"
+        },
+        "sourceSize": {
+          "const": 326922
+        },
+        "sourceSha256": {
+          "const": "ECD6189A76439518E84938F4CA42FDB7F78AA1CCE3151EE0FE93638918D2DCED"
+        },
+        "license": {
+          "const": "GPL-3.0"
+        }
+      }
+    },
+    "surfaces": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role",
+          "selector",
+          "expectedMatchCount",
+          "evidenceState"
+        ],
+        "properties": {
+          "role": {
+            "enum": [
+              "tab-strip",
+              "command-bar",
+              "navigation-pane"
+            ]
+          },
+          "selector": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expectedMatchCount": {
+            "const": 1
+          },
+          "evidenceState": {
+            "enum": [
+              "upstream-theme-candidate",
+              "inferred-candidate-requires-readonly-discovery"
+            ]
+          }
+        }
+      }
+    },
+    "allowedProperties": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "enum": [
+          "Background",
+          "Foreground",
+          "BorderBrush"
+        ]
+      }
+    },
+    "previewPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "durationSeconds",
+        "requireSeparateExplorerProcess",
+        "requireCompleteOriginalSnapshot",
+        "restoreOrder",
+        "screenshotCheckpoints",
+        "closeTemporaryWindowAfterRestore"
+      ],
+      "properties": {
+        "durationSeconds": {
+          "const": 60
+        },
+        "requireSeparateExplorerProcess": {
+          "const": true
+        },
+        "requireCompleteOriginalSnapshot": {
+          "const": true
+        },
+        "restoreOrder": {
+          "const": "strict-reverse"
+        },
+        "screenshotCheckpoints": {
+          "const": [
+            "before",
+            "during",
+            "after"
+          ]
+        },
+        "closeTemporaryWindowAfterRestore": {
+          "const": true
+        }
+      }
+    },
+    "liveEvidence": {
+      "const": "not-run"
+    },
+    "executionSupported": {
+      "const": false
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "mutationPerformed": {
+      "const": false
+    }
+  }
+}

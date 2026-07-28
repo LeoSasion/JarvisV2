@@ -25,6 +25,7 @@ internal static class Program
             return args[0].ToLowerInvariant() switch
             {
                 "inspect" => RunInspect(args),
+                "inspect-recovery-terminal" => RunInspectRecoveryTerminal(args),
                 "arm-kill-switch" => RunArmKillSwitch(args),
                 "clear-kill-switch" => RunClearKillSwitch(args),
                 "restart-explorer" => await RunRestartExplorerAsync(args),
@@ -70,6 +71,33 @@ internal static class Program
         return ExitCodes.Success;
     }
 
+    private static int RunInspectRecoveryTerminal(string[] args)
+    {
+        if (args.Length is not (3 or 5) ||
+            !string.Equals(args[1], "--module", StringComparison.Ordinal) ||
+            (args.Length == 5 &&
+             !string.Equals(args[3], "--lease-path", StringComparison.Ordinal)))
+        {
+            return InvalidUsage(
+                "inspect-recovery-terminal requires --module <allowlisted-id> and accepts an optional read-only --lease-path <path>.");
+        }
+
+        string moduleId = args[2];
+        if (!KillSwitch.IsAllowedModuleId(moduleId))
+        {
+            return InvalidUsage($"Module id isn't allowlisted: {moduleId}");
+        }
+
+        RecoveryTerminalLeaseProbe result =
+            RecoveryTerminalLease.Probe(
+                moduleId,
+                args.Length == 5 ? args[4] : null);
+        WriteJson(result.Ready ? Console.Out : Console.Error, result);
+        return result.Ready
+            ? ExitCodes.Success
+            : ExitCodes.SafetyInterlock;
+    }
+
     private static int RunClearKillSwitch(string[] args)
     {
         if (args.Length != 4 ||
@@ -84,6 +112,22 @@ internal static class Program
         if (!KillSwitch.IsAllowedModuleId(moduleId))
         {
             return InvalidUsage($"Module id isn't allowlisted: {moduleId}");
+        }
+
+        if (KillSwitch.IsLiveActivationQuarantined)
+        {
+            WriteJson(
+                Console.Error,
+                new
+                {
+                    error = "live_activation_quarantined",
+                    message =
+                        "The kill switch remains armed because the Windhawk " +
+                        "service host was observed injecting its base runtime " +
+                        "into Explorer and many non-target processes.",
+                    quarantine = KillSwitch.LiveActivationQuarantineReason,
+                });
+            return ExitCodes.SafetyInterlock;
         }
 
         using StateGateLease lease = KillSwitch.AcquireStateGate();
@@ -169,14 +213,17 @@ internal static class Program
 
             Usage:
               jarvis-supervisor inspect
+              jarvis-supervisor inspect-recovery-terminal --module <id>
               jarvis-supervisor arm-kill-switch
               jarvis-supervisor clear-kill-switch --module <id> --confirm
               jarvis-supervisor restart-explorer --confirm
 
             Safety rules:
               inspect                 Read-only host fingerprint and compatibility report.
+              inspect-recovery-terminal
+                                      Read-only proof that the visible recovery terminal has a fresh lease.
               arm-kill-switch         Arms disabled.flag, then revokes the module permit.
-              clear-kill-switch       Atomically permits one allowlisted module after exact host checks.
+              clear-kill-switch       Quarantined after prohibited Windhawk global-runtime injection was observed.
               restart-explorer        Holds disabled.flag against deletion for the entire recovery.
 
             Allowed module ids:

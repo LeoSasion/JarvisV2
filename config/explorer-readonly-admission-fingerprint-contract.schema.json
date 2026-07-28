@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvisv2.invalid/schemas/explorer-readonly-admission-fingerprint-contract.schema.json",
+  "title": "JarvisV2 Explorer read-only admission and fingerprint contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "contractId",
+    "lifecycleState",
+    "transportAbiVersion",
+    "admission",
+    "fingerprint",
+    "integration",
+    "executionSupported",
+    "readyForLiveConnection",
+    "readyForExactApproval",
+    "activationPermitted",
+    "liveExplorer",
+    "mutationPerformed"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./explorer-readonly-admission-fingerprint-contract.schema.json"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "contractId": {
+      "const": "jarvis-explorer-readonly-admission-fingerprint-v1"
+    },
+    "lifecycleState": {
+      "const": "offline-model-only"
+    },
+    "transportAbiVersion": {
+      "const": 1
+    },
+    "admission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "callerSuppliedExactPidRequired",
+        "processEnumerationAllowed",
+        "windowEnumerationAllowed",
+        "existingDiagnosticsConsumerCountRequired",
+        "endpointCandidateCountRequired",
+        "runtimeEndpointAttemptLimit",
+        "requiredBinaryHashes",
+        "requiredTapExportCount",
+        "importPolicyMustPass",
+        "binaryIdentityMustPass",
+        "recoveryMustBeReady",
+        "oneShotPlanConsumedOnAdmission",
+        "completeBindByteMatchRequired",
+        "replayPolicy"
+      ],
+      "properties": {
+        "callerSuppliedExactPidRequired": {
+          "const": true
+        },
+        "processEnumerationAllowed": {
+          "const": false
+        },
+        "windowEnumerationAllowed": {
+          "const": false
+        },
+        "existingDiagnosticsConsumerCountRequired": {
+          "const": 0
+        },
+        "endpointCandidateCountRequired": {
+          "const": 1
+        },
+        "runtimeEndpointAttemptLimit": {
+          "const": 0
+        },
+        "requiredBinaryHashes": {
+          "const": [
+            "controller",
+            "tap-dll",
+            "xaml-diagnostics",
+            "endpoint-name"
+          ]
+        },
+        "requiredTapExportCount": {
+          "const": 2
+        },
+        "importPolicyMustPass": {
+          "const": true
+        },
+        "binaryIdentityMustPass": {
+          "const": true
+        },
+        "recoveryMustBeReady": {
+          "const": true
+        },
+        "oneShotPlanConsumedOnAdmission": {
+          "const": true
+        },
+        "completeBindByteMatchRequired": {
+          "const": true
+        },
+        "replayPolicy": {
+          "const": "latch-blocked"
+        }
+      }
+    },
+    "fingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surfaceCount",
+        "propertyCount",
+        "observationCount",
+        "observationOrder",
+        "allowedValueKinds",
+        "maximumOpacityMillionths",
+        "sha256Domain",
+        "bindsInstanceHandle",
+        "bindsSelectorHash",
+        "bindsVisualTreeGeneration",
+        "unsupportedValuePolicy",
+        "propertyReadSupported"
+      ],
+      "properties": {
+        "surfaceCount": {
+          "const": 3
+        },
+        "propertyCount": {
+          "const": 3
+        },
+        "observationCount": {
+          "const": 9
+        },
+        "observationOrder": {
+          "const": "surface-major-property-minor"
+        },
+        "allowedValueKinds": {
+          "const": [
+            "null",
+            "solid-color"
+          ]
+        },
+        "maximumOpacityMillionths": {
+          "const": 1000000
+        },
+        "sha256Domain": {
+          "const": "JARVIS2-XAML-PROP-V1"
+        },
+        "bindsInstanceHandle": {
+          "const": true
+        },
+        "bindsSelectorHash": {
+          "const": true
+        },
+        "bindsVisualTreeGeneration": {
+          "const": true
+        },
+        "unsupportedValuePolicy": {
+          "const": "latch-blocked"
+        },
+        "propertyReadSupported": {
+          "const": false
+        }
+      }
+    },
+    "integration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "controllerContainsOfflineAdmissionModel",
+        "tapDllContainsOfflineFingerprintModel",
+        "modelEntryPointsExported",
+        "setSiteResult",
+        "endpointAttemptedDuringValidation",
+        "tapDllLoadedDuringValidation"
+      ],
+      "properties": {
+        "controllerContainsOfflineAdmissionModel": {
+          "const": true
+        },
+        "tapDllContainsOfflineFingerprintModel": {
+          "const": true
+        },
+        "modelEntryPointsExported": {
+          "const": false
+        },
+        "setSiteResult": {
+          "const": "E_ACCESSDENIED"
+        },
+        "endpointAttemptedDuringValidation": {
+          "const": false
+        },
+        "tapDllLoadedDuringValidation": {
+          "const": false
+        }
+      }
+    },
+    "executionSupported": {
+      "const": false
+    },
+    "readyForLiveConnection": {
+      "const": false
+    },
+    "readyForExactApproval": {
+      "const": false
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "liveExplorer": {
+      "const": "not-run"
+    },
+    "mutationPerformed": {
+      "const": false
+    }
+  }
+}

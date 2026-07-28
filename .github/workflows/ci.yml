@@ -73,6 +73,125 @@ jobs:
           --nologo
           --warnaserror
 
+      - name: Audit and build read-only control center
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ControlCenter.ps1
+
+      - name: Audit and build own-process native style lab
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-NativeStyleLab.ps1
+
+      - name: Audit desktop host probe without live inspection
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-DesktopStyleProbe.ps1
+          -StaticOnly
+
+      - name: Audit desktop text-color session without live inspection
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-DesktopStyleSession.ps1
+          -StaticOnly
+
+      - name: Audit native Explorer window style without live inspection
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-NativeWindowStyleSession.ps1
+          -StaticOnly
+
+      - name: Audit offline Explorer host model
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerHostModel.ps1
+
+      - name: Audit offline Explorer bridge contract
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerBridgeModel.ps1
+          -StaticOnly
+
+      - name: Audit offline Explorer frame transaction model
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerFrameModel.ps1
+
+      - name: Audit offline Explorer selector and preview model
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerPreviewModel.ps1
+
+      - name: Audit exact read-only Explorer surface probe without running it
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerSurfaceProbe.ps1
+
+      - name: Audit offline exact-target Explorer XAML transport core
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerTransportModel.ps1
+          -StaticOnly
+
+      - name: Audit disk-only Explorer read-only TAP boundary
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerReadOnlyTap.ps1
+          -StaticOnly
+
+      - name: Audit offline Explorer admission and fingerprint models
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerReadOnlyAdmission.ps1
+          -StaticOnly
+
+      - name: Audit offline Explorer IInspectable projection adapter
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerInspectableAdapter.ps1
+          -StaticOnly
+
+      - name: Audit offline reversible Explorer style transaction
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerStyleTransaction.ps1
+          -StaticOnly
+
+      - name: Audit unlinked Explorer XAML read bridge
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerXamlReadBridge.ps1
+          -StaticOnly
+
+      - name: Audit bounded Explorer XAML surface discovery
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerXamlSurfaceDiscovery.ps1
+          -StaticOnly
+
+      - name: Audit controlled-live controller
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-M2ControlledLiveController.ps1
+
       - name: State native-build boundary
         shell: pwsh
         run: |

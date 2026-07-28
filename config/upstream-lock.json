@@ -6,8 +6,9 @@
       "repository": "https://github.com/ramensoftware/windhawk",
       "version": "1.7.3",
       "commit": "b59b38cd77daec98830c0e5e2ad14a35c44f02a7",
+      "architectureResearchCommit": "61fc60dad607e6888d8de560d1b6add716f936c3",
       "license": "GPL-3.0",
-      "role": "native injection runtime and portable compiler"
+      "role": "quarantined historical injection runtime and portable compiler; runtime source not vendored"
     },
     {
       "name": "Windows 11 Taskbar Styler",
@@ -32,6 +33,18 @@
       "sourceSha256Crlf": "FF080F8962E12D777C92A704C1BC462302D4514D8A54E79D912B34257B7DE692",
       "license": "GPL-3.0-only",
       "role": "narrow derivation of the modern native taskbar icon-size calculation"
+    },
+    {
+      "name": "Windows 11 File Explorer Styler",
+      "repository": "https://github.com/ramensoftware/windhawk-mods",
+      "version": "1.5",
+      "auditedCommit": "109589023dde428deaee2fe80e4ce446283a7935",
+      "sourcePath": "mods/windows-11-file-explorer-styler.wh.cpp",
+      "gitBlob": "6f67b714c271db1235a5f937c30c5cae55b180bf",
+      "sourceSize": 326922,
+      "sourceSha256": "ECD6189A76439518E84938F4CA42FDB7F78AA1CCE3151EE0FE93638918D2DCED",
+      "license": "GPL-3.0",
+      "role": "selector grammar, integrated Explorer theme targets and reversible XAML property semantics; runtime injection code is not vendored"
     },
     {
       "name": "Windows 11 Taskbar Styling Guide",
