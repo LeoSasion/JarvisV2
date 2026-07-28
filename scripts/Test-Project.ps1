@@ -101,6 +101,10 @@ $explorerStyleTransactionHarnessPath =
     Join-Path $root 'tests\native\jarvis_explorer_tap_style_transaction_harness.cpp'
 $explorerStyleTransactionAuditPath =
     Join-Path $root 'scripts\Test-ExplorerStyleTransaction.ps1'
+$explorerXamlReadBridgeHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_tap_xaml_read_bridge_harness.cpp'
+$explorerXamlReadBridgeAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerXamlReadBridge.ps1'
 $buildScriptPath = Join-Path $root 'scripts\Build-NativeMod.ps1'
 $testScriptPath = $PSCommandPath
 $artifactsRoot = Join-Path $root 'artifacts\native'
@@ -178,6 +182,8 @@ $phase14TaskPath =
     Join-Path $root 'docs\PHASE-14-EXPLORER-INSPECTABLE-ADAPTER-TASK.md'
 $phase15TaskPath =
     Join-Path $root 'docs\PHASE-15-EXPLORER-REVERSIBLE-STYLE-TRANSACTION-TASK.md'
+$phase16TaskPath =
+    Join-Path $root 'docs\PHASE-16-EXPLORER-XAML-READ-BRIDGE-REVIEW-TASK.md'
 $explorerFrameSelectorProfilePath =
     Join-Path $root 'config\explorer-frame-selector-candidate.json'
 $explorerFrameSelectorSchemaPath =
@@ -202,6 +208,10 @@ $explorerStyleTransactionContractPath =
     Join-Path $root 'config\explorer-style-transaction-contract.json'
 $explorerStyleTransactionContractSchemaPath =
     Join-Path $root 'config\explorer-style-transaction-contract.schema.json'
+$explorerXamlReadBridgeContractPath =
+    Join-Path $root 'config\explorer-xaml-read-bridge-contract.json'
+$explorerXamlReadBridgeContractSchemaPath =
+    Join-Path $root 'config\explorer-xaml-read-bridge-contract.schema.json'
 $m2RecoveryLeaseSchemaPath =
     Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $m2RecoveryLeaseLabSchemaPath =
@@ -544,6 +554,7 @@ $phase12Task = [System.IO.File]::ReadAllText($phase12TaskPath)
 $phase13Task = [System.IO.File]::ReadAllText($phase13TaskPath)
 $phase14Task = [System.IO.File]::ReadAllText($phase14TaskPath)
 $phase15Task = [System.IO.File]::ReadAllText($phase15TaskPath)
+$phase16Task = [System.IO.File]::ReadAllText($phase16TaskPath)
 $explorerFrameSelectorProfile =
     Get-Content -LiteralPath $explorerFrameSelectorProfilePath -Raw |
         ConvertFrom-Json -Depth 100
@@ -661,6 +672,26 @@ $explorerStyleTransactionSource = @(
         (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_style_transaction.cpp')
     )
     [IO.File]::ReadAllText($explorerStyleTransactionHarnessPath)
+) -join [Environment]::NewLine
+$explorerXamlReadBridgeContract =
+    Get-Content -LiteralPath $explorerXamlReadBridgeContractPath -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerXamlReadBridgeContractSchema =
+    Get-Content `
+        -LiteralPath $explorerXamlReadBridgeContractSchemaPath `
+        -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerXamlReadBridgeSource = @(
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_xaml_read_bridge.h')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_xaml_read_bridge_policy.cpp')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_xaml_read_bridge_windows.cpp')
+    )
+    [IO.File]::ReadAllText($explorerXamlReadBridgeHarnessPath)
 ) -join [Environment]::NewLine
 $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
@@ -2346,6 +2377,112 @@ Add-Check `
     'phase15.style-transaction-executable-audit' `
     $phase15TransactionAuditPassed `
     'The reversible transaction core must pass 13/13 checks and 65/65 fault scenarios while every write remains simulated and no endpoint or DLL is touched.'
+
+$phase16ReadBridgeStaticContract =
+    $phase16Task.Contains(
+        'REAL INTERFACE REVIEW OBJECT COMPLETE — UNLINKED AND NOT RUN'
+    ) -and
+    $explorerXamlReadBridgeContract.schemaVersion -eq 1 -and
+    $explorerXamlReadBridgeContract.contractId -eq
+        'jarvis-explorer-xaml-read-bridge-review-v1' -and
+    $explorerXamlReadBridgeContract.lifecycleState -eq
+        'unlinked-review-object-only' -and
+    $explorerXamlReadBridgeContract.compileGate.reviewObjectValue -eq
+        1 -and
+    $explorerXamlReadBridgeContract.compileGate.shippingTapValue -eq
+        0 -and
+    -not $explorerXamlReadBridgeContract.compileGate.reviewObjectLinkedIntoTap -and
+    $explorerXamlReadBridgeContract.readBoundary.siteInterface -eq
+        'IXamlDiagnostics' -and
+    $explorerXamlReadBridgeContract.readBoundary.serviceInterface -eq
+        'IVisualTreeService2' -and
+    $explorerXamlReadBridgeContract.readBoundary.requiredValueOrigin -eq
+        'BaseValueSourceLocal' -and
+    $explorerXamlReadBridgeContract.projection.outputSnapshotBytes -eq
+        192 -and
+    $explorerXamlReadBridgeContract.projection.exactRuntimeClassNameRequired -and
+    $explorerXamlReadBridgeContract.ownership.releaseAttemptAndCompletionCountsMustMatch -and
+    $explorerXamlReadBridgeContract.integration.portablePolicyHarnessScenarioCount -eq
+        56 -and
+    -not $explorerXamlReadBridgeContract.integration.windowsInterfaceReviewObjectExecuted -and
+    -not $explorerXamlReadBridgeContract.integration.windowsInterfaceReviewObjectLinked -and
+    $explorerXamlReadBridgeContract.approval.status -eq
+        'blocked-fresh-host-package-required' -and
+    -not $explorerXamlReadBridgeContract.approval.exactCommandGenerated -and
+    -not $explorerXamlReadBridgeContract.propertyReadSupported -and
+    -not $explorerXamlReadBridgeContract.propertyWriteSupported -and
+    -not $explorerXamlReadBridgeContract.executionSupported -and
+    -not $explorerXamlReadBridgeContract.readyForLiveConnection -and
+    -not $explorerXamlReadBridgeContract.readyForExactApproval -and
+    -not $explorerXamlReadBridgeContract.activationPermitted -and
+    $explorerXamlReadBridgeContract.liveExplorer -eq 'not-run' -and
+    -not $explorerXamlReadBridgeContract.mutationPerformed -and
+    $explorerXamlReadBridgeContractSchema.additionalProperties -eq
+        $false -and
+    $explorerXamlReadBridgeSource.Contains(
+        '#define JARVIS_COMPILE_REVIEWED_XAML_READ_BRIDGE 0'
+    ) -and
+    $explorerXamlReadBridgeSource.Contains(
+        'service->GetPropertyValuesChain('
+    ) -and
+    $explorerXamlReadBridgeSource.Contains(
+        'diagnostics->GetIInspectableFromHandle('
+    ) -and
+    $explorerXamlReadBridgeSource.Contains(
+        'JARVIS_TAP_XAML_READ_RESULT_FOREIGN_OUTCOME_UNCERTAIN'
+    ) -and
+    -not $explorerXamlReadBridgeSource.Contains(
+        'InitializeXamlDiagnosticsEx('
+    ) -and
+    -not $explorerXamlReadBridgeSource.Contains('SetProperty(') -and
+    -not $explorerXamlReadBridgeSource.Contains('ClearProperty(')
+Add-Check `
+    'phase16.xaml-read-bridge-static-unlinked-contract' `
+    $phase16ReadBridgeStaticContract `
+    'Phase 16 must compile only a separate real-interface read review object, retain local exact-type and ownership gates, and remain unlinked and unapproved.'
+
+$explorerXamlReadBridgeAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerXamlReadBridgeAuditPath 2>&1
+)
+$explorerXamlReadBridgeAuditExitCode = $LASTEXITCODE
+try {
+    $explorerXamlReadBridgeAudit = (
+        $explorerXamlReadBridgeAuditOutput -join [Environment]::NewLine
+    ) | ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerXamlReadBridgeAudit = $null
+}
+$phase16ReadBridgeAuditPassed =
+    $explorerXamlReadBridgeAuditExitCode -eq 0 -and
+    $null -ne $explorerXamlReadBridgeAudit -and
+    $explorerXamlReadBridgeAudit.result -eq 'passed' -and
+    $explorerXamlReadBridgeAudit.checkCount -eq 15 -and
+    $explorerXamlReadBridgeAudit.passedCount -eq 15 -and
+    $explorerXamlReadBridgeAudit.scenarioCount -eq 56 -and
+    $explorerXamlReadBridgeAudit.scenarioPassedCount -eq 56 -and
+    $explorerXamlReadBridgeAudit.policyHarnessBuilt -and
+    $explorerXamlReadBridgeAudit.windowsReviewObjectBuilt -and
+    -not $explorerXamlReadBridgeAudit.windowsReviewObjectExecuted -and
+    $explorerXamlReadBridgeAudit.disabledObjectBuilt -and
+    -not $explorerXamlReadBridgeAudit.endpointAttempted -and
+    -not $explorerXamlReadBridgeAudit.tapDllLoaded -and
+    -not $explorerXamlReadBridgeAudit.propertyReadSupported -and
+    -not $explorerXamlReadBridgeAudit.propertyWriteSupported -and
+    -not $explorerXamlReadBridgeAudit.executionSupported -and
+    -not $explorerXamlReadBridgeAudit.readyForLiveConnection -and
+    -not $explorerXamlReadBridgeAudit.readyForExactApproval -and
+    -not $explorerXamlReadBridgeAudit.activationPermitted -and
+    $explorerXamlReadBridgeAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerXamlReadBridgeAudit.mutationPerformed
+Add-Check `
+    'phase16.xaml-read-bridge-compile-and-policy-audit' `
+    $phase16ReadBridgeAuditPassed `
+    'The separate Windows read object must compile warning-free while 56/56 synthetic foreign-call observations pass without executing it or touching Explorer.'
 
 $phase5NativeLeaseWatchdogContract =
     $iconSize.Contains(

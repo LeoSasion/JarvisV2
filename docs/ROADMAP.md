@@ -47,6 +47,8 @@ Phase 5 把恢复终端从启动瞬间的 PID 快照升级为一秒心跳、四�
 
 改造文件资源管理器标题栏、导航区和上下文表面。ExplorerBlurMica 可作为 LGPL/GPL 研究对象，但不直接把其配置或二进制混入 M1。
 
+Phase 11–15 已把精确单窗口传输、只读 TAP 外壳、一次性 admission/fingerprint、属性投影和严格逆序恢复建成离线模型。Phase 16 进一步增加了一个针对真实 `IXamlDiagnostics` / `IVisualTreeService2` 接口的独立只读 review object：它只编译、不链接、不执行，便携策略核以 56/56 合成外部调用场景验证本地值来源、精确 `SolidColorBrush` 类型、数组释放和 COM 引用收口。现有 TAP 仍在 `SetSite` 返回 `E_ACCESSDENIED`，因此这不是实机读取证据，也没有生成连接命令。下一步是从新鲜兼容性、急停、恢复终端、零既有 consumer 和精确 `C:\` 单窗口身份生成新的只读审批包；获得当次明确批准前，不连接 Explorer。
+
 ## M5 — DWM laboratory
 
 独立、默认关闭的 DWMBlurGlass 研究分支。只有在已有 dump 捕获、符号缓存、Safe Mode 恢复和多版本 CI 后才允许加载到 `dwm.exe`。DWM 故障不能拖入任务栏稳定分支。

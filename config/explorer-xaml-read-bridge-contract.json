@@ -1,0 +1,104 @@
+{
+  "$schema": "./explorer-xaml-read-bridge-contract.schema.json",
+  "schemaVersion": 1,
+  "contractId": "jarvis-explorer-xaml-read-bridge-review-v1",
+  "lifecycleState": "unlinked-review-object-only",
+  "transportAbiVersion": 1,
+  "compileGate": {
+    "macro": "JARVIS_COMPILE_REVIEWED_XAML_READ_BRIDGE",
+    "reviewObjectValue": 1,
+    "shippingTapValue": 0,
+    "reviewObjectLinkedIntoTap": false
+  },
+  "readBoundary": {
+    "siteInterface": "IXamlDiagnostics",
+    "serviceInterface": "IVisualTreeService2",
+    "allowedCalls": [
+      "QueryInterface",
+      "GetPropertyValuesChain",
+      "GetProperty",
+      "GetIInspectableFromHandle",
+      "GetRuntimeClassName",
+      "ISolidColorBrush.get_Color",
+      "IBrush.get_Opacity",
+      "Release"
+    ],
+    "forbiddenCalls": [
+      "InitializeXamlDiagnosticsEx",
+      "CreateInstance",
+      "SetProperty",
+      "ClearProperty",
+      "ReplaceResource",
+      "AddChild",
+      "RemoveChild",
+      "ClearChildren"
+    ],
+    "requiredPropertyNames": [
+      "Background",
+      "Foreground",
+      "BorderBrush"
+    ],
+    "requiredValueOrigin": "BaseValueSourceLocal",
+    "maximumPropertySourceCount": 128,
+    "maximumPropertyValueCount": 512
+  },
+  "projection": {
+    "outputSnapshotBytes": 192,
+    "acceptedRuntimeValues": [
+      "null",
+      "Windows.UI.Xaml.Media.SolidColorBrush"
+    ],
+    "exactRuntimeClassNameRequired": true,
+    "maximumOpacityMillionths": 1000000,
+    "feedsPhase14AdapterShape": true
+  },
+  "ownership": {
+    "querySuccessWithNullOutputRejected": true,
+    "queryFailureWithNonNullOutputRetainedAsUncertain": true,
+    "propertyChainFreedOnlyAfterSuccessfulBoundedReturn": true,
+    "releaseAttemptAndCompletionCountsMustMatch": true,
+    "foreignExceptionPolicy": "fail-closed-uncertain"
+  },
+  "integration": {
+    "portablePolicyHarnessScenarioCount": 56,
+    "syntheticForeignObservationsOnly": true,
+    "windowsInterfaceReviewObjectCompiled": true,
+    "windowsInterfaceReviewObjectExecuted": false,
+    "windowsInterfaceReviewObjectLinked": false,
+    "tapSetSiteResult": "E_ACCESSDENIED",
+    "endpointAttemptedDuringValidation": false,
+    "tapDllLoadedDuringValidation": false
+  },
+  "approval": {
+    "status": "blocked-fresh-host-package-required",
+    "scope": "one-exact-visible-c-drive-cabinet-window-read-only",
+    "durationSeconds": 60,
+    "exactCommandGenerated": false,
+    "requiredFreshEvidence": [
+      "compatibility-report-all-checks-passed",
+      "kill-switch-armed-and-path-reviewed",
+      "one-shot-plan-and-exact-window-identity",
+      "fixed-toolchain-review-dll-hash",
+      "zero-existing-xaml-diagnostics-consumers",
+      "recovery-terminal-available",
+      "all-other-experimental-modules-off",
+      "explicit-current-task-command-approval"
+    ],
+    "forbiddenDuringReadValidation": [
+      "property-write",
+      "windhawk-start",
+      "explorer-restart",
+      "process-termination",
+      "registry-write",
+      "system-file-write"
+    ]
+  },
+  "propertyReadSupported": false,
+  "propertyWriteSupported": false,
+  "executionSupported": false,
+  "readyForLiveConnection": false,
+  "readyForExactApproval": false,
+  "activationPermitted": false,
+  "liveExplorer": "not-run",
+  "mutationPerformed": false
+}

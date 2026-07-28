@@ -1,0 +1,305 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JarvisV2 unlinked Explorer XAML read bridge review contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "contractId",
+    "lifecycleState",
+    "transportAbiVersion",
+    "compileGate",
+    "readBoundary",
+    "projection",
+    "ownership",
+    "integration",
+    "approval",
+    "propertyReadSupported",
+    "propertyWriteSupported",
+    "executionSupported",
+    "readyForLiveConnection",
+    "readyForExactApproval",
+    "activationPermitted",
+    "liveExplorer",
+    "mutationPerformed"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./explorer-xaml-read-bridge-contract.schema.json"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "contractId": {
+      "const": "jarvis-explorer-xaml-read-bridge-review-v1"
+    },
+    "lifecycleState": {
+      "const": "unlinked-review-object-only"
+    },
+    "transportAbiVersion": {
+      "const": 1
+    },
+    "compileGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "macro",
+        "reviewObjectValue",
+        "shippingTapValue",
+        "reviewObjectLinkedIntoTap"
+      ],
+      "properties": {
+        "macro": {
+          "const": "JARVIS_COMPILE_REVIEWED_XAML_READ_BRIDGE"
+        },
+        "reviewObjectValue": {
+          "const": 1
+        },
+        "shippingTapValue": {
+          "const": 0
+        },
+        "reviewObjectLinkedIntoTap": {
+          "const": false
+        }
+      }
+    },
+    "readBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "siteInterface",
+        "serviceInterface",
+        "allowedCalls",
+        "forbiddenCalls",
+        "requiredPropertyNames",
+        "requiredValueOrigin",
+        "maximumPropertySourceCount",
+        "maximumPropertyValueCount"
+      ],
+      "properties": {
+        "siteInterface": {
+          "const": "IXamlDiagnostics"
+        },
+        "serviceInterface": {
+          "const": "IVisualTreeService2"
+        },
+        "allowedCalls": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "forbiddenCalls": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "requiredPropertyNames": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "const": "Background"
+            },
+            {
+              "const": "Foreground"
+            },
+            {
+              "const": "BorderBrush"
+            }
+          ],
+          "items": false
+        },
+        "requiredValueOrigin": {
+          "const": "BaseValueSourceLocal"
+        },
+        "maximumPropertySourceCount": {
+          "const": 128
+        },
+        "maximumPropertyValueCount": {
+          "const": 512
+        }
+      }
+    },
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outputSnapshotBytes",
+        "acceptedRuntimeValues",
+        "exactRuntimeClassNameRequired",
+        "maximumOpacityMillionths",
+        "feedsPhase14AdapterShape"
+      ],
+      "properties": {
+        "outputSnapshotBytes": {
+          "const": 192
+        },
+        "acceptedRuntimeValues": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "const": "null"
+            },
+            {
+              "const": "Windows.UI.Xaml.Media.SolidColorBrush"
+            }
+          ],
+          "items": false
+        },
+        "exactRuntimeClassNameRequired": {
+          "const": true
+        },
+        "maximumOpacityMillionths": {
+          "const": 1000000
+        },
+        "feedsPhase14AdapterShape": {
+          "const": true
+        }
+      }
+    },
+    "ownership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "querySuccessWithNullOutputRejected",
+        "queryFailureWithNonNullOutputRetainedAsUncertain",
+        "propertyChainFreedOnlyAfterSuccessfulBoundedReturn",
+        "releaseAttemptAndCompletionCountsMustMatch",
+        "foreignExceptionPolicy"
+      ],
+      "properties": {
+        "querySuccessWithNullOutputRejected": {
+          "const": true
+        },
+        "queryFailureWithNonNullOutputRetainedAsUncertain": {
+          "const": true
+        },
+        "propertyChainFreedOnlyAfterSuccessfulBoundedReturn": {
+          "const": true
+        },
+        "releaseAttemptAndCompletionCountsMustMatch": {
+          "const": true
+        },
+        "foreignExceptionPolicy": {
+          "const": "fail-closed-uncertain"
+        }
+      }
+    },
+    "integration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "portablePolicyHarnessScenarioCount",
+        "syntheticForeignObservationsOnly",
+        "windowsInterfaceReviewObjectCompiled",
+        "windowsInterfaceReviewObjectExecuted",
+        "windowsInterfaceReviewObjectLinked",
+        "tapSetSiteResult",
+        "endpointAttemptedDuringValidation",
+        "tapDllLoadedDuringValidation"
+      ],
+      "properties": {
+        "portablePolicyHarnessScenarioCount": {
+          "const": 56
+        },
+        "syntheticForeignObservationsOnly": {
+          "const": true
+        },
+        "windowsInterfaceReviewObjectCompiled": {
+          "const": true
+        },
+        "windowsInterfaceReviewObjectExecuted": {
+          "const": false
+        },
+        "windowsInterfaceReviewObjectLinked": {
+          "const": false
+        },
+        "tapSetSiteResult": {
+          "const": "E_ACCESSDENIED"
+        },
+        "endpointAttemptedDuringValidation": {
+          "const": false
+        },
+        "tapDllLoadedDuringValidation": {
+          "const": false
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "scope",
+        "durationSeconds",
+        "exactCommandGenerated",
+        "requiredFreshEvidence",
+        "forbiddenDuringReadValidation"
+      ],
+      "properties": {
+        "status": {
+          "const": "blocked-fresh-host-package-required"
+        },
+        "scope": {
+          "const": "one-exact-visible-c-drive-cabinet-window-read-only"
+        },
+        "durationSeconds": {
+          "const": 60
+        },
+        "exactCommandGenerated": {
+          "const": false
+        },
+        "requiredFreshEvidence": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "forbiddenDuringReadValidation": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "propertyReadSupported": {
+      "const": false
+    },
+    "propertyWriteSupported": {
+      "const": false
+    },
+    "executionSupported": {
+      "const": false
+    },
+    "readyForLiveConnection": {
+      "const": false
+    },
+    "readyForExactApproval": {
+      "const": false
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "liveExplorer": {
+      "const": "not-run"
+    },
+    "mutationPerformed": {
+      "const": false
+    }
+  }
+}
