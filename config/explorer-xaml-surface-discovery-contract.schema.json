@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvisv2.local/schemas/explorer-xaml-surface-discovery-contract.schema.json",
+  "title": "JarvisV2 Explorer XAML surface discovery review contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "contractId",
+    "lifecycleState",
+    "transportAbiVersion",
+    "selectors",
+    "boundedModel",
+    "callbackReview",
+    "readSession",
+    "hostReviewPackage",
+    "approval",
+    "surfaceDiscoveryModelSupported",
+    "callbackReviewObjectCompiled",
+    "callbackReviewObjectLinked",
+    "callbackReviewObjectExecuted",
+    "readyForLiveConnection",
+    "readyForExactApproval",
+    "executionSupported",
+    "activationPermitted",
+    "liveExplorer",
+    "mutationPerformed"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./explorer-xaml-surface-discovery-contract.schema.json"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "contractId": {
+      "const": "jarvis-explorer-xaml-surface-discovery-review-v1"
+    },
+    "lifecycleState": {
+      "const": "offline-core-and-unlinked-callback-review-object"
+    },
+    "transportAbiVersion": {
+      "const": 1
+    },
+    "selectors": {
+      "const": [
+        {
+          "surfaceSlot": 0,
+          "role": "tab-strip",
+          "selector": "FileExplorerExtensions.FileExplorerTabControl > * > Microsoft.UI.Xaml.Controls.Grid#TabContainerGrid",
+          "sha256": "054F71D33D720A3525BF1AAB83004DE1D02FBDE306B9CDE5044705B1B982B64B",
+          "requiredMatchCount": 1
+        },
+        {
+          "surfaceSlot": 1,
+          "role": "command-bar",
+          "selector": "FileExplorerExtensions.CommandBarControl > * > Microsoft.UI.Xaml.Controls.Grid#CommandBarControlRootGrid",
+          "sha256": "AC82B7529CD269B4C60DC21332F934103AB8BBCA1B2CE2EEED6AA5033A09576F",
+          "requiredMatchCount": 1
+        },
+        {
+          "surfaceSlot": 2,
+          "role": "navigation-pane",
+          "selector": "Microsoft.UI.Xaml.Controls.NavigationView",
+          "sha256": "A58DA1ACE7B8BC9B4093D62EF6FEB7E68AC05E1C6DCFEB10BB403CB76698262A",
+          "requiredMatchCount": 1
+        }
+      ]
+    },
+    "boundedModel": {
+      "const": {
+        "maximumNodeCount": 512,
+        "maximumEventCount": 2048,
+        "maximumAncestorDepth": 64,
+        "fixedCapacity": true,
+        "heapAllocationRequired": false,
+        "strictSequence": true,
+        "removedHandleReplayRejected": true,
+        "orphanCycleAndDepthRejected": true,
+        "uniqueThreeSurfaceMatchRequired": true
+      }
+    },
+    "callbackReview": {
+      "const": {
+        "macro": "JARVIS_COMPILE_REVIEWED_XAML_SURFACE_CALLBACK",
+        "reviewObjectValue": 1,
+        "shippingTapValue": 0,
+        "interface": "IVisualTreeServiceCallback2",
+        "allowedCallbacks": [
+          "OnVisualTreeChange",
+          "OnElementStateChanged"
+        ],
+        "allowedForeignReads": [
+          "ParentChildRelation.Parent",
+          "ParentChildRelation.Child",
+          "ParentChildRelation.ChildIndex",
+          "VisualElement.Handle",
+          "VisualElement.Type",
+          "VisualElement.Name"
+        ],
+        "forbiddenCalls": [
+          "InitializeXamlDiagnosticsEx",
+          "AdviseVisualTreeChange",
+          "UnadviseVisualTreeChange",
+          "GetIInspectableFromHandle",
+          "GetProperty",
+          "GetPropertyValuesChain",
+          "SetProperty",
+          "ClearProperty"
+        ],
+        "linkedIntoTap": false,
+        "executed": false,
+        "subscriptionAttempted": false,
+        "tapSetSiteResult": "E_ACCESSDENIED"
+      }
+    },
+    "readSession": {
+      "const": {
+        "requiredSurfaceCount": 3,
+        "requiredPropertyCount": 3,
+        "requestCount": 9,
+        "order": "surface-major-property-minor",
+        "feedsPhase16ReadRequest": true,
+        "propertyReadAttempted": false,
+        "propertyWriteSupported": false
+      }
+    },
+    "hostReviewPackage": {
+      "const": {
+        "script": "scripts/New-ExplorerXamlReadReviewPackage.ps1",
+        "readOnlyChecks": [
+          "fresh-supervisor-compatibility",
+          "kill-switch-armed",
+          "one-shot-permit-absent",
+          "windhawk-stopped-manual",
+          "explorer-module-baseline"
+        ],
+        "terminalBlockers": [
+          "exact-c-drive-window-identity-not-bound",
+          "visual-tree-generation-not-observed",
+          "existing-xaml-diagnostics-consumer-not-inspected",
+          "recovery-terminal-not-plan-bound-and-confirmed",
+          "surface-discovery-callback-unlinked",
+          "controller-remains-describe-only"
+        ],
+        "outputRoot": "artifacts/explorer-xaml-read-review-packages/runs",
+        "exactCommandGenerated": false
+      }
+    },
+    "approval": {
+      "const": {
+        "status": "blocked-review-object-unlinked",
+        "scope": "one-exact-visible-c-drive-cabinet-window-read-only",
+        "durationSeconds": 60,
+        "newCurrentTaskApprovalRequired": true,
+        "forbiddenWithoutApproval": [
+          "connect-xaml-diagnostics",
+          "load-tap",
+          "subscribe-visual-tree",
+          "read-live-xaml-property",
+          "start-windhawk",
+          "restart-explorer"
+        ]
+      }
+    },
+    "surfaceDiscoveryModelSupported": {
+      "const": true
+    },
+    "callbackReviewObjectCompiled": {
+      "const": true
+    },
+    "callbackReviewObjectLinked": {
+      "const": false
+    },
+    "callbackReviewObjectExecuted": {
+      "const": false
+    },
+    "readyForLiveConnection": {
+      "const": false
+    },
+    "readyForExactApproval": {
+      "const": false
+    },
+    "executionSupported": {
+      "const": false
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "liveExplorer": {
+      "const": "not-run"
+    },
+    "mutationPerformed": {
+      "const": false
+    }
+  }
+}

@@ -47,7 +47,7 @@ Phase 5 把恢复终端从启动瞬间的 PID 快照升级为一秒心跳、四�
 
 改造文件资源管理器标题栏、导航区和上下文表面。ExplorerBlurMica 可作为 LGPL/GPL 研究对象，但不直接把其配置或二进制混入 M1。
 
-Phase 11–15 已把精确单窗口传输、只读 TAP 外壳、一次性 admission/fingerprint、属性投影和严格逆序恢复建成离线模型。Phase 16 进一步增加了一个针对真实 `IXamlDiagnostics` / `IVisualTreeService2` 接口的独立只读 review object：它只编译、不链接、不执行，便携策略核以 56/56 合成外部调用场景验证本地值来源、精确 `SolidColorBrush` 类型、数组释放和 COM 引用收口。现有 TAP 仍在 `SetSite` 返回 `E_ACCESSDENIED`，因此这不是实机读取证据，也没有生成连接命令。下一步是从新鲜兼容性、急停、恢复终端、零既有 consumer 和精确 `C:\` 单窗口身份生成新的只读审批包；获得当次明确批准前，不连接 Explorer。
+Phase 11–15 已把精确单窗口传输、只读 TAP 外壳、一次性 admission/fingerprint、属性投影和严格逆序恢复建成离线模型。Phase 16 进一步增加了一个针对真实 `IXamlDiagnostics` / `IVisualTreeService2` 接口的独立只读 review object：它只编译、不链接、不执行，便携策略核以 56/56 合成外部调用场景验证本地值来源、精确 `SolidColorBrush` 类型、数组释放和 COM 引用收口。Phase 17 又把视觉树事件收敛为固定容量的三表面唯一发现：512 个句柄、2,048 个事件、64 层祖先上限，58/58 合成拓扑场景通过；真实 `IVisualTreeServiceCallback2` 仍只编译为独立对象，不订阅、不链接、不执行。新鲜主机 review package 已能只读确认 23/23 兼容、急停、许可、Windhawk 服务和 Explorer 映射基线，但会因精确 `C:\` 窗口、visual-tree generation、既有 consumer、恢复终端、链接和控制器六项缺口固定阻断，也不生成命令。现有 TAP 仍在 `SetSite` 返回 `E_ACCESSDENIED`；下一步是审查 connectable 的单窗口只读控制器，获得当次明确批准前不连接 Explorer。
 
 ## M5 — DWM laboratory
 

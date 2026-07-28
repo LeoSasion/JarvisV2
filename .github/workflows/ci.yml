@@ -172,6 +172,20 @@ jobs:
           .\scripts\Test-ExplorerStyleTransaction.ps1
           -StaticOnly
 
+      - name: Audit unlinked Explorer XAML read bridge
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerXamlReadBridge.ps1
+          -StaticOnly
+
+      - name: Audit bounded Explorer XAML surface discovery
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerXamlSurfaceDiscovery.ps1
+          -StaticOnly
+
       - name: Audit controlled-live controller
         shell: pwsh
         run: >-

@@ -105,6 +105,10 @@ $explorerXamlReadBridgeHarnessPath =
     Join-Path $root 'tests\native\jarvis_explorer_tap_xaml_read_bridge_harness.cpp'
 $explorerXamlReadBridgeAuditPath =
     Join-Path $root 'scripts\Test-ExplorerXamlReadBridge.ps1'
+$explorerXamlSurfaceDiscoveryHarnessPath =
+    Join-Path $root 'tests\native\jarvis_explorer_tap_surface_discovery_harness.cpp'
+$explorerXamlSurfaceDiscoveryAuditPath =
+    Join-Path $root 'scripts\Test-ExplorerXamlSurfaceDiscovery.ps1'
 $buildScriptPath = Join-Path $root 'scripts\Build-NativeMod.ps1'
 $testScriptPath = $PSCommandPath
 $artifactsRoot = Join-Path $root 'artifacts\native'
@@ -184,6 +188,8 @@ $phase15TaskPath =
     Join-Path $root 'docs\PHASE-15-EXPLORER-REVERSIBLE-STYLE-TRANSACTION-TASK.md'
 $phase16TaskPath =
     Join-Path $root 'docs\PHASE-16-EXPLORER-XAML-READ-BRIDGE-REVIEW-TASK.md'
+$phase17TaskPath =
+    Join-Path $root 'docs\PHASE-17-EXPLORER-XAML-SURFACE-DISCOVERY-TASK.md'
 $explorerFrameSelectorProfilePath =
     Join-Path $root 'config\explorer-frame-selector-candidate.json'
 $explorerFrameSelectorSchemaPath =
@@ -212,6 +218,10 @@ $explorerXamlReadBridgeContractPath =
     Join-Path $root 'config\explorer-xaml-read-bridge-contract.json'
 $explorerXamlReadBridgeContractSchemaPath =
     Join-Path $root 'config\explorer-xaml-read-bridge-contract.schema.json'
+$explorerXamlSurfaceDiscoveryContractPath =
+    Join-Path $root 'config\explorer-xaml-surface-discovery-contract.json'
+$explorerXamlSurfaceDiscoveryContractSchemaPath =
+    Join-Path $root 'config\explorer-xaml-surface-discovery-contract.schema.json'
 $m2RecoveryLeaseSchemaPath =
     Join-Path $root 'config\m2-recovery-terminal-lease.schema.json'
 $m2RecoveryLeaseLabSchemaPath =
@@ -555,6 +565,7 @@ $phase13Task = [System.IO.File]::ReadAllText($phase13TaskPath)
 $phase14Task = [System.IO.File]::ReadAllText($phase14TaskPath)
 $phase15Task = [System.IO.File]::ReadAllText($phase15TaskPath)
 $phase16Task = [System.IO.File]::ReadAllText($phase16TaskPath)
+$phase17Task = [System.IO.File]::ReadAllText($phase17TaskPath)
 $explorerFrameSelectorProfile =
     Get-Content -LiteralPath $explorerFrameSelectorProfilePath -Raw |
         ConvertFrom-Json -Depth 100
@@ -692,6 +703,28 @@ $explorerXamlReadBridgeSource = @(
         (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_xaml_read_bridge_windows.cpp')
     )
     [IO.File]::ReadAllText($explorerXamlReadBridgeHarnessPath)
+) -join [Environment]::NewLine
+$explorerXamlSurfaceDiscoveryContract =
+    Get-Content `
+        -LiteralPath $explorerXamlSurfaceDiscoveryContractPath `
+        -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerXamlSurfaceDiscoveryContractSchema =
+    Get-Content `
+        -LiteralPath $explorerXamlSurfaceDiscoveryContractSchemaPath `
+        -Raw |
+        ConvertFrom-Json -Depth 100
+$explorerXamlSurfaceDiscoverySource = @(
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_surface_discovery.h')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_surface_discovery.cpp')
+    )
+    [IO.File]::ReadAllText(
+        (Join-Path $explorerReadOnlyTapSourceRoot 'jarvis_explorer_tap_surface_discovery_windows.cpp')
+    )
+    [IO.File]::ReadAllText($explorerXamlSurfaceDiscoveryHarnessPath)
 ) -join [Environment]::NewLine
 $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
@@ -2483,6 +2516,107 @@ Add-Check `
     'phase16.xaml-read-bridge-compile-and-policy-audit' `
     $phase16ReadBridgeAuditPassed `
     'The separate Windows read object must compile warning-free while 56/56 synthetic foreign-call observations pass without executing it or touching Explorer.'
+
+$phase17SurfaceDiscoveryStaticContract =
+    $phase17Task.Contains(
+        'BOUNDED DISCOVERY CORE COMPLETE — CALLBACK UNLINKED AND NOT RUN'
+    ) -and
+    $explorerXamlSurfaceDiscoveryContract.schemaVersion -eq 1 -and
+    $explorerXamlSurfaceDiscoveryContract.contractId -eq
+        'jarvis-explorer-xaml-surface-discovery-review-v1' -and
+    $explorerXamlSurfaceDiscoveryContract.lifecycleState -eq
+        'offline-core-and-unlinked-callback-review-object' -and
+    @($explorerXamlSurfaceDiscoveryContract.selectors).Count -eq 3 -and
+    $explorerXamlSurfaceDiscoveryContract.boundedModel.maximumNodeCount -eq
+        512 -and
+    $explorerXamlSurfaceDiscoveryContract.boundedModel.maximumEventCount -eq
+        2048 -and
+    $explorerXamlSurfaceDiscoveryContract.boundedModel.maximumAncestorDepth -eq
+        64 -and
+    $explorerXamlSurfaceDiscoveryContract.boundedModel.fixedCapacity -and
+    -not $explorerXamlSurfaceDiscoveryContract.boundedModel.heapAllocationRequired -and
+    $explorerXamlSurfaceDiscoveryContract.callbackReview.interface -eq
+        'IVisualTreeServiceCallback2' -and
+    -not $explorerXamlSurfaceDiscoveryContract.callbackReview.linkedIntoTap -and
+    -not $explorerXamlSurfaceDiscoveryContract.callbackReview.executed -and
+    -not $explorerXamlSurfaceDiscoveryContract.callbackReview.subscriptionAttempted -and
+    $explorerXamlSurfaceDiscoveryContract.readSession.requestCount -eq 9 -and
+    $explorerXamlSurfaceDiscoveryContract.readSession.feedsPhase16ReadRequest -and
+    -not $explorerXamlSurfaceDiscoveryContract.hostReviewPackage.exactCommandGenerated -and
+    -not $explorerXamlSurfaceDiscoveryContract.callbackReviewObjectLinked -and
+    -not $explorerXamlSurfaceDiscoveryContract.callbackReviewObjectExecuted -and
+    -not $explorerXamlSurfaceDiscoveryContract.readyForLiveConnection -and
+    -not $explorerXamlSurfaceDiscoveryContract.readyForExactApproval -and
+    -not $explorerXamlSurfaceDiscoveryContract.executionSupported -and
+    -not $explorerXamlSurfaceDiscoveryContract.activationPermitted -and
+    $explorerXamlSurfaceDiscoveryContract.liveExplorer -eq 'not-run' -and
+    -not $explorerXamlSurfaceDiscoveryContract.mutationPerformed -and
+    $explorerXamlSurfaceDiscoveryContractSchema.additionalProperties -eq
+        $false -and
+    $explorerXamlSurfaceDiscoverySource.Contains(
+        '#define JARVIS_COMPILE_REVIEWED_XAML_SURFACE_CALLBACK 0'
+    ) -and
+    $explorerXamlSurfaceDiscoverySource.Contains(
+        'IVisualTreeServiceCallback2'
+    ) -and
+    $explorerXamlSurfaceDiscoverySource.Contains(
+        'jarvis_tap_surface_discovery_build_read_request('
+    ) -and
+    -not $explorerXamlSurfaceDiscoverySource.Contains(
+        'InitializeXamlDiagnosticsEx('
+    ) -and
+    -not $explorerXamlSurfaceDiscoverySource.Contains(
+        'AdviseVisualTreeChange('
+    ) -and
+    -not $explorerXamlSurfaceDiscoverySource.Contains('SetProperty(') -and
+    -not $explorerXamlSurfaceDiscoverySource.Contains('ClearProperty(')
+Add-Check `
+    'phase17.xaml-surface-discovery-static-unlinked-contract' `
+    $phase17SurfaceDiscoveryStaticContract `
+    'Phase 17 must bind the exact three candidate selectors to a fixed-capacity fail-closed discovery core and compile only an unlinked callback review object.'
+
+$explorerXamlSurfaceDiscoveryAuditOutput = @(
+    & pwsh `
+        -NoLogo `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $explorerXamlSurfaceDiscoveryAuditPath 2>&1
+)
+$explorerXamlSurfaceDiscoveryAuditExitCode = $LASTEXITCODE
+try {
+    $explorerXamlSurfaceDiscoveryAudit = (
+        $explorerXamlSurfaceDiscoveryAuditOutput -join [Environment]::NewLine
+    ) | ConvertFrom-Json -Depth 30
+}
+catch {
+    $explorerXamlSurfaceDiscoveryAudit = $null
+}
+$phase17SurfaceDiscoveryAuditPassed =
+    $explorerXamlSurfaceDiscoveryAuditExitCode -eq 0 -and
+    $null -ne $explorerXamlSurfaceDiscoveryAudit -and
+    $explorerXamlSurfaceDiscoveryAudit.result -eq 'passed' -and
+    $explorerXamlSurfaceDiscoveryAudit.checkCount -eq 16 -and
+    $explorerXamlSurfaceDiscoveryAudit.passedCount -eq 16 -and
+    $explorerXamlSurfaceDiscoveryAudit.scenarioCount -eq 58 -and
+    $explorerXamlSurfaceDiscoveryAudit.scenarioPassedCount -eq 58 -and
+    $explorerXamlSurfaceDiscoveryAudit.harnessBuilt -and
+    $explorerXamlSurfaceDiscoveryAudit.windowsReviewObjectBuilt -and
+    -not $explorerXamlSurfaceDiscoveryAudit.windowsCallbackExecuted -and
+    $explorerXamlSurfaceDiscoveryAudit.disabledObjectBuilt -and
+    -not $explorerXamlSurfaceDiscoveryAudit.hostReviewPackageExecuted -and
+    -not $explorerXamlSurfaceDiscoveryAudit.callbackSubscriptionAttempted -and
+    -not $explorerXamlSurfaceDiscoveryAudit.propertyReadAttempted -and
+    -not $explorerXamlSurfaceDiscoveryAudit.propertyWriteSupported -and
+    -not $explorerXamlSurfaceDiscoveryAudit.executionSupported -and
+    -not $explorerXamlSurfaceDiscoveryAudit.readyForLiveConnection -and
+    -not $explorerXamlSurfaceDiscoveryAudit.readyForExactApproval -and
+    -not $explorerXamlSurfaceDiscoveryAudit.activationPermitted -and
+    $explorerXamlSurfaceDiscoveryAudit.liveExplorer -eq 'not-run' -and
+    -not $explorerXamlSurfaceDiscoveryAudit.mutationPerformed
+Add-Check `
+    'phase17.xaml-surface-discovery-compile-and-fault-audit' `
+    $phase17SurfaceDiscoveryAuditPassed `
+    'The fixed-capacity discovery core must pass 58/58 synthetic topology scenarios and the real callback object must compile without being linked, subscribed or executed.'
 
 $phase5NativeLeaseWatchdogContract =
     $iconSize.Contains(
