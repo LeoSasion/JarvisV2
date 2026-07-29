@@ -6,9 +6,9 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $projectPath =
-    Join-Path $root 'src\Jarvis.ExplorerSurfaceProbe\Jarvis.ExplorerSurfaceProbe.csproj'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerSurfaceProbe\Jarvis.ExplorerSurfaceProbe.csproj'
 $sourceRoot =
-    Join-Path $root 'src\Jarvis.ExplorerSurfaceProbe'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerSurfaceProbe'
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()

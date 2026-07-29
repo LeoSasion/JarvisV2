@@ -20,8 +20,8 @@ ChatGPT 与 `wslservice` 的两个非 Jarvis 基础残留不会通过结束进�
 ## 正常恢复
 
 ```powershell
-dotnet run --project .\src\Jarvis.Supervisor -- arm-kill-switch
-dotnet run --project .\src\Jarvis.Supervisor -- restart-explorer --confirm
+dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor -- arm-kill-switch
+dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor -- restart-explorer --confirm
 ```
 
 第一条命令在跨进程状态门内原子创建 LocalAppData Known Folder 下的 `JARVIS2\disabled.flag`，然后撤销残留的一次性模块许可。第二条命令只处理 `GetShellWindow` 与 `Shell_TrayWnd` 共同指向、会话和映像路径都确认为 `%WINDIR%\explorer.exe` 的真实 Shell PID；它不会按名称终止其他文件夹窗口进程。没有急停文件或没有精确的 `--confirm` 都会拒绝执行。

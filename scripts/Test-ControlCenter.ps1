@@ -6,8 +6,8 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $projectPath =
-    Join-Path $root 'src\Jarvis.ControlCenter\Jarvis.ControlCenter.csproj'
-$sourceRoot = Join-Path $root 'src\Jarvis.ControlCenter'
+    Join-Path $root 'src\common\Jarvis.ControlCenter\Jarvis.ControlCenter.csproj'
+$sourceRoot = Join-Path $root 'src\common\Jarvis.ControlCenter'
 $mainWindowPath = Join-Path $sourceRoot 'MainWindow.xaml'
 $mainWindowCodePath = Join-Path $sourceRoot 'MainWindow.xaml.cs'
 

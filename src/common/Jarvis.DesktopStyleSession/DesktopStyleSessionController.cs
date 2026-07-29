@@ -70,14 +70,14 @@ internal sealed class DesktopStyleSessionController
                 ttlSeconds,
                 exactApplyCommand =
                     "dotnet run --project " +
-                    @".\src\Jarvis.DesktopStyleSession " +
+                    @".\src\common\Jarvis.DesktopStyleSession " +
                     "--configuration Release --no-build -- apply-preview " +
                     $"--expected-explorer-pid {expectedExplorerProcessId} " +
                     $"--preset {preset.Id} --ttl-seconds {ttlSeconds} " +
                     DesktopStylePolicy.ApplyConfirmation,
                 exactEmergencyRollbackCommand =
                     "dotnet run --project " +
-                    @".\src\Jarvis.DesktopStyleSession " +
+                    @".\src\common\Jarvis.DesktopStyleSession " +
                     "--configuration Release --no-build -- rollback " +
                     $"--session \"{store.ActiveSessionPath}\" " +
                     "--expected-explorer-pid " +

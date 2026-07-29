@@ -10,8 +10,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
-$sourceRoot = Join-Path $root 'src\Jarvis.ExplorerTapReadOnly'
-$transportRoot = Join-Path $root 'src\Jarvis.ExplorerTransportModel'
+$sourceRoot = Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerTapReadOnly'
+$transportRoot = Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerTransportModel'
 $protocolPath = Join-Path $sourceRoot 'jarvis_explorer_tap_protocol.cpp'
 $admissionPath = Join-Path $sourceRoot 'jarvis_explorer_tap_admission.cpp'
 $fingerprintPath = Join-Path $sourceRoot 'jarvis_explorer_tap_fingerprint.cpp'
@@ -25,7 +25,7 @@ $controllerPath = Join-Path $sourceRoot 'jarvis_explorer_tap_controller.cpp'
 $tapPath = Join-Path $sourceRoot 'jarvis_explorer_tap_readonly.cpp'
 $harnessPath = Join-Path (
     $root
-) 'tests\native\jarvis_explorer_tap_inspectable_adapter_harness.cpp'
+) 'tests\native\windows11\jarvis_explorer_tap_inspectable_adapter_harness.cpp'
 $contractPath = Join-Path (
     $root
 ) 'config\explorer-inspectable-adapter-contract.json'

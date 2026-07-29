@@ -1,0 +1,28 @@
+{
+  "$schema": "./windows10-host-profiles.schema.json",
+  "schemaVersion": 1,
+  "platform": "windows10",
+  "profiles": [
+    {
+      "profileId": "win10-22h2-19045.6466-x64",
+      "status": "observed-own-process-probe-only",
+      "displayVersion": "22H2",
+      "build": 19045,
+      "ubr": 6466,
+      "architecture": "X64",
+      "installationType": "Client",
+      "explorer": {
+        "productVersion": "10.0.19041.4522",
+        "fileVersion": "10.0.19041.4522 (WinBuild.160101.0800)",
+        "size": 6089584,
+        "sha256": "988A56D897915315EEF9CA679B3BC8ADFCECF5E227AEA99AAA1817620520E97E"
+      },
+      "allowedCapabilities": [
+        "read-system-dwm-state",
+        "set-owned-window-dark-caption"
+      ],
+      "activationPermitted": false,
+      "liveExplorer": "not-run"
+    }
+  ]
+}

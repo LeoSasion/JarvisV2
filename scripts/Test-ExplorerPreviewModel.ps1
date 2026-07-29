@@ -6,9 +6,9 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $projectPath =
-    Join-Path $root 'src\Jarvis.ExplorerPreviewModel\Jarvis.ExplorerPreviewModel.csproj'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerPreviewModel\Jarvis.ExplorerPreviewModel.csproj'
 $sourceRoot =
-    Join-Path $root 'src\Jarvis.ExplorerPreviewModel'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerPreviewModel'
 $profilePath =
     Join-Path $root 'config\explorer-frame-selector-candidate.json'
 $schemaPath =

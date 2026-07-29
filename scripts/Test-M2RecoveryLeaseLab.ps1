@@ -14,9 +14,9 @@ $planRoot =
     Join-Path $root 'artifacts\m2-validation-session-plans\runs'
 $labRoot = Join-Path $root 'artifacts\m2-recovery-lease-lab\runs'
 $supervisorProject =
-    Join-Path $root 'src\Jarvis.Supervisor\Jarvis.Supervisor.csproj'
+    Join-Path $root 'src\platforms\windows11\Jarvis.Supervisor\Jarvis.Supervisor.csproj'
 $recoveryCommand = (
-    'dotnet run --project .\src\Jarvis.Supervisor ' +
+    'dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor ' +
     '--configuration Release --no-build -- arm-kill-switch'
 )
 $sourcePaths = [ordered]@{
@@ -33,9 +33,9 @@ $sourcePaths = [ordered]@{
     controlledLiveReceiptSchema =
         'config/m2-controlled-live-controller-receipt.schema.json'
     nativeBuildReceipt = 'docs/receipts/native-build-2026-07-22.json'
-    m2Source = 'mods/jarvis-taskbar-icon-size.wh.cpp'
+    m2Source = 'mods/windows11/jarvis-taskbar-icon-size.wh.cpp'
     supervisorAssembly = (
-        'src/Jarvis.Supervisor/bin/Release/net8.0-windows/' +
+        'src/platforms/windows11/Jarvis.Supervisor/bin/Release/net8.0-windows/' +
         'jarvis-supervisor.dll'
     )
 }
@@ -267,7 +267,7 @@ $plan = [ordered]@{
     }
     approval = [ordered]@{
         exactCommand = (
-            'dotnet run --project .\src\Jarvis.Supervisor ' +
+            'dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor ' +
             '--configuration Release --no-build -- clear-kill-switch ' +
             '--module jarvis-taskbar-icon-size --confirm'
         )

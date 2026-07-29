@@ -6,9 +6,9 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $projectPath =
-    Join-Path $root 'src\Jarvis.ExplorerFrameModel\Jarvis.ExplorerFrameModel.csproj'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerFrameModel\Jarvis.ExplorerFrameModel.csproj'
 $sourceRoot =
-    Join-Path $root 'src\Jarvis.ExplorerFrameModel'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerFrameModel'
 $taskPath =
     Join-Path $root 'docs\PHASE-9-EXPLORER-FRAME-STYLER-TASK.md'
 

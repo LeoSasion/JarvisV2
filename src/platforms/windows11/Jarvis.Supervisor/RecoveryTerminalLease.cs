@@ -16,7 +16,7 @@ internal static partial class RecoveryTerminalLease
     private const string ReadyState = "ready";
     private const string AwaitingApprovalState = "awaiting-exact-approval";
     private const string RecoveryCommand =
-        @"dotnet run --project .\src\Jarvis.Supervisor --configuration Release --no-build -- arm-kill-switch";
+        @"dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor --configuration Release --no-build -- arm-kill-switch";
     private const int MaximumJsonBytes = 64 * 1024;
     private static readonly TimeSpan MaximumHeartbeatAge = TimeSpan.FromSeconds(4);
     private static readonly TimeSpan MaximumFutureSkew = TimeSpan.FromSeconds(2);
@@ -38,8 +38,8 @@ internal static partial class RecoveryTerminalLease
             ["controlledLiveController"] = "scripts/Invoke-M2ControlledLiveValidation.ps1",
             ["controlledLiveReceiptSchema"] = "config/m2-controlled-live-controller-receipt.schema.json",
             ["nativeBuildReceipt"] = "docs/receipts/native-build-2026-07-22.json",
-            ["m2Source"] = "mods/jarvis-taskbar-icon-size.wh.cpp",
-            ["supervisorAssembly"] = "src/Jarvis.Supervisor/bin/Release/net8.0-windows/jarvis-supervisor.dll",
+            ["m2Source"] = "mods/windows11/jarvis-taskbar-icon-size.wh.cpp",
+            ["supervisorAssembly"] = "src/platforms/windows11/Jarvis.Supervisor/bin/Release/net8.0-windows/jarvis-supervisor.dll",
         };
 
     public static string LeasePath { get; } =

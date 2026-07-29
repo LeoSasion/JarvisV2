@@ -39,7 +39,7 @@ approval required by `AGENTS.md`.
 Build the managed Supervisor and generate a non-overwriting read-only receipt:
 
 ```powershell
-dotnet build .\src\Jarvis.Supervisor\Jarvis.Supervisor.csproj --configuration Release
+dotnet build .\src\platforms\windows11\Jarvis.Supervisor\Jarvis.Supervisor.csproj --configuration Release
 pwsh -NoLogo -NoProfile -File .\scripts\Test-M2LiveReadiness.ps1 `
   -OutputPath .\artifacts\m2-live-readiness\runs\<unique-name>.json
 ```
@@ -132,19 +132,19 @@ Before activation, all of the following must be true in the same task:
    a heartbeat no older than four seconds, and the same plan/PID identities:
 
    ```powershell
-   dotnet run --project .\src\Jarvis.Supervisor --configuration Release --no-build -- inspect-recovery-terminal --module jarvis-taskbar-icon-size
+   dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor --configuration Release --no-build -- inspect-recovery-terminal --module jarvis-taskbar-icon-size
    ```
 
    The terminal visibly displays this prepared recovery command:
 
    ```powershell
-   dotnet run --project .\src\Jarvis.Supervisor --configuration Release --no-build -- arm-kill-switch
+   dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor --configuration Release --no-build -- arm-kill-switch
    ```
 
 6. The user explicitly approves this exact command and loading only M2:
 
    ```powershell
-   dotnet run --project .\src\Jarvis.Supervisor --configuration Release --no-build -- clear-kill-switch --module jarvis-taskbar-icon-size --confirm
+   dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor --configuration Release --no-build -- clear-kill-switch --module jarvis-taskbar-icon-size --confirm
    ```
 
 Until step 6 occurs verbatim after steps 1–5, the command is documentation,
@@ -225,7 +225,7 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass `
   -ObservationSeconds 10 `
   -OutputPath <unique-observe-receipt>
 
-dotnet run --project .\src\Jarvis.Supervisor `
+dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor `
   --configuration Release --no-build -- arm-kill-switch
 
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass `

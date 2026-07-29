@@ -12,9 +12,9 @@ $schemaPath = Join-Path $root 'config\m2-live-readiness-receipt.schema.json'
 $compatibilityPath = Join-Path $root 'config\compatibility.json'
 $nativeReceiptPath =
     Join-Path $root 'docs\receipts\native-build-2026-07-22.json'
-$m2SourcePath = Join-Path $root 'mods\jarvis-taskbar-icon-size.wh.cpp'
+$m2SourcePath = Join-Path $root 'mods\windows11\jarvis-taskbar-icon-size.wh.cpp'
 $supervisorDll = Join-Path $root (
-    'src\Jarvis.Supervisor\bin\Release\net8.0-windows\' +
+    'src\platforms\windows11\Jarvis.Supervisor\bin\Release\net8.0-windows\' +
     'jarvis-supervisor.dll'
 )
 $recoveryPath = Join-Path $root 'docs\RECOVERY.md'
@@ -29,12 +29,12 @@ $hostActivationQuarantineReason =
     'windhawk-service-global-runtime-injection-observed-20260727'
 $hostActivationIncidentAtUtc = '2026-07-27T05:28:39.5311113Z'
 $exactCommand = (
-    'dotnet run --project .\src\Jarvis.Supervisor ' +
+    'dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor ' +
     '--configuration Release --no-build -- clear-kill-switch ' +
     '--module jarvis-taskbar-icon-size --confirm'
 )
 $recoveryCommand = (
-    'dotnet run --project .\src\Jarvis.Supervisor ' +
+    'dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor ' +
     '--configuration Release --no-build -- arm-kill-switch'
 )
 
@@ -109,7 +109,7 @@ foreach ($source in @(
     [pscustomobject]@{
         Key = 'm2Source'
         Path = $m2SourcePath
-        RelativePath = 'mods/jarvis-taskbar-icon-size.wh.cpp'
+        RelativePath = 'mods/windows11/jarvis-taskbar-icon-size.wh.cpp'
     }
 )) {
     try {

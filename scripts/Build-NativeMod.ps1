@@ -23,18 +23,18 @@ if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
 $moduleSpecs = [ordered]@{
     'jarvis-native-taskbar' = [pscustomobject]@{
         id = 'jarvis-native-taskbar'
-        source = Join-Path $root 'mods\jarvis-native-taskbar.wh.cpp'
+        source = Join-Path $root 'mods\windows11\jarvis-native-taskbar.wh.cpp'
         architecture = 'amd64'
         supportingSources = @(
             [pscustomobject]@{
-                path = Join-Path $root 'mods\jarvis-resource-protocol.hpp'
+                path = Join-Path $root 'mods\common\jarvis-resource-protocol.hpp'
                 includeFileName = 'jarvis-resource-protocol.hpp'
             }
         )
     }
     'jarvis-taskbar-icon-size' = [pscustomobject]@{
         id = 'jarvis-taskbar-icon-size'
-        source = Join-Path $root 'mods\jarvis-taskbar-icon-size.wh.cpp'
+        source = Join-Path $root 'mods\windows11\jarvis-taskbar-icon-size.wh.cpp'
         architecture = 'amd64'
         supportingSources = @()
     }

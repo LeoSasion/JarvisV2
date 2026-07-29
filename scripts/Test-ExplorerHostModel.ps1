@@ -6,8 +6,8 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $projectPath =
-    Join-Path $root 'src\Jarvis.ExplorerHostModel\Jarvis.ExplorerHostModel.csproj'
-$sourceRoot = Join-Path $root 'src\Jarvis.ExplorerHostModel'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerHostModel\Jarvis.ExplorerHostModel.csproj'
+$sourceRoot = Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerHostModel'
 $schemaPath =
     Join-Path $root 'config\explorer-host-offline-plan.schema.json'
 $temporaryRoot = Join-Path (

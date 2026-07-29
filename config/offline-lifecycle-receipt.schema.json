@@ -74,7 +74,7 @@
             {
               "properties": {
                 "relativePath": {
-                  "const": "mods/jarvis-native-taskbar.wh.cpp"
+                  "const": "mods/windows11/jarvis-native-taskbar.wh.cpp"
                 }
               }
             }
@@ -88,7 +88,7 @@
             {
               "properties": {
                 "relativePath": {
-                  "const": "mods/jarvis-resource-protocol.hpp"
+                  "const": "mods/common/jarvis-resource-protocol.hpp"
                 }
               }
             }
@@ -102,7 +102,7 @@
             {
               "properties": {
                 "relativePath": {
-                  "const": "tests/native/jarvis_lifecycle_harness.cpp"
+                  "const": "tests/native/common/jarvis_lifecycle_harness.cpp"
                 }
               }
             }

@@ -36,6 +36,12 @@ jobs:
           pwsh -NoLogo -NoProfile -File
           .\scripts\Test-PublicationBoundary.ps1
 
+      - name: Validate platform layout
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-PlatformLayout.ps1
+
       - name: Parse PowerShell and JSON
         shell: pwsh
         run: |
@@ -68,7 +74,7 @@ jobs:
         shell: pwsh
         run: >-
           dotnet build
-          .\src\Jarvis.Supervisor\Jarvis.Supervisor.csproj
+          .\src\platforms\windows11\Jarvis.Supervisor\Jarvis.Supervisor.csproj
           --configuration Release
           --nologo
           --warnaserror
@@ -84,6 +90,13 @@ jobs:
         run: >-
           pwsh -NoLogo -NoProfile -File
           .\scripts\Test-NativeStyleLab.ps1
+
+      - name: Audit and build Windows 10 own-process native style probe
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-Windows10NativeStyleProbe.ps1
+          -StaticOnly
 
       - name: Audit desktop host probe without live inspection
         shell: pwsh

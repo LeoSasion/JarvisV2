@@ -1,4 +1,4 @@
-#include "../../src/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_surface_discovery.h"
+#include "jarvis_explorer_tap_surface_discovery.h"
 
 #include <cstdint>
 #include <cstring>

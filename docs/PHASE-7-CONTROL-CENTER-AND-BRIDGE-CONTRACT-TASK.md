@@ -52,7 +52,7 @@ must never be described as a live modified taskbar or Explorer surface.
 
 ## Control Center deliverables
 
-- [x] Implement `src/Jarvis.ControlCenter`.
+- [x] Implement `src/common/Jarvis.ControlCenter`.
 - [x] Add a deterministic 1440×900 overview layout.
 - [x] Show module/surface ownership and the current blocked gate.
 - [x] Show the offline Explorer-host model as non-executable.

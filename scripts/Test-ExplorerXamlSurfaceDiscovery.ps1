@@ -10,8 +10,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
-$sourceRoot = Join-Path $root 'src\Jarvis.ExplorerTapReadOnly'
-$transportRoot = Join-Path $root 'src\Jarvis.ExplorerTransportModel'
+$sourceRoot = Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerTapReadOnly'
+$transportRoot = Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerTransportModel'
 $headerPath = Join-Path (
     $sourceRoot
 ) 'jarvis_explorer_tap_surface_discovery.h'
@@ -23,7 +23,7 @@ $windowsPath = Join-Path (
 ) 'jarvis_explorer_tap_surface_discovery_windows.cpp'
 $harnessPath = Join-Path (
     $root
-) 'tests\native\jarvis_explorer_tap_surface_discovery_harness.cpp'
+) 'tests\native\windows11\jarvis_explorer_tap_surface_discovery_harness.cpp'
 $contractPath = Join-Path (
     $root
 ) 'config\explorer-xaml-surface-discovery-contract.json'

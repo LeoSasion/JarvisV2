@@ -10,8 +10,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
-$sourceRoot = Join-Path $root 'src\Jarvis.ExplorerTapReadOnly'
-$transportRoot = Join-Path $root 'src\Jarvis.ExplorerTransportModel'
+$sourceRoot = Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerTapReadOnly'
+$transportRoot = Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerTransportModel'
 $headerPath = Join-Path $sourceRoot 'jarvis_explorer_tap_xaml_read_bridge.h'
 $policyPath = Join-Path (
     $sourceRoot
@@ -21,7 +21,7 @@ $windowsPath = Join-Path (
 ) 'jarvis_explorer_tap_xaml_read_bridge_windows.cpp'
 $harnessPath = Join-Path (
     $root
-) 'tests\native\jarvis_explorer_tap_xaml_read_bridge_harness.cpp'
+) 'tests\native\windows11\jarvis_explorer_tap_xaml_read_bridge_harness.cpp'
 $taskPath = Join-Path (
     $root
 ) 'docs\PHASE-16-EXPLORER-XAML-READ-BRIDGE-REVIEW-TASK.md'

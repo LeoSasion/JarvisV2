@@ -14,7 +14,7 @@ $planSchemaPath =
 $controllerReceiptSchemaPath =
     Join-Path $root 'config\m2-controlled-live-controller-receipt.schema.json'
 $leaseValidatorPath =
-    Join-Path $root 'src\Jarvis.Supervisor\RecoveryTerminalLease.cs'
+    Join-Path $root 'src\platforms\windows11\Jarvis.Supervisor\RecoveryTerminalLease.cs'
 $publicationManifestPath =
     Join-Path $root 'config\publication-manifest.json'
 
@@ -334,12 +334,12 @@ function New-ReceiptFixture {
         processTerminationRequested = $false
         serviceStartModeMutationRequested = $false
         exactClearCommand = (
-            'dotnet run --project .\src\Jarvis.Supervisor ' +
+            'dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor ' +
             '--configuration Release --no-build -- clear-kill-switch ' +
             '--module jarvis-taskbar-icon-size --confirm'
         )
         emergencyArmCommand = (
-            'dotnet run --project .\src\Jarvis.Supervisor ' +
+            'dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor ' +
             '--configuration Release --no-build -- arm-kill-switch'
         )
         detail = $Detail

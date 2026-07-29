@@ -26,7 +26,7 @@ $leasePath = Join-Path $recoveryDirectory 'm2-recovery-terminal.json'
 $heartbeatIntervalMilliseconds = 1000
 $heartbeatFreshnessSeconds = 4
 $recoveryCommand = (
-    'dotnet run --project .\src\Jarvis.Supervisor ' +
+    'dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor ' +
     '--configuration Release --no-build -- arm-kill-switch'
 )
 

@@ -1,0 +1,1076 @@
+{
+  "schemaVersion": 1,
+  "packageType": "jarvisv2-windows10-handoff",
+  "packageName": "JarvisV2-Windows10-Handoff-a038c0db93a4",
+  "sourceCommit": "a038c0db93a48e3af6dc9852a0e39b33081636b5",
+  "sourceRef": "HEAD",
+  "sourceDirty": false,
+  "createdAtUtc": "2026-07-29T11:26:26.1354126+00:00",
+  "entryDocument": "WINDOWS10-HANDOFF.md",
+  "platformMatrixSha256": "B7B1AA47F612E1993CC5863BADB7A5C545157C56A123E435A8E656BE7DE679EB",
+  "fileCount": 212,
+  "activationPermitted": false,
+  "liveExplorer": "not-run",
+  "files": [
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
+      "size": 1460,
+      "sha256": "3B21E8B7600ACB65855BA9FAB5B9657EBEC01ECD13433C5AF4742097E4252B01"
+    },
+    {
+      "path": ".github/pull_request_template.md",
+      "size": 706,
+      "sha256": "7B677B553679528CFB5BD597F0380DACC0F6F2D65CBB03517C6D558EE166E2B4"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "size": 6501,
+      "sha256": "2C736D3A8AF1D3D758463FF0014EC56DD38C7719A140FBC2788EC0E79A0B19ED"
+    },
+    {
+      "path": ".gitignore",
+      "size": 216,
+      "sha256": "693C9A9F2E6CE77F8D424CD230FC04277369FF03858ACD5C1CA834545A1F862F"
+    },
+    {
+      "path": "AGENTS.md",
+      "size": 2430,
+      "sha256": "326A7596D0F3A5E1B19FF4CECC1BBF0BC6B9A2FEAA29A8D03225BF2A3230BC41"
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "size": 786,
+      "sha256": "2CDA2C75F9B1858D357C3D20C4F0F9141EBFBEABFE8CF8CA7373E9AFA332828C"
+    },
+    {
+      "path": "config/compatibility.json",
+      "size": 4610,
+      "sha256": "61B49FE9F42826844D07DD6352AF70A0B7B9B4FCEA41716634329301A722974C"
+    },
+    {
+      "path": "config/explorer-frame-selector-candidate.json",
+      "size": 2246,
+      "sha256": "CD8EC6521AC6EAD63B5EC682AE25AA2B1EFC7E60DFCCA2830B82C540CA393E03"
+    },
+    {
+      "path": "config/explorer-frame-selector-candidate.schema.json",
+      "size": 5112,
+      "sha256": "F708F1C0F316711AD32630A410594E9D266398A418BEA0835648826B242EC5D5"
+    },
+    {
+      "path": "config/explorer-host-offline-plan.schema.json",
+      "size": 3319,
+      "sha256": "4014977E9AA07F5BEE8339EFEA68B36FFA2D5FA303DB5EE4FE47DC9C2216AA08"
+    },
+    {
+      "path": "config/explorer-inspectable-adapter-contract.json",
+      "size": 1946,
+      "sha256": "F6711B1D6FB692FCC5D5A7EFBB6D97AEA4B366DAF56C1426C6A4535FECE732D3"
+    },
+    {
+      "path": "config/explorer-inspectable-adapter-contract.schema.json",
+      "size": 5238,
+      "sha256": "327FCFABFEF512BFE83E1A27EF2D6AE872AFC648E6F47608F2A11846786E2E97"
+    },
+    {
+      "path": "config/explorer-readonly-admission-fingerprint-contract.json",
+      "size": 1937,
+      "sha256": "A4544D96F447A116E4C28F6955E30C57EBDE09D51ACEF5A328950FDC84CB033D"
+    },
+    {
+      "path": "config/explorer-readonly-admission-fingerprint-contract.schema.json",
+      "size": 5684,
+      "sha256": "56683758AE06E70E57AC668C9E78A4E84D66878EB5A7934475A87985F340C78E"
+    },
+    {
+      "path": "config/explorer-readonly-tap-build-contract.json",
+      "size": 1952,
+      "sha256": "F0EC0B8F50361A87A7BDCD4160018EB0FF68B646E0B3FC2E7B1B6594FF62C26C"
+    },
+    {
+      "path": "config/explorer-readonly-tap-build-contract.schema.json",
+      "size": 6003,
+      "sha256": "E1DB468608771F8E5C492456A5230D09D06E998E956301059EE9AED4E156E326"
+    },
+    {
+      "path": "config/explorer-style-transaction-contract.json",
+      "size": 2109,
+      "sha256": "782AC4B4FCF6062398C2BFEF33BBB882F0870EAADD5E25977235C133DFA04713"
+    },
+    {
+      "path": "config/explorer-style-transaction-contract.schema.json",
+      "size": 6225,
+      "sha256": "95BB66CE1472EEEBC608C82B05B254FEF1E5171A7C06BDAEDECB9CEBD834DC9D"
+    },
+    {
+      "path": "config/explorer-xaml-read-bridge-contract.json",
+      "size": 3359,
+      "sha256": "E80310B825E079B5006747E8E366F4416825D4546DD998C2D23B0DA27071974C"
+    },
+    {
+      "path": "config/explorer-xaml-read-bridge-contract.schema.json",
+      "size": 7842,
+      "sha256": "C641FB9231E205878573815F55C5D7D9162BB99F399DF9D42FF2B9A1DFF335A9"
+    },
+    {
+      "path": "config/explorer-xaml-surface-discovery-contract.json",
+      "size": 4258,
+      "sha256": "DB98162D2AD3C8FEAE9C4F0EDF1FDA055195DFF5E38896CA29E65390EF13380A"
+    },
+    {
+      "path": "config/explorer-xaml-surface-discovery-contract.schema.json",
+      "size": 6113,
+      "sha256": "B57F06026E81D5F9444A38C392C84B6867CD7262BEF3328FEADB8B49497F7E28"
+    },
+    {
+      "path": "config/explorer-xaml-transport-contract.json",
+      "size": 4112,
+      "sha256": "9E1215E1A7C8EAE307E5CD0B086EBFB42EE1B4FD4B02086D9546494695C05BD5"
+    },
+    {
+      "path": "config/explorer-xaml-transport-contract.schema.json",
+      "size": 10435,
+      "sha256": "44668FA54E57BC73016911FC11A275FC007304FA3E1C4BEAF5C8E2D64C76A8E5"
+    },
+    {
+      "path": "config/m2-controlled-live-controller-receipt.schema.json",
+      "size": 24099,
+      "sha256": "D7045535954F177C9ECC1ED15F79E401EFD1DFD62535AFFBB6E886340E55EC4F"
+    },
+    {
+      "path": "config/m2-live-readiness-receipt.schema.json",
+      "size": 12226,
+      "sha256": "D72D28FB35AEF8FA344B304BEB6530BC939BAE4D50F2AA0B15B15BDD5CD5E31E"
+    },
+    {
+      "path": "config/m2-observation-rehearsal-receipt.schema.json",
+      "size": 4643,
+      "sha256": "1BD5394E904A92F55C3E9458529CF18FB967AE1B4A5187F040C4626F69201FB4"
+    },
+    {
+      "path": "config/m2-recovery-lease-lab-receipt.schema.json",
+      "size": 2922,
+      "sha256": "6F010B7D56E2EF4CC0BB66367FDF6BD77C38C254AFFD01241D9908E1EED42725"
+    },
+    {
+      "path": "config/m2-recovery-terminal-lease.schema.json",
+      "size": 1959,
+      "sha256": "7C0AF826358AE4F2351F9C4E8EFA557D26C3C5E2FDC832330A3466522FD28F54"
+    },
+    {
+      "path": "config/m2-validation-session-plan.schema.json",
+      "size": 7526,
+      "sha256": "54D207B999EEF1875BC57A67F2CAD78A4F7675BC5E50975EE09FA8196EB17140"
+    },
+    {
+      "path": "config/offline-lifecycle-receipt.schema.json",
+      "size": 13335,
+      "sha256": "E7D20CC68399FFD0AD7E4EEE7F2BF16A682316BE825C052CF13EC723A6CBE22B"
+    },
+    {
+      "path": "config/platform-matrix.json",
+      "size": 1758,
+      "sha256": "B7B1AA47F612E1993CC5863BADB7A5C545157C56A123E435A8E656BE7DE679EB"
+    },
+    {
+      "path": "config/publication-manifest.json",
+      "size": 12673,
+      "sha256": "CF0EE169AE88EE67BA885683AEFA446BFF0373C1854545518779123BC5147178"
+    },
+    {
+      "path": "config/toolchain-lock.json",
+      "size": 2533,
+      "sha256": "227D86CEC2995ADA829051BCBA56660B1FBEBF714A19B102B5232D8C0C56F390"
+    },
+    {
+      "path": "config/upstream-lock.json",
+      "size": 2949,
+      "sha256": "081B00DA13382DCC60DD215DA5857D88B30B5FD737B18753C6B351D15FC33647"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "size": 2075,
+      "sha256": "20B5FC3FB0CBB1F31490DAABC1DB4F61FB1FD4088424CF66D5C0C6349B3D28C5"
+    },
+    {
+      "path": "docs/ADR-0001-EXPLORER-ONLY-HOST.md",
+      "size": 7757,
+      "sha256": "3796F2D1C4B4FCD074D96CC6423B93448CB6FDF716A73AD6DCD9A1B41A2A99B8"
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "size": 14531,
+      "sha256": "94C05F49B54FDD48D8B2740DF377B12F884CA5B50B884E76914AEC5C618327B9"
+    },
+    {
+      "path": "docs/M2-CONTROLLED-LIVE-VALIDATION-RUNBOOK.md",
+      "size": 11057,
+      "sha256": "444C2FB3A0BD1E1B3B361A6D0FCDE258204BFD651DB02D9C53C5E3B213BB78C5"
+    },
+    {
+      "path": "docs/M2-INTERACTION-CHECKLIST.md",
+      "size": 2247,
+      "sha256": "A18D029FBCDDCB491362681782CFA692A0781D16C34AEF414DDCF8243B868CB3"
+    },
+    {
+      "path": "docs/OPEN-SOURCE-BOUNDARY.md",
+      "size": 2546,
+      "sha256": "7FA7B67BD6D72FD87C3B3E9408BFA6BB06DF6B9A0F9C6480E0B9ABCFD09A612C"
+    },
+    {
+      "path": "docs/PHASE-10-BATCHED-EXPLORER-PREVIEW-PREP-TASK.md",
+      "size": 6582,
+      "sha256": "71D41AD9A754565AF0F287D31070CDCFBBEE61C8B08F6599BCDA72F46EB35049"
+    },
+    {
+      "path": "docs/PHASE-11-EXPLORER-XAML-TRANSPORT-CORE-TASK.md",
+      "size": 6752,
+      "sha256": "A04186965C5055B6D9171E322344DE40F3223CC106FB84462F299B2A421B121E"
+    },
+    {
+      "path": "docs/PHASE-12-EXPLORER-READONLY-TAP-OFFLINE-BUILD-TASK.md",
+      "size": 5244,
+      "sha256": "3101B5F348B647CB80C17D85BA24ADE9E96D5969D4F8751BDAEF26486169862B"
+    },
+    {
+      "path": "docs/PHASE-13-EXPLORER-READONLY-ADMISSION-AND-FINGERPRINT-TASK.md",
+      "size": 4870,
+      "sha256": "5B3E8D565457CB029A83E3AF48C6C385D2C26D13949716D97C2E8E361D685BF7"
+    },
+    {
+      "path": "docs/PHASE-14-EXPLORER-INSPECTABLE-ADAPTER-TASK.md",
+      "size": 2634,
+      "sha256": "89935F664077FB17BF9E2A5FA540EE8A261645DA602ECF17344AE8F69063CBD4"
+    },
+    {
+      "path": "docs/PHASE-15-EXPLORER-REVERSIBLE-STYLE-TRANSACTION-TASK.md",
+      "size": 3186,
+      "sha256": "0B194818A71B6E341D2AD322B1D86DA3179D5F0554D45742DB2B8BB788B9F1E7"
+    },
+    {
+      "path": "docs/PHASE-16-EXPLORER-XAML-READ-BRIDGE-REVIEW-TASK.md",
+      "size": 4008,
+      "sha256": "2411E2ACF94F7DBD050AD63CA1C173154E3B1B080F40385DF74CAD0397BD4014"
+    },
+    {
+      "path": "docs/PHASE-17-EXPLORER-XAML-SURFACE-DISCOVERY-TASK.md",
+      "size": 3984,
+      "sha256": "9D6FFDE31CDC863B0AB61CCB0364FE184EE3CF34C64006EC95968ABD1CB955D6"
+    },
+    {
+      "path": "docs/PHASE-2-OFFLINE-LIFECYCLE-TASK.md",
+      "size": 23568,
+      "sha256": "89F4C466E242EFE3F7C0B047CC52FF378F682091AF7971133F9E3B4DBA9B4602"
+    },
+    {
+      "path": "docs/PHASE-3-OPEN-SOURCE-AND-M2-LIVE-PREP-TASK.md",
+      "size": 7702,
+      "sha256": "DBBCF2ABCAA45B88A4F962696592EA48E521075406895484C62EE54330AF0BC7"
+    },
+    {
+      "path": "docs/PHASE-4-M2-RECOVERY-AND-OBSERVATION-TASK.md",
+      "size": 6046,
+      "sha256": "26C36A30580DB077A673DDE36A1ED0B383ED3C285A5D227FB1CE5AEFAA712A12"
+    },
+    {
+      "path": "docs/PHASE-5-M2-RECOVERY-LEASE-TASK.md",
+      "size": 5348,
+      "sha256": "37F78E5E69B101BB3F6F3A837DCB521DAF3000CE97D5EAE52B5BDC92D8AF4106"
+    },
+    {
+      "path": "docs/PHASE-5-SAFETY-REVIEW.md",
+      "size": 12295,
+      "sha256": "4D394B720ACEF8CBD3C5F3E730D9D9C694611BF9C773540C778B0381AE9C0328"
+    },
+    {
+      "path": "docs/PHASE-6-WINDHAWK-HOST-QUARANTINE-TASK.md",
+      "size": 4551,
+      "sha256": "76947EE3CF7E91359054E805624B7C5648FB965102C68456DFEDD023346C0A67"
+    },
+    {
+      "path": "docs/PHASE-7-CONTROL-CENTER-AND-BRIDGE-CONTRACT-TASK.md",
+      "size": 3823,
+      "sha256": "E0C9F9646C3597A5077707E65304A99B5A6F27990D4E94194BFF1C77523C6B05"
+    },
+    {
+      "path": "docs/PHASE-8-DESKTOP-TEXT-COLOR-SESSION-TASK.md",
+      "size": 3168,
+      "sha256": "3496FB1108577EA538982559214F7DCB8E17C9F2371E35227582817965920EEA"
+    },
+    {
+      "path": "docs/PHASE-8-NATIVE-EXPLORER-WINDOW-STYLE-TASK.md",
+      "size": 3078,
+      "sha256": "4CE1A45ED42E4617CBC3D22721F3249FE3A3280BE1470EA3D046295D5AD27252"
+    },
+    {
+      "path": "docs/PHASE-8-NATIVE-STYLE-LAB-AND-DESKTOP-PROBE-TASK.md",
+      "size": 3234,
+      "sha256": "86CC43A18FA90B70AA3B0AECAB95425969967DB2BF7DC6A1B782F0DBDA3F13CC"
+    },
+    {
+      "path": "docs/PHASE-9-EXPLORER-FRAME-STYLER-TASK.md",
+      "size": 5945,
+      "sha256": "91C7DADD6CA0E4160508FCA2F84C2B20DFCCCA4323CCBF382F5A12E62AFD6965"
+    },
+    {
+      "path": "docs/PLATFORM-ARCHITECTURE.md",
+      "size": 3542,
+      "sha256": "7D28991148D05B7724F17FCA7304B5C36B55059280C1EB67E6FD325424D26268"
+    },
+    {
+      "path": "docs/receipts/host-safety-2026-07-24.json",
+      "size": 1670,
+      "sha256": "F136F4C1D21BB59F3E33E783B32FE3BD6C0D5424A37EB838BA60FA1B7AB27D2A"
+    },
+    {
+      "path": "docs/receipts/host-safety-2026-07-27.json",
+      "size": 3250,
+      "sha256": "020B6F0AFB0E712EA3C33F65662CD854B09943E71EA350322C773C68F76D8054"
+    },
+    {
+      "path": "docs/receipts/native-build-2026-07-22.json",
+      "size": 7791,
+      "sha256": "42A6673F17BEAB5442BDC9C4A5AAD3BB5A488CE2F3A56A9ADEA9632A8C9292ED"
+    },
+    {
+      "path": "docs/RECOVERY.md",
+      "size": 8614,
+      "sha256": "0644FB40A69F69360AA18690E97F02AB20B783BC812DD3394C66E92F534E4469"
+    },
+    {
+      "path": "docs/ROADMAP.md",
+      "size": 8914,
+      "sha256": "DB2BBD14DFE121F2A277A5E08D18F3E3CE84718CE3519EC521BFE02A5C702DCF"
+    },
+    {
+      "path": "docs/screenshots/jarvis-control-center-phase7-final.png",
+      "size": 100156,
+      "sha256": "355EDB945DCD1A29FBAC047F330B1526250E641CFA4ABD9414D74A7B8C95665C"
+    },
+    {
+      "path": "docs/screenshots/jarvis-native-style-lab-phase8.png",
+      "size": 263737,
+      "sha256": "00F91C1E0F982540AFDBB57DF0D338DFD6509DDC9ED21EB67677D64C15FA04C8"
+    },
+    {
+      "path": "docs/SECURITY-INCIDENT-2026-07-22.md",
+      "size": 6287,
+      "sha256": "5381E1115758AFDC01E4B15BE77373E2812E1DE3ABEB096ADED8335548FB9C4A"
+    },
+    {
+      "path": "global.json",
+      "size": 115,
+      "sha256": "020C8B0DDA0CFA1D4B02EFE8628365463FA7304A4057D65BE507DB2876CF9B8B"
+    },
+    {
+      "path": "LICENSE",
+      "size": 35806,
+      "sha256": "DCB4416795CC866C8A71742B7A94A200F0351ED94671B5D2330676FC210FF755"
+    },
+    {
+      "path": "mods/common/jarvis-resource-protocol.hpp",
+      "size": 95946,
+      "sha256": "35E34CA45777279349CD3CEE1140264EDF48F3349EBFEA44BD9374E49CBBF45C"
+    },
+    {
+      "path": "mods/windows10/README.md",
+      "size": 261,
+      "sha256": "A21C111CC274535562D57F8A25715AE1A6C2EF8DBB586F067A7948A6A820AFA8"
+    },
+    {
+      "path": "mods/windows11/jarvis-native-taskbar.wh.cpp",
+      "size": 1106287,
+      "sha256": "8AFC5E14A4888563E8D32C31697C7E95214DC447C4E7AFD0860295FEA4132B2C"
+    },
+    {
+      "path": "mods/windows11/jarvis-taskbar-icon-size.wh.cpp",
+      "size": 54191,
+      "sha256": "364680731BA5EB529C2CB91624B1EBE6C607E0816D9069F7091D70890845C1CF"
+    },
+    {
+      "path": "mods/windows11/README.md",
+      "size": 186,
+      "sha256": "759F4B6FD7A93565A68E888C0DA093473C880EC378FCCB2657925F3AB2160D3D"
+    },
+    {
+      "path": "README.md",
+      "size": 20361,
+      "sha256": "8CCABF393624BF37BD8876CAD6DA28657E9ACD6026CEBCD349FB630174AE6DF3"
+    },
+    {
+      "path": "scripts/Build-NativeMod.ps1",
+      "size": 56016,
+      "sha256": "BDE9D3E1C8BA67DE3D899F2707B2111F71F7B81CD7E52B437313F600622467DA"
+    },
+    {
+      "path": "scripts/Inspect-Windows10Host.ps1",
+      "size": 3016,
+      "sha256": "623F6DB479A9DE484BFE053F11654B6765D91992A9371C13B3286BD1A1A18446"
+    },
+    {
+      "path": "scripts/Invoke-M2ControlledLiveValidation.ps1",
+      "size": 59738,
+      "sha256": "7663E7751AB05B91A269C1C7B36DF2A3C0472E8AA7DA8AC18F146A53DFF856D0"
+    },
+    {
+      "path": "scripts/Measure-M2HostBaseline.ps1",
+      "size": 6520,
+      "sha256": "B99ABB1286BDC57A81D7FF5C798D26976D3B7CA4C216D48A5281DA26943A00D0"
+    },
+    {
+      "path": "scripts/New-ExplorerXamlReadReviewPackage.ps1",
+      "size": 10145,
+      "sha256": "A6BE80971415A82815C561B77D7C777DB6AB1CC6F7BFA20D09575B37263FEF53"
+    },
+    {
+      "path": "scripts/New-M2ValidationSessionPlan.ps1",
+      "size": 12626,
+      "sha256": "C5C154BF9BBD1BF1B67891B9B36C113F502F9F4C918407A5DB982267C22FF38F"
+    },
+    {
+      "path": "scripts/New-Windows10HandoffPackage.ps1",
+      "size": 7970,
+      "sha256": "051821FBDD26A2BD442B98A310A67914D10B9131E622311AB58F16812314C38A"
+    },
+    {
+      "path": "scripts/Open-M2RecoveryTerminal.ps1",
+      "size": 16378,
+      "sha256": "5DF8F189873D2DC9C4EA9E42D3CA1A50CFB2561766E70CD4E60733F3D5065E48"
+    },
+    {
+      "path": "scripts/Test-ControlCenter.ps1",
+      "size": 5467,
+      "sha256": "1F12F6DC380E257C585E4F389FFA705D17300DEF428A74B49A3E772C1E23CEB8"
+    },
+    {
+      "path": "scripts/Test-DesktopStyleProbe.ps1",
+      "size": 6420,
+      "sha256": "BFE6B2F4E175E80D486FFADBAB0C6E4DF1437589B4E6D1633FA389CAD7B10095"
+    },
+    {
+      "path": "scripts/Test-DesktopStyleSession.ps1",
+      "size": 11740,
+      "sha256": "853AE314834CFBA29BAEDBA3B76319C2CEE46F4AA5C5E348F9BB62AE7A9F4834"
+    },
+    {
+      "path": "scripts/Test-ExplorerBridgeModel.ps1",
+      "size": 7814,
+      "sha256": "2350D0E466427B90C75C725324B3FC506DFDA3AA67BECF61E479AB3820DF83F1"
+    },
+    {
+      "path": "scripts/Test-ExplorerFrameModel.ps1",
+      "size": 7051,
+      "sha256": "8E911CB6CF086C216307C080E41BE8494601CAF90A13CF0A2644A5BD2B97EDAA"
+    },
+    {
+      "path": "scripts/Test-ExplorerHostModel.ps1",
+      "size": 14384,
+      "sha256": "00CFEEDFA4EEFA92F85D07730FC7D513E5867DED4628077A2CAF3C4DB3636077"
+    },
+    {
+      "path": "scripts/Test-ExplorerInspectableAdapter.ps1",
+      "size": 13771,
+      "sha256": "72EF4B57BF4AF3B8E1C5B658DB7F180044C03784F70E17DAF6D31720B6948BED"
+    },
+    {
+      "path": "scripts/Test-ExplorerPreviewModel.ps1",
+      "size": 9340,
+      "sha256": "B7D1CCB0961006BC086E34D590BBA63833D61BC0AB0DECA175DB395F58DFACCD"
+    },
+    {
+      "path": "scripts/Test-ExplorerReadOnlyAdmission.ps1",
+      "size": 17044,
+      "sha256": "7489BE9AC98BCE7571386255F12A8E2E7C1DA04722D643E46AA4A4F8B2A635A0"
+    },
+    {
+      "path": "scripts/Test-ExplorerReadOnlyTap.ps1",
+      "size": 38765,
+      "sha256": "197C1794CAB8D5DAD5A65A19914855A90A74BB8927A33EB76613F8F87E472FCA"
+    },
+    {
+      "path": "scripts/Test-ExplorerStyleTransaction.ps1",
+      "size": 15822,
+      "sha256": "B31CEDEAF8DD36F22DF7456B591D26C1F41C6F0FECF3918A9A0016A5A69E0AD3"
+    },
+    {
+      "path": "scripts/Test-ExplorerSurfaceProbe.ps1",
+      "size": 6702,
+      "sha256": "650D196F0699755B9FBB118E1AB84DFEF5C3157D49D22DDB2AD5F5517D17E075"
+    },
+    {
+      "path": "scripts/Test-ExplorerTransportModel.ps1",
+      "size": 14480,
+      "sha256": "8082FDF047B8CF217A7DA2813CA971CB6AC0EE58020EC8BE9261E3ED31336185"
+    },
+    {
+      "path": "scripts/Test-ExplorerXamlReadBridge.ps1",
+      "size": 17631,
+      "sha256": "78D883B7078993EF3477FE2661AAC25F77C53270A88FAE4CB3EB9C0AA607C71C"
+    },
+    {
+      "path": "scripts/Test-ExplorerXamlSurfaceDiscovery.ps1",
+      "size": 21373,
+      "sha256": "2F5EA24914777959CADDDC700582B7B8471FB180BC283FF82049911DD76FE178"
+    },
+    {
+      "path": "scripts/Test-LifecycleFaultLab.ps1",
+      "size": 48715,
+      "sha256": "62E17429F1353C91A27FCF9011117C6F33FD30F98D9A83888A57E6F1BE5D6754"
+    },
+    {
+      "path": "scripts/Test-M2ControlledLiveController.ps1",
+      "size": 26157,
+      "sha256": "FE9183FF0EFA13644C89F7C24C17896E9B8625207B9B3FA6C7B4759F52497137"
+    },
+    {
+      "path": "scripts/Test-M2LiveReadiness.ps1",
+      "size": 22560,
+      "sha256": "484217C5C0DF16F24CB2B78BF71CDF7B383EED5E6558CC2986C8D74C1B2ED234"
+    },
+    {
+      "path": "scripts/Test-M2ObservationRehearsal.ps1",
+      "size": 12867,
+      "sha256": "56E6B7B53F675C70880C1366B2575F41A7094CAD84557C3DF1272E3E1BF89A4B"
+    },
+    {
+      "path": "scripts/Test-M2RecoveryLeaseLab.ps1",
+      "size": 16416,
+      "sha256": "4E9B8E1FC0BE5B687A2248BB5980A5F71EBCB924A51AF239FE88CEAFAFD06FDA"
+    },
+    {
+      "path": "scripts/Test-NativeStyleLab.ps1",
+      "size": 5574,
+      "sha256": "361671BF7CA14BB1D43183D858F29AAC0A7B4B4548E902518F0D918E60C71F93"
+    },
+    {
+      "path": "scripts/Test-NativeWindowStyleSession.ps1",
+      "size": 9189,
+      "sha256": "454172C19A909B82EBA4FD17761D6FE827F311F4EF3EBA5738FDF5E6BEC48FFB"
+    },
+    {
+      "path": "scripts/Test-PlatformLayout.ps1",
+      "size": 5410,
+      "sha256": "BE4AC6124DFF5458655C82DD831972E6260C93BE8E59A3BB522C10687173BC94"
+    },
+    {
+      "path": "scripts/Test-Project.ps1",
+      "size": 394798,
+      "sha256": "4D839CA3D01DACB8F60F90F43DEC799E3893C7A186032D04D1A6AB4702777E0E"
+    },
+    {
+      "path": "scripts/Test-PublicationBoundary.ps1",
+      "size": 7512,
+      "sha256": "14FFCA702B28B278D92303DFC3F08E96C99B6BE8EC68CE53D7D4C0F88E178E94"
+    },
+    {
+      "path": "scripts/Test-Windows10HandoffPackage.ps1",
+      "size": 4657,
+      "sha256": "7A901BD41851BD7D0F8C4BF6B06B8962BB1D1FC66C762624CEE61D5441F1EDFB"
+    },
+    {
+      "path": "SECURITY.md",
+      "size": 1380,
+      "sha256": "C6824DE9B32E80FD6DF4403E2A0AA73CC95370E88DDA60DA5FFC2A2EC9C4ED11"
+    },
+    {
+      "path": "src/common/Jarvis.ControlCenter/App.xaml",
+      "size": 233,
+      "sha256": "FE0AD0B206E1A4EB1F200AA156C85CD180B5976282FBE73C8D9791235BD4C074"
+    },
+    {
+      "path": "src/common/Jarvis.ControlCenter/App.xaml.cs",
+      "size": 2329,
+      "sha256": "5F2C29EADF04143AD4854601663C949FD6FA45EA848612B876974B73E2EBB27D"
+    },
+    {
+      "path": "src/common/Jarvis.ControlCenter/Jarvis.ControlCenter.csproj",
+      "size": 498,
+      "sha256": "D88D860CCF9641A1E206B63C68F620D0744F471DC61B87839BCEBCDA011863B6"
+    },
+    {
+      "path": "src/common/Jarvis.ControlCenter/MainWindow.xaml",
+      "size": 60640,
+      "sha256": "E3ECD1797E7ABDE3AE2C8ABE4EA8A39D61F5EABBFC2A10563CC7C2CF93F227F1"
+    },
+    {
+      "path": "src/common/Jarvis.ControlCenter/MainWindow.xaml.cs",
+      "size": 1290,
+      "sha256": "8110A95085F5689C810AD64A1467ED3DAC6E3A1AB4C2BD8F0B8847D50EB7E202"
+    },
+    {
+      "path": "src/common/Jarvis.DesktopStyleProbe/Jarvis.DesktopStyleProbe.csproj",
+      "size": 473,
+      "sha256": "7122A8AD7149AAA95EFC3E6891DFD05C95314B1B1E9C252B0A6413A886D69C57"
+    },
+    {
+      "path": "src/common/Jarvis.DesktopStyleProbe/NativeDesktopHostProbe.cs",
+      "size": 3689,
+      "sha256": "66A869578CA8515D199605A472D14A8BC10294BE37FF75DA615EF1F197832EE1"
+    },
+    {
+      "path": "src/common/Jarvis.DesktopStyleProbe/Program.cs",
+      "size": 1506,
+      "sha256": "921006ECF72F83526E480451F6EAE4688613907922EEAC53612C5B69AD1FD21B"
+    },
+    {
+      "path": "src/common/Jarvis.DesktopStyleSession/DesktopListViewTransport.cs",
+      "size": 2579,
+      "sha256": "FC42EAB986FB8EA7CBB0D0AA24D80C1923E1D9497226438DBF2BCEBEBCACC782"
+    },
+    {
+      "path": "src/common/Jarvis.DesktopStyleSession/DesktopStylePolicy.cs",
+      "size": 2400,
+      "sha256": "A4827E5A608BDFCF0093F691D824DF1E36112D0CAFECCDF6EACC9F191286FFA8"
+    },
+    {
+      "path": "src/common/Jarvis.DesktopStyleSession/DesktopStyleSessionController.cs",
+      "size": 16901,
+      "sha256": "0F352B74BC092BCE8ADF2A03074E23C4AB18B22F68BC6448CCF44107ECCC19E9"
+    },
+    {
+      "path": "src/common/Jarvis.DesktopStyleSession/DesktopStyleSessionJournal.cs",
+      "size": 6519,
+      "sha256": "C8500E79EA2B586CC2FEA2F7B1C0BC346626D75E849DC43F2943451BE1A526E7"
+    },
+    {
+      "path": "src/common/Jarvis.DesktopStyleSession/Jarvis.DesktopStyleSession.csproj",
+      "size": 477,
+      "sha256": "D4D2AA0EF23CD66FD5A91FD9FDA3D818FBAF11DA5C6C0E41386D6F5D1A3CA54B"
+    },
+    {
+      "path": "src/common/Jarvis.DesktopStyleSession/NativeDesktopHost.cs",
+      "size": 5241,
+      "sha256": "8FE54DF7EB4C11515CF47D61BE6FCCFAAA042ED4C0B4C64E2299EA60D4BEBB62"
+    },
+    {
+      "path": "src/common/Jarvis.DesktopStyleSession/Program.cs",
+      "size": 7308,
+      "sha256": "CFABE46FA3DC59DD120407DECFD752A0343F510C6AD7521AEF88A11D7D2F5983"
+    },
+    {
+      "path": "src/common/README.md",
+      "size": 391,
+      "sha256": "A5615E5DCAD63587D680DF5885FF299EEE8BD432F3540AD0B9E486796B8A8599"
+    },
+    {
+      "path": "src/platforms/README.md",
+      "size": 278,
+      "sha256": "6829FD4CFAD112B25D986C6B9348F570D4741505EA1EF8BC0FDC1A33580DAC34"
+    },
+    {
+      "path": "src/platforms/windows10/README.md",
+      "size": 444,
+      "sha256": "73CD7A85F286D0E7C138E522B790D4E39425F169E8F927524817F2620FB52BA1"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerBridgeModel/jarvis_explorer_bridge_contract.h",
+      "size": 2644,
+      "sha256": "AD6DB22C38F1F79C423A127218E0F3B89906F97FA00296B171632AF1683A175D"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerBridgeModel/jarvis_explorer_bridge_model.cpp",
+      "size": 3710,
+      "sha256": "0CD26CA4D9C71298B10E689EAB960F93220EC1F0C84F7F830DE8B3A632CFF5DA"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerFrameModel/FrameAdmission.cs",
+      "size": 2201,
+      "sha256": "3C7725D1B78FFD7798A974152D21728B4833F5FE837CB3403D9E96FE0D1A8732"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerFrameModel/FrameContracts.cs",
+      "size": 3998,
+      "sha256": "38E07AD813DCE5B169734B32BC2A43B2B7EB0737A2EAD1C352E09D29EBE9D4CF"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerFrameModel/Jarvis.ExplorerFrameModel.csproj",
+      "size": 471,
+      "sha256": "A139A16BDEFA07E6A5E6A87CC8B1AEAB8E7700F1CC97F2FA2A518735E28EB502"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerFrameModel/ModelScenarios.cs",
+      "size": 21386,
+      "sha256": "5B23825A0C96B015B33C3D20178F933E5AB07DC02FD4C85FCB8FF9E52D229864"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerFrameModel/Program.cs",
+      "size": 865,
+      "sha256": "7937447F37BE35ECAE28B98F8C03822F5E060AAD6C9F6E80588A114E6FE9DEF5"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerFrameModel/PropertyTransaction.cs",
+      "size": 8963,
+      "sha256": "64977E92D84AEF062F376E63FC902DF10E9B3282BA4625D934F83D0A7BD50CED"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerFrameModel/SelectorEngine.cs",
+      "size": 3655,
+      "sha256": "13A6024BE8F99442C376464012557353093F7031EE358438373C9480D3F2B2C2"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerHostModel/HostAdmissionPlanner.cs",
+      "size": 11987,
+      "sha256": "0F1852C864386CD76E25058631E2719DBD885D9F034D223C7802D5A7ACDA0217"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerHostModel/HostSnapshot.cs",
+      "size": 3219,
+      "sha256": "C2C220C1E4DC081AD226F3D092C68FA18CEE1994F4150B17D40BAC39573FFE9F"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerHostModel/Jarvis.ExplorerHostModel.csproj",
+      "size": 469,
+      "sha256": "655A9D4CA07B891571515B4130882224EDF681EAB7C71C787222A4ADC898996F"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerHostModel/Program.cs",
+      "size": 2166,
+      "sha256": "6B0DCA686DEBE9C30097B0E1167F88F4109E8CA36BB7DFA0082D6B842B6CA52E"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerPreviewModel/CandidateProfileCompiler.cs",
+      "size": 9075,
+      "sha256": "C377DC8CA3E9907293BD274B42D15A6AE454F624FA694F2F87D6D57C2B8BE6B9"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerPreviewModel/Jarvis.ExplorerPreviewModel.csproj",
+      "size": 475,
+      "sha256": "92A1DDE75AE8918216B116E3CA3477601C07EF28941122F7BC13D5F858F5C559"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerPreviewModel/PreviewContracts.cs",
+      "size": 5367,
+      "sha256": "CDC22E90AF4F1A260E0FB5D37D40359BE9EF3A8512E476BD42F7842381A356F9"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerPreviewModel/PreviewModelScenarios.cs",
+      "size": 24156,
+      "sha256": "603410FC0A80780DC1FD70B7B57D764CEA2F95669AA944D0BAB34E5A8468E4EB"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerPreviewModel/PreviewSessionPlanner.cs",
+      "size": 10239,
+      "sha256": "60AB64E467DF3041E12999CE264AC8331FC55F14226F8C91E1B4BE387C85BC4C"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerPreviewModel/Program.cs",
+      "size": 3548,
+      "sha256": "F2D8CE570629DF3E9C6E97B56AA00AF7FD8D73C052B4F4AA0FD68ED0756F40A6"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerPreviewModel/SelectorGrammar.cs",
+      "size": 2313,
+      "sha256": "AA0000C56ACB7D54107DD6335112FA22CD3556D62D06EBCE9988AED6E3A6549D"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerSurfaceProbe/AutomationTreeReader.cs",
+      "size": 7163,
+      "sha256": "28D7DFC7AD62C4EFDEA9831B9E45F5AC651A654D6A84F3BE0CCE81F1FE41E86B"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerSurfaceProbe/ExactExplorerTarget.cs",
+      "size": 6666,
+      "sha256": "6FC09D47396DABCE3CD5432000979BCFE49608BD6487F8C89C392F0220F69A18"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerSurfaceProbe/Jarvis.ExplorerSurfaceProbe.csproj",
+      "size": 510,
+      "sha256": "EC22C30FC8938BF5263D9DA1367CBA8CD1A31C34D2550CD1DEDF5651B12C3268"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerSurfaceProbe/ProbeContracts.cs",
+      "size": 1781,
+      "sha256": "FBCC5CB09EBDCAA1E5D1CF0D64D7AC8315F5166BA0159F5D5EA9332ECFA5A6C8"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerSurfaceProbe/Program.cs",
+      "size": 6900,
+      "sha256": "07D335360CC98F2F38AD33DCC7D00970BDEF60B01F3E2852C2EBDA7793ED8AF4"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_admission.cpp",
+      "size": 8395,
+      "sha256": "9D6E4FAF748CC0EDF92FF49568293BB09CD4917A1CB30F4A22BC1C508F4A9A65"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_admission.h",
+      "size": 4500,
+      "sha256": "D7ED9B66B9F2D53AE50A2BE8E67441EA1F3122A3C10A83DC41D4CE2B071C7614"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_controller.cpp",
+      "size": 2106,
+      "sha256": "BC27B3468797D008AEFE7EBDBE6E09AC2B8550D0B8EF51D03B151C9DA1A30413"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_fingerprint.cpp",
+      "size": 18624,
+      "sha256": "07336E154C31F92245D60344383DADB597E376DF328894C60FA0538B5343DA7B"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_fingerprint.h",
+      "size": 5558,
+      "sha256": "732F02B82CACEC907BEF61EFD31B61C1222B1FFB28F1EA93B1D6F74FC1C698A8"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_inspectable_adapter.cpp",
+      "size": 9815,
+      "sha256": "D447E16C03479BC17E7BB541959D424BFDB8DD5E6D62928B0C176E8F4B51398F"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_inspectable_adapter.h",
+      "size": 5814,
+      "sha256": "811357F30D98F364A98A5F242C2AEDAA937F5D85ED7EFEE031DE77272D84B0AD"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_protocol.cpp",
+      "size": 7468,
+      "sha256": "580FAC1CEF6C56F1B0F4B5269B21550E9BB0A5B4C9E6C0B0EFC9B6FDD42952AF"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_readonly.cpp",
+      "size": 5037,
+      "sha256": "38D41FBF8205402E2665105A0860BF03F2C259F58E6F19D9B396A1602CA5A7B4"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_readonly.h",
+      "size": 3699,
+      "sha256": "A7C30F8D36F1E233663E2E717B12232D0873E13AED642B9393BC19E375771130"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_style_transaction.cpp",
+      "size": 26154,
+      "sha256": "0AFD227B73975CE937561418393AC0B51CAA2CB980B004A7D42140674CD040CC"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_style_transaction.h",
+      "size": 9189,
+      "sha256": "8C88823579B7451DD8CDD4C35B034D39CC9FA22C3907E9FB66BBCD07F745FC57"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_surface_discovery_windows.cpp",
+      "size": 5569,
+      "sha256": "4998FBBB258F0F67F7A3B0E7089BF81C56A5ACF91530DE297C04DC06E707BB32"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_surface_discovery.cpp",
+      "size": 19462,
+      "sha256": "EF20D6FD8C79FBB0329839C11CE6EA178A26F90F5EDF3ADA9A5F5DFC3C2BE76E"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_surface_discovery.h",
+      "size": 8679,
+      "sha256": "12A0010857CD2CC5412FB3C45A6C2AA56BD26939B27025DFD1207D08C69A2D42"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_target.cpp",
+      "size": 3313,
+      "sha256": "91EDBE664572F5B0FD2DA01CA02F1DB99F37220B5BCB9E2C48958BC3B947F3C4"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_xaml_read_bridge_policy.cpp",
+      "size": 16033,
+      "sha256": "FEE543F2D9452994845EC38C1C683306C6212286A2EF6D5350C3E225450899BE"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_xaml_read_bridge_windows.cpp",
+      "size": 17786,
+      "sha256": "DE4270FBC0496F9C3FEF9347AE5E8D79B2C225A30FBD6909706128FB49C94D69"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTapReadOnly/jarvis_explorer_tap_xaml_read_bridge.h",
+      "size": 8335,
+      "sha256": "5872B17A1318DE46BC631C4FF7878E6E4EA56C99720019DB62EF55040257AA41"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTransportModel/jarvis_explorer_transport_contract.h",
+      "size": 9836,
+      "sha256": "90D8A5A5DE74034E4A0B2A2267C279FB5D939EC552BC7ED8ACF4D502D294D961"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.ExplorerTransportModel/jarvis_explorer_transport_model.cpp",
+      "size": 24245,
+      "sha256": "FB0635AC8C19A65EE2625A5E4355D66EA86EA94228AB1588F9CA17EAE0AC4823"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.NativeStyleLab/App.xaml",
+      "size": 268,
+      "sha256": "92F5986D03FD7E6EA9CABF4F55127950E4FB6CC1CF3C5411D2B11C818E65345A"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.NativeStyleLab/App.xaml.cs",
+      "size": 107,
+      "sha256": "15E41D9A0A0F75A2BFCAB35EE0DD2D0845C25922818578218FB88A3F494FBB01"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.NativeStyleLab/DwmWindowStyler.cs",
+      "size": 5849,
+      "sha256": "F0D68EA17DAD83B7EA8074D9711EC56F8CD857D7ABEB130533926880713FB0D6"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.NativeStyleLab/Jarvis.NativeStyleLab.csproj",
+      "size": 497,
+      "sha256": "DE9035FB46F70A638930EC195C9008C8ED325E64E55835B4C07E06A77D915914"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.NativeStyleLab/MainWindow.xaml",
+      "size": 10854,
+      "sha256": "2CD9271FDD66604EAD23F2584FAE50F30056308E7F2D1FC79E81A681FF61B144"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.NativeStyleLab/MainWindow.xaml.cs",
+      "size": 2619,
+      "sha256": "5B1CE2A9D5D860BE0CC07F2602288875EC8B726FB96E2169BB3F17CB9F59150F"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.NativeWindowStyleSession/DwmWindowColorTransport.cs",
+      "size": 2480,
+      "sha256": "7580624225FE7C89DE155E8B4FCBE10E9C2D4E9C62FE086E542189FEBBED308A"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.NativeWindowStyleSession/Jarvis.NativeWindowStyleSession.csproj",
+      "size": 488,
+      "sha256": "92C51F17402B477CA7E7CA0444E6D12FB680EE72DBE51DC3F7F839581AA27A85"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.NativeWindowStyleSession/NativeExplorerWindowTarget.cs",
+      "size": 4848,
+      "sha256": "9DF52362E36FA1772CA9AA0DB48AD5E3D91935FCEA5415F569B44DE4D0F4F9BD"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.NativeWindowStyleSession/NativeWindowStylePolicy.cs",
+      "size": 2584,
+      "sha256": "167F264EBD37952E1B7F112B717DBF86BB9DC2FC3B2DEBEA4DF5C87CBA8A8BB7"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.NativeWindowStyleSession/NativeWindowStyleSessionController.cs",
+      "size": 18060,
+      "sha256": "1BDF5405A4E30C111A58CDB5035CB0DD96840B73A240457FE1B474060CA76F96"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.NativeWindowStyleSession/NativeWindowStyleSessionJournal.cs",
+      "size": 6810,
+      "sha256": "2573D17337655D95A8F7991D219A57FF7A95AF279EF738E3441313F3BE153BAF"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.NativeWindowStyleSession/Program.cs",
+      "size": 8630,
+      "sha256": "0B45CEF1E4BBF84EA485CC30C1F4077B73CEBE5EBEBC5A0010582BCE131A69DC"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.Supervisor/.gitignore",
+      "size": 12,
+      "sha256": "79914B5E84E1A58B12D9E874EA343E2D131DCDAAF0A3BACF01210219FC679D13"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.Supervisor/CompatibilityInspector.cs",
+      "size": 19689,
+      "sha256": "7B8C0ECF8E3D3AF9EA6FA33ED7350D5A06BC66C8D1CAC1E15744256A035A730C"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.Supervisor/ExplorerRestarter.cs",
+      "size": 11260,
+      "sha256": "D9604E76D53315FCC5D60D29AFED9AA6E47CDCE446DBB46BE8A7172039836D20"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.Supervisor/Jarvis.Supervisor.csproj",
+      "size": 461,
+      "sha256": "8C7EBDF2FB80BFECBFE3B74D09549DAA385088E5B79D2A722B52E40D9FF3B697"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.Supervisor/KillSwitch.cs",
+      "size": 23532,
+      "sha256": "29FAE9357C12D70F41A442986EF54B6D6166D2BFF2DF9DC58578296BCE6DA221"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.Supervisor/Program.cs",
+      "size": 9391,
+      "sha256": "566A8B05242C6AC76BFEC2B985968FDB8BC12BB25A15A18003B1F8A0ABF05939"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.Supervisor/README.md",
+      "size": 2166,
+      "sha256": "5B4395EABFBA4FDC2547B0528BAE66192E2B9DEF0FA9E52BA2A5D5189CD518D0"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.Supervisor/RecoveryTerminalLease.cs",
+      "size": 22058,
+      "sha256": "FCE3E7DEDDC5F3EDF916629BAE4F3657FFE3154305F81D0CD9699F98651B84A4"
+    },
+    {
+      "path": "src/platforms/windows11/Jarvis.Supervisor/WindowsShell.cs",
+      "size": 6110,
+      "sha256": "0C75D596E3FBB0A11DBF01B83FA0F7EC0DBC78A8E218A73BA7B01B9A85CAADF4"
+    },
+    {
+      "path": "src/platforms/windows11/README.md",
+      "size": 297,
+      "sha256": "25C0DF4C80851EC414A9689B643DA95ED585F7FE60BCAFB5AAEAF6C4F69A3D4A"
+    },
+    {
+      "path": "tests/native/common/jarvis_lifecycle_harness.cpp",
+      "size": 401766,
+      "sha256": "67578BA8A9C9148D3632BBC37D6824F5D498E3D0A2DC1CACB37CBC413E3FC8E6"
+    },
+    {
+      "path": "tests/native/windows10/README.md",
+      "size": 247,
+      "sha256": "2EF418AC3D13DD019F950FA92D9CB224DE3A5A5FEE77D926AADBA36B50622163"
+    },
+    {
+      "path": "tests/native/windows11/jarvis_explorer_bridge_model_harness.cpp",
+      "size": 5342,
+      "sha256": "6C4A5C50EF8F1B43FED3E8485FC9F4D684296F89E72AB2B24F08DCE08BDA7D2E"
+    },
+    {
+      "path": "tests/native/windows11/jarvis_explorer_tap_admission_harness.cpp",
+      "size": 22247,
+      "sha256": "2EC509D1C4A20F7388CF857A58B48908999F529481A2E291BF10B27909DA0FD9"
+    },
+    {
+      "path": "tests/native/windows11/jarvis_explorer_tap_inspectable_adapter_harness.cpp",
+      "size": 15087,
+      "sha256": "851849DD46234EF051FF063D6D641A331446197F0CF7CD4B71CB9FCFCCDC1694"
+    },
+    {
+      "path": "tests/native/windows11/jarvis_explorer_tap_protocol_harness.cpp",
+      "size": 11520,
+      "sha256": "15C72C01E08A7F746E9598F24B522ADE4BAF7DCEE2770AF538B34ED33FB448AB"
+    },
+    {
+      "path": "tests/native/windows11/jarvis_explorer_tap_style_transaction_harness.cpp",
+      "size": 32215,
+      "sha256": "1A71564C6945EFD3DF147BE6AFA25DBAA3F200E272E62EB7E31F247311915C88"
+    },
+    {
+      "path": "tests/native/windows11/jarvis_explorer_tap_surface_discovery_harness.cpp",
+      "size": 39836,
+      "sha256": "200D8DD3AD26F1D16782139CB943B5A8199E7321403833E0D9E7B43E7DC95B08"
+    },
+    {
+      "path": "tests/native/windows11/jarvis_explorer_tap_xaml_read_bridge_harness.cpp",
+      "size": 21201,
+      "sha256": "6626BD2B7B8C711563CD6865C2A15B4B57D909C78FAF81CFFAD96F0232FD0599"
+    },
+    {
+      "path": "tests/native/windows11/jarvis_explorer_transport_model_harness.cpp",
+      "size": 34120,
+      "sha256": "3631AC4B0CF535113422706BA7ED5F7108B78F6CE839FEF1AC65394A22764E45"
+    },
+    {
+      "path": "tests/native/windows11/README.md",
+      "size": 185,
+      "sha256": "203949B3EE502970ECD10D507E6520F6F9F29308A0951EF171E318B354011C28"
+    },
+    {
+      "path": "third_party/NOTICE.md",
+      "size": 5461,
+      "sha256": "2E534AF426A63136F03560805A46AE0EC69AF228961CC9F9FF3B9CFDFF8331B9"
+    },
+    {
+      "path": "WINDOWS10-HANDOFF.md",
+      "size": 4453,
+      "sha256": "0948330885F26FEAA8DB38588B769F34BB51CA0C6FC32019ECACF9780E0CC02D"
+    }
+  ]
+}
