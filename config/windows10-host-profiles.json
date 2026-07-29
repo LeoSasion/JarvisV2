@@ -19,6 +19,7 @@
       },
       "allowedCapabilities": [
         "read-system-dwm-state",
+        "read-shell-window-topology",
         "set-owned-window-dark-caption"
       ],
       "activationPermitted": false,

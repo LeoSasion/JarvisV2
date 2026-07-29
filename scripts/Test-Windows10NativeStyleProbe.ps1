@@ -10,6 +10,8 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $sourceRoot = Join-Path $root (
     'src\platforms\windows10\Jarvis.Win10.NativeStyleProbe')
+$admissionRoot = Join-Path $root (
+    'src\platforms\windows10\Jarvis.Win10.HostAdmission')
 $projectPath = Join-Path $sourceRoot (
     'Jarvis.Win10.NativeStyleProbe.csproj')
 $profilePath = Join-Path $root 'config\windows10-host-profiles.json'
@@ -39,12 +41,14 @@ function Add-Check {
 }
 
 $sourceText = @(
-    Get-ChildItem -LiteralPath $sourceRoot -File -Recurse |
-        Where-Object Extension -In @('.cs', '.xaml', '.csproj') |
-        Sort-Object FullName |
-        ForEach-Object {
-            [IO.File]::ReadAllText($_.FullName)
-        }
+    foreach ($currentSourceRoot in @($sourceRoot, $admissionRoot)) {
+        Get-ChildItem -LiteralPath $currentSourceRoot -File -Recurse |
+            Where-Object Extension -In @('.cs', '.xaml', '.csproj') |
+            Sort-Object FullName |
+            ForEach-Object {
+                [IO.File]::ReadAllText($_.FullName)
+            }
+    }
 ) -join [Environment]::NewLine
 $windowText = [IO.File]::ReadAllText($windowPath)
 $stylerText = [IO.File]::ReadAllText($stylerPath)
@@ -164,9 +168,11 @@ Add-Check `
     -Passed (
         -not $profile[0].activationPermitted -and
         $profile[0].liveExplorer -eq 'not-run' -and
-        @($profile[0].allowedCapabilities).Count -eq 2 -and
+        @($profile[0].allowedCapabilities).Count -eq 3 -and
         @($profile[0].allowedCapabilities) -contains
             'read-system-dwm-state' -and
+        @($profile[0].allowedCapabilities) -contains
+            'read-shell-window-topology' -and
         @($profile[0].allowedCapabilities) -contains
             'set-owned-window-dark-caption') `
     -Detail (

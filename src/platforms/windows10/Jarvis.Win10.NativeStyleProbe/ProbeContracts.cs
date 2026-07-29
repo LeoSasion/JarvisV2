@@ -1,22 +1,6 @@
+using Jarvis.Win10.HostAdmission;
+
 namespace Jarvis.Win10.NativeStyleProbe;
-
-internal sealed record ExplorerIdentity(
-    string Path,
-    long Size,
-    string ProductVersion,
-    string FileVersion,
-    string Sha256);
-
-internal sealed record WindowsHostIdentity(
-    string ProductName,
-    string DisplayVersion,
-    string EditionId,
-    string InstallationType,
-    int Build,
-    int Ubr,
-    string Architecture,
-    bool Is64BitOperatingSystem,
-    ExplorerIdentity Explorer);
 
 internal sealed record SystemVisualIdentity(
     bool CompositionEnabled,
@@ -72,27 +56,3 @@ internal sealed record OwnedWindowVerificationReceipt(
     bool SystemMutationPerformed,
     string LiveExplorer,
     string? Error);
-
-internal sealed record Windows10HostProfileCatalog(
-    int SchemaVersion,
-    string Platform,
-    IReadOnlyList<Windows10HostProfile> Profiles);
-
-internal sealed record Windows10HostProfile(
-    string ProfileId,
-    string Status,
-    string DisplayVersion,
-    int Build,
-    int Ubr,
-    string Architecture,
-    string InstallationType,
-    ExplorerProfile Explorer,
-    IReadOnlyList<string> AllowedCapabilities,
-    bool ActivationPermitted,
-    string LiveExplorer);
-
-internal sealed record ExplorerProfile(
-    string ProductVersion,
-    string FileVersion,
-    long Size,
-    string Sha256);

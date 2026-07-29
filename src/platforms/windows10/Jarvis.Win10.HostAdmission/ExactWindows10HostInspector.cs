@@ -4,14 +4,14 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using Microsoft.Win32;
 
-namespace Jarvis.Win10.NativeStyleProbe;
+namespace Jarvis.Win10.HostAdmission;
 
-internal static class Win10HostInspector
+public static class ExactWindows10HostInspector
 {
     private const string CurrentVersionKey =
         @"SOFTWARE\Microsoft\Windows NT\CurrentVersion";
 
-    public static HostProbeReceipt Inspect()
+    public static Windows10HostAdmissionReceipt Inspect()
     {
         DateTimeOffset observedAtUtc = DateTimeOffset.UtcNow;
 
@@ -22,36 +22,33 @@ internal static class Win10HostInspector
                 return Blocked(
                     observedAtUtc,
                     "incompatible-host",
-                    "The Windows 10 native-style probe only runs on Windows.");
+                    "Exact Win10 host admission only runs on Windows.");
             }
 
             WindowsHostIdentity host = ReadHostIdentity();
-            SystemVisualIdentity visuals =
-                Win10DwmApi.InspectSystemVisuals();
             Windows10HostProfileCatalog catalog = HostProfileCatalog.Load();
             Windows10HostProfile? profile =
                 catalog.Profiles.SingleOrDefault(candidate =>
                     Matches(candidate, host));
 
-            return new HostProbeReceipt(
+            return new Windows10HostAdmissionReceipt(
                 1,
-                "jarvisv2-win10-native-style-host-probe",
+                "jarvisv2-win10-exact-host-admission",
                 profile is null
                     ? "blocked-no-exact-profile"
-                    : "passed-exact-own-process-candidate",
+                    : "passed-exact-windows10-host",
                 observedAtUtc,
-                profile?.ProfileId,
                 host,
-                visuals,
-                "own-process-hwnd-only",
-                profile is not null,
-                false,
-                false,
+                profile,
                 false,
                 "not-run",
+                false,
                 profile is null
-                    ? "No exact Windows 10 build, UBR, architecture and Explorer identity profile matched."
-                    : null);
+                    ? [
+                        "No exact Windows 10 build, UBR, architecture and " +
+                        "Explorer identity profile matched.",
+                    ]
+                    : []);
         }
         catch (Exception exception) when (
             exception is IOException or
@@ -165,23 +162,19 @@ internal static class Win10HostInspector
     private static string ReadString(RegistryKey key, string name) =>
         Convert.ToString(key.GetValue(name)) ?? string.Empty;
 
-    private static HostProbeReceipt Blocked(
+    private static Windows10HostAdmissionReceipt Blocked(
         DateTimeOffset observedAtUtc,
         string result,
-        string error) =>
+        string failure) =>
         new(
             1,
-            "jarvisv2-win10-native-style-host-probe",
+            "jarvisv2-win10-exact-host-admission",
             result,
             observedAtUtc,
             null,
             null,
-            null,
-            "own-process-hwnd-only",
-            false,
-            false,
-            false,
             false,
             "not-run",
-            error);
+            false,
+            [failure]);
 }

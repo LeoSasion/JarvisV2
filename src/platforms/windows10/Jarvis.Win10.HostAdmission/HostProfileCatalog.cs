@@ -2,12 +2,12 @@ using System.IO;
 using System.Reflection;
 using System.Text.Json;
 
-namespace Jarvis.Win10.NativeStyleProbe;
+namespace Jarvis.Win10.HostAdmission;
 
 internal static class HostProfileCatalog
 {
     private const string ResourceName =
-        "Jarvis.Win10.NativeStyleProbe.windows10-host-profiles.json";
+        "Jarvis.Win10.HostAdmission.windows10-host-profiles.json";
 
     public static Windows10HostProfileCatalog Load()
     {

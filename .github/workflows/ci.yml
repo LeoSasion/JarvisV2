@@ -98,6 +98,13 @@ jobs:
           .\scripts\Test-Windows10NativeStyleProbe.ps1
           -StaticOnly
 
+      - name: Audit and build Windows 10 read-only Shell surface probe
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-Windows10ShellSurfaceProbe.ps1
+          -StaticOnly
+
       - name: Audit desktop host probe without live inspection
         shell: pwsh
         run: >-

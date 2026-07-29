@@ -5,5 +5,9 @@ The first Win10-specific implementation is audited by
 profile, DWM import allowlist, owned-HWND proof, Win11 capability exclusions,
 Release build and the local owned-window apply/reset roundtrip.
 
+`scripts/Test-Windows10ShellSurfaceProbe.ps1` audits the shared host
+admission, read-only user32 allowlist, bounded text-free topology reader and
+the exact desktop/Explorer/classic-taskbar surface set on this host.
+
 Future native harnesses belong in this directory. No test may load a module
 into Explorer without a separately approved live gate.

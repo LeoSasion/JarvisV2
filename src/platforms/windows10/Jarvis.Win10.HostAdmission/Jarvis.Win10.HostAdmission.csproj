@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <AssemblyName>jarvis-win10-host-admission</AssemblyName>
+    <RootNamespace>Jarvis.Win10.HostAdmission</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource
+      Include="..\..\..\..\config\windows10-host-profiles.json"
+      Link="windows10-host-profiles.json"
+      LogicalName="Jarvis.Win10.HostAdmission.windows10-host-profiles.json" />
+  </ItemGroup>
+</Project>

@@ -77,6 +77,12 @@ The first adapter therefore uses only the Win10 dark-caption attribute. It
 does not pretend that Win11 corner, caption-color or system-backdrop
 attributes are available. See `docs/WINDOWS10-NATIVE-STYLE-PROBE.md`.
 
+The second adapter slice is a read-only topology probe. Shared Win10 host
+identity moved into `Jarvis.Win10.HostAdmission` after the first two consumers
+proved the boundary. `Jarvis.Win10.ShellSurfaceProbe` uses that gate before
+enumerating bounded, text-free desktop, Explorer and classic-taskbar class
+trees. See `docs/WINDOWS10-SHELL-SURFACE-INVENTORY.md`.
+
 ## Compatibility profiles
 
 Compatibility profiles are append-only and platform-specific. A profile
