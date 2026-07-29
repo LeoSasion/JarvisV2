@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "contractId": "jarvisv2-pi-agent-desktop-host-v1",
+  "upstream": {
+    "package": "@earendil-works/pi-coding-agent",
+    "exactVersion": "0.82.1",
+    "repository": "https://github.com/earendil-works/pi",
+    "documentation": "https://pi.dev/docs/latest/sdk",
+    "license": "MIT"
+  },
+  "runtime": {
+    "nodeMinimumMajor": 22,
+    "integrationMode": "sdk-sidecar-jsonl",
+    "launchState": "transport-probe-only",
+    "piOfflineRequired": true,
+    "sessionCreationEnabled": false,
+    "desktopLaunchImplemented": false
+  },
+  "transport": {
+    "framing": "lf-delimited-jsonl",
+    "encoding": "utf-8",
+    "maxFrameBytes": 65536,
+    "requestTypes": [
+      "hello",
+      "capabilities",
+      "start_session",
+      "shutdown"
+    ],
+    "credentialFieldsAllowed": false
+  },
+  "session": {
+    "enabled": false,
+    "modelAuthentication": "pi-owned-out-of-band",
+    "credentialTransport": "forbidden",
+    "persistence": "disabled-until-desktop-policy-gate",
+    "workspaceBinding": "single-explicit-root"
+  },
+  "tools": {
+    "initialAllowlist": [
+      "read",
+      "grep",
+      "find",
+      "ls"
+    ],
+    "initiallyDenied": [
+      "bash",
+      "edit",
+      "write"
+    ],
+    "mutationGrant": "future-per-session-supervisor-capability",
+    "unattendedSelfIteration": false
+  },
+  "boundaries": {
+    "shellMutationSupported": false,
+    "explorerMutationSupported": false,
+    "systemMutationSupported": false,
+    "deviceIntegrationSupported": false,
+    "activationPermitted": false,
+    "liveExplorer": "not-run"
+  }
+}

@@ -54,6 +54,15 @@
       "role": "selector research only; no assets vendored"
     },
     {
+      "name": "Pi coding agent",
+      "package": "@earendil-works/pi-coding-agent",
+      "repository": "https://github.com/earendil-works/pi",
+      "version": "0.82.1",
+      "packageIntegritySha512": "zbkAhoIuDPMF3pKuja0ajZabrMWU29FUMV9A/XMXT/XC1yXs5xt6t6t13GogQFsDrDqbFP4DkZQO1w8rWRAzYA==",
+      "license": "MIT",
+      "role": "pinned AI agent SDK dependency behind the disabled JSONL desktop sidecar boundary"
+    },
+    {
       "name": "eDEX-UI",
       "repository": "https://github.com/GitSquared/edex-ui",
       "commit": "04a00c4079908788b371c6ecdefff96d0d9950f8",

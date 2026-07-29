@@ -1,0 +1,16 @@
+{
+  "name": "@jarvisv2/pi-agent-host",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "inspect": "node ./src/host.mjs inspect",
+    "protocol:test": "node ./test/protocol.test.mjs"
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "0.82.1"
+  }
+}

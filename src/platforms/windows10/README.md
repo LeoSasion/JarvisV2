@@ -27,6 +27,12 @@ Win10 taskbar. Its A/C/D presets, continuous hue slider and four effects are
 preview controls only. Deterministic PNG rendering provides visual evidence
 without contacting or modifying the live Shell.
 
+The owned `Jarvis.Win10.NativeStyleProbe` now consumes the same RGB frame for
+its client surface while retaining the single reviewed Win10 dark-caption
+attribute. Arbitrary caption color is not claimed. The shared
+`Jarvis.PiAgentHost` has also reached a pinned SDK and disabled JSONL transport
+probe; no agent session is created or launched by the desktop yet.
+
 See `WINDOWS10-HANDOFF.md`,
 `docs/WINDOWS10-NATIVE-STYLE-PROBE.md` and
 `docs/WINDOWS10-SHELL-SURFACE-INVENTORY.md` for host commands and receipts.
@@ -37,7 +43,8 @@ runnable preview and reproducible screenshot.
 
 The Shell probe reads window structure but does not collect titles or modify
 Explorer. Neither probe uses Windhawk.
-The next visual slice may bind these same frames to the already owned Win10
-native-caption probe while real Explorer remains untouched.
+The next visible slice may connect the disabled Pi sidecar to an owned
+conversation panel with read-only session admission while real Explorer
+remains untouched.
 Future projects continue to use `Jarvis.Win10.<Feature>` and must not reuse
 Win11 private symbols, selectors, DWM backdrops or module IDs.

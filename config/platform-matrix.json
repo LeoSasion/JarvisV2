@@ -6,10 +6,11 @@
   "common": {
     "sourceRoot": "src/common",
     "role": "Code that is intended to work across supported Windows client families.",
-    "projects": [
-      "Jarvis.ControlCenter",
-      "Jarvis.DesktopStyleProbe",
-      "Jarvis.DesktopStyleSession"
+      "projects": [
+        "Jarvis.ControlCenter",
+        "Jarvis.DesktopStyleProbe",
+        "Jarvis.DesktopStyleSession",
+        "Jarvis.PiAgentHost"
     ]
   },
   "platforms": [
@@ -19,11 +20,11 @@
       "modRoot": "mods/windows10",
       "nativeTestRoot": "tests/native/windows10",
       "entryDocument": "WINDOWS10-HANDOFF.md",
-      "status": "owned-process-neural-void-preview",
+      "status": "owned-rgb-window-and-pi-transport-probe",
       "compatibilityProfile": "win10-22h2-19045.6466-x64",
       "activationPermitted": false,
       "liveExplorer": "not-run",
-      "nextVisibleSlice": "bind approved RGB frames to the owned Win10 native caption and prepare selector-specific adapter plans without live Shell mutation"
+      "nextVisibleSlice": "connect the disabled Pi JSONL sidecar to an owned desktop conversation panel with read-only session admission"
     },
     {
       "id": "windows11",

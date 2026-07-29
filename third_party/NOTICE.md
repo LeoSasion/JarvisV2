@@ -98,6 +98,20 @@ all-process injector and loader boundary. No Windhawk injector, service,
 remote-memory, APC or remote-thread source was copied into the Explorer host
 model.
 
+## Pi coding agent
+
+- Package: `@earendil-works/pi-coding-agent`
+- Version: `0.82.1`
+- Package integrity:
+  `sha512-zbkAhoIuDPMF3pKuja0ajZabrMWU29FUMV9A/XMXT/XC1yXs5xt6t6t13GogQFsDrDqbFP4DkZQO1w8rWRAzYA==`
+- License: MIT
+- Upstream: <https://github.com/earendil-works/pi>
+
+JarvisV2 uses Pi as an unmodified package dependency behind a separate Node.js
+JSONL sidecar. The current transport probe imports and fingerprints the SDK
+but refuses session creation, credentials and mutation tools. No Pi code is
+loaded into Explorer.
+
 ## Reference-only projects
 
 - Windows 11 Taskbar Styling Guide, commit `12a3c7900eb6581901548961b369e87541fcdd04`: selector research only. The repository has no declared license, so JARVIS2 vendors none of its images, icons, theme packages, or screenshots.

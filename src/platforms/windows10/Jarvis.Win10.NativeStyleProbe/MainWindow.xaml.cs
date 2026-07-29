@@ -2,21 +2,41 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Jarvis.Win10.HostAdmission;
+using Jarvis.Win10.RgbThemeModel;
 
 namespace Jarvis.Win10.NativeStyleProbe;
 
 public partial class MainWindow : Window
 {
     private readonly HostProbeReceipt hostReceipt;
+    private readonly DispatcherTimer rgbTimer;
+    private readonly SolidColorBrush accentBrush;
+    private readonly DateTimeOffset rgbStartedAt =
+        DateTimeOffset.UtcNow;
+    private string rgbEffectId = "signal-pulse";
 
     internal MainWindow(HostProbeReceipt hostReceipt)
     {
         this.hostReceipt = hostReceipt;
         InitializeComponent();
+        accentBrush =
+            (SolidColorBrush)Resources["AccentBrush"];
+        rgbTimer = new DispatcherTimer(
+            TimeSpan.FromMilliseconds(33),
+            DispatcherPriority.Render,
+            (_, _) => RenderRgbFrame(),
+            Dispatcher);
         PopulateHostEvidence();
         SourceInitialized += (_, _) =>
             ApplyPreset(NativeStylePreset.JarvisGraphite);
+        Loaded += (_, _) =>
+        {
+            RenderRgbFrame();
+            rgbTimer.Start();
+        };
+        Closed += (_, _) => rgbTimer.Stop();
     }
 
     private void PresetButton_OnClick(
@@ -30,6 +50,46 @@ public partial class MainWindow : Window
         }
 
         ApplyPreset(preset);
+    }
+
+    private void RgbPresetButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        if (sender is Button { Tag: string hueText } &&
+            double.TryParse(
+                hueText,
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out double hue))
+        {
+            RgbHueSlider.Value = hue;
+        }
+    }
+
+    private void RgbHueSlider_OnValueChanged(
+        object sender,
+        RoutedPropertyChangedEventArgs<double> eventArgs)
+    {
+        if (IsInitialized)
+        {
+            RenderRgbFrame();
+        }
+    }
+
+    private void RgbEffectSelector_OnSelectionChanged(
+        object sender,
+        SelectionChangedEventArgs eventArgs)
+    {
+        if (RgbEffectSelector.SelectedItem is
+            ComboBoxItem { Tag: string effectId })
+        {
+            rgbEffectId = effectId;
+            if (IsInitialized)
+            {
+                RenderRgbFrame();
+            }
+        }
     }
 
     private void PopulateHostEvidence()
@@ -52,7 +112,7 @@ public partial class MainWindow : Window
         CompositionStatus.Foreground =
             FindBrush(
                 visuals.CompositionEnabled
-                    ? "CyanBrush"
+                    ? "AccentBrush"
                     : "AmberBrush");
         HighContrastStatus.Text =
             $"HIGH CONTRAST = {ToStatus(visuals.HighContrast)}";
@@ -81,27 +141,49 @@ public partial class MainWindow : Window
             CultureInfo.InvariantCulture,
             $"{call.Name} · 0x{call.HResult:X8}");
         CallStatus.Foreground =
-            FindBrush(result.Passed ? "CyanBrush" : "AmberBrush");
+            FindBrush(result.Passed ? "AccentBrush" : "AmberBrush");
 
-        Color accent = GetAccentColor(preset);
-        AccentRail.Background = new SolidColorBrush(accent);
         ClientSurface.Background =
             new SolidColorBrush(GetSurfaceColor(preset));
     }
 
-    private Color GetAccentColor(NativeStylePreset preset)
+    private void RenderRgbFrame()
     {
-        if (preset == NativeStylePreset.NativeAccent &&
-            hostReceipt.SystemVisuals is not null &&
-            ColorConverter.ConvertFromString(
-                hostReceipt.SystemVisuals.ColorizationColor) is Color color)
+        double seconds =
+            (DateTimeOffset.UtcNow - rgbStartedAt).TotalSeconds;
+        double cyclesPerSecond = rgbEffectId switch
         {
-            return color;
-        }
+            "breathe" => 12.0 / 60.0,
+            "spectrum" => 4.0 / 60.0,
+            "signal-pulse" => 30.0 / 60.0,
+            _ => 0.0,
+        };
+        double phase =
+            cyclesPerSecond == 0.0
+                ? 0.0
+                : seconds * cyclesPerSecond;
+        RgbFrame frame =
+            RgbEffectEngine.Sample(
+                RgbHueSlider.Value,
+                1.0,
+                1.0,
+                rgbEffectId,
+                phase);
+        ApplyRgbFrame(frame);
+    }
 
-        return preset == NativeStylePreset.SystemDefault
-            ? Color.FromRgb(0x82, 0x95, 0x9D)
-            : Color.FromRgb(0x52, 0xD9, 0xCF);
+    internal void ApplyRgbFrame(RgbFrame frame)
+    {
+        Color accent =
+            Color.FromRgb(
+                frame.Red,
+                frame.Green,
+                frame.Blue);
+        accentBrush.Color = accent;
+        RgbHueValue.Text =
+            $"{frame.HueDegrees.ToString("F1", CultureInfo.InvariantCulture)}°";
+        RgbFrameStatus.Text =
+            $"{frame.Hex} / {frame.EffectId.ToUpperInvariant()} / CLIENT ONLY";
     }
 
     private static Color GetSurfaceColor(NativeStylePreset preset) =>
@@ -131,7 +213,7 @@ public partial class MainWindow : Window
             NativeStylePreset.JarvisGraphite =>
                 "Shared Jarvis visual intent translated to the one reviewed Win10 dark-caption attribute.",
             NativeStylePreset.NativeAccent =>
-                "Keeps the reviewed dark caption while reflecting the host DWM colorization color in this client surface.",
+                "Keeps the reviewed dark caption while the host DWM accent remains read-only evidence beside the independent RGB frame.",
             _ => "Unknown Win10 style preset.",
         };
 

@@ -12,6 +12,8 @@ $sourceRoot = Join-Path $root (
     'src\platforms\windows10\Jarvis.Win10.NativeStyleProbe')
 $admissionRoot = Join-Path $root (
     'src\platforms\windows10\Jarvis.Win10.HostAdmission')
+$rgbModelRoot = Join-Path $root (
+    'src\platforms\windows10\Jarvis.Win10.RgbThemeModel')
 $projectPath = Join-Path $sourceRoot (
     'Jarvis.Win10.NativeStyleProbe.csproj')
 $profilePath = Join-Path $root 'config\windows10-host-profiles.json'
@@ -41,7 +43,11 @@ function Add-Check {
 }
 
 $sourceText = @(
-    foreach ($currentSourceRoot in @($sourceRoot, $admissionRoot)) {
+    foreach ($currentSourceRoot in @(
+        $sourceRoot,
+        $admissionRoot,
+        $rgbModelRoot
+    )) {
         Get-ChildItem -LiteralPath $currentSourceRoot -File -Recurse |
             Where-Object Extension -In @('.cs', '.xaml', '.csproj') |
             Sort-Object FullName |
@@ -137,6 +143,25 @@ Add-Check `
     -Detail (
         'The visible probe must remain an ordinary system-framed Win10 ' +
         'window with an explicit own-process boundary.')
+
+Add-Check `
+    -Name 'source.shared-neural-void-client-frame' `
+    -Passed (
+        $sourceText.Contains(
+            'Jarvis.Win10.RgbThemeModel.csproj') -and
+        $sourceText.Contains('RgbEffectEngine.Sample(') -and
+        $windowText.Contains('x:Name="RgbHueSlider"') -and
+        $windowText.Contains('Content="A"') -and
+        $windowText.Contains('Content="C"') -and
+        $windowText.Contains('Content="D"') -and
+        $windowText.Contains('CLIENT ONLY') -and
+        $dwmText.Contains('UseImmersiveDarkMode = 20') -and
+        -not $dwmText.Contains('BorderColor') -and
+        -not $dwmText.Contains('CaptionColor') -and
+        -not $dwmText.Contains('TextColor')) `
+    -Detail (
+        'The shared RGB frame may color only this owned WPF client surface; ' +
+        'the real Win10 caption remains on its one reviewed dark-mode attribute.')
 
 $profile = @($profiles.profiles)
 $explorer = if ($profile.Count -eq 1) {

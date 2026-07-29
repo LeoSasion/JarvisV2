@@ -15,5 +15,7 @@
   <ItemGroup>
     <ProjectReference
       Include="..\Jarvis.Win10.HostAdmission\Jarvis.Win10.HostAdmission.csproj" />
+    <ProjectReference
+      Include="..\Jarvis.Win10.RgbThemeModel\Jarvis.Win10.RgbThemeModel.csproj" />
   </ItemGroup>
 </Project>

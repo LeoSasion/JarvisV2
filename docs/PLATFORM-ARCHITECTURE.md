@@ -30,12 +30,20 @@ create churn without improving backend separation.
 
 - `Jarvis.ControlCenter`;
 - `Jarvis.DesktopStyleProbe`;
-- `Jarvis.DesktopStyleSession`.
+- `Jarvis.DesktopStyleSession`;
+- `Jarvis.PiAgentHost`.
 
 These projects keep their existing namespaces and assembly names. “Common”
 means they are candidates for both Windows 10 and Windows 11, not that every
 operation has already been validated on both systems. Each live operation
 still requires a platform compatibility profile and exact target evidence.
+
+`Jarvis.PiAgentHost` pins the official Pi Agent SDK behind an isolated Node.js
+sidecar and bounded LF-delimited JSONL. Its first transport probe imports the
+real package but denies session creation, credentials and mutation tools. A
+future desktop conversation surface will consume that protocol; the agent
+runtime will never be loaded into Explorer. See
+`docs/PI-AGENT-DESKTOP-HOST.md`.
 
 The current Supervisor remains under `src/platforms/windows11` because its
 compatibility inspector, module allowlist, recovery lease and command text are

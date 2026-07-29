@@ -72,11 +72,16 @@ $commonProjects =
         Select-Object -ExpandProperty Name |
         Sort-Object)
 $expectedCommonProjects =
-    @('Jarvis.ControlCenter', 'Jarvis.DesktopStyleProbe', 'Jarvis.DesktopStyleSession')
+    @(
+        'Jarvis.ControlCenter',
+        'Jarvis.DesktopStyleProbe',
+        'Jarvis.DesktopStyleSession',
+        'Jarvis.PiAgentHost'
+    )
 Add-Check `
     'common.reviewed-project-set' `
     (($commonProjects -join '|') -eq ($expectedCommonProjects -join '|')) `
-    'Common contains only the three reviewed cross-version candidates.'
+    'Common contains only the four reviewed cross-version candidates.'
 
 $windows10 = @($matrix.platforms | Where-Object id -eq 'windows10')
 $windows11 = @($matrix.platforms | Where-Object id -eq 'windows11')

@@ -70,6 +70,13 @@ jobs:
             throw ($parseFailures -join [Environment]::NewLine)
           }
 
+      - name: Audit Pi Agent desktop host boundary
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-PiAgentHost.ps1
+          -StaticOnly
+
       - name: Build safety supervisor
         shell: pwsh
         run: >-

@@ -7755,14 +7755,54 @@ else {
 Add-Check 'safety.explicit-live-authorization' ($safetyContract.Contains('user explicitly approves') -and $safetyContract.Contains('Do not inject a module')) 'Repository instructions must forbid live injection without explicit current-task authorization.'
 Add-Check 'recovery.flag-not-unload' ($recovery.Contains('不是结束进程的按钮') -and $recovery.Contains('不允许') -and $recovery.Contains('物理卸载')) 'Recovery docs must distinguish the emergency flag from DLL unload or process termination.'
 
+$piAgentHostRoot =
+    Join-Path $root 'src\common\Jarvis.PiAgentHost'
+$piAgentPackagePath =
+    Join-Path $piAgentHostRoot 'package.json'
+$piAgentPackage =
+    Get-Content -LiteralPath $piAgentPackagePath -Raw |
+        ConvertFrom-Json -Depth 20
+$piAgentRuntimeSource = @(
+    Get-ChildItem `
+        -LiteralPath (Join-Path $piAgentHostRoot 'src') `
+        -File `
+        -Filter '*.mjs' |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$piAgentDependencies =
+    @($piAgentPackage.dependencies.PSObject.Properties)
+$piAgentSidecarOnly =
+    $piAgentPackage.name -eq '@jarvisv2/pi-agent-host' -and
+    $piAgentPackage.private -eq $true -and
+    $piAgentPackage.type -eq 'module' -and
+    $piAgentDependencies.Count -eq 1 -and
+    $piAgentDependencies[0].Name -eq
+        '@earendil-works/pi-coding-agent' -and
+    $piAgentDependencies[0].Value -eq '0.82.1' -and
+    -not [regex]::IsMatch(
+        $piAgentRuntimeSource,
+        '(?i)\b(?:electron|webview2?|browserwindow|node:(?:http|https|net|dgram)|createServer|listen)\b')
+Add-Check `
+    'architecture.pi-agent-isolated-nonweb-sidecar' `
+    $piAgentSidecarOnly `
+    'The reviewed private Pi package may host only the bounded Node JSONL sidecar; browser, server and WebView runtimes remain forbidden.'
+
 $forbiddenFiles = @(
     Get-ChildItem -LiteralPath $root -Recurse -File -ErrorAction Stop |
         Where-Object {
-            $_.FullName -notmatch '[\\/](bin|obj|artifacts|\.git)[\\/]' -and
-            ($_.Name -eq 'package.json' -or $_.Extension -in '.html', '.jsx', '.tsx')
+            $_.FullName -notmatch
+                '[\\/](bin|obj|artifacts|node_modules|\.git)[\\/]' -and
+            (($_.Name -eq 'package.json' -and
+              $_.FullName -ne $piAgentPackagePath) -or
+             $_.Extension -in '.html', '.jsx', '.tsx')
         }
 )
-Add-Check 'architecture.no-web-shell' ($forbiddenFiles.Count -eq 0) 'The project must not contain an Electron/WebView/HTML replacement shell.'
+Add-Check `
+    'architecture.no-web-shell' `
+    ($forbiddenFiles.Count -eq 0) `
+    'The project must not contain an Electron, WebView or HTML replacement shell.'
 
 $managedBuild = [pscustomobject]@{
     status = 'skipped'

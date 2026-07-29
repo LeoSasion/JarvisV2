@@ -39,7 +39,9 @@ dotnet run `
   applies and resets `DWMWA_USE_IMMERSIVE_DARK_MODE`, closes the window and
   prints a JSON receipt.
 - `show` opens the interactive probe. Its three presets affect only that
-  window. Closing it releases all style state.
+  window. The same owned client surface now consumes the shared Neural Void
+  RGB frame with A/C/D shortcuts, continuous hue and four effects. Closing it
+  releases all style state.
 
 ## Exact admission
 
@@ -60,7 +62,9 @@ The probe carries the same Jarvis graphite, cyan, typography and density
 intent used by the common control surface. The platform translation is
 deliberately small:
 
-- Win10 uses its supported native caption plus a WPF-owned client surface.
+- Win10 uses its supported dark native caption plus a WPF-owned client
+  surface. RGB frames color only the client surface; Win10 does not expose the
+  reviewed Win11 caption-color attributes.
 - Win11 keeps its separately reviewed corner, caption-color and system
   backdrop implementation.
 

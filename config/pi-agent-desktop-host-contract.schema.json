@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvisv2.local/schemas/pi-agent-desktop-host-contract.schema.json",
+  "title": "JarvisV2 Pi Agent desktop host contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "contractId",
+    "upstream",
+    "runtime",
+    "transport",
+    "session",
+    "tools",
+    "boundaries"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "contractId": {
+      "const": "jarvisv2-pi-agent-desktop-host-v1"
+    },
+    "upstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package",
+        "exactVersion",
+        "repository",
+        "documentation",
+        "license"
+      ],
+      "properties": {
+        "package": {
+          "const": "@earendil-works/pi-coding-agent"
+        },
+        "exactVersion": {
+          "const": "0.82.1"
+        },
+        "repository": {
+          "const": "https://github.com/earendil-works/pi"
+        },
+        "documentation": {
+          "const": "https://pi.dev/docs/latest/sdk"
+        },
+        "license": {
+          "const": "MIT"
+        }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nodeMinimumMajor",
+        "integrationMode",
+        "launchState",
+        "piOfflineRequired",
+        "sessionCreationEnabled",
+        "desktopLaunchImplemented"
+      ],
+      "properties": {
+        "nodeMinimumMajor": {
+          "const": 22
+        },
+        "integrationMode": {
+          "const": "sdk-sidecar-jsonl"
+        },
+        "launchState": {
+          "const": "transport-probe-only"
+        },
+        "piOfflineRequired": {
+          "const": true
+        },
+        "sessionCreationEnabled": {
+          "const": false
+        },
+        "desktopLaunchImplemented": {
+          "const": false
+        }
+      }
+    },
+    "transport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "framing",
+        "encoding",
+        "maxFrameBytes",
+        "requestTypes",
+        "credentialFieldsAllowed"
+      ],
+      "properties": {
+        "framing": {
+          "const": "lf-delimited-jsonl"
+        },
+        "encoding": {
+          "const": "utf-8"
+        },
+        "maxFrameBytes": {
+          "const": 65536
+        },
+        "requestTypes": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "const": "hello"
+            },
+            {
+              "const": "capabilities"
+            },
+            {
+              "const": "start_session"
+            },
+            {
+              "const": "shutdown"
+            }
+          ],
+          "items": false
+        },
+        "credentialFieldsAllowed": {
+          "const": false
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "modelAuthentication",
+        "credentialTransport",
+        "persistence",
+        "workspaceBinding"
+      ],
+      "properties": {
+        "enabled": {
+          "const": false
+        },
+        "modelAuthentication": {
+          "const": "pi-owned-out-of-band"
+        },
+        "credentialTransport": {
+          "const": "forbidden"
+        },
+        "persistence": {
+          "const": "disabled-until-desktop-policy-gate"
+        },
+        "workspaceBinding": {
+          "const": "single-explicit-root"
+        }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "initialAllowlist",
+        "initiallyDenied",
+        "mutationGrant",
+        "unattendedSelfIteration"
+      ],
+      "properties": {
+        "initialAllowlist": {
+          "const": [
+            "read",
+            "grep",
+            "find",
+            "ls"
+          ]
+        },
+        "initiallyDenied": {
+          "const": [
+            "bash",
+            "edit",
+            "write"
+          ]
+        },
+        "mutationGrant": {
+          "const": "future-per-session-supervisor-capability"
+        },
+        "unattendedSelfIteration": {
+          "const": false
+        }
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shellMutationSupported",
+        "explorerMutationSupported",
+        "systemMutationSupported",
+        "deviceIntegrationSupported",
+        "activationPermitted",
+        "liveExplorer"
+      ],
+      "properties": {
+        "shellMutationSupported": {
+          "const": false
+        },
+        "explorerMutationSupported": {
+          "const": false
+        },
+        "systemMutationSupported": {
+          "const": false
+        },
+        "deviceIntegrationSupported": {
+          "const": false
+        },
+        "activationPermitted": {
+          "const": false
+        },
+        "liveExplorer": {
+          "const": "not-run"
+        }
+      }
+    }
+  }
+}
