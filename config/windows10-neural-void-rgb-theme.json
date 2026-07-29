@@ -1,0 +1,113 @@
+{
+  "$schema": "./windows10-neural-void-rgb-theme.schema.json",
+  "schemaVersion": 1,
+  "platform": "windows10",
+  "profileId": "win10-22h2-19045.6466-x64",
+  "themeId": "neural-void-rgb-v1",
+  "lifecycleState": "approved-visual-intent-offline",
+  "approvedDirection": "D-neural-void",
+  "approvalBasis": "user-selected-2026-07-30",
+  "shellComposition": {
+    "desktopVisualLanguage": "neural-void",
+    "neutralSurfaceSystem": "black-ceramic-and-smoked-glass",
+    "deviceControlsVisible": false,
+    "peripheralIllustrationsVisible": false,
+    "rgbSyncPanelVisible": false
+  },
+  "neutralPalette": {
+    "canvas": "#030809",
+    "surface": "#071113",
+    "elevated": "#0A1719",
+    "line": "#183B35",
+    "text": "#D7F8EC",
+    "mutedText": "#6E9187"
+  },
+  "recommendedAccents": [
+    {
+      "id": "orbital-cyan",
+      "sourceConcept": "A",
+      "hex": "#00E5FF",
+      "hueDegrees": 186.117647,
+      "saturation": 1.0,
+      "value": 1.0
+    },
+    {
+      "id": "reactor-amber",
+      "sourceConcept": "C",
+      "hex": "#FF6A00",
+      "hueDegrees": 24.941176,
+      "saturation": 1.0,
+      "value": 1.0
+    },
+    {
+      "id": "neural-emerald",
+      "sourceConcept": "D",
+      "hex": "#00FF9A",
+      "hueDegrees": 156.235294,
+      "saturation": 1.0,
+      "value": 1.0
+    }
+  ],
+  "accentModel": {
+    "colorSpace": "HSV",
+    "hueMinimum": 0.0,
+    "hueMaximumExclusive": 360.0,
+    "continuousHue": true,
+    "saturationMinimum": 0.0,
+    "saturationMaximum": 1.0,
+    "valueMinimum": 0.1,
+    "valueMaximum": 1.0,
+    "semanticConsumers": [
+      "desktop-ambient-traces",
+      "desktop-icon-focus",
+      "explorer-active-border",
+      "explorer-selection",
+      "taskbar-running-indicator",
+      "taskbar-status-highlights"
+    ],
+    "effectModes": [
+      {
+        "id": "static",
+        "cyclesPerMinute": 0.0,
+        "rotatesHue": false,
+        "modulatesBrightness": false
+      },
+      {
+        "id": "breathe",
+        "cyclesPerMinute": 12.0,
+        "rotatesHue": false,
+        "modulatesBrightness": true
+      },
+      {
+        "id": "spectrum",
+        "cyclesPerMinute": 4.0,
+        "rotatesHue": true,
+        "modulatesBrightness": false
+      },
+      {
+        "id": "signal-pulse",
+        "cyclesPerMinute": 30.0,
+        "rotatesHue": false,
+        "modulatesBrightness": true
+      }
+    ]
+  },
+  "syncIntent": {
+    "sharedFrameContractVersion": 1,
+    "stateOwner": "future-jarvis-rgb-state-service",
+    "displayConsumer": "windows-shell-visuals",
+    "futureDeviceConsumer": "external-device-lighting-bridge",
+    "deviceControlsVisibleInDesktop": false,
+    "physicalDeviceIllustrationsVisible": false,
+    "deviceIoImplemented": false,
+    "providerSdkBound": false,
+    "transportSupported": false,
+    "shellDependsOnDeviceBridge": false,
+    "failurePolicy": "display-continues-with-last-valid-local-frame"
+  },
+  "styleValuesDefined": true,
+  "executionSupported": false,
+  "mutationSupported": false,
+  "activationPermitted": false,
+  "liveExplorer": "not-run"
+}

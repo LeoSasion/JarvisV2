@@ -15,14 +15,21 @@ class-path candidates against a sanitized excerpt of that topology. It is a
 pure offline model: it defines no visual values and has no native, process,
 registry or mutation transport.
 
+The fourth slice, `Jarvis.Win10.RgbThemeModel`, records the approved D /
+Neural Void desktop direction. A cyan, C amber and D emerald are recommended
+accent presets over one continuous HSV color system. The desktop composition
+contains no peripheral controls or illustrations; a future external device
+bridge may consume the same RGB frame without becoming a Shell dependency.
+
 See `WINDOWS10-HANDOFF.md`,
 `docs/WINDOWS10-NATIVE-STYLE-PROBE.md` and
 `docs/WINDOWS10-SHELL-SURFACE-INVENTORY.md` for host commands and receipts.
 See `docs/WINDOWS10-SURFACE-SELECTOR-CANDIDATES.md` for the offline selector
-contract.
+contract and `docs/WINDOWS10-NEURAL-VOID-RGB-INTENT.md` for the approved
+visual intent.
 
 The Shell probe reads window structure but does not collect titles or modify
 Explorer. Neither probe uses Windhawk.
-The next visual slice is blocked on review of four image concepts.
+The next visual slice is an own-process preview of the approved intent.
 Future projects continue to use `Jarvis.Win10.<Feature>` and must not reuse
 Win11 private symbols, selectors, DWM backdrops or module IDs.

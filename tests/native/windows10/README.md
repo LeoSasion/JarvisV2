@@ -13,5 +13,10 @@ the exact desktop/Explorer/classic-taskbar surface set on this host.
 candidate, sanitized structural fixture, pure-offline source boundary,
 Release build and fail-closed selector scenarios. It never contacts Explorer.
 
+`scripts/Test-Windows10RgbThemeModel.ps1` audits the approved Neural Void
+direction, A/C/D recommended accents, continuous HSV frames, absence of
+peripheral UI, future device-bridge isolation and deterministic effect
+scenarios. It performs no rendering, device I/O or Shell mutation.
+
 Future native harnesses belong in this directory. No test may load a module
 into Explorer without a separately approved live gate.

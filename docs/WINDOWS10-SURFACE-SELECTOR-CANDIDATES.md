@@ -37,3 +37,8 @@ Before any color, material, opacity, spacing, icon-size or layout intent is
 implemented, four image concepts must be prepared and one must be explicitly
 approved by the product owner. Selector compilation alone does not authorize
 that next step.
+
+That gate was fulfilled on 2026-07-30. Concept D / Neural Void was selected
+for the desktop composition; concepts A, C and D supply recommended RGB
+accent colors. The approved offline contract is documented in
+`docs/WINDOWS10-NEURAL-VOID-RGB-INTENT.md`.

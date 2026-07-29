@@ -1,0 +1,340 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvisv2.local/schemas/windows10-neural-void-rgb-theme.schema.json",
+  "title": "JarvisV2 Windows 10 Neural Void RGB theme intent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "platform",
+    "profileId",
+    "themeId",
+    "lifecycleState",
+    "approvedDirection",
+    "approvalBasis",
+    "shellComposition",
+    "neutralPalette",
+    "recommendedAccents",
+    "accentModel",
+    "syncIntent",
+    "styleValuesDefined",
+    "executionSupported",
+    "mutationSupported",
+    "activationPermitted",
+    "liveExplorer"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "platform": {
+      "const": "windows10"
+    },
+    "profileId": {
+      "const": "win10-22h2-19045.6466-x64"
+    },
+    "themeId": {
+      "const": "neural-void-rgb-v1"
+    },
+    "lifecycleState": {
+      "const": "approved-visual-intent-offline"
+    },
+    "approvedDirection": {
+      "const": "D-neural-void"
+    },
+    "approvalBasis": {
+      "const": "user-selected-2026-07-30"
+    },
+    "shellComposition": {
+      "$ref": "#/$defs/shellComposition"
+    },
+    "neutralPalette": {
+      "$ref": "#/$defs/neutralPalette"
+    },
+    "recommendedAccents": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/accentPreset"
+      }
+    },
+    "accentModel": {
+      "$ref": "#/$defs/accentModel"
+    },
+    "syncIntent": {
+      "$ref": "#/$defs/syncIntent"
+    },
+    "styleValuesDefined": {
+      "const": true
+    },
+    "executionSupported": {
+      "const": false
+    },
+    "mutationSupported": {
+      "const": false
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "liveExplorer": {
+      "const": "not-run"
+    }
+  },
+  "$defs": {
+    "shellComposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "desktopVisualLanguage",
+        "neutralSurfaceSystem",
+        "deviceControlsVisible",
+        "peripheralIllustrationsVisible",
+        "rgbSyncPanelVisible"
+      ],
+      "properties": {
+        "desktopVisualLanguage": {
+          "const": "neural-void"
+        },
+        "neutralSurfaceSystem": {
+          "const": "black-ceramic-and-smoked-glass"
+        },
+        "deviceControlsVisible": {
+          "const": false
+        },
+        "peripheralIllustrationsVisible": {
+          "const": false
+        },
+        "rgbSyncPanelVisible": {
+          "const": false
+        }
+      }
+    },
+    "neutralPalette": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canvas",
+        "surface",
+        "elevated",
+        "line",
+        "text",
+        "mutedText"
+      ],
+      "properties": {
+        "canvas": {
+          "$ref": "#/$defs/rgbHex"
+        },
+        "surface": {
+          "$ref": "#/$defs/rgbHex"
+        },
+        "elevated": {
+          "$ref": "#/$defs/rgbHex"
+        },
+        "line": {
+          "$ref": "#/$defs/rgbHex"
+        },
+        "text": {
+          "$ref": "#/$defs/rgbHex"
+        },
+        "mutedText": {
+          "$ref": "#/$defs/rgbHex"
+        }
+      }
+    },
+    "accentPreset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourceConcept",
+        "hex",
+        "hueDegrees",
+        "saturation",
+        "value"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "orbital-cyan",
+            "reactor-amber",
+            "neural-emerald"
+          ]
+        },
+        "sourceConcept": {
+          "enum": [
+            "A",
+            "C",
+            "D"
+          ]
+        },
+        "hex": {
+          "$ref": "#/$defs/rgbHex"
+        },
+        "hueDegrees": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 360
+        },
+        "saturation": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 1
+        }
+      }
+    },
+    "accentModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "colorSpace",
+        "hueMinimum",
+        "hueMaximumExclusive",
+        "continuousHue",
+        "saturationMinimum",
+        "saturationMaximum",
+        "valueMinimum",
+        "valueMaximum",
+        "semanticConsumers",
+        "effectModes"
+      ],
+      "properties": {
+        "colorSpace": {
+          "const": "HSV"
+        },
+        "hueMinimum": {
+          "const": 0
+        },
+        "hueMaximumExclusive": {
+          "const": 360
+        },
+        "continuousHue": {
+          "const": true
+        },
+        "saturationMinimum": {
+          "const": 0
+        },
+        "saturationMaximum": {
+          "const": 1
+        },
+        "valueMinimum": {
+          "const": 0.1
+        },
+        "valueMaximum": {
+          "const": 1
+        },
+        "semanticConsumers": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "effectModes": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/effectMode"
+          }
+        }
+      }
+    },
+    "effectMode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "cyclesPerMinute",
+        "rotatesHue",
+        "modulatesBrightness"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "static",
+            "breathe",
+            "spectrum",
+            "signal-pulse"
+          ]
+        },
+        "cyclesPerMinute": {
+          "type": "number",
+          "minimum": 0
+        },
+        "rotatesHue": {
+          "type": "boolean"
+        },
+        "modulatesBrightness": {
+          "type": "boolean"
+        }
+      }
+    },
+    "syncIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sharedFrameContractVersion",
+        "stateOwner",
+        "displayConsumer",
+        "futureDeviceConsumer",
+        "deviceControlsVisibleInDesktop",
+        "physicalDeviceIllustrationsVisible",
+        "deviceIoImplemented",
+        "providerSdkBound",
+        "transportSupported",
+        "shellDependsOnDeviceBridge",
+        "failurePolicy"
+      ],
+      "properties": {
+        "sharedFrameContractVersion": {
+          "const": 1
+        },
+        "stateOwner": {
+          "const": "future-jarvis-rgb-state-service"
+        },
+        "displayConsumer": {
+          "const": "windows-shell-visuals"
+        },
+        "futureDeviceConsumer": {
+          "const": "external-device-lighting-bridge"
+        },
+        "deviceControlsVisibleInDesktop": {
+          "const": false
+        },
+        "physicalDeviceIllustrationsVisible": {
+          "const": false
+        },
+        "deviceIoImplemented": {
+          "const": false
+        },
+        "providerSdkBound": {
+          "const": false
+        },
+        "transportSupported": {
+          "const": false
+        },
+        "shellDependsOnDeviceBridge": {
+          "const": false
+        },
+        "failurePolicy": {
+          "const": "display-continues-with-last-valid-local-frame"
+        }
+      }
+    },
+    "rgbHex": {
+      "type": "string",
+      "pattern": "^#[0-9A-F]{6}$"
+    }
+  }
+}

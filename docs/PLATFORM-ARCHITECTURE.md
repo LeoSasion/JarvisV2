@@ -91,6 +91,14 @@ color, material, spacing, icon size or other visual intent. Four image
 concepts must be reviewed before that visual boundary can advance. See
 `docs/WINDOWS10-SURFACE-SELECTOR-CANDIDATES.md`.
 
+That visual review selected concept D / Neural Void for the Windows desktop.
+`Jarvis.Win10.RgbThemeModel` now owns its neutral palette, continuous HSV
+accent frames and A/C/D recommended colors. The Windows visual adapter and a
+future external device-lighting bridge are separate consumers of the same
+frame; Shell behavior never depends on physical-device availability. Keyboard,
+mouse and device controls are intentionally absent from the desktop
+composition. See `docs/WINDOWS10-NEURAL-VOID-RGB-INTENT.md`.
+
 ## Compatibility profiles
 
 Compatibility profiles are append-only and platform-specific. A profile

@@ -19,11 +19,11 @@
       "modRoot": "mods/windows10",
       "nativeTestRoot": "tests/native/windows10",
       "entryDocument": "WINDOWS10-HANDOFF.md",
-      "status": "offline-surface-selector-candidates",
+      "status": "approved-neural-void-rgb-intent",
       "compatibilityProfile": "win10-22h2-19045.6466-x64",
       "activationPermitted": false,
       "liveExplorer": "not-run",
-      "nextVisibleSlice": "four-image visual concept review before any Win10 style intent is implemented"
+      "nextVisibleSlice": "render the approved Neural Void direction in an own-process Win10 preview using shared Accent RGB frames"
     },
     {
       "id": "windows11",
