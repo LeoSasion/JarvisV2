@@ -58,9 +58,10 @@ quarantined.
 
 ## Windows 10 backend
 
-The Windows 10 tree starts intentionally empty except for its handoff contract.
-It must be implemented from a read-only inventory of the actual target host.
-It must not:
+The Windows 10 tree now contains its first exact-host vertical slice:
+`Jarvis.Win10.NativeStyleProbe`. It reads the actual target identity, matches
+the embedded `win10-22h2-19045.6466-x64` profile and may style only a window
+owned by the probe process. It must not:
 
 - widen the Win11 compatibility range;
 - reuse a Win11 module ID;
@@ -71,6 +72,10 @@ It must not:
 Common visual intent should be represented as small tokens such as color,
 density and icon size. Platform adapters translate those tokens only into
 operations explicitly supported by their verified host.
+
+The first adapter therefore uses only the Win10 dark-caption attribute. It
+does not pretend that Win11 corner, caption-color or system-backdrop
+attributes are available. See `docs/WINDOWS10-NATIVE-STYLE-PROBE.md`.
 
 ## Compatibility profiles
 

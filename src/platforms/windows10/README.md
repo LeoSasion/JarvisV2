@@ -1,11 +1,14 @@
-# Windows 10 backend handoff
+# Windows 10 backend
 
-No Win10 native backend is implemented yet. This is intentional.
+The first Win10 vertical slice is implemented in
+`Jarvis.Win10.NativeStyleProbe`. It reads exact host and DWM state, verifies
+the reviewed dark-caption attribute on an owned HWND, and provides an
+interactive own-process visual surface.
 
-Start with the root `WINDOWS10-HANDOFF.md` and the read-only
-`scripts/Inspect-Windows10Host.ps1`. New projects use
-`Jarvis.Win10.<Feature>` and must not reuse Win11 private symbols, selectors or
-module IDs.
+See `WINDOWS10-HANDOFF.md` for the migration boundary and
+`docs/WINDOWS10-NATIVE-STYLE-PROBE.md` for commands and receipts. The exact
+profile is `win10-22h2-19045.6466-x64`.
 
-The first implementation should be an own-process visual probe. Do not begin
-with Explorer injection or a generalized framework.
+The probe does not discover or modify Explorer and does not use Windhawk.
+Future projects continue to use `Jarvis.Win10.<Feature>` and must not reuse
+Win11 private symbols, selectors, DWM backdrops or module IDs.

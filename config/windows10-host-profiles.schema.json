@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvisv2.local/schemas/windows10-host-profiles.schema.json",
+  "title": "JarvisV2 Windows 10 exact host profiles",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "platform",
+    "profiles"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "platform": {
+      "const": "windows10"
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/profile"
+      }
+    }
+  },
+  "$defs": {
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profileId",
+        "status",
+        "displayVersion",
+        "build",
+        "ubr",
+        "architecture",
+        "installationType",
+        "explorer",
+        "allowedCapabilities",
+        "activationPermitted",
+        "liveExplorer"
+      ],
+      "properties": {
+        "profileId": {
+          "type": "string",
+          "pattern": "^win10-[a-z0-9.-]+-x64$"
+        },
+        "status": {
+          "const": "observed-own-process-probe-only"
+        },
+        "displayVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "build": {
+          "type": "integer",
+          "minimum": 10240,
+          "maximum": 21999
+        },
+        "ubr": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "architecture": {
+          "const": "X64"
+        },
+        "installationType": {
+          "const": "Client"
+        },
+        "explorer": {
+          "$ref": "#/$defs/explorer"
+        },
+        "allowedCapabilities": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "read-system-dwm-state",
+              "set-owned-window-dark-caption"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "activationPermitted": {
+          "const": false
+        },
+        "liveExplorer": {
+          "const": "not-run"
+        }
+      }
+    },
+    "explorer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "productVersion",
+        "fileVersion",
+        "size",
+        "sha256"
+      ],
+      "properties": {
+        "productVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fileVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[A-F0-9]{64}$"
+        }
+      }
+    }
+  }
+}

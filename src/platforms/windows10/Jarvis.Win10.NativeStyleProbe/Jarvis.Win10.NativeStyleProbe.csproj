@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <AssemblyName>jarvis-win10-native-style-probe</AssemblyName>
+    <RootNamespace>Jarvis.Win10.NativeStyleProbe</RootNamespace>
+    <StartupObject>Jarvis.Win10.NativeStyleProbe.Program</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource
+      Include="..\..\..\..\config\windows10-host-profiles.json"
+      Link="windows10-host-profiles.json"
+      LogicalName="Jarvis.Win10.NativeStyleProbe.windows10-host-profiles.json" />
+  </ItemGroup>
+</Project>

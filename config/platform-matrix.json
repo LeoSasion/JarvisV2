@@ -19,11 +19,11 @@
       "modRoot": "mods/windows10",
       "nativeTestRoot": "tests/native/windows10",
       "entryDocument": "WINDOWS10-HANDOFF.md",
-      "status": "handoff-ready-no-native-backend",
-      "compatibilityProfile": null,
+      "status": "own-process-native-style-probe",
+      "compatibilityProfile": "win10-22h2-19045.6466-x64",
       "activationPermitted": false,
       "liveExplorer": "not-run",
-      "nextVisibleSlice": "read-only host inventory followed by an own-process Win10 native-style probe"
+      "nextVisibleSlice": "read-only Win10 desktop and Explorer surface inventory without external-window mutation"
     },
     {
       "id": "windows11",
