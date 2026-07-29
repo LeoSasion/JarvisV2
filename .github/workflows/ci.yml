@@ -36,6 +36,12 @@ jobs:
           pwsh -NoLogo -NoProfile -File
           .\scripts\Test-PublicationBoundary.ps1
 
+      - name: Validate platform layout
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-PlatformLayout.ps1
+
       - name: Parse PowerShell and JSON
         shell: pwsh
         run: |
@@ -68,7 +74,7 @@ jobs:
         shell: pwsh
         run: >-
           dotnet build
-          .\src\Jarvis.Supervisor\Jarvis.Supervisor.csproj
+          .\src\platforms\windows11\Jarvis.Supervisor\Jarvis.Supervisor.csproj
           --configuration Release
           --nologo
           --warnaserror

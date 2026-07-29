@@ -6,8 +6,8 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $projectPath =
-    Join-Path $root 'src\Jarvis.NativeStyleLab\Jarvis.NativeStyleLab.csproj'
-$sourceRoot = Join-Path $root 'src\Jarvis.NativeStyleLab'
+    Join-Path $root 'src\platforms\windows11\Jarvis.NativeStyleLab\Jarvis.NativeStyleLab.csproj'
+$sourceRoot = Join-Path $root 'src\platforms\windows11\Jarvis.NativeStyleLab'
 $windowPath = Join-Path $sourceRoot 'MainWindow.xaml'
 $stylerPath = Join-Path $sourceRoot 'DwmWindowStyler.cs'
 

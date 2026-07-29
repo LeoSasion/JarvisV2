@@ -14,7 +14,7 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $supervisorDll = Join-Path $root (
-    'src\Jarvis.Supervisor\bin\Release\net8.0-windows\' +
+    'src\platforms\windows11\Jarvis.Supervisor\bin\Release\net8.0-windows\' +
     'jarvis-supervisor.dll'
 )
 $allowedOutputRoot =

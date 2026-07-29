@@ -10,13 +10,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
-$sourceRoot = Join-Path $root 'src\Jarvis.ExplorerBridgeModel'
+$sourceRoot = Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerBridgeModel'
 $headerPath =
     Join-Path $sourceRoot 'jarvis_explorer_bridge_contract.h'
 $modelPath =
     Join-Path $sourceRoot 'jarvis_explorer_bridge_model.cpp'
 $harnessPath =
-    Join-Path $root 'tests\native\jarvis_explorer_bridge_model_harness.cpp'
+    Join-Path $root 'tests\native\windows11\jarvis_explorer_bridge_model_harness.cpp'
 $temporaryRoot = Join-Path (
     [IO.Path]::GetTempPath()
 ) ("jarvis2-explorer-bridge-model-" + [Guid]::NewGuid().ToString('N'))

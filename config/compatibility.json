@@ -4,7 +4,7 @@
   "modules": [
     {
       "id": "jarvis-native-taskbar",
-      "source": "mods/jarvis-native-taskbar.wh.cpp",
+      "source": "mods/windows11/jarvis-native-taskbar.wh.cpp",
       "host": "%SystemRoot%\\explorer.exe",
       "architecture": "amd64",
       "defaultActivation": "blocked-by-global-kill-switch-and-one-shot-permit",
@@ -13,7 +13,7 @@
     },
     {
       "id": "jarvis-taskbar-icon-size",
-      "source": "mods/jarvis-taskbar-icon-size.wh.cpp",
+      "source": "mods/windows11/jarvis-taskbar-icon-size.wh.cpp",
       "host": "%SystemRoot%\\explorer.exe",
       "architecture": "amd64",
       "defaultActivation": "disabled-setting-global-kill-switch-and-one-shot-permit",

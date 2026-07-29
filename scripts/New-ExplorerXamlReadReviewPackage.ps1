@@ -12,7 +12,7 @@ $artifactRoot = Join-Path (
 ) 'artifacts\explorer-xaml-read-review-packages\runs'
 $supervisor = Join-Path (
     $root
-) 'src\Jarvis.Supervisor\bin\Release\net8.0-windows\jarvis-supervisor.exe'
+) 'src\platforms\windows11\Jarvis.Supervisor\bin\Release\net8.0-windows\jarvis-supervisor.exe'
 $killSwitchPath = Join-Path $env:LOCALAPPDATA 'JARVIS2\disabled.flag'
 $permitPath = Join-Path $env:LOCALAPPDATA 'JARVIS2\active-module.txt'
 $recoveryLeasePath = Join-Path (
@@ -21,7 +21,7 @@ $recoveryLeasePath = Join-Path (
 $contractPath = Join-Path (
     $root
 ) 'config\explorer-xaml-surface-discovery-contract.json'
-$sourceRoot = Join-Path $root 'src\Jarvis.ExplorerTapReadOnly'
+$sourceRoot = Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerTapReadOnly'
 
 function Get-RelativePath {
     param(

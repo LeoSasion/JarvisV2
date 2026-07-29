@@ -84,7 +84,7 @@ internal sealed class NativeWindowStyleSessionController
                     "new-window-system-default-colors",
                 exactApplyCommand =
                     "dotnet run --project " +
-                    @".\src\Jarvis.NativeWindowStyleSession " +
+                    @".\src\platforms\windows11\Jarvis.NativeWindowStyleSession " +
                     "--configuration Release --no-build -- " +
                     $"apply-preview --window-handle {windowHandle} " +
                     $"--expected-process-id {expectedProcessId} " +
@@ -95,7 +95,7 @@ internal sealed class NativeWindowStyleSessionController
                     NativeWindowStylePolicy.ApplyConfirmation,
                 exactEmergencyResetCommand =
                     "dotnet run --project " +
-                    @".\src\Jarvis.NativeWindowStyleSession " +
+                    @".\src\platforms\windows11\Jarvis.NativeWindowStyleSession " +
                     "--configuration Release --no-build -- " +
                     $"reset-default --window-handle {windowHandle} " +
                     $"--expected-process-id {expectedProcessId} " +

@@ -31,20 +31,20 @@ $controlledLiveReceiptSchema =
     Join-Path $root 'config\m2-controlled-live-controller-receipt.schema.json'
 $nativeReceipt =
     Join-Path $root 'docs\receipts\native-build-2026-07-22.json'
-$m2Source = Join-Path $root 'mods\jarvis-taskbar-icon-size.wh.cpp'
+$m2Source = Join-Path $root 'mods\windows11\jarvis-taskbar-icon-size.wh.cpp'
 $supervisorAssembly = Join-Path $root (
-    'src\Jarvis.Supervisor\bin\Release\net8.0-windows\' +
+    'src\platforms\windows11\Jarvis.Supervisor\bin\Release\net8.0-windows\' +
     'jarvis-supervisor.dll'
 )
 $allowedOutputRoot =
     Join-Path $root 'artifacts\m2-validation-session-plans\runs'
 $exactCommand = (
-    'dotnet run --project .\src\Jarvis.Supervisor ' +
+    'dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor ' +
     '--configuration Release --no-build -- clear-kill-switch ' +
     '--module jarvis-taskbar-icon-size --confirm'
 )
 $recoveryCommand = (
-    'dotnet run --project .\src\Jarvis.Supervisor ' +
+    'dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor ' +
     '--configuration Release --no-build -- arm-kill-switch'
 )
 
@@ -155,13 +155,13 @@ foreach ($source in @(
     [pscustomobject]@{
         Key = 'm2Source'
         Path = $m2Source
-        RelativePath = 'mods/jarvis-taskbar-icon-size.wh.cpp'
+        RelativePath = 'mods/windows11/jarvis-taskbar-icon-size.wh.cpp'
     },
     [pscustomobject]@{
         Key = 'supervisorAssembly'
         Path = $supervisorAssembly
         RelativePath = (
-            'src/Jarvis.Supervisor/bin/Release/net8.0-windows/' +
+            'src/platforms/windows11/Jarvis.Supervisor/bin/Release/net8.0-windows/' +
             'jarvis-supervisor.dll'
         )
     }

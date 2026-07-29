@@ -8,9 +8,9 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $projectPath = Join-Path $root (
-    'src\Jarvis.NativeWindowStyleSession\' +
+    'src\platforms\windows11\Jarvis.NativeWindowStyleSession\' +
     'Jarvis.NativeWindowStyleSession.csproj')
-$sourceRoot = Join-Path $root 'src\Jarvis.NativeWindowStyleSession'
+$sourceRoot = Join-Path $root 'src\platforms\windows11\Jarvis.NativeWindowStyleSession'
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()

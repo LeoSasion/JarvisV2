@@ -52,13 +52,13 @@ $oldInstalledSourceSha256 =
 $oldInstalledDllSha256 =
     'DBABD5BEDAB2A2CF1BA0592A1742C2E31FF91E2F9CD4EEF440E0E2A82AF8C490'
 $canonicalSourcePath =
-    Join-Path $root 'mods\jarvis-taskbar-icon-size.wh.cpp'
+    Join-Path $root 'mods\windows11\jarvis-taskbar-icon-size.wh.cpp'
 $canonicalDllPath = Join-Path $root (
     'artifacts\native\runs\20260727T060035319Z-8e602329\modules\' +
     'jarvis-taskbar-icon-size\jarvis-taskbar-icon-size-x64.dll'
 )
 $supervisorProject =
-    Join-Path $root 'src\Jarvis.Supervisor\Jarvis.Supervisor.csproj'
+    Join-Path $root 'src\platforms\windows11\Jarvis.Supervisor\Jarvis.Supervisor.csproj'
 $planSchemaPath =
     Join-Path $root 'config\m2-validation-session-plan.schema.json'
 $controllerReceiptSchemaPath =
@@ -90,11 +90,11 @@ $allowedOutputRoot =
 $disabledInstallBackupRoot =
     Join-Path $root 'artifacts\m2-controlled-live\disabled-install-backups'
 $armCommand = (
-    'dotnet run --project .\src\Jarvis.Supervisor ' +
+    'dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor ' +
     '--configuration Release --no-build -- arm-kill-switch'
 )
 $clearCommand = (
-    'dotnet run --project .\src\Jarvis.Supervisor ' +
+    'dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor ' +
     '--configuration Release --no-build -- clear-kill-switch ' +
     '--module jarvis-taskbar-icon-size --confirm'
 )

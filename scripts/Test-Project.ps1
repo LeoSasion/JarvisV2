@@ -7,106 +7,106 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
-$stylerPath = Join-Path $root 'mods\jarvis-native-taskbar.wh.cpp'
-$iconSizePath = Join-Path $root 'mods\jarvis-taskbar-icon-size.wh.cpp'
+$stylerPath = Join-Path $root 'mods\windows11\jarvis-native-taskbar.wh.cpp'
+$iconSizePath = Join-Path $root 'mods\windows11\jarvis-taskbar-icon-size.wh.cpp'
 $compatibilityPath = Join-Path $root 'config\compatibility.json'
 $upstreamLockPath = Join-Path $root 'config\upstream-lock.json'
 $toolchainLockPath = Join-Path $root 'config\toolchain-lock.json'
 $licensePath = Join-Path $root 'LICENSE'
-$supervisorProject = Join-Path $root 'src\Jarvis.Supervisor\Jarvis.Supervisor.csproj'
-$supervisorSourcePath = Join-Path $root 'src\Jarvis.Supervisor\CompatibilityInspector.cs'
+$supervisorProject = Join-Path $root 'src\platforms\windows11\Jarvis.Supervisor\Jarvis.Supervisor.csproj'
+$supervisorSourcePath = Join-Path $root 'src\platforms\windows11\Jarvis.Supervisor\CompatibilityInspector.cs'
 $explorerHostModelProject =
-    Join-Path $root 'src\Jarvis.ExplorerHostModel\Jarvis.ExplorerHostModel.csproj'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerHostModel\Jarvis.ExplorerHostModel.csproj'
 $explorerHostModelSourceRoot =
-    Join-Path $root 'src\Jarvis.ExplorerHostModel'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerHostModel'
 $explorerHostModelAuditPath =
     Join-Path $root 'scripts\Test-ExplorerHostModel.ps1'
 $explorerHostPlanSchemaPath =
     Join-Path $root 'config\explorer-host-offline-plan.schema.json'
 $controlCenterProject =
-    Join-Path $root 'src\Jarvis.ControlCenter\Jarvis.ControlCenter.csproj'
+    Join-Path $root 'src\common\Jarvis.ControlCenter\Jarvis.ControlCenter.csproj'
 $controlCenterSourceRoot =
-    Join-Path $root 'src\Jarvis.ControlCenter'
+    Join-Path $root 'src\common\Jarvis.ControlCenter'
 $controlCenterAuditPath =
     Join-Path $root 'scripts\Test-ControlCenter.ps1'
 $nativeStyleLabProject =
-    Join-Path $root 'src\Jarvis.NativeStyleLab\Jarvis.NativeStyleLab.csproj'
+    Join-Path $root 'src\platforms\windows11\Jarvis.NativeStyleLab\Jarvis.NativeStyleLab.csproj'
 $nativeStyleLabSourceRoot =
-    Join-Path $root 'src\Jarvis.NativeStyleLab'
+    Join-Path $root 'src\platforms\windows11\Jarvis.NativeStyleLab'
 $nativeStyleLabAuditPath =
     Join-Path $root 'scripts\Test-NativeStyleLab.ps1'
 $desktopStyleProbeProject =
-    Join-Path $root 'src\Jarvis.DesktopStyleProbe\Jarvis.DesktopStyleProbe.csproj'
+    Join-Path $root 'src\common\Jarvis.DesktopStyleProbe\Jarvis.DesktopStyleProbe.csproj'
 $desktopStyleProbeSourceRoot =
-    Join-Path $root 'src\Jarvis.DesktopStyleProbe'
+    Join-Path $root 'src\common\Jarvis.DesktopStyleProbe'
 $desktopStyleProbeAuditPath =
     Join-Path $root 'scripts\Test-DesktopStyleProbe.ps1'
 $desktopStyleSessionProject =
-    Join-Path $root 'src\Jarvis.DesktopStyleSession\Jarvis.DesktopStyleSession.csproj'
+    Join-Path $root 'src\common\Jarvis.DesktopStyleSession\Jarvis.DesktopStyleSession.csproj'
 $desktopStyleSessionSourceRoot =
-    Join-Path $root 'src\Jarvis.DesktopStyleSession'
+    Join-Path $root 'src\common\Jarvis.DesktopStyleSession'
 $desktopStyleSessionAuditPath =
     Join-Path $root 'scripts\Test-DesktopStyleSession.ps1'
 $nativeWindowStyleSessionProject =
-    Join-Path $root 'src\Jarvis.NativeWindowStyleSession\Jarvis.NativeWindowStyleSession.csproj'
+    Join-Path $root 'src\platforms\windows11\Jarvis.NativeWindowStyleSession\Jarvis.NativeWindowStyleSession.csproj'
 $nativeWindowStyleSessionSourceRoot =
-    Join-Path $root 'src\Jarvis.NativeWindowStyleSession'
+    Join-Path $root 'src\platforms\windows11\Jarvis.NativeWindowStyleSession'
 $nativeWindowStyleSessionAuditPath =
     Join-Path $root 'scripts\Test-NativeWindowStyleSession.ps1'
 $explorerBridgeSourceRoot =
-    Join-Path $root 'src\Jarvis.ExplorerBridgeModel'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerBridgeModel'
 $explorerBridgeHarnessPath =
-    Join-Path $root 'tests\native\jarvis_explorer_bridge_model_harness.cpp'
+    Join-Path $root 'tests\native\windows11\jarvis_explorer_bridge_model_harness.cpp'
 $explorerBridgeAuditPath =
     Join-Path $root 'scripts\Test-ExplorerBridgeModel.ps1'
 $explorerFrameModelProject =
-    Join-Path $root 'src\Jarvis.ExplorerFrameModel\Jarvis.ExplorerFrameModel.csproj'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerFrameModel\Jarvis.ExplorerFrameModel.csproj'
 $explorerFrameModelSourceRoot =
-    Join-Path $root 'src\Jarvis.ExplorerFrameModel'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerFrameModel'
 $explorerFrameModelAuditPath =
     Join-Path $root 'scripts\Test-ExplorerFrameModel.ps1'
 $explorerPreviewModelProject =
-    Join-Path $root 'src\Jarvis.ExplorerPreviewModel\Jarvis.ExplorerPreviewModel.csproj'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerPreviewModel\Jarvis.ExplorerPreviewModel.csproj'
 $explorerPreviewModelSourceRoot =
-    Join-Path $root 'src\Jarvis.ExplorerPreviewModel'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerPreviewModel'
 $explorerPreviewModelAuditPath =
     Join-Path $root 'scripts\Test-ExplorerPreviewModel.ps1'
 $explorerSurfaceProbeProject =
-    Join-Path $root 'src\Jarvis.ExplorerSurfaceProbe\Jarvis.ExplorerSurfaceProbe.csproj'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerSurfaceProbe\Jarvis.ExplorerSurfaceProbe.csproj'
 $explorerSurfaceProbeSourceRoot =
-    Join-Path $root 'src\Jarvis.ExplorerSurfaceProbe'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerSurfaceProbe'
 $explorerSurfaceProbeAuditPath =
     Join-Path $root 'scripts\Test-ExplorerSurfaceProbe.ps1'
 $explorerTransportModelSourceRoot =
-    Join-Path $root 'src\Jarvis.ExplorerTransportModel'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerTransportModel'
 $explorerTransportModelHarnessPath =
-    Join-Path $root 'tests\native\jarvis_explorer_transport_model_harness.cpp'
+    Join-Path $root 'tests\native\windows11\jarvis_explorer_transport_model_harness.cpp'
 $explorerTransportModelAuditPath =
     Join-Path $root 'scripts\Test-ExplorerTransportModel.ps1'
 $explorerReadOnlyTapSourceRoot =
-    Join-Path $root 'src\Jarvis.ExplorerTapReadOnly'
+    Join-Path $root 'src\platforms\windows11\Jarvis.ExplorerTapReadOnly'
 $explorerReadOnlyTapHarnessPath =
-    Join-Path $root 'tests\native\jarvis_explorer_tap_protocol_harness.cpp'
+    Join-Path $root 'tests\native\windows11\jarvis_explorer_tap_protocol_harness.cpp'
 $explorerReadOnlyTapAuditPath =
     Join-Path $root 'scripts\Test-ExplorerReadOnlyTap.ps1'
 $explorerReadOnlyAdmissionHarnessPath =
-    Join-Path $root 'tests\native\jarvis_explorer_tap_admission_harness.cpp'
+    Join-Path $root 'tests\native\windows11\jarvis_explorer_tap_admission_harness.cpp'
 $explorerReadOnlyAdmissionAuditPath =
     Join-Path $root 'scripts\Test-ExplorerReadOnlyAdmission.ps1'
 $explorerInspectableAdapterHarnessPath =
-    Join-Path $root 'tests\native\jarvis_explorer_tap_inspectable_adapter_harness.cpp'
+    Join-Path $root 'tests\native\windows11\jarvis_explorer_tap_inspectable_adapter_harness.cpp'
 $explorerInspectableAdapterAuditPath =
     Join-Path $root 'scripts\Test-ExplorerInspectableAdapter.ps1'
 $explorerStyleTransactionHarnessPath =
-    Join-Path $root 'tests\native\jarvis_explorer_tap_style_transaction_harness.cpp'
+    Join-Path $root 'tests\native\windows11\jarvis_explorer_tap_style_transaction_harness.cpp'
 $explorerStyleTransactionAuditPath =
     Join-Path $root 'scripts\Test-ExplorerStyleTransaction.ps1'
 $explorerXamlReadBridgeHarnessPath =
-    Join-Path $root 'tests\native\jarvis_explorer_tap_xaml_read_bridge_harness.cpp'
+    Join-Path $root 'tests\native\windows11\jarvis_explorer_tap_xaml_read_bridge_harness.cpp'
 $explorerXamlReadBridgeAuditPath =
     Join-Path $root 'scripts\Test-ExplorerXamlReadBridge.ps1'
 $explorerXamlSurfaceDiscoveryHarnessPath =
-    Join-Path $root 'tests\native\jarvis_explorer_tap_surface_discovery_harness.cpp'
+    Join-Path $root 'tests\native\windows11\jarvis_explorer_tap_surface_discovery_harness.cpp'
 $explorerXamlSurfaceDiscoveryAuditPath =
     Join-Path $root 'scripts\Test-ExplorerXamlSurfaceDiscovery.ps1'
 $buildScriptPath = Join-Path $root 'scripts\Build-NativeMod.ps1'
@@ -119,9 +119,9 @@ $phase2TaskPath = Join-Path $root 'docs\PHASE-2-OFFLINE-LIFECYCLE-TASK.md'
 $phase2ReceiptSchemaPath =
     Join-Path $root 'config\offline-lifecycle-receipt.schema.json'
 $phase2ProtocolPath =
-    Join-Path $root 'mods\jarvis-resource-protocol.hpp'
+    Join-Path $root 'mods\common\jarvis-resource-protocol.hpp'
 $phase2HarnessPath =
-    Join-Path $root 'tests\native\jarvis_lifecycle_harness.cpp'
+    Join-Path $root 'tests\native\common\jarvis_lifecycle_harness.cpp'
 $phase2FaultRunnerPath =
     Join-Path $root 'scripts\Test-LifecycleFaultLab.ps1'
 $phase2FaultReceiptPath =
@@ -229,11 +229,11 @@ $m2RecoveryLeaseLabSchemaPath =
 $m2RecoveryLeaseLabPath =
     Join-Path $root 'scripts\Test-M2RecoveryLeaseLab.ps1'
 $recoveryTerminalLeaseSourcePath =
-    Join-Path $root 'src\Jarvis.Supervisor\RecoveryTerminalLease.cs'
+    Join-Path $root 'src\platforms\windows11\Jarvis.Supervisor\RecoveryTerminalLease.cs'
 $killSwitchSourcePath =
-    Join-Path $root 'src\Jarvis.Supervisor\KillSwitch.cs'
+    Join-Path $root 'src\platforms\windows11\Jarvis.Supervisor\KillSwitch.cs'
 $programSourcePath =
-    Join-Path $root 'src\Jarvis.Supervisor\Program.cs'
+    Join-Path $root 'src\platforms\windows11\Jarvis.Supervisor\Program.cs'
 
 $checks = [System.Collections.Generic.List[object]]::new()
 $failures = [System.Collections.Generic.List[string]]::new()
@@ -730,15 +730,15 @@ $readme = [System.IO.File]::ReadAllText((Join-Path $root 'README.md'))
 $baseline = $compatibility.validatedHosts[0]
 $phase2ExpectedSourceIdentity = [ordered]@{
     m1Source = [pscustomobject]@{
-        relativePath = 'mods/jarvis-native-taskbar.wh.cpp'
+        relativePath = 'mods/windows11/jarvis-native-taskbar.wh.cpp'
         fullPath = $stylerPath
     }
     protocolHeader = [pscustomobject]@{
-        relativePath = 'mods/jarvis-resource-protocol.hpp'
+        relativePath = 'mods/common/jarvis-resource-protocol.hpp'
         fullPath = $phase2ProtocolPath
     }
     labSource = [pscustomobject]@{
-        relativePath = 'tests/native/jarvis_lifecycle_harness.cpp'
+        relativePath = 'tests/native/common/jarvis_lifecycle_harness.cpp'
         fullPath = $phase2HarnessPath
     }
     runnerScript = [pscustomobject]@{
@@ -5275,7 +5275,7 @@ $phase2SharedProtocolContract =
         "includeFileName = 'jarvis-resource-protocol.hpp'"
     ) -and
     $buildScript.Contains(
-        "Join-Path `$root 'mods\jarvis-resource-protocol.hpp'"
+        "Join-Path `$root 'mods\common\jarvis-resource-protocol.hpp'"
     ) -and
     $phase2Protocol.Contains(
         'namespace jarvis::resource_protocol'
@@ -7597,7 +7597,7 @@ if ($receiptSchemaCurrent) {
             $expectedSupportingSources = @(
                 if ($moduleId -eq 'jarvis-native-taskbar') {
                     [pscustomobject]@{
-                        path = 'mods/jarvis-resource-protocol.hpp'
+                        path = 'mods/common/jarvis-resource-protocol.hpp'
                         includeFileName = 'jarvis-resource-protocol.hpp'
                         sha256 = (Get-FileHash `
                             -LiteralPath $phase2ProtocolPath `

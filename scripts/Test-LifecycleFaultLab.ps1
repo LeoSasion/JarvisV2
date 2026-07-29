@@ -19,9 +19,9 @@ if ([string]::IsNullOrWhiteSpace($OutputPath)) {
     $OutputPath = Join-Path $artifactRoot 'latest.json'
 }
 
-$m1SourcePath = Join-Path $root 'mods\jarvis-native-taskbar.wh.cpp'
-$protocolHeaderPath = Join-Path $root 'mods\jarvis-resource-protocol.hpp'
-$labSourcePath = Join-Path $root 'tests\native\jarvis_lifecycle_harness.cpp'
+$m1SourcePath = Join-Path $root 'mods\windows11\jarvis-native-taskbar.wh.cpp'
+$protocolHeaderPath = Join-Path $root 'mods\common\jarvis-resource-protocol.hpp'
+$labSourcePath = Join-Path $root 'tests\native\common\jarvis_lifecycle_harness.cpp'
 $runnerScriptPath = $PSCommandPath
 $receiptSchemaPath = Join-Path $root 'config\offline-lifecycle-receipt.schema.json'
 $testProjectPath = Join-Path $root 'scripts\Test-Project.ps1'
@@ -990,8 +990,8 @@ try {
     $null = Assert-NoReparsePointsInPath -Path $stageDirectory
 
     $snapshotRoot = Join-Path $stageDirectory 'snapshot'
-    $snapshotMods = Join-Path $snapshotRoot 'mods'
-    $snapshotTests = Join-Path $snapshotRoot 'tests\native'
+    $snapshotMods = Join-Path $snapshotRoot 'mods\common'
+    $snapshotTests = Join-Path $snapshotRoot 'tests\native\common'
     New-Item -ItemType Directory -Path $snapshotMods -Force | Out-Null
     New-Item -ItemType Directory -Path $snapshotTests -Force | Out-Null
     $snapshotHeaderPath = Join-Path $snapshotMods 'jarvis-resource-protocol.hpp'

@@ -94,10 +94,10 @@
       "const": false
     },
     "exactClearCommand": {
-      "const": "dotnet run --project .\\src\\Jarvis.Supervisor --configuration Release --no-build -- clear-kill-switch --module jarvis-taskbar-icon-size --confirm"
+      "const": "dotnet run --project .\\src\\platforms\\windows11\\Jarvis.Supervisor --configuration Release --no-build -- clear-kill-switch --module jarvis-taskbar-icon-size --confirm"
     },
     "emergencyArmCommand": {
-      "const": "dotnet run --project .\\src\\Jarvis.Supervisor --configuration Release --no-build -- arm-kill-switch"
+      "const": "dotnet run --project .\\src\\platforms\\windows11\\Jarvis.Supervisor --configuration Release --no-build -- arm-kill-switch"
     },
     "detail": {
       "type": "object"

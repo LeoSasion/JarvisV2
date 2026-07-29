@@ -8,8 +8,8 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $projectPath =
-    Join-Path $root 'src\Jarvis.DesktopStyleProbe\Jarvis.DesktopStyleProbe.csproj'
-$sourceRoot = Join-Path $root 'src\Jarvis.DesktopStyleProbe'
+    Join-Path $root 'src\common\Jarvis.DesktopStyleProbe\Jarvis.DesktopStyleProbe.csproj'
+$sourceRoot = Join-Path $root 'src\common\Jarvis.DesktopStyleProbe'
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()

@@ -6,6 +6,24 @@ JarvisV2 是一个独立于旧版 JARVIS 的 Windows 原生桌面改造实验。
 
 当前完成了 **M1 / Native Taskbar** 的 latched no-new-work、线程生命周期闸门、unload-safety pin，以及 Phase 2 的可重试 GIT、UI 线程注册表、跨线程派发收据和便携故障注入四组离线安全切片；同时保留第一个受控的 **M2 / Native Icon Size** 离线里程碑。M1 基于 GPL-3.0 的 Windhawk Taskbar Styler 引擎，直接修改 `explorer.exe` 中的原生 XAML Visual Tree；这些改动仍只允许 build-only，离线状态机通过不构成真实 Explorer 生命周期中的安全卸载或视觉恢复证明。M2 只 Hook `Taskbar.View.dll` 的一个现代图标尺寸计算，是目前唯一进入 Supervisor allowlist 的候选。eDEX-UI 只提供深色控制台、青色状态线和琥珀告警色的视觉语言，不进入运行时。
 
+## 平台入口
+
+仓库现在按“共享层 + 独立平台后端”组织：
+
+```text
+src/common/                 经审查的跨版本候选
+src/platforms/windows10/    Win10 新实现，当前只有接力契约
+src/platforms/windows11/    已有 Win11 实现，完整保留
+mods/{common,windows10,windows11}/
+tests/native/{common,windows10,windows11}/
+```
+
+转移到 Windows 10 时从 [Windows 10 接力说明](WINDOWS10-HANDOFF.md)
+开始；目录职责、命名和返回 Win11 的规则见
+[平台架构](docs/PLATFORM-ARCHITECTURE.md)。Win10 目录目前不是“兼容完成”，
+而是一个明确失败关闭的开发落点；Win11 私有符号、选择器和模块 ID 不得
+通过放宽版本门禁复用。`scripts/` 保持扁平，作为迁移前后稳定的仓库入口。
+
 ## 当前状态
 
 - `jarvis-native-taskbar.wh.cpp`：原生任务栏视觉模块，目标仅为真实桌面 Shell 的 `%SystemRoot%\explorer.exe` / AMD64；许可消费后会在仍持有 StateGate 时启动状态目录 watcher，任何目录文件名变化或 watcher 失败都会把 `Authorized` / `Active` 不可逆锁进 `Quiesced`。
@@ -40,6 +58,7 @@ JarvisV2 是一个独立于旧版 JARVIS 的 Windows 原生桌面改造实验。
 ## 验证与构建
 
 ```powershell
+pwsh -File .\scripts\Test-PlatformLayout.ps1
 pwsh -File .\scripts\Test-Project.ps1
 pwsh -File .\scripts\Test-PublicationBoundary.ps1
 pwsh -File .\scripts\Test-M2LiveReadiness.ps1
@@ -57,7 +76,7 @@ pwsh -File .\scripts\New-M2ValidationSessionPlan.ps1 -OutputPath `
   .\artifacts\m2-validation-session-plans\runs\<unique-name>.json
 pwsh -File .\scripts\Test-M2ObservationRehearsal.ps1 -SessionPlanPath `
   .\artifacts\m2-validation-session-plans\runs\<unique-name>.json
-dotnet run --project .\src\Jarvis.Supervisor -- inspect
+dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor -- inspect
 pwsh -File .\scripts\Build-NativeMod.ps1
 pwsh -File .\scripts\Build-NativeMod.ps1 -Module jarvis-taskbar-icon-size
 ```

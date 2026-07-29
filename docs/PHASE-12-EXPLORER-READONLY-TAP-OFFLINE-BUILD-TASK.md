@@ -18,7 +18,7 @@ This is an ABI and binary-shape milestone, not a live read-only probe.
 
 ## Delivered components
 
-`src/Jarvis.ExplorerTapReadOnly` contains:
+`src/platforms/windows11/Jarvis.ExplorerTapReadOnly` contains:
 
 1. a strict `JARVIS2-XAML-RO-V1:` initialization-data codec for the 616-byte
    Phase 11 bind request;

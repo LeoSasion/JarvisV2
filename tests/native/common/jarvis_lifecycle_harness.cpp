@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "../../mods/jarvis-resource-protocol.hpp"
+#include "../../../mods/common/jarvis-resource-protocol.hpp"
 
 #include <algorithm>
 #include <array>

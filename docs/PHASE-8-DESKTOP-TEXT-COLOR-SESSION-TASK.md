@@ -46,7 +46,7 @@ hook, inject code, start Windhawk, restart Explorer or terminate anything.
 Read-only inspection:
 
 ```powershell
-dotnet run --project .\src\Jarvis.DesktopStyleSession `
+dotnet run --project .\src\common\Jarvis.DesktopStyleSession `
   --configuration Release --no-build -- inspect `
   --expected-explorer-pid <pid>
 ```
@@ -54,7 +54,7 @@ dotnet run --project .\src\Jarvis.DesktopStyleSession `
 Read-only plan:
 
 ```powershell
-dotnet run --project .\src\Jarvis.DesktopStyleSession `
+dotnet run --project .\src\common\Jarvis.DesktopStyleSession `
   --configuration Release --no-build -- plan-preview `
   --expected-explorer-pid <pid> `
   --preset graphite `

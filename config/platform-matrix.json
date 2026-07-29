@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "repositoryName": "JarvisV2",
+  "runtimeNamespace": "JARVIS2",
+  "layoutContract": "common-plus-versioned-windows-backends-v1",
+  "common": {
+    "sourceRoot": "src/common",
+    "role": "Code that is intended to work across supported Windows client families.",
+    "projects": [
+      "Jarvis.ControlCenter",
+      "Jarvis.DesktopStyleProbe",
+      "Jarvis.DesktopStyleSession"
+    ]
+  },
+  "platforms": [
+    {
+      "id": "windows10",
+      "sourceRoot": "src/platforms/windows10",
+      "modRoot": "mods/windows10",
+      "nativeTestRoot": "tests/native/windows10",
+      "entryDocument": "WINDOWS10-HANDOFF.md",
+      "status": "handoff-ready-no-native-backend",
+      "compatibilityProfile": null,
+      "activationPermitted": false,
+      "liveExplorer": "not-run",
+      "nextVisibleSlice": "read-only host inventory followed by an own-process Win10 native-style probe"
+    },
+    {
+      "id": "windows11",
+      "sourceRoot": "src/platforms/windows11",
+      "modRoot": "mods/windows11",
+      "nativeTestRoot": "tests/native/windows11",
+      "entryDocument": "docs/PLATFORM-ARCHITECTURE.md",
+      "status": "preserved-offline-foundation",
+      "compatibilityProfile": "win11-25h2-26200.8875-x64",
+      "activationPermitted": false,
+      "liveExplorer": "not-run",
+      "nextVisibleSlice": "single-window read-only XAML discovery before any separately approved write"
+    }
+  ],
+  "invariants": {
+    "wrongPlatformBackendPolicy": "fail-closed",
+    "automaticBackendFallback": false,
+    "sharedModuleIdsAcrossPlatformBackends": false,
+    "windhawkServiceHostPermitted": false,
+    "explorerRestartDuringDevelopment": false,
+    "systemFileReplacement": false
+  }
+}

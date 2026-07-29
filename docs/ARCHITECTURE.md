@@ -23,7 +23,7 @@ M1 的模块内链路是：
 
 ### Native mod
 
-`mods/jarvis-native-taskbar.wh.cpp` 是固定上游版本的 GPL-3.0 分支。M1 保留成熟的 XAML Visual Tree 引擎，但增加：
+`mods/windows11/jarvis-native-taskbar.wh.cpp` 是固定上游版本的 GPL-3.0 分支。M1 保留成熟的 XAML Visual Tree 引擎，但增加：
 
 - 精确宿主路径和 x64 架构限制；
 - 编译期写死、不可在设置中绕过的兼容基线；
@@ -50,7 +50,7 @@ M1 当前只允许离线编译。共享协议与便携 harness 已在无 Explore
 
 ### Native icon-size experiment
 
-`mods/jarvis-taskbar-icon-size.wh.cpp` 是独立的 M2 模块，不依赖 M1，也不复用 XAML Diagnostics。它从 GPL-3.0 的 `taskbar-icon-size` 1.3.7 中只保留现代 `TaskbarConfiguration::GetIconHeightInViewPixels()` 思路，实际只有一个私有符号 Hook：
+`mods/windows11/jarvis-taskbar-icon-size.wh.cpp` 是独立的 M2 模块，不依赖 M1，也不复用 XAML Diagnostics。它从 GPL-3.0 的 `taskbar-icon-size` 1.3.7 中只保留现代 `TaskbarConfiguration::GetIconHeightInViewPixels()` 思路，实际只有一个私有符号 Hook：
 
 - 默认 `Enabled=false`，即使误导入也不会解析符号；
 - 只接受 AMD64、精确 Explorer 宿主路径和精确加载的 Core 包 `Taskbar.View.dll`；
@@ -66,7 +66,7 @@ M1 当前只允许离线编译。共享协议与便携 harness 已在无 Explore
 
 ### Safety supervisor
 
-`src/Jarvis.Supervisor` 不注入代码，也不写 Windhawk 配置。它负责：
+`src/platforms/windows11/Jarvis.Supervisor` 不注入代码，也不写 Windhawk 配置。它负责：
 
 - 对 OS、Explorer、Taskbar.View、SystemTray、SearchUx 的版本、大小和 SHA-256 做精确检查；
 - 通过 `GetShellWindow` 与 `Shell_TrayWnd` 的共同 PID 识别真实桌面 Shell，不按进程名聚合或终止文件夹窗口；
@@ -79,7 +79,7 @@ Supervisor 不是常驻 watchdog。M1 的状态 watcher 是等待目录文件名
 
 ### Explorer host offline model
 
-`src/Jarvis.ExplorerHostModel` 是 portable `net8.0` 离线准入模型，不是 loader。它只接受显式 `offline-fixture`，并且源码中没有 P/Invoke、进程枚举、服务、注册表、远程内存或 Hook 安装 API。候选身份必须来自 Shell desktop window 的单一 PID 和非零 TID，并继续匹配会话、Explorer 路径、版本、哈希、架构、启动时间与未来 standalone bridge 哈希。
+`src/platforms/windows11/Jarvis.ExplorerHostModel` 是 portable `net8.0` 离线准入模型，不是 loader。它只接受显式 `offline-fixture`，并且源码中没有 P/Invoke、进程枚举、服务、注册表、远程内存或 Hook 安装 API。候选身份必须来自 Shell desktop window 的单一 PID 和非零 TID，并继续匹配会话、Explorer 路径、版本、哈希、架构、启动时间与未来 standalone bridge 哈希。
 
 当前 Windhawk Mod 契约会被模型拒绝。即使 fixture 全部匹配，收据也只产生 `thread-specific-window-hook-review-candidate`，固定 `executionSupported=false`、`activationPermitted=false`、`liveExplorer=not-run` 和 `mutationPerformed=false`。完整机制取舍和未来 ABI 边界见 [ADR-0001](ADR-0001-EXPLORER-ONLY-HOST.md)。
 
