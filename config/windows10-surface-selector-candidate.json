@@ -1,0 +1,115 @@
+{
+  "$schema": "./windows10-surface-selector-candidate.schema.json",
+  "schemaVersion": 1,
+  "platform": "windows10",
+  "profileId": "win10-22h2-19045.6466-x64",
+  "selectorSetId": "win10-19045-shell-classes-v1",
+  "status": "offline-candidate-not-live-authorized",
+  "origin": "exact-readonly-topology-2026-07-30",
+  "selectors": [
+    {
+      "id": "desktop-icon-list",
+      "surfaceKind": "desktop-host",
+      "role": "desktop-icon-list",
+      "classPath": [
+        "Progman",
+        "SHELLDLL_DefView",
+        "SysListView32"
+      ],
+      "expectedMatchCount": 1,
+      "requiredVisible": true
+    },
+    {
+      "id": "explorer-command-bar",
+      "surfaceKind": "explorer-folder-window",
+      "role": "explorer-command-bar",
+      "classPath": [
+        "CabinetWClass",
+        "UIRibbonCommandBarDock",
+        "UIRibbonCommandBar"
+      ],
+      "expectedMatchCount": 1,
+      "requiredVisible": true
+    },
+    {
+      "id": "explorer-content-host",
+      "surfaceKind": "explorer-folder-window",
+      "role": "explorer-content-host",
+      "classPath": [
+        "CabinetWClass",
+        "ShellTabWindowClass",
+        "DUIViewWndClassName",
+        "DirectUIHWND"
+      ],
+      "expectedMatchCount": 1,
+      "requiredVisible": true
+    },
+    {
+      "id": "explorer-folder-view",
+      "surfaceKind": "explorer-folder-window",
+      "role": "explorer-folder-view",
+      "classPath": [
+        "CabinetWClass",
+        "ShellTabWindowClass",
+        "DUIViewWndClassName",
+        "DirectUIHWND",
+        "CtrlNotifySink",
+        "SHELLDLL_DefView"
+      ],
+      "expectedMatchCount": 1,
+      "requiredVisible": false
+    },
+    {
+      "id": "taskbar-start-button",
+      "surfaceKind": "primary-taskbar",
+      "role": "taskbar-start-button",
+      "classPath": [
+        "Shell_TrayWnd",
+        "Start"
+      ],
+      "expectedMatchCount": 1,
+      "requiredVisible": true
+    },
+    {
+      "id": "taskbar-task-list",
+      "surfaceKind": "primary-taskbar",
+      "role": "taskbar-task-list",
+      "classPath": [
+        "Shell_TrayWnd",
+        "ReBarWindow32",
+        "MSTaskSwWClass",
+        "MSTaskListWClass"
+      ],
+      "expectedMatchCount": 1,
+      "requiredVisible": true
+    },
+    {
+      "id": "taskbar-notification-area",
+      "surfaceKind": "primary-taskbar",
+      "role": "taskbar-notification-area",
+      "classPath": [
+        "Shell_TrayWnd",
+        "TrayNotifyWnd"
+      ],
+      "expectedMatchCount": 1,
+      "requiredVisible": true
+    },
+    {
+      "id": "taskbar-clock",
+      "surfaceKind": "primary-taskbar",
+      "role": "taskbar-clock",
+      "classPath": [
+        "Shell_TrayWnd",
+        "TrayNotifyWnd",
+        "TrayClockWClass"
+      ],
+      "expectedMatchCount": 1,
+      "requiredVisible": true
+    }
+  ],
+  "styleValuesDefined": false,
+  "executionSupported": false,
+  "mutationSupported": false,
+  "activationPermitted": false,
+  "liveExplorer": "not-run"
+}

@@ -19,11 +19,11 @@
       "modRoot": "mods/windows10",
       "nativeTestRoot": "tests/native/windows10",
       "entryDocument": "WINDOWS10-HANDOFF.md",
-      "status": "read-only-shell-surface-inventory",
+      "status": "offline-surface-selector-candidates",
       "compatibilityProfile": "win10-22h2-19045.6466-x64",
       "activationPermitted": false,
       "liveExplorer": "not-run",
-      "nextVisibleSlice": "compile reviewed Win10 surface selector candidates from the observed topology without mutation"
+      "nextVisibleSlice": "four-image visual concept review before any Win10 style intent is implemented"
     },
     {
       "id": "windows11",

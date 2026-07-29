@@ -83,6 +83,14 @@ proved the boundary. `Jarvis.Win10.ShellSurfaceProbe` uses that gate before
 enumerating bounded, text-free desktop, Explorer and classic-taskbar class
 trees. See `docs/WINDOWS10-SHELL-SURFACE-INVENTORY.md`.
 
+The third slice is the pure-offline
+`Jarvis.Win10.SurfaceSelectorModel`. It resolves eight exact class paths
+against a sanitized excerpt of the observed topology and fails closed on
+profile, role, shape, uniqueness, parent or capability drift. It defines no
+color, material, spacing, icon size or other visual intent. Four image
+concepts must be reviewed before that visual boundary can advance. See
+`docs/WINDOWS10-SURFACE-SELECTOR-CANDIDATES.md`.
+
 ## Compatibility profiles
 
 Compatibility profiles are append-only and platform-specific. A profile

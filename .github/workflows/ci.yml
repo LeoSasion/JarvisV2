@@ -105,6 +105,12 @@ jobs:
           .\scripts\Test-Windows10ShellSurfaceProbe.ps1
           -StaticOnly
 
+      - name: Audit Windows 10 offline Shell surface selector model
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-Windows10SurfaceSelectorModel.ps1
+
       - name: Audit desktop host probe without live inspection
         shell: pwsh
         run: >-

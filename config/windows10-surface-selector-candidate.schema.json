@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvisv2.local/schemas/windows10-surface-selector-candidate.schema.json",
+  "title": "JarvisV2 Windows 10 offline Shell selector candidates",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "platform",
+    "profileId",
+    "selectorSetId",
+    "status",
+    "origin",
+    "selectors",
+    "styleValuesDefined",
+    "executionSupported",
+    "mutationSupported",
+    "activationPermitted",
+    "liveExplorer"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "platform": {
+      "const": "windows10"
+    },
+    "profileId": {
+      "const": "win10-22h2-19045.6466-x64"
+    },
+    "selectorSetId": {
+      "const": "win10-19045-shell-classes-v1"
+    },
+    "status": {
+      "const": "offline-candidate-not-live-authorized"
+    },
+    "origin": {
+      "const": "exact-readonly-topology-2026-07-30"
+    },
+    "selectors": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "$ref": "#/$defs/selector"
+      }
+    },
+    "styleValuesDefined": {
+      "const": false
+    },
+    "executionSupported": {
+      "const": false
+    },
+    "mutationSupported": {
+      "const": false
+    },
+    "activationPermitted": {
+      "const": false
+    },
+    "liveExplorer": {
+      "const": "not-run"
+    }
+  },
+  "$defs": {
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "surfaceKind",
+        "role",
+        "classPath",
+        "expectedMatchCount",
+        "requiredVisible"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "surfaceKind": {
+          "enum": [
+            "desktop-host",
+            "explorer-folder-window",
+            "primary-taskbar"
+          ]
+        },
+        "role": {
+          "enum": [
+            "desktop-icon-list",
+            "explorer-command-bar",
+            "explorer-content-host",
+            "explorer-folder-view",
+            "taskbar-start-button",
+            "taskbar-task-list",
+            "taskbar-notification-area",
+            "taskbar-clock"
+          ]
+        },
+        "classPath": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "expectedMatchCount": {
+          "const": 1
+        },
+        "requiredVisible": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

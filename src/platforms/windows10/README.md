@@ -10,11 +10,19 @@ text-free class topology for the desktop, File Explorer and classic taskbar.
 Both tools consume `Jarvis.Win10.HostAdmission`, which owns the exact
 `win10-22h2-19045.6466-x64` identity gate.
 
+The third slice, `Jarvis.Win10.SurfaceSelectorModel`, compiles eight exact
+class-path candidates against a sanitized excerpt of that topology. It is a
+pure offline model: it defines no visual values and has no native, process,
+registry or mutation transport.
+
 See `WINDOWS10-HANDOFF.md`,
 `docs/WINDOWS10-NATIVE-STYLE-PROBE.md` and
-`docs/WINDOWS10-SHELL-SURFACE-INVENTORY.md` for commands and receipts.
+`docs/WINDOWS10-SHELL-SURFACE-INVENTORY.md` for host commands and receipts.
+See `docs/WINDOWS10-SURFACE-SELECTOR-CANDIDATES.md` for the offline selector
+contract.
 
 The Shell probe reads window structure but does not collect titles or modify
 Explorer. Neither probe uses Windhawk.
+The next visual slice is blocked on review of four image concepts.
 Future projects continue to use `Jarvis.Win10.<Feature>` and must not reuse
 Win11 private symbols, selectors, DWM backdrops or module IDs.

@@ -1,0 +1,220 @@
+{
+  "schemaVersion": 1,
+  "fixtureType": "sanitized-selector-evidence-excerpt",
+  "profileId": "win10-22h2-19045.6466-x64",
+  "source": "exact-readonly-topology-2026-07-30",
+  "windowTextCollected": false,
+  "containsUserContent": false,
+  "surfaces": [
+    {
+      "surfaceKind": "desktop-host",
+      "rootClass": "Progman",
+      "observedTopologySha256": "C2BEB422E7C7E69D60D54647B66CBD8CA04BD669CF1FE73664DD5BC2E6951AEB",
+      "sourceNodeCount": 4,
+      "nodes": [
+        {
+          "nodeKey": "root",
+          "parentKey": null,
+          "className": "Progman",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/0",
+          "parentKey": "root",
+          "className": "SHELLDLL_DefView",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/0/0",
+          "parentKey": "root/0",
+          "className": "SysListView32",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/0/0/0",
+          "parentKey": "root/0/0",
+          "className": "SysHeader32",
+          "visible": false
+        }
+      ]
+    },
+    {
+      "surfaceKind": "explorer-folder-window",
+      "rootClass": "CabinetWClass",
+      "observedTopologySha256": "5B58AD187C5173F291F0E33461BB6227A03D18DA037126D15F12123DB32D70E9",
+      "sourceNodeCount": 51,
+      "nodes": [
+        {
+          "nodeKey": "root",
+          "parentKey": null,
+          "className": "CabinetWClass",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/0",
+          "parentKey": "root",
+          "className": "UIRibbonCommandBarDock",
+          "visible": false
+        },
+        {
+          "nodeKey": "root/1",
+          "parentKey": "root",
+          "className": "UIRibbonCommandBarDock",
+          "visible": false
+        },
+        {
+          "nodeKey": "root/2",
+          "parentKey": "root",
+          "className": "UIRibbonCommandBarDock",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/3",
+          "parentKey": "root",
+          "className": "UIRibbonCommandBarDock",
+          "visible": false
+        },
+        {
+          "nodeKey": "root/2/0",
+          "parentKey": "root/2",
+          "className": "UIRibbonCommandBar",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/5",
+          "parentKey": "root",
+          "className": "ShellTabWindowClass",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/5/0",
+          "parentKey": "root/5",
+          "className": "DUIViewWndClassName",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/5/0/0",
+          "parentKey": "root/5/0",
+          "className": "DirectUIHWND",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/5/0/0/0",
+          "parentKey": "root/5/0/0",
+          "className": "CtrlNotifySink",
+          "visible": false
+        },
+        {
+          "nodeKey": "root/5/0/0/1",
+          "parentKey": "root/5/0/0",
+          "className": "CtrlNotifySink",
+          "visible": false
+        },
+        {
+          "nodeKey": "root/5/0/0/2",
+          "parentKey": "root/5/0/0",
+          "className": "CtrlNotifySink",
+          "visible": false
+        },
+        {
+          "nodeKey": "root/5/0/0/3",
+          "parentKey": "root/5/0/0",
+          "className": "CtrlNotifySink",
+          "visible": false
+        },
+        {
+          "nodeKey": "root/5/0/0/4",
+          "parentKey": "root/5/0/0",
+          "className": "CtrlNotifySink",
+          "visible": false
+        },
+        {
+          "nodeKey": "root/5/0/0/3/0",
+          "parentKey": "root/5/0/0/3",
+          "className": "NamespaceTreeControl",
+          "visible": false
+        },
+        {
+          "nodeKey": "root/5/0/0/4/0",
+          "parentKey": "root/5/0/0/4",
+          "className": "SHELLDLL_DefView",
+          "visible": false
+        }
+      ]
+    },
+    {
+      "surfaceKind": "primary-taskbar",
+      "rootClass": "Shell_TrayWnd",
+      "observedTopologySha256": "F8736B9F8B64E15DEFCC5615A3114F9CE28E61BE0B483840C6AB3B8460CD927C",
+      "sourceNodeCount": 25,
+      "nodes": [
+        {
+          "nodeKey": "root",
+          "parentKey": null,
+          "className": "Shell_TrayWnd",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/0",
+          "parentKey": "root",
+          "className": "Start",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/3",
+          "parentKey": "root",
+          "className": "ReBarWindow32",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/3/0",
+          "parentKey": "root/3",
+          "className": "MSTaskSwWClass",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/3/0/0",
+          "parentKey": "root/3/0",
+          "className": "MSTaskListWClass",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/5",
+          "parentKey": "root",
+          "className": "TrayNotifyWnd",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/5/1",
+          "parentKey": "root/5",
+          "className": "ToolbarWindow32",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/5/2",
+          "parentKey": "root/5",
+          "className": "SysPager",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/5/2/0",
+          "parentKey": "root/5/2",
+          "className": "ToolbarWindow32",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/5/5",
+          "parentKey": "root/5",
+          "className": "TrayClockWClass",
+          "visible": true
+        },
+        {
+          "nodeKey": "root/5/7",
+          "parentKey": "root/5",
+          "className": "TrayShowDesktopButtonWClass",
+          "visible": true
+        }
+      ]
+    }
+  ]
+}
