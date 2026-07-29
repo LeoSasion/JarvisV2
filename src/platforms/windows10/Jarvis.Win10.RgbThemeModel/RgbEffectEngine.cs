@@ -1,6 +1,6 @@
 namespace Jarvis.Win10.RgbThemeModel;
 
-internal static class RgbEffectEngine
+public static class RgbEffectEngine
 {
     public static RgbFrame Sample(
         double hueDegrees,

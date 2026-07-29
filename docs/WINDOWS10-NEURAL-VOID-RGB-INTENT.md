@@ -45,7 +45,11 @@ pwsh -NoLogo -NoProfile -File `
   -DotnetPath C:\path\to\dotnet.exe
 ```
 
-This slice defines approved visual values but cannot render or apply them.
-It has no native imports, process access, registry access, device I/O or
-Shell transport. Execution, mutation and activation remain false, and live
+This model defines approved visual values and cannot apply them. The separate
+`Jarvis.Win10.NeuralVoidPreview` project now renders the frames inside its own
+WPF process, including deterministic PNG evidence; it still cannot apply them
+to Windows. See `WINDOWS10-NEURAL-VOID-OWNED-PREVIEW.md`.
+
+Neither project has native imports, process access, registry access, device
+I/O or Shell transport. Shell mutation and activation remain false, and live
 Explorer remains `not-run`.

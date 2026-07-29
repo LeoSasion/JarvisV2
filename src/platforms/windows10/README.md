@@ -21,15 +21,23 @@ accent presets over one continuous HSV color system. The desktop composition
 contains no peripheral controls or illustrations; a future external device
 bridge may consume the same RGB frame without becoming a Shell dependency.
 
+The fifth slice, `Jarvis.Win10.NeuralVoidPreview`, renders that shared RGB
+frame as a runnable own-process WPF desktop, square Explorer and classic
+Win10 taskbar. Its A/C/D presets, continuous hue slider and four effects are
+preview controls only. Deterministic PNG rendering provides visual evidence
+without contacting or modifying the live Shell.
+
 See `WINDOWS10-HANDOFF.md`,
 `docs/WINDOWS10-NATIVE-STYLE-PROBE.md` and
 `docs/WINDOWS10-SHELL-SURFACE-INVENTORY.md` for host commands and receipts.
 See `docs/WINDOWS10-SURFACE-SELECTOR-CANDIDATES.md` for the offline selector
 contract and `docs/WINDOWS10-NEURAL-VOID-RGB-INTENT.md` for the approved
-visual intent.
+visual intent. See `docs/WINDOWS10-NEURAL-VOID-OWNED-PREVIEW.md` for the
+runnable preview and reproducible screenshot.
 
 The Shell probe reads window structure but does not collect titles or modify
 Explorer. Neither probe uses Windhawk.
-The next visual slice is an own-process preview of the approved intent.
+The next visual slice may bind these same frames to the already owned Win10
+native-caption probe while real Explorer remains untouched.
 Future projects continue to use `Jarvis.Win10.<Feature>` and must not reuse
 Win11 private symbols, selectors, DWM backdrops or module IDs.

@@ -99,6 +99,13 @@ frame; Shell behavior never depends on physical-device availability. Keyboard,
 mouse and device controls are intentionally absent from the desktop
 composition. See `docs/WINDOWS10-NEURAL-VOID-RGB-INTENT.md`.
 
+`Jarvis.Win10.NeuralVoidPreview` is the first renderer of that intent. It is a
+standalone WPF process whose desktop, Explorer and classic taskbar are all
+simulated controls. It consumes the shared RGB frame engine, exposes A/C/D
+shortcuts plus continuous hue and effects, and can emit deterministic PNG
+evidence. It has no Shell mutation transport or physical-device integration.
+See `docs/WINDOWS10-NEURAL-VOID-OWNED-PREVIEW.md`.
+
 ## Compatibility profiles
 
 Compatibility profiles are append-only and platform-specific. A profile

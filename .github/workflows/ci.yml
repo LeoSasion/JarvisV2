@@ -117,6 +117,12 @@ jobs:
           pwsh -NoLogo -NoProfile -File
           .\scripts\Test-Windows10RgbThemeModel.ps1
 
+      - name: Audit Windows 10 Neural Void own-process preview
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-Windows10NeuralVoidPreview.ps1
+
       - name: Audit desktop host probe without live inspection
         shell: pwsh
         run: >-

@@ -157,7 +157,7 @@ internal sealed record ThemeCompilationReceipt(
     bool MutationPerformed,
     IReadOnlyList<string> Failures);
 
-internal sealed record RgbFrame(
+public sealed record RgbFrame(
     int ContractVersion,
     string EffectId,
     double Phase,

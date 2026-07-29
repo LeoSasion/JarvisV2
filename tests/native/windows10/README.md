@@ -18,5 +18,10 @@ direction, A/C/D recommended accents, continuous HSV frames, absence of
 peripheral UI, future device-bridge isolation and deterministic effect
 scenarios. It performs no rendering, device I/O or Shell mutation.
 
+`scripts/Test-Windows10NeuralVoidPreview.ps1` audits and builds the runnable
+own-process WPF composition. It renders A, C, D and a custom hue to four
+distinct 1600x900 PNGs, verifies the exact eight-role visual map and rejects
+native, process, registry, Shell and device APIs.
+
 Future native harnesses belong in this directory. No test may load a module
 into Explorer without a separately approved live gate.
