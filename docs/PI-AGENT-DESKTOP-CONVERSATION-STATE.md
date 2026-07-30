@@ -63,6 +63,11 @@ text field. Failed, aborted, active and tool-event payloads are never exported.
 The turn IDs and final plain text are retained so restored UI state and restored
 Pi model context describe the same conversation.
 
+The caller-supplied `PiAgentConversationCheckpointStore` protects this value
+with Windows CurrentUser DPAPI and binds it to the admitted workspace. The
+conversation state itself remains storage-agnostic; the desktop runtime loads
+before session creation and saves after quiescing.
+
 The adapter also rejects:
 
 - empty or over-limit input;
@@ -77,10 +82,10 @@ The adapter also rejects:
 
 The diagnostic path proves three completed turns, incremental text snapshots,
 a real root-confined `read` tool lifecycle, checkpoint export and context
-restore into a fresh Pi SDK session, single-active-turn rejection and a
-separately aborted turn. It uses the deterministic offline desktop broker:
-credentials are not transported, the Pi sidecar has no model network, and
-Explorer is not touched.
+restore into a fresh Pi SDK session, encrypted store round-trip and tamper
+rejection, single-active-turn rejection and a separately aborted turn. It uses
+the deterministic offline desktop broker: credentials are not transported, the
+Pi sidecar has no model network, and Explorer is not touched.
 
 This milestone changes no visible layout. Before a WPF conversation panel or
 effect-bearing interaction is implemented, four image proposals must be

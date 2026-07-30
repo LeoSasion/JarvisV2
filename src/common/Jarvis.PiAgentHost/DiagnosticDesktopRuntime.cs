@@ -15,6 +15,11 @@ public sealed record PiAgentDesktopRuntimeProbeReceipt(
     bool CheckpointExportPassed,
     bool CheckpointContextRestorePassed,
     bool CheckpointAdmissionPassed,
+    bool CheckpointStoreRoundTripPassed,
+    bool CheckpointStoreCiphertextPassed,
+    bool CheckpointStoreBindingPassed,
+    bool CheckpointStoreCorruptionRejected,
+    bool CheckpointStoreFailureShutdownPassed,
     bool QuiesceClosedSubmission,
     bool ShutdownCancelledActiveTurn,
     bool OrderlyShutdownPassed,
@@ -25,6 +30,7 @@ public sealed record PiAgentDesktopRuntimeProbeReceipt(
     int AbortBrokerRequestCount,
     int ExportedCheckpointTurnCount,
     int RestoredCheckpointTurnCount,
+    int PersistedCheckpointTurnCount,
     int BrokerFaultCount,
     bool CredentialTransportAllowed,
     bool PiSidecarModelNetworkAllowed,
@@ -49,6 +55,16 @@ public static class PiAgentDesktopRuntimeProbe
         bool normalShutdownPassed;
         bool normalCredentialEnvironmentClean;
         PiAgentConversationCheckpoint checkpoint;
+        await using TemporaryCheckpointStoreFixture storeFixture =
+            new();
+        PiAgentConversationCheckpointStore checkpointStore =
+            storeFixture.Store;
+        bool storeInitiallyEmpty =
+            await checkpointStore.LoadAsync(
+                workspaceRoot,
+                cancellationToken) is null;
+        PiAgentConversationCheckpointStoreReceipt?
+            normalStoreReceipt;
 
         DiagnosticDesktopModelProvider normalProvider = new(
             holdResponse: false);
@@ -57,7 +73,9 @@ public static class PiAgentDesktopRuntimeProbe
                 await PiAgentDesktopRuntime.StartAsync(
                     new PiAgentDesktopRuntimeOptions(
                         sidecarOptions,
-                        workspaceRoot),
+                        workspaceRoot,
+                        ConversationCheckpointStore:
+                            checkpointStore),
                     normalProvider,
                     cancellationToken: cancellationToken))
         {
@@ -122,6 +140,8 @@ public static class PiAgentDesktopRuntimeProbe
                         turn.AssistantText));
 
             await runtime.ShutdownAsync(cancellationToken);
+            normalStoreReceipt =
+                runtime.LastCheckpointStoreReceipt;
             normalShutdownPassed =
                 runtime.IsShutdown &&
                 runtime.Conversation.Snapshot.ActiveTurnId is null &&
@@ -138,10 +158,51 @@ public static class PiAgentDesktopRuntimeProbe
             normalBrokerFaultCount = runtime.BrokerFaultCount;
         }
 
+        PiAgentConversationCheckpoint? storedCheckpoint =
+            await checkpointStore.LoadAsync(
+                workspaceRoot,
+                cancellationToken);
+        bool checkpointStoreRoundTripPassed =
+            storeInitiallyEmpty &&
+            normalStoreReceipt is not null &&
+            normalStoreReceipt.TurnCount == 3 &&
+            normalStoreReceipt.EnvelopeBytes > 0 &&
+            normalStoreReceipt.EnvelopeBytes <=
+                PiAgentConversationCheckpointStore
+                    .MaximumEnvelopeBytes &&
+            storedCheckpoint is not null &&
+            storedCheckpoint.Turns.SequenceEqual(
+                checkpoint.Turns);
+        string encryptedCheckpointText =
+            normalStoreReceipt is null
+                ? string.Empty
+                : await File.ReadAllTextAsync(
+                    normalStoreReceipt.CheckpointPath,
+                    cancellationToken);
+        bool checkpointStoreCiphertextPassed =
+            normalStoreReceipt is not null &&
+            File.Exists(normalStoreReceipt.CheckpointPath) &&
+            !encryptedCheckpointText.Contains(
+                "Start the owned desktop runtime.",
+                StringComparison.Ordinal) &&
+            !encryptedCheckpointText.Contains(
+                "JARVIS desktop broker online.",
+                StringComparison.Ordinal) &&
+            !encryptedCheckpointText.Contains(
+                workspaceRoot,
+                StringComparison.OrdinalIgnoreCase) &&
+            !Directory.EnumerateFiles(
+                    checkpointStore.RootDirectory,
+                    "*.tmp",
+                    SearchOption.TopDirectoryOnly)
+                .Any();
+
         int resumeBrokerRequestCount;
         int resumeBrokerFaultCount;
         int restoredCheckpointTurnCount;
         bool checkpointContextRestorePassed;
+        PiAgentConversationCheckpointStoreReceipt?
+            resumeStoreReceipt;
         DiagnosticDesktopModelProvider resumeProvider = new(
             holdResponse: false);
         await using (
@@ -150,7 +211,8 @@ public static class PiAgentDesktopRuntimeProbe
                     new PiAgentDesktopRuntimeOptions(
                         sidecarOptions,
                         workspaceRoot,
-                        checkpoint),
+                        ConversationCheckpointStore:
+                            checkpointStore),
                     resumeProvider,
                     cancellationToken: cancellationToken))
         {
@@ -173,6 +235,8 @@ public static class PiAgentDesktopRuntimeProbe
                 !restoredSnapshot.CanCancel &&
                 restoredSnapshot.Turns.Count ==
                     checkpoint.Turns.Count &&
+                runtime.RestoredCheckpointTurnCount ==
+                    checkpoint.Turns.Count &&
                 restoredSnapshot.Turns.All(turn =>
                     turn.Status ==
                         PiAgentConversationTurnStatus.Completed) &&
@@ -184,9 +248,39 @@ public static class PiAgentDesktopRuntimeProbe
                     checkpoint,
                     "Continue after checkpoint restore.");
             await runtime.ShutdownAsync(cancellationToken);
+            resumeStoreReceipt =
+                runtime.LastCheckpointStoreReceipt;
             resumeBrokerRequestCount = runtime.BrokerRequestCount;
             resumeBrokerFaultCount = runtime.BrokerFaultCount;
         }
+        PiAgentConversationCheckpoint? resumedStoredCheckpoint =
+            await checkpointStore.LoadAsync(
+                workspaceRoot,
+                cancellationToken);
+        checkpointStoreRoundTripPassed =
+            checkpointStoreRoundTripPassed &&
+            resumeStoreReceipt is not null &&
+            resumeStoreReceipt.TurnCount == 4 &&
+            resumedStoredCheckpoint?.Turns.Count == 4;
+        bool checkpointStoreBindingPassed =
+            await ProbeCheckpointStoreBindingAsync(
+                checkpointStore,
+                workspaceRoot,
+                storeFixture.RootDirectory,
+                cancellationToken);
+        bool checkpointStoreCorruptionRejected =
+            await ProbeCheckpointStoreCorruptionAsync(
+                checkpointStore,
+                workspaceRoot,
+                cancellationToken);
+        CheckpointStoreFailureProbe storeFailureProbe =
+            await ProbeCheckpointStoreFailureShutdownAsync(
+                sidecarOptions,
+                workspaceRoot,
+                storeFixture.RootDirectory,
+                cancellationToken);
+        int persistedCheckpointTurnCount =
+            resumeStoreReceipt?.TurnCount ?? 0;
 
         int abortBrokerRequestCount;
         int abortBrokerFaultCount;
@@ -240,7 +334,8 @@ public static class PiAgentDesktopRuntimeProbe
         int brokerFaultCount =
             normalBrokerFaultCount +
             resumeBrokerFaultCount +
-            abortBrokerFaultCount;
+            abortBrokerFaultCount +
+            storeFailureProbe.BrokerFaultCount;
         bool startupRollbackPassed =
             await ProbeStartupRollbackAsync(
                 sidecarOptions,
@@ -254,6 +349,11 @@ public static class PiAgentDesktopRuntimeProbe
             checkpointExportPassed &&
             checkpointContextRestorePassed &&
             checkpointAdmissionPassed &&
+            checkpointStoreRoundTripPassed &&
+            checkpointStoreCiphertextPassed &&
+            checkpointStoreBindingPassed &&
+            checkpointStoreCorruptionRejected &&
+            storeFailureProbe.Passed &&
             normalQuiesceClosedSubmission &&
             shutdownCancelledActiveTurn &&
             abortQuiesceClosedSubmission &&
@@ -281,6 +381,11 @@ public static class PiAgentDesktopRuntimeProbe
             checkpointExportPassed,
             checkpointContextRestorePassed,
             checkpointAdmissionPassed,
+            checkpointStoreRoundTripPassed,
+            checkpointStoreCiphertextPassed,
+            checkpointStoreBindingPassed,
+            checkpointStoreCorruptionRejected,
+            storeFailureProbe.Passed,
             normalQuiesceClosedSubmission &&
                 abortQuiesceClosedSubmission,
             shutdownCancelledActiveTurn,
@@ -293,12 +398,181 @@ public static class PiAgentDesktopRuntimeProbe
             abortBrokerRequestCount,
             checkpoint.Turns.Count,
             restoredCheckpointTurnCount,
+            persistedCheckpointTurnCount,
             brokerFaultCount,
             false,
             false,
             "diagnostic-only",
             "not-run",
             false);
+    }
+
+    private sealed record CheckpointStoreFailureProbe(
+        bool Passed,
+        int BrokerFaultCount);
+
+    private static async Task<CheckpointStoreFailureProbe>
+        ProbeCheckpointStoreFailureShutdownAsync(
+            PiAgentSidecarOptions sidecarOptions,
+            string workspaceRoot,
+            string fixtureRoot,
+            CancellationToken cancellationToken)
+    {
+        string failureRoot = Path.Combine(
+            fixtureRoot,
+            "commit-failure-store");
+        Directory.CreateDirectory(failureRoot);
+        PiAgentConversationCheckpointStore failureStore = new(
+            failureRoot);
+        DiagnosticDesktopModelProvider provider = new(
+            holdResponse: false);
+        bool saveRejected = false;
+        bool sidecarStopped = false;
+        bool noReceipt = false;
+        bool noTemporaryFile = false;
+        int brokerFaultCount;
+        await using (
+            PiAgentDesktopRuntime runtime =
+                await PiAgentDesktopRuntime.StartAsync(
+                    new PiAgentDesktopRuntimeOptions(
+                        sidecarOptions,
+                        workspaceRoot,
+                        ConversationCheckpointStore:
+                            failureStore),
+                    provider,
+                    cancellationToken: cancellationToken))
+        {
+            PiAgentConversationTurn turn =
+                await runtime.Conversation.SubmitAsync(
+                    "Persist this turn through a forced commit failure.",
+                    "runtime-store-failure-turn",
+                    cancellationToken);
+            PiAgentConversationTurnSnapshot final =
+                await turn.Completion.WaitAsync(
+                    cancellationToken);
+            Directory.CreateDirectory(
+                failureStore.GetCheckpointPath(workspaceRoot));
+            try
+            {
+                await runtime.ShutdownAsync(cancellationToken);
+            }
+            catch (Exception exception)
+                when (exception is
+                    IOException or
+                    InvalidDataException or
+                    UnauthorizedAccessException)
+            {
+                saveRejected = true;
+            }
+            sidecarStopped =
+                final.Status ==
+                    PiAgentConversationTurnStatus.Completed &&
+                runtime.IsShutdown;
+            noReceipt =
+                runtime.LastCheckpointStoreReceipt is null;
+            noTemporaryFile =
+                !Directory.EnumerateFiles(
+                        failureRoot,
+                        "*.tmp",
+                        SearchOption.TopDirectoryOnly)
+                    .Any();
+            brokerFaultCount = runtime.BrokerFaultCount;
+        }
+        return new CheckpointStoreFailureProbe(
+            saveRejected &&
+                sidecarStopped &&
+                noReceipt &&
+                noTemporaryFile,
+            brokerFaultCount);
+    }
+
+    private static async Task<bool>
+        ProbeCheckpointStoreBindingAsync(
+            PiAgentConversationCheckpointStore checkpointStore,
+            string workspaceRoot,
+            string fixtureRoot,
+            CancellationToken cancellationToken)
+    {
+        string sourcePath =
+            checkpointStore.GetCheckpointPath(workspaceRoot);
+        string foreignWorkspace = Path.Combine(
+            fixtureRoot,
+            "foreign-workspace");
+        Directory.CreateDirectory(foreignWorkspace);
+        string foreignPath =
+            checkpointStore.GetCheckpointPath(foreignWorkspace);
+        File.Copy(sourcePath, foreignPath, overwrite: true);
+        try
+        {
+            _ = await checkpointStore.LoadAsync(
+                foreignWorkspace,
+                cancellationToken);
+            return false;
+        }
+        catch (InvalidDataException)
+        {
+            return true;
+        }
+        finally
+        {
+            if (File.Exists(foreignPath))
+            {
+                File.Delete(foreignPath);
+            }
+        }
+    }
+
+    private static async Task<bool>
+        ProbeCheckpointStoreCorruptionAsync(
+            PiAgentConversationCheckpointStore checkpointStore,
+            string workspaceRoot,
+            CancellationToken cancellationToken)
+    {
+        string checkpointPath =
+            checkpointStore.GetCheckpointPath(workspaceRoot);
+        using JsonDocument envelope = JsonDocument.Parse(
+            await File.ReadAllTextAsync(
+                checkpointPath,
+                cancellationToken));
+        JsonElement root = envelope.RootElement;
+        string protectedPayload = root
+            .GetProperty("protectedPayload")
+            .GetString() ??
+            throw new InvalidDataException(
+                "The diagnostic checkpoint payload was absent.");
+        char replacement =
+            protectedPayload[0] == 'A' ? 'B' : 'A';
+        string corruptedPayload =
+            replacement + protectedPayload[1..];
+        string corruptedEnvelope = JsonSerializer.Serialize(
+            new
+            {
+                schemaVersion =
+                    root.GetProperty("schemaVersion").GetInt32(),
+                receiptType =
+                    root.GetProperty("receiptType").GetString(),
+                workspaceId =
+                    root.GetProperty("workspaceId").GetString(),
+                savedAtUtc =
+                    root.GetProperty("savedAtUtc")
+                        .GetDateTimeOffset(),
+                protectedPayload = corruptedPayload,
+            });
+        await File.WriteAllTextAsync(
+            checkpointPath,
+            corruptedEnvelope,
+            cancellationToken);
+        try
+        {
+            _ = await checkpointStore.LoadAsync(
+                workspaceRoot,
+                cancellationToken);
+            return false;
+        }
+        catch (InvalidDataException)
+        {
+            return true;
+        }
     }
 
     private static bool ContextContainsCheckpoint(
@@ -481,6 +755,49 @@ public static class PiAgentDesktopRuntimeProbe
             .Parent?.FullName ??
         throw new InvalidOperationException(
             "The runtime probe workspace could not be resolved.");
+
+    private sealed class TemporaryCheckpointStoreFixture :
+        IAsyncDisposable
+    {
+        public TemporaryCheckpointStoreFixture()
+        {
+            RootDirectory = Path.Combine(
+                Path.GetTempPath(),
+                $"jarvisv2-pi-checkpoint-{Guid.NewGuid():N}");
+            Store = new PiAgentConversationCheckpointStore(
+                RootDirectory);
+        }
+
+        public string RootDirectory { get; }
+        public PiAgentConversationCheckpointStore Store { get; }
+
+        public ValueTask DisposeAsync()
+        {
+            if (!Directory.Exists(RootDirectory))
+            {
+                return ValueTask.CompletedTask;
+            }
+            string temporaryRoot = Path.TrimEndingDirectorySeparator(
+                Path.GetFullPath(Path.GetTempPath()));
+            string admittedPrefix =
+                temporaryRoot + Path.DirectorySeparatorChar;
+            string fullRoot = Path.GetFullPath(RootDirectory);
+            if (
+                !fullRoot.StartsWith(
+                    admittedPrefix,
+                    StringComparison.OrdinalIgnoreCase) ||
+                !Path.GetFileName(fullRoot).StartsWith(
+                    "jarvisv2-pi-checkpoint-",
+                    StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "The diagnostic checkpoint root failed cleanup " +
+                    "admission.");
+            }
+            Directory.Delete(fullRoot, recursive: true);
+            return ValueTask.CompletedTask;
+        }
+    }
 
     private sealed class DisposableProbeProvider :
         IDesktopModelProvider,

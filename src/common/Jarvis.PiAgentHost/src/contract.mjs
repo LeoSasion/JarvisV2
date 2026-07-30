@@ -80,6 +80,14 @@ export function validateContract(contract) {
       16_384 ||
     contract.session?.desktopConversationCheckpointPersistence !==
       "desktop-owned-external" ||
+    contract.session?.desktopConversationCheckpointStore !==
+      "current-user-dpapi-atomic-workspace-bound" ||
+    contract.session?.desktopConversationCheckpointStoreRoot !==
+      "local-appdata-jarvis2-pi-agent-conversations" ||
+    contract.session?.desktopConversationCheckpointEnvelopeMaxBytes !==
+      65_536 ||
+    contract.session?.desktopConversationCheckpointSave !==
+      "write-through-on-orderly-shutdown" ||
     contract.session?.credentialTransport !== "forbidden" ||
     contract.session?.persistence !== "in-memory" ||
     contract.session?.workspaceBinding !==

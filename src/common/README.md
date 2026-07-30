@@ -17,4 +17,7 @@ desktop-owned, current-user named pipe. Its asynchronous turn transport can
 stream events and cancel active generation. It contains no Shell or platform
 styling transport. `PiAgentDesktopRuntime` is the composition root that owns
 the broker, sidecar, admitted session and conversation state, then quiesces and
-disposes them in reviewed order.
+disposes them in reviewed order. A caller-supplied
+`PiAgentConversationCheckpointStore` binds bounded completed-text history to
+one workspace, protects it with Windows CurrentUser DPAPI, commits it
+atomically on orderly shutdown and restores it before a new sidecar session.

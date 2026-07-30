@@ -21,14 +21,15 @@ must prove the exact four read-only tools, the desktop broker model identity,
 in-memory session state, disabled resource discovery and disabled sidecar model
 network.
 
-The runtime may also receive one desktop-owned conversation checkpoint. Before
-the sidecar starts, managed code admits its schema, exact text limits, unique
-turn IDs and serialized UTF-8 size. The sidecar repeats those checks, appends
-the admitted user/assistant message pairs to Pi's in-memory `SessionManager`,
-and only then creates the Agent session. The session receipt reports both the
-restored turn count and restored context-message count. A future storage layer
-can therefore resume real model context instead of reconstructing only visible
-chat rows.
+The runtime may receive one explicit desktop-owned conversation checkpoint or
+a `PiAgentConversationCheckpointStore`. Before the sidecar starts, managed code
+loads the CurrentUser-DPAPI envelope when needed and admits its schema, exact
+text limits, unique turn IDs and serialized UTF-8 size. The sidecar repeats
+those checks, appends the admitted user/assistant message pairs to Pi's
+in-memory `SessionManager`, and only then creates the Agent session. The session
+receipt reports both the restored turn count and restored context-message
+count, so a new desktop process resumes real model context rather than only
+reconstructing visible chat rows.
 
 If any startup stage fails, the owned Node process and broker are disposed
 before the failure is returned. Once broker startup succeeds, provider
@@ -41,7 +42,9 @@ ownership transfers to the runtime and is released with the broker.
 1. quiesces the conversation so new turns are rejected;
 2. requests cancellation of the active turn, if any;
 3. waits for the terminal conversation event;
-4. requests orderly sidecar shutdown.
+4. exports completed turns and commits the encrypted checkpoint, when a store
+   is configured;
+5. requests orderly sidecar shutdown.
 
 `DisposeAsync` then disposes the owned sidecar and broker. If orderly shutdown
 does not complete within the reviewed timeout, existing controller cleanup is
@@ -56,10 +59,10 @@ prevents a closing WPF window from racing a new prompt against sidecar disposal.
 The runtime accepts a provider-neutral `IDesktopModelProvider`; it does not
 select a production provider, read credentials or create a credential store.
 The Pi sidecar remains offline and has only `read`, `grep`, `find` and `ls`
-inside one admitted workspace. Pi session persistence remains disabled. This
-slice exposes a bounded checkpoint value but does not write, encrypt or load it
-from disk; that persistence policy belongs to a future desktop-owned storage
-layer. The runtime does not enable mutation tools, contact Explorer, modify the
+inside one admitted workspace. Pi SDK session persistence remains disabled.
+The desktop can persist only the bounded completed-text checkpoint in its
+CurrentUser-DPAPI store; the sidecar never reads the store or encryption key.
+The runtime does not enable mutation tools, contact Explorer, modify the
 registry or control physical RGB devices.
 
 The deterministic `runtime-probe` command proves:
@@ -68,6 +71,8 @@ The deterministic `runtime-probe` command proves:
   trip;
 - export of three completed text turns, followed by a fresh sidecar restoring
   all six context messages before a continuation prompt;
+- CurrentUser-DPAPI encrypted save/load, automatic store-backed restore,
+  workspace-copy rejection and ciphertext-corruption rejection;
 - fail-closed rejection of duplicate and over-limit checkpoints;
 - exact broker/session admission;
 - rejection of submissions after quiesce;
@@ -76,4 +81,5 @@ The deterministic `runtime-probe` command proves:
   startup rejection;
 - zero broker faults and credential-free, diagnostic-only model traffic.
 
-Run it as part of `scripts/Test-PiAgentHost.ps1`.
+Run it as part of `scripts/Test-PiAgentHost.ps1`. The envelope and lifecycle
+details are in `PI-AGENT-DESKTOP-CHECKPOINT-STORE.md`.

@@ -5,17 +5,19 @@ namespace Jarvis.PiAgentHost;
 public sealed record PiAgentDesktopRuntimeOptions(
     PiAgentSidecarOptions Sidecar,
     string WorkspaceRoot,
-    PiAgentConversationCheckpoint? ConversationCheckpoint = null);
+    PiAgentConversationCheckpoint? ConversationCheckpoint = null,
+    PiAgentConversationCheckpointStore? ConversationCheckpointStore = null);
 
 public sealed class PiAgentDesktopRuntime : IAsyncDisposable
 {
     public const string OwnershipModel =
         "desktop-owned-broker-sidecar-session-conversation";
     public const string ShutdownModel =
-        "quiesce-cancel-sidecar-shutdown-broker-dispose";
+        "quiesce-cancel-checkpoint-save-sidecar-shutdown-broker-dispose";
 
     private readonly DesktopModelBrokerServer broker;
     private readonly PiAgentSidecarController controller;
+    private readonly PiAgentConversationCheckpointStore? checkpointStore;
     private readonly SemaphoreSlim shutdownGate = new(1, 1);
     private readonly int shutdownTimeoutMilliseconds;
     private int shutdownCompleted;
@@ -26,12 +28,16 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
         PiAgentSidecarController controller,
         PiAgentConversationState conversation,
         string workspaceRoot,
+        PiAgentConversationCheckpointStore? checkpointStore,
+        int restoredCheckpointTurnCount,
         int shutdownTimeoutMilliseconds)
     {
         this.broker = broker;
         this.controller = controller;
         Conversation = conversation;
         WorkspaceRoot = workspaceRoot;
+        this.checkpointStore = checkpointStore;
+        RestoredCheckpointTurnCount = restoredCheckpointTurnCount;
         this.shutdownTimeoutMilliseconds = shutdownTimeoutMilliseconds;
     }
 
@@ -41,6 +47,9 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
         controller.CredentialEnvironmentClean;
     public int BrokerRequestCount => broker.RequestCount;
     public int BrokerFaultCount => broker.FaultCount;
+    public int RestoredCheckpointTurnCount { get; }
+    public PiAgentConversationCheckpointStoreReceipt?
+        LastCheckpointStoreReceipt { get; private set; }
     public bool IsShutdown =>
         Volatile.Read(ref shutdownCompleted) != 0;
 
@@ -57,6 +66,15 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
         PiAgentConversationCheckpoint? checkpoint =
             PiAgentConversationState.AdmitCheckpoint(
                 options.ConversationCheckpoint);
+        if (
+            checkpoint is null &&
+            options.ConversationCheckpointStore is not null)
+        {
+            checkpoint =
+                await options.ConversationCheckpointStore.LoadAsync(
+                    options.WorkspaceRoot,
+                    cancellationToken);
+        }
 
         DesktopModelBrokerServer broker =
             DesktopModelBrokerServer.Start(provider);
@@ -90,6 +108,8 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
                 controller,
                 conversation,
                 canonicalWorkspaceRoot,
+                options.ConversationCheckpointStore,
+                checkpoint?.Turns.Count ?? 0,
                 options.Sidecar.ShutdownTimeoutMilliseconds);
         }
         catch
@@ -131,8 +151,27 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
                 return;
             }
             await Conversation.QuiesceAsync(cancellationToken);
-            await controller.ShutdownAsync(cancellationToken);
-            Volatile.Write(ref shutdownCompleted, 1);
+            try
+            {
+                if (checkpointStore is not null)
+                {
+                    PiAgentConversationCheckpoint checkpoint =
+                        Conversation.ExportCheckpoint();
+                    if (checkpoint.Turns.Count != 0)
+                    {
+                        LastCheckpointStoreReceipt =
+                            await checkpointStore.SaveAsync(
+                                WorkspaceRoot,
+                                checkpoint,
+                                cancellationToken);
+                    }
+                }
+            }
+            finally
+            {
+                await controller.ShutdownAsync(cancellationToken);
+                Volatile.Write(ref shutdownCompleted, 1);
+            }
         }
         finally
         {

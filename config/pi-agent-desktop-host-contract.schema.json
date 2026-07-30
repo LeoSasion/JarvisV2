@@ -154,6 +154,10 @@
         "desktopConversationCheckpointMaxBytes",
         "desktopConversationCheckpointMaxTextBytes",
         "desktopConversationCheckpointPersistence",
+        "desktopConversationCheckpointStore",
+        "desktopConversationCheckpointStoreRoot",
+        "desktopConversationCheckpointEnvelopeMaxBytes",
+        "desktopConversationCheckpointSave",
         "desktopRuntimeOwnership",
         "desktopRuntimeShutdown",
         "credentialTransport",
@@ -223,11 +227,23 @@
         "desktopConversationCheckpointPersistence": {
           "const": "desktop-owned-external"
         },
+        "desktopConversationCheckpointStore": {
+          "const": "current-user-dpapi-atomic-workspace-bound"
+        },
+        "desktopConversationCheckpointStoreRoot": {
+          "const": "local-appdata-jarvis2-pi-agent-conversations"
+        },
+        "desktopConversationCheckpointEnvelopeMaxBytes": {
+          "const": 65536
+        },
+        "desktopConversationCheckpointSave": {
+          "const": "write-through-on-orderly-shutdown"
+        },
         "desktopRuntimeOwnership": {
           "const": "desktop-owned-broker-sidecar-session-conversation"
         },
         "desktopRuntimeShutdown": {
-          "const": "quiesce-cancel-sidecar-shutdown-broker-dispose"
+          "const": "quiesce-cancel-checkpoint-save-sidecar-shutdown-broker-dispose"
         },
         "credentialTransport": {
           "const": "forbidden"

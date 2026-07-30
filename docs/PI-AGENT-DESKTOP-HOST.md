@@ -51,8 +51,14 @@ state outside the Windows Shell process.
   command state and captured synchronization-context notification dispatch;
 - composes the desktop-owned model broker, exact Node sidecar, admitted
   read-only session and conversation state behind one `PiAgentDesktopRuntime`;
-- quiesces submissions, cancels any active turn, waits for its terminal event
-  and shuts down the owned sidecar before disposing the broker;
+- exports only bounded completed text turns, restores those messages into a
+  fresh Pi in-memory session and keeps the restored UI snapshot aligned with
+  the model context;
+- provides a workspace-bound Windows CurrentUser-DPAPI checkpoint store with a
+  64 KiB envelope, reparse-point rejection and write-through atomic commit;
+- quiesces submissions, cancels any active turn, waits for its terminal event,
+  saves the encrypted checkpoint and shuts down the owned sidecar before
+  disposing the broker;
 - replaces the SDK file tools with root-confined `read`, `grep`, `find` and
   `ls` definitions; `bash`, `edit` and `write` stay unavailable;
 - rejects drive roots, protected OS/profile roots, relative paths, canonical
@@ -94,7 +100,8 @@ the aggregate completion task remains available for non-streaming callers.
 use, and `Jarvis.ControlCenter` contains a non-visual
 `INotifyPropertyChanged` binding adapter. See
 `PI-AGENT-DESKTOP-CONVERSATION-STATE.md`. The lifecycle composition root is
-documented in `PI-AGENT-DESKTOP-RUNTIME.md`.
+documented in `PI-AGENT-DESKTOP-RUNTIME.md`; encrypted persistence is documented
+in `PI-AGENT-DESKTOP-CHECKPOINT-STORE.md`.
 
 ## Prompting admission
 
@@ -121,6 +128,9 @@ WPF desktop
                                     |
                                     +-- desktop-owned runtime lifecycle
                                         (implemented)
+                                            |
+                                            +-- encrypted checkpoint persistence
+                                                (implemented)
                                             |
                                             +-- authenticated production provider
                                                     |
@@ -152,11 +162,15 @@ CI uses `-StaticOnly` to build the managed bridge and validate the exact package
 lock, schema and source boundary without provider credentials. The full local
 audit additionally creates an offline, in-memory SDK session, proves
 single-root binding, executes inside/outside path and junction rejection tests,
-and completes three turns through the desktop-owned broker. The third turn
-executes the real root-confined `read` tool and requires a second model request.
-A separate held request proves cancellation through the concurrent desktop
-response pump. The tool turn proves four ordered desktop events and the abort
-turn proves one terminal event. The valid path observes five model requests and
-zero broker faults; an isolated negative provider records exactly one rejected
-`bash` fault. No path contacts an online model or transports a provider
-credential.
+and completes three turns through the desktop-owned broker. It then stores those
+turns under a temporary CurrentUser-DPAPI envelope, starts a fresh runtime from
+that store, verifies the restored model context and saves the continuation. The
+store probe also rejects a copied workspace envelope and modified ciphertext.
+The third ordinary turn executes the real root-confined `read` tool and requires
+a second model request. A separate held request proves cancellation through the
+concurrent desktop response pump. The tool turn proves four ordered desktop
+events and the abort turn proves one terminal event. The valid path observes
+five model requests and zero broker faults; an isolated negative provider
+records exactly one rejected `bash` fault. No path contacts an online model,
+transports a provider credential, touches Explorer or writes the production
+LocalAppData checkpoint directory.

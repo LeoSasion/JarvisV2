@@ -25,6 +25,8 @@ $bridgeSourcePath = Join-Path $sourceRoot 'DesktopBridge.cs'
 $productionBrokerSourcePath = Join-Path $sourceRoot 'DesktopModelBroker.cs'
 $brokerSourcePath = Join-Path $sourceRoot 'DiagnosticModelBroker.cs'
 $conversationSourcePath = Join-Path $sourceRoot 'ConversationState.cs'
+$checkpointStoreSourcePath = Join-Path $sourceRoot (
+    'ConversationCheckpointStore.cs')
 $conversationProbeSourcePath = Join-Path $sourceRoot (
     'DiagnosticConversation.cs')
 $desktopRuntimeSourcePath = Join-Path $sourceRoot 'DesktopRuntime.cs'
@@ -138,10 +140,18 @@ Add-Check `
             16384 -and
         $contract.session.desktopConversationCheckpointPersistence -eq
             'desktop-owned-external' -and
+        $contract.session.desktopConversationCheckpointStore -eq
+            'current-user-dpapi-atomic-workspace-bound' -and
+        $contract.session.desktopConversationCheckpointStoreRoot -eq
+            'local-appdata-jarvis2-pi-agent-conversations' -and
+        $contract.session.desktopConversationCheckpointEnvelopeMaxBytes -eq
+            65536 -and
+        $contract.session.desktopConversationCheckpointSave -eq
+            'write-through-on-orderly-shutdown' -and
         $contract.session.desktopRuntimeOwnership -eq
             'desktop-owned-broker-sidecar-session-conversation' -and
         $contract.session.desktopRuntimeShutdown -eq
-            'quiesce-cancel-sidecar-shutdown-broker-dispose' -and
+            'quiesce-cancel-checkpoint-save-sidecar-shutdown-broker-dispose' -and
         $contract.session.credentialTransport -eq 'forbidden' -and
         $contract.session.persistence -eq 'in-memory' -and
         $contract.session.workspaceBinding -eq
@@ -232,10 +242,18 @@ Add-Check `
             -eq 16384 -and
         $schema.properties.session.properties.desktopConversationCheckpointPersistence.const `
             -eq 'desktop-owned-external' -and
+        $schema.properties.session.properties.desktopConversationCheckpointStore.const `
+            -eq 'current-user-dpapi-atomic-workspace-bound' -and
+        $schema.properties.session.properties.desktopConversationCheckpointStoreRoot.const `
+            -eq 'local-appdata-jarvis2-pi-agent-conversations' -and
+        $schema.properties.session.properties.desktopConversationCheckpointEnvelopeMaxBytes.const `
+            -eq 65536 -and
+        $schema.properties.session.properties.desktopConversationCheckpointSave.const `
+            -eq 'write-through-on-orderly-shutdown' -and
         $schema.properties.session.properties.desktopRuntimeOwnership.const `
             -eq 'desktop-owned-broker-sidecar-session-conversation' -and
         $schema.properties.session.properties.desktopRuntimeShutdown.const `
-            -eq 'quiesce-cancel-sidecar-shutdown-broker-dispose' -and
+            -eq 'quiesce-cancel-checkpoint-save-sidecar-shutdown-broker-dispose' -and
         $schema.properties.session.properties.modelNetworkAllowed.const `
             -eq $false -and
         $schema.properties.transport.properties.credentialFieldsAllowed.const `
@@ -307,6 +325,8 @@ $bridgeSourceText =
     [Environment]::NewLine +
     [IO.File]::ReadAllText($conversationSourcePath) +
     [Environment]::NewLine +
+    [IO.File]::ReadAllText($checkpointStoreSourcePath) +
+    [Environment]::NewLine +
     [IO.File]::ReadAllText($conversationProbeSourcePath) +
     [Environment]::NewLine +
     [IO.File]::ReadAllText($desktopRuntimeSourcePath) +
@@ -314,6 +334,7 @@ $bridgeSourceText =
     [IO.File]::ReadAllText($desktopRuntimeProbeSourcePath) +
     [Environment]::NewLine +
     [IO.File]::ReadAllText($bridgeProgramPath)
+$bridgeProjectText = [IO.File]::ReadAllText($bridgeProjectPath)
 $forbiddenBridgePattern = (
     '(?i)\b(?:DllImport|LibraryImport|OpenProcess|CreateRemoteThread|' +
     'WriteProcessMemory|SetWindowsHookEx|Microsoft\.Win32\.Registry|' +
@@ -324,6 +345,10 @@ Add-Check `
     -Name 'desktop-bridge.owned-process-fail-closed' `
     -Passed (
         (Test-Path -LiteralPath $bridgeProjectPath -PathType Leaf) -and
+        $bridgeProjectText.Contains(
+            '<TargetFramework>net8.0-windows</TargetFramework>') -and
+        $bridgeProjectText.Contains(
+            '<FrameworkReference Include="Microsoft.WindowsDesktop.App" />') -and
         -not [regex]::IsMatch(
             $bridgeSourceText,
             $forbiddenBridgePattern) -and
@@ -365,6 +390,22 @@ Add-Check `
         $bridgeSourceText.Contains('ExportCheckpoint') -and
         $bridgeSourceText.Contains('conversationCheckpoint') -and
         $bridgeSourceText.Contains(
+            'current-user-dpapi-atomic-workspace-bound') -and
+        $bridgeSourceText.Contains(
+            'ProtectedData.Protect') -and
+        $bridgeSourceText.Contains(
+            'ProtectedData.Unprotect') -and
+        $bridgeSourceText.Contains(
+            'DataProtectionScope.CurrentUser') -and
+        $bridgeSourceText.Contains(
+            'MaximumEnvelopeBytes = 65_536') -and
+        $bridgeSourceText.Contains(
+            'FileOptions.WriteThrough') -and
+        $bridgeSourceText.Contains(
+            'File.Move') -and
+        $bridgeSourceText.Contains(
+            'FileAttributes.ReparsePoint') -and
+        $bridgeSourceText.Contains(
             'PiAgentConversationSnapshot') -and
         $bridgeSourceText.Contains('SynchronizationContext') -and
         $bridgeSourceText.Contains('CancelActiveTurnAsync') -and
@@ -373,7 +414,7 @@ Add-Check `
         $bridgeSourceText.Contains(
             'desktop-owned-broker-sidecar-session-conversation') -and
         $bridgeSourceText.Contains(
-            'quiesce-cancel-sidecar-shutdown-broker-dispose') -and
+            'quiesce-cancel-checkpoint-save-sidecar-shutdown-broker-dispose') -and
         $bridgeSourceText.Contains('DesktopModelBrokerServer') -and
         $bridgeSourceText.Contains('IDesktopModelProvider') -and
         $bridgeSourceText.Contains(
@@ -867,13 +908,18 @@ if (-not $StaticOnly) {
             $desktopRuntimeReceipt.ownershipModel -eq
                 'desktop-owned-broker-sidecar-session-conversation' -and
             $desktopRuntimeReceipt.shutdownModel -eq
-                'quiesce-cancel-sidecar-shutdown-broker-dispose' -and
+                'quiesce-cancel-checkpoint-save-sidecar-shutdown-broker-dispose' -and
             $desktopRuntimeReceipt.runtimeCompositionPassed -and
             $desktopRuntimeReceipt.multiTurnPassed -and
             $desktopRuntimeReceipt.toolRoundTripPassed -and
             $desktopRuntimeReceipt.checkpointExportPassed -and
             $desktopRuntimeReceipt.checkpointContextRestorePassed -and
             $desktopRuntimeReceipt.checkpointAdmissionPassed -and
+            $desktopRuntimeReceipt.checkpointStoreRoundTripPassed -and
+            $desktopRuntimeReceipt.checkpointStoreCiphertextPassed -and
+            $desktopRuntimeReceipt.checkpointStoreBindingPassed -and
+            $desktopRuntimeReceipt.checkpointStoreCorruptionRejected -and
+            $desktopRuntimeReceipt.checkpointStoreFailureShutdownPassed -and
             $desktopRuntimeReceipt.quiesceClosedSubmission -and
             $desktopRuntimeReceipt.shutdownCancelledActiveTurn -and
             $desktopRuntimeReceipt.orderlyShutdownPassed -and
@@ -884,6 +930,7 @@ if (-not $StaticOnly) {
             $desktopRuntimeReceipt.abortBrokerRequestCount -eq 1 -and
             $desktopRuntimeReceipt.exportedCheckpointTurnCount -eq 3 -and
             $desktopRuntimeReceipt.restoredCheckpointTurnCount -eq 3 -and
+            $desktopRuntimeReceipt.persistedCheckpointTurnCount -eq 4 -and
             $desktopRuntimeReceipt.brokerFaultCount -eq 0 -and
             -not $desktopRuntimeReceipt.credentialTransportAllowed -and
             -not $desktopRuntimeReceipt.piSidecarModelNetworkAllowed -and
@@ -976,11 +1023,18 @@ $passed = $failures.Count -eq 0
     desktopConversationCheckpointMaxTextBytes = 16384
     desktopConversationCheckpointPersistence =
         'desktop-owned-external'
+    desktopConversationCheckpointStore =
+        'current-user-dpapi-atomic-workspace-bound'
+    desktopConversationCheckpointStoreRoot =
+        'local-appdata-jarvis2-pi-agent-conversations'
+    desktopConversationCheckpointEnvelopeMaxBytes = 65536
+    desktopConversationCheckpointSave =
+        'write-through-on-orderly-shutdown'
     desktopRuntimeImplemented = $true
     desktopRuntimeOwnership =
         'desktop-owned-broker-sidecar-session-conversation'
     desktopRuntimeShutdown =
-        'quiesce-cancel-sidecar-shutdown-broker-dispose'
+        'quiesce-cancel-checkpoint-save-sidecar-shutdown-broker-dispose'
     asynchronousTurnsImplemented = $true
     activeTurnCancellationImplemented = $true
     sessionPersistence = 'in-memory'
