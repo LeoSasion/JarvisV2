@@ -146,8 +146,13 @@ shortcuts plus continuous hue and effects, and implements the selected fourth
 visual variant as a reusable `ApertureFrame`: subtractive open contours,
 tangent arcs and two local RGB focus junctions. Local components draw only
 point/line/arc/plane geometry; every colored primitive consumes the same RGB
-frame and no local glow is implemented. The static graphite geometry and
-animated focus geometry remain in separate retained visuals.
+frame and no local glow is implemented. The desktop layer's static planes,
+datums and junction paths are now authored as common retained-vector commands
+and rendered by a Win10 WPF adapter that validates the semantic palette,
+stages a frozen drawing and fails closed before commit. Dynamic focus geometry
+and `ApertureFrame` remain in separate retained WPF visuals during the gradual
+migration. Exact four-case PNG hashes on Windows 10 build 19045 prove this
+adapter boundary is pixel-identical to the preceding implementation.
 
 Particles, glow and post processing are reserved for a future desktop-global
 VFX compositor with a film/game-engine-style parameter stack. This boundary

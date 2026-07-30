@@ -52,6 +52,16 @@ internal static class Program
                 : 12;
         }
 
+        if (args.Length == 1 &&
+            args[0] == "test-vector-adapter")
+        {
+            WpfVectorAdapterTestReceipt receipt =
+                WpfVectorAdapterScenarios.Run();
+            Console.WriteLine(
+                JsonSerializer.Serialize(receipt, JsonOptions));
+            return receipt.Result == "passed" ? 0 : 12;
+        }
+
         WriteUsage();
         return 2;
     }
@@ -68,5 +78,6 @@ internal static class Program
     private static void WriteUsage() =>
         Console.Error.WriteLine(
             "Usage: jarvis-win10-neural-void-preview show " +
-            "or render <png-path> <hue> <effect> <phase>");
+            "or render <png-path> <hue> <effect> <phase> " +
+            "or test-vector-adapter");
 }

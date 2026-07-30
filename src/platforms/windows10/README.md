@@ -41,10 +41,13 @@ parameters across five particle modules and five ordered post effects, plus
 three bounded quality profiles. The Win10 RGB model is the first consumer and
 compiles the versioned inert preset plus the shared semantic visual frame in
 fail-closed tests. Every node remains disabled, the GPU backend is unselected,
-and no renderer or parameter editor is implemented. The same common library
-now compiles a backend-neutral retained point/line/polyline/arc/plane command
-buffer to establish the future Win10/Win11 adapter boundary without changing
-the current WPF pixels. See
+and no VFX renderer or parameter editor is implemented. The same common
+library now compiles a backend-neutral retained
+point/line/polyline/arc/plane command buffer. The first Win10 WPF adapter now
+consumes that buffer for the owned preview's static planes, datums and
+junction paths, renders every supported primitive kind in tests and fails
+closed before committing partial geometry. Four exact PNG hashes on Windows
+10 build 19045 prove the migration does not change the current WPF pixels. See
 `docs/NEURAL-VOID-GLOBAL-VFX-CONTRACT.md`.
 
 The owned `Jarvis.Win10.NativeStyleProbe` now consumes the same RGB frame for

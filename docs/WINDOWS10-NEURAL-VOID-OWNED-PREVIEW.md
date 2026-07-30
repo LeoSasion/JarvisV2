@@ -17,11 +17,15 @@ The retained language is:
 
 `ApertureFrame` is the reusable window-contour primitive. It keeps its static
 graphite contour and dynamic RGB focus junction in separate
-`DrawingVisual` objects. `NeuralVectorLayer` separately retains the desktop
-datums and redraws only its two small signal junctions. `StreamGeometry`
-paths are frozen after construction. This keeps RGB animation bounded and
-makes the same contour grammar reusable by Explorer, Control Center and the
-future Pi conversation surface.
+`DrawingVisual` objects. `NeuralVectorLayer` now sources its static planes,
+desktop datums and junction paths from the platform-neutral retained command
+buffer through a Win10 WPF adapter, while its two small signal junctions remain
+the only per-frame redraws. The adapter validates the complete semantic
+palette, stages every command in a frozen `DrawingGroup` and commits only
+after the whole scene succeeds. Invalid geometry or color input therefore
+produces an empty static layer instead of a partial frame. This keeps RGB
+animation bounded and makes the same contour grammar reusable by Explorer,
+Control Center, Win11 and the future Pi conversation surface.
 
 No local glow shader, radial glow brush or particle emitter is implemented in
 these components. Every colored contour and junction binds to the same
@@ -57,7 +61,8 @@ dotnet .\src\platforms\windows10\Jarvis.Win10.NeuralVoidPreview\bin\Release\net8
 
 The host offers A cyan, C amber and D emerald shortcuts, a 0–360 degree hue
 slider and static, breathe, spectrum and signal-pulse effects. Every frame is
-computed by the shared `Jarvis.Win10.RgbThemeModel`.
+computed by the shared `Jarvis.VisualEffects` RGB engine and exposed through
+the Win10 theme model.
 
 ## Deterministic evidence
 
@@ -70,6 +75,19 @@ The render command creates a 1600x900 PNG and a JSON receipt. The checked-in
 screenshot uses D neural emerald at the full-brightness point of the
 signal-pulse effect. The latest source/implementation comparison is recorded
 in `design-qa.md` and passes for the approved style-only scope.
+
+On the target Windows 10 19045 renderer, the regression script also requires
+the exact pre-adapter PNG hashes:
+
+| Case | SHA-256 |
+| --- | --- |
+| A cyan | `23CEA04C7471F45D01C58CE738429C1409B057BE0BBDDC88DE0BD2107199B0F6` |
+| C amber | `2A44328EB8C4B009B523D44E109B0D1202CF0C11EF971E7EEC78252F4D0E3780` |
+| D emerald | `B9545A55C8E280F2FDFB287DC199872857E2770A1E7C6D87E9696FA19A7DB28F` |
+| Custom magenta | `6E791CC91B844851CAC149332A35DD15711B6811D3A0305DCF811B94F3526066` |
+
+Other Windows builds still run the geometry, safety and render checks, but do
+not claim cross-version WPF/font pixel identity.
 
 ## Safety boundary
 

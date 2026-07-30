@@ -6,7 +6,7 @@ post-processing compositor. It is shared by the Win10 and Win11 directions.
 `src/common/Jarvis.VisualEffects` owns the pure .NET data model, RGB sampler,
 visual-signal frame, contract compiler and inert-preset compiler. The current
 Win10 theme model embeds the JSON inputs and acts as the first diagnostic
-consumer, but no renderer or editor is enabled.
+consumer, but no particle/post renderer or VFX editor is enabled.
 
 The design follows the parameter vocabulary used by 3D film tools and game
 engines:
@@ -101,9 +101,13 @@ shared-signal counts against the selected quality budget.
 Bitmap requests, runtime-effect requests, unknown color channels, malformed
 geometry, unstable ordering and budget drift are rejected. A rejected scene
 resolves to an empty low-power scene instead of partial rendering. This
-contract does not yet replace the current WPF drawing adapter or change its
-pixels; it establishes the common data boundary for future Win10 and Win11
-renderers.
+contract now drives the static planes, datums and junction paths in the Win10
+owned-process preview through its first WPF adapter. The adapter stages a
+complete frozen drawing and fails closed before committing partial geometry.
+Dynamic focus junctions and `ApertureFrame` remain on their existing retained
+WPF paths during the gradual migration. Target-build PNG hashes prove that
+this first adapter step does not change the current pixels; the same command
+boundary remains available to a future Win11 renderer.
 
 ## Render order and quality
 

@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using Jarvis.VisualEffects;
 
 namespace Jarvis.Win10.NeuralVoidPreview;
 
@@ -16,14 +17,16 @@ public sealed class NeuralVectorLayer : FrameworkElement
     private readonly DrawingVisual _staticVisual = new();
     private readonly DrawingVisual _signalVisual = new();
     private readonly VisualCollection _visuals;
+    private readonly RetainedVectorScene _staticScene =
+        Win10NeuralVectorSceneFactory.CreateStaticScene();
+    private readonly WpfRetainedVectorSceneRenderer _staticRenderer =
+        new(Win10NeuralVectorSceneFactory.CreatePalette());
     private readonly SolidColorBrush _accentBrush =
         new(Color.FromRgb(0x00, 0xFF, 0x9A));
     private readonly SolidColorBrush _structureBrush =
         new(Color.FromArgb(0x78, 0x2D, 0x3A, 0x38));
     private readonly SolidColorBrush _ghostBrush =
         new(Color.FromArgb(0x34, 0x2D, 0x3A, 0x38));
-    private readonly SolidColorBrush _planeBrush =
-        new(Color.FromArgb(0x0B, 0xD7, 0xF8, 0xEC));
     private readonly Pen _accentPen;
     private readonly Pen _structurePen;
     private readonly Pen _ghostPen;
@@ -117,8 +120,15 @@ public sealed class NeuralVectorLayer : FrameworkElement
                     877.5,
                 ]));
 
-        DrawGhostPlanes(context);
-        DrawDesktopDatums(context);
+        WpfVectorSceneRenderReceipt receipt =
+            _staticRenderer.Render(context, _staticScene);
+        if (receipt.Result !=
+            "rendered-retained-vector-scene")
+        {
+            context.Pop();
+            context.Pop();
+            return;
+        }
         DrawRegistrationMarks(context);
 
         context.Pop();
@@ -153,90 +163,6 @@ public sealed class NeuralVectorLayer : FrameworkElement
             wave * 0.72);
 
         context.Pop();
-    }
-
-    private void DrawGhostPlanes(DrawingContext context)
-    {
-        StreamGeometry upperPlane =
-            CreatePolygon(
-                [
-                    new Point(952.5, 60.5),
-                    new Point(1547.5, 60.5),
-                    new Point(1547.5, 86.5),
-                    new Point(978.5, 86.5),
-                ]);
-        context.DrawGeometry(_planeBrush, null, upperPlane);
-
-        StreamGeometry lowerPlane =
-            CreatePolygon(
-                [
-                    new Point(40.5, 851.5),
-                    new Point(936.5, 851.5),
-                    new Point(914.5, 877.5),
-                    new Point(40.5, 877.5),
-                ]);
-        context.DrawGeometry(_planeBrush, null, lowerPlane);
-    }
-
-    private void DrawDesktopDatums(DrawingContext context)
-    {
-        DrawSplitLine(
-            context,
-            _ghostPen,
-            new Point(63.5, 40.5),
-            new Point(1547.5, 40.5),
-            0.58,
-            18.0);
-        DrawSplitLine(
-            context,
-            _ghostPen,
-            new Point(40.5, 60.5),
-            new Point(40.5, 851.5),
-            0.64,
-            18.0);
-        DrawSplitLine(
-            context,
-            _ghostPen,
-            new Point(63.5, 877.5),
-            new Point(936.5, 877.5),
-            0.52,
-            18.0);
-        DrawSplitLine(
-            context,
-            _ghostPen,
-            new Point(952.5, 877.5),
-            new Point(1567.5, 877.5),
-            0.48,
-            18.0);
-
-        StreamGeometry lowerJoin =
-            CreatePolyline(
-                [
-                    new Point(40.5, 826.5),
-                    new Point(40.5, 851.5),
-                    new Point(63.5, 877.5),
-                    new Point(82.5, 877.5),
-                ]);
-        context.DrawGeometry(null, _structurePen, lowerJoin);
-
-        StreamGeometry upperJoin =
-            CreatePolyline(
-                [
-                    new Point(952.5, 60.5),
-                    new Point(978.5, 60.5),
-                    new Point(992.5, 78.5),
-                    new Point(1020.5, 78.5),
-                ]);
-        context.DrawGeometry(null, _ghostPen, upperJoin);
-
-        context.DrawLine(
-            _ghostPen,
-            new Point(1567.5, 60.5),
-            new Point(1567.5, 548.5));
-        context.DrawLine(
-            _structurePen,
-            new Point(1555.5, 548.5),
-            new Point(1567.5, 548.5));
     }
 
     private void DrawRegistrationMarks(DrawingContext context)
@@ -302,33 +228,6 @@ public sealed class NeuralVectorLayer : FrameworkElement
             2.2);
     }
 
-    private static void DrawSplitLine(
-        DrawingContext context,
-        Pen pen,
-        Point start,
-        Point end,
-        double splitProgress,
-        double gapLength)
-    {
-        Vector delta = end - start;
-        if (delta.Length <= gapLength)
-        {
-            return;
-        }
-
-        Vector unit = delta;
-        unit.Normalize();
-        Point center = start + (delta * splitProgress);
-        context.DrawLine(
-            pen,
-            start,
-            center - (unit * (gapLength / 2.0)));
-        context.DrawLine(
-            pen,
-            center + (unit * (gapLength / 2.0)),
-            end);
-    }
-
     private static void DrawRegistrationSquare(
         DrawingContext context,
         Pen pen,
@@ -342,40 +241,6 @@ public sealed class NeuralVectorLayer : FrameworkElement
                 center.Y - 2.0,
                 4.0,
                 4.0));
-    }
-
-    private static StreamGeometry CreatePolyline(
-        IReadOnlyList<Point> points)
-    {
-        StreamGeometry geometry = new();
-        using (StreamGeometryContext context = geometry.Open())
-        {
-            context.BeginFigure(points[0], false, false);
-            for (int index = 1; index < points.Count; index++)
-            {
-                context.LineTo(points[index], true, false);
-            }
-        }
-
-        geometry.Freeze();
-        return geometry;
-    }
-
-    private static StreamGeometry CreatePolygon(
-        IReadOnlyList<Point> points)
-    {
-        StreamGeometry geometry = new();
-        using (StreamGeometryContext context = geometry.Open())
-        {
-            context.BeginFigure(points[0], true, true);
-            for (int index = 1; index < points.Count; index++)
-            {
-                context.LineTo(points[index], true, false);
-            }
-        }
-
-        geometry.Freeze();
-        return geometry;
     }
 
     private static Pen CreatePen(

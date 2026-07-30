@@ -19,6 +19,12 @@ $surfacePath = Join-Path $sourceRoot (
     'NeuralVoidPreviewSurface.xaml')
 $vectorLayerPath = Join-Path $sourceRoot (
     'NeuralVectorLayer.cs')
+$vectorSceneFactoryPath = Join-Path $sourceRoot (
+    'Win10NeuralVectorSceneFactory.cs')
+$wpfVectorRendererPath = Join-Path $sourceRoot (
+    'WpfRetainedVectorSceneRenderer.cs')
+$wpfVectorScenariosPath = Join-Path $sourceRoot (
+    'WpfVectorAdapterScenarios.cs')
 $apertureFramePath = Join-Path $sourceRoot (
     'ApertureFrame.cs')
 $windowPath = Join-Path $sourceRoot 'MainWindow.xaml'
@@ -63,6 +69,12 @@ $sourceText = @(
 ) -join [Environment]::NewLine
 $surfaceText = [IO.File]::ReadAllText($surfacePath)
 $vectorLayerText = [IO.File]::ReadAllText($vectorLayerPath)
+$vectorSceneFactoryText =
+    [IO.File]::ReadAllText($vectorSceneFactoryPath)
+$wpfVectorRendererText =
+    [IO.File]::ReadAllText($wpfVectorRendererPath)
+$wpfVectorScenariosText =
+    [IO.File]::ReadAllText($wpfVectorScenariosPath)
 $apertureFrameText = [IO.File]::ReadAllText($apertureFramePath)
 $windowText = [IO.File]::ReadAllText($windowPath)
 $themeText = [IO.File]::ReadAllText($themePath)
@@ -88,6 +100,8 @@ Add-Check `
     -Passed (
         $sourceText.Contains(
             'Jarvis.Win10.RgbThemeModel.csproj') -and
+        $sourceText.Contains(
+            'Jarvis.VisualEffects.csproj') -and
         $sourceText.Contains('RgbEffectEngine.Sample(') -and
         $sourceText.Contains('public static class RgbEffectEngine') -and
         $sourceText.Contains('public sealed record RgbFrame')) `
@@ -123,9 +137,29 @@ Add-Check `
         $surfaceText.Contains(
             '<local:ApertureFrame') -and
         $vectorLayerText.Contains('DrawingVisual') -and
-        $vectorLayerText.Contains('StreamGeometry') -and
-        $vectorLayerText.Contains('CreatePolyline(') -and
-        $vectorLayerText.Contains('CreatePolygon(') -and
+        $vectorLayerText.Contains(
+            'WpfRetainedVectorSceneRenderer') -and
+        $vectorSceneFactoryText.Contains(
+            'VectorPlaneCommand') -and
+        $vectorSceneFactoryText.Contains(
+            'VectorLineCommand') -and
+        $vectorSceneFactoryText.Contains(
+            'VectorPolylineCommand') -and
+        $vectorSceneFactoryText.Contains('AddSplitLine(') -and
+        $wpfVectorRendererText.Contains(
+            'VectorPointCommand') -and
+        $wpfVectorRendererText.Contains(
+            'VectorLineCommand') -and
+        $wpfVectorRendererText.Contains(
+            'VectorPolylineCommand') -and
+        $wpfVectorRendererText.Contains(
+            'VectorArcCommand') -and
+        $wpfVectorRendererText.Contains(
+            'VectorPlaneCommand') -and
+        $wpfVectorRendererText.Contains('StreamGeometry') -and
+        $wpfVectorRendererText.Contains('CreatePolyline(') -and
+        $wpfVectorRendererText.Contains('CreatePolygon(') -and
+        $wpfVectorRendererText.Contains('CreateArc(') -and
         $sourceText.Contains(
             'public sealed record RetainedVectorScene') -and
         $sourceText.Contains(
@@ -149,6 +183,8 @@ Add-Check `
             'private readonly DrawingVisual _staticVisual') -and
         $vectorLayerText.Contains(
             'private readonly DrawingVisual _signalVisual') -and
+        $vectorLayerText.Contains(
+            '_staticRenderer.Render(context, _staticScene)') -and
         $apertureFrameText.Contains(
             'private readonly DrawingVisual _staticVisual') -and
         $apertureFrameText.Contains(
@@ -159,7 +195,15 @@ Add-Check `
         $vectorLayerText.Contains('RedrawSignal();') -and
         $apertureFrameText.Contains('RedrawStatic();') -and
         $apertureFrameText.Contains('RedrawFocus();') -and
-        $vectorLayerText.Contains('geometry.Freeze();')) `
+        $wpfVectorRendererText.Contains('DrawingGroup staged') -and
+        $wpfVectorRendererText.Contains('staged.Freeze();') -and
+        $wpfVectorRendererText.Contains('geometry.Freeze();') -and
+        $wpfVectorScenariosText.Contains(
+            'missing-semantic-color-fails-closed') -and
+        $wpfVectorScenariosText.Contains(
+            'invalid-common-scene-fails-closed') -and
+        $wpfVectorScenariosText.Contains(
+            'palette-is-snapshotted')) `
     -Detail (
         'Static vector geometry must remain retained while RGB work stays ' +
         'isolated to small signal and focus visuals.')
@@ -259,6 +303,38 @@ if ($buildExitCode -eq 0) {
     $assemblyPath = Join-Path $sourceRoot (
         'bin\Release\net8.0-windows\' +
         'jarvis-win10-neural-void-preview.dll')
+    $adapterOutput = @(
+        & $DotnetPath $assemblyPath test-vector-adapter 2>&1
+    )
+    $adapterExitCode = $LASTEXITCODE
+    $adapterReceipt = $null
+    try {
+        $adapterReceipt =
+            ($adapterOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $adapterReceipt = $null
+    }
+    Add-Check `
+        -Name 'vector.wpf-adapter-fail-closed-scenarios' `
+        -Passed (
+            $adapterExitCode -eq 0 -and
+            $null -ne $adapterReceipt -and
+            $adapterReceipt.result -eq 'passed' -and
+            $adapterReceipt.scenarioCount -eq 7 -and
+            $adapterReceipt.passedCount -eq
+                $adapterReceipt.scenarioCount -and
+            -not $adapterReceipt.shellMutationSupported -and
+            -not $adapterReceipt.deviceIntegrationSupported -and
+            -not $adapterReceipt.activationPermitted -and
+            $adapterReceipt.liveExplorer -eq 'not-run' -and
+            -not $adapterReceipt.mutationPerformed) `
+        -Detail (
+            "WPF vector adapter exit $adapterExitCode; scenarios " +
+            "$($adapterReceipt.passedCount)/" +
+            "$($adapterReceipt.scenarioCount).")
+
     $null = New-Item `
         -ItemType Directory `
         -Path $renderRoot `
@@ -270,6 +346,8 @@ if ($buildExitCode -eq 0) {
             effect = 'static'
             phase = '0'
             expectedHex = '#00E5FF'
+            expectedTargetSha256 =
+                '23CEA04C7471F45D01C58CE738429C1409B057BE0BBDDC88DE0BD2107199B0F6'
         },
         [pscustomobject]@{
             name = 'c-amber'
@@ -277,6 +355,8 @@ if ($buildExitCode -eq 0) {
             effect = 'static'
             phase = '0'
             expectedHex = '#FF6A00'
+            expectedTargetSha256 =
+                '2A44328EB8C4B009B523D44E109B0D1202CF0C11EF971E7EEC78252F4D0E3780'
         },
         [pscustomobject]@{
             name = 'd-emerald'
@@ -284,6 +364,8 @@ if ($buildExitCode -eq 0) {
             effect = 'signal-pulse'
             phase = '0.25'
             expectedHex = '#00FF9A'
+            expectedTargetSha256 =
+                'B9545A55C8E280F2FDFB287DC199872857E2770A1E7C6D87E9696FA19A7DB28F'
         },
         [pscustomobject]@{
             name = 'custom-magenta'
@@ -291,11 +373,15 @@ if ($buildExitCode -eq 0) {
             effect = 'static'
             phase = '0'
             expectedHex = '#FF00FF'
+            expectedTargetSha256 =
+                '6E791CC91B844851CAC149332A35DD15711B6811D3A0305DCF811B94F3526066'
         }
     )
     $renderPassed = $true
     $renderDetails = [Collections.Generic.List[string]]::new()
     $renderHashes = [Collections.Generic.List[string]]::new()
+    $targetPixelBaselineEnforced =
+        [Environment]::OSVersion.Version.Build -eq 19045
     foreach ($renderCase in $renderCases) {
         $outputPath =
             Join-Path $renderRoot "$($renderCase.name).png"
@@ -357,15 +443,26 @@ if ($buildExitCode -eq 0) {
             $receipt.liveExplorer -eq 'not-run' -and
             -not $receipt.mutationPerformed -and
             $pngValid
-        $renderPassed = $renderPassed -and $casePassed
-        $renderDetails.Add(
-            "$($renderCase.name)=$casePassed/$($receipt.accentHex)")
         if ($pngValid) {
-            $renderHashes.Add(
+            $actualSha256 =
                 (Get-FileHash `
                     -LiteralPath $outputPath `
-                    -Algorithm SHA256).Hash)
+                    -Algorithm SHA256).Hash
+            $renderHashes.Add($actualSha256)
+            $pixelIdentical =
+                -not $targetPixelBaselineEnforced -or
+                $actualSha256 -ceq
+                    $renderCase.expectedTargetSha256
+            $casePassed =
+                $casePassed -and $pixelIdentical
         }
+        else {
+            $pixelIdentical = $false
+        }
+        $renderPassed = $renderPassed -and $casePassed
+        $renderDetails.Add(
+            "$($renderCase.name)=$casePassed/" +
+            "$($receipt.accentHex)/pixel=$pixelIdentical")
     }
 
     Add-Check `
@@ -376,7 +473,9 @@ if ($buildExitCode -eq 0) {
             @($renderHashes | Sort-Object -Unique).Count -eq 4) `
         -Detail (
             'All 1600x900 renders must be safe, color-correct and visually ' +
-            'distinct. ' + ($renderDetails -join '; '))
+            'distinct. Exact Windows 10 build 19045 additionally requires ' +
+            'byte-identical approved pixels. ' +
+            ($renderDetails -join '; '))
 }
 
 $passed = $failures.Count -eq 0
@@ -388,6 +487,8 @@ $passed = $failures.Count -eq 0
     passedCount = @($checks | Where-Object passed).Count
     desktopContainsDeviceUi = $false
     ownProcessOnly = $true
+    targetPixelBaselineEnforced =
+        [Environment]::OSVersion.Version.Build -eq 19045
     readyForVisualReview = $passed
     shellMutationSupported = $false
     deviceIntegrationSupported = $false
