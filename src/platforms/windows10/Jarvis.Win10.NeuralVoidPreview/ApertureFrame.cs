@@ -133,16 +133,28 @@ public sealed class ApertureFrame : FrameworkElement
             return;
         }
 
-        double radius = Math.Min(
-            CornerRadius,
-            Math.Min(
-                (RenderSize.Width - 1.0) / 4.0,
-                (RenderSize.Height - 1.0) / 4.0));
-        double length = Math.Min(
-            CornerLength,
-            Math.Min(
-                (RenderSize.Width - 1.0) / 5.0,
-                (RenderSize.Height - 1.0) / 5.0));
+        if (!Win10ApertureVectorSceneFactory.TryCreate(
+                RenderSize.Width,
+                RenderSize.Height,
+                CornerRadius,
+                CornerLength,
+                LineBrush,
+                out Win10ApertureVectorSceneInputs? inputs) ||
+            inputs is null)
+        {
+            return;
+        }
+
+        WpfRetainedVectorSceneRenderer renderer =
+            new(inputs.Palette);
+        WpfVectorSceneRenderReceipt receipt =
+            renderer.Render(context, inputs.Scene);
+        if (receipt.Result !=
+            "rendered-retained-vector-scene")
+        {
+            return;
+        }
+
         Rect frame =
             new(
                 0.5,
@@ -150,10 +162,6 @@ public sealed class ApertureFrame : FrameworkElement
                 RenderSize.Width - 1.0,
                 RenderSize.Height - 1.0);
         Pen linePen = CreatePen(LineBrush, 1.0);
-        StreamGeometry contour =
-            CreateApertureGeometry(frame, radius, length);
-        context.DrawGeometry(null, linePen, contour);
-
         DrawRegistrationSquare(
             context,
             linePen,
@@ -247,110 +255,6 @@ public sealed class ApertureFrame : FrameworkElement
             focus,
             2.0,
             2.0);
-    }
-
-    private static StreamGeometry CreateApertureGeometry(
-        Rect frame,
-        double radius,
-        double length)
-    {
-        StreamGeometry geometry = new();
-        using (StreamGeometryContext context = geometry.Open())
-        {
-            DrawTangentCorner(
-                context,
-                new Point(frame.Left, frame.Top + radius + length),
-                new Point(frame.Left, frame.Top + radius),
-                new Point(frame.Left + radius, frame.Top),
-                new Point(frame.Left + radius + length, frame.Top),
-                radius,
-                SweepDirection.Clockwise);
-            DrawTangentCorner(
-                context,
-                new Point(frame.Right - radius - length, frame.Top),
-                new Point(frame.Right - radius, frame.Top),
-                new Point(frame.Right, frame.Top + radius),
-                new Point(frame.Right, frame.Top + radius + length),
-                radius,
-                SweepDirection.Clockwise);
-            DrawTangentCorner(
-                context,
-                new Point(frame.Right, frame.Bottom - radius - length),
-                new Point(frame.Right, frame.Bottom - radius),
-                new Point(frame.Right - radius, frame.Bottom),
-                new Point(frame.Right - radius - length, frame.Bottom),
-                radius,
-                SweepDirection.Clockwise);
-            DrawTangentCorner(
-                context,
-                new Point(frame.Left + radius + length, frame.Bottom),
-                new Point(frame.Left + radius, frame.Bottom),
-                new Point(frame.Left, frame.Bottom - radius),
-                new Point(frame.Left, frame.Bottom - radius - length),
-                radius,
-                SweepDirection.Clockwise);
-
-            DrawSplitEdge(
-                context,
-                new Point(frame.Left + radius + length, frame.Top),
-                new Point(frame.Right - radius - length, frame.Top));
-            DrawSplitEdge(
-                context,
-                new Point(frame.Right, frame.Top + radius + length),
-                new Point(frame.Right, frame.Bottom - radius - length));
-            DrawSplitEdge(
-                context,
-                new Point(frame.Right - radius - length, frame.Bottom),
-                new Point(frame.Left + radius + length, frame.Bottom));
-            DrawSplitEdge(
-                context,
-                new Point(frame.Left, frame.Bottom - radius - length),
-                new Point(frame.Left, frame.Top + radius + length));
-        }
-
-        geometry.Freeze();
-        return geometry;
-    }
-
-    private static void DrawTangentCorner(
-        StreamGeometryContext context,
-        Point start,
-        Point arcStart,
-        Point arcEnd,
-        Point end,
-        double radius,
-        SweepDirection sweepDirection)
-    {
-        context.BeginFigure(start, false, false);
-        context.LineTo(arcStart, true, false);
-        context.ArcTo(
-            arcEnd,
-            new Size(radius, radius),
-            0.0,
-            false,
-            sweepDirection,
-            true,
-            false);
-        context.LineTo(end, true, false);
-    }
-
-    private static void DrawSplitEdge(
-        StreamGeometryContext context,
-        Point start,
-        Point end)
-    {
-        Vector delta = end - start;
-        if (delta.Length < 24.0)
-        {
-            return;
-        }
-
-        Point firstEnd = start + (delta * 0.47);
-        Point secondStart = start + (delta * 0.53);
-        context.BeginFigure(start, false, false);
-        context.LineTo(firstEnd, true, false);
-        context.BeginFigure(secondStart, false, false);
-        context.LineTo(end, true, false);
     }
 
     private static void DrawRegistrationSquare(

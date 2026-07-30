@@ -59,6 +59,7 @@ public sealed record VectorStroke(
 [JsonDerivedType(typeof(VectorLineCommand), "line")]
 [JsonDerivedType(typeof(VectorPolylineCommand), "polyline")]
 [JsonDerivedType(typeof(VectorArcCommand), "arc")]
+[JsonDerivedType(typeof(VectorPathCommand), "path")]
 [JsonDerivedType(typeof(VectorPlaneCommand), "plane")]
 public abstract record VectorCommand(
     string Id,
@@ -159,6 +160,65 @@ public sealed record VectorArcCommand(
     public override int VertexCount => 2;
 }
 
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "$segment")]
+[JsonDerivedType(typeof(VectorPathLineSegment), "line")]
+[JsonDerivedType(typeof(VectorPathArcSegment), "arc")]
+public abstract record VectorPathSegment(
+    VectorPoint End)
+{
+    public abstract string Kind { get; }
+}
+
+public sealed record VectorPathLineSegment(
+    VectorPoint End)
+    : VectorPathSegment(End)
+{
+    public override string Kind => "line";
+}
+
+public sealed record VectorPathArcSegment(
+    VectorPoint End,
+    double RadiusX,
+    double RadiusY,
+    double RotationDegrees,
+    bool LargeArc,
+    string Sweep)
+    : VectorPathSegment(End)
+{
+    public override string Kind => "arc";
+}
+
+public sealed record VectorPathFigure(
+    VectorPoint Start,
+    IReadOnlyList<VectorPathSegment> Segments,
+    bool Closed);
+
+public sealed record VectorPathCommand(
+    string Id,
+    int Layer,
+    int Order,
+    string UpdateClass,
+    VectorMaterial Material,
+    IReadOnlyList<VectorPathFigure> Figures,
+    VectorStroke Stroke)
+    : VectorCommand(
+        Id,
+        Layer,
+        Order,
+        UpdateClass,
+        Material)
+{
+    public override string Kind => "path";
+
+    public override int VertexCount =>
+        Figures.Sum(figure => 1 + figure.Segments.Count);
+
+    public int ArcSegmentCount =>
+        Figures.Sum(figure =>
+            figure.Segments.Count(segment =>
+                segment is VectorPathArcSegment));
+}
+
 public sealed record VectorPlaneCommand(
     string Id,
     int Layer,
@@ -211,6 +271,7 @@ public sealed record VectorSceneCompilationReceipt(
     int LineCount,
     int PolylineCount,
     int ArcCount,
+    int PathCount,
     int PlaneCount,
     int StaticCommandCount,
     int PerFrameCommandCount,
@@ -303,6 +364,31 @@ public static class RetainedVectorSceneFactory
                     0.0,
                     false,
                     "clockwise",
+                    Hairline),
+                new VectorPathCommand(
+                    "compound-path",
+                    200,
+                    40,
+                    "static",
+                    Structure,
+                    [
+                        new(
+                            new(100.0, 100.0),
+                            [
+                                new VectorPathLineSegment(
+                                    new(120.0, 100.0)),
+                                new VectorPathArcSegment(
+                                    new(140.0, 120.0),
+                                    20.0,
+                                    20.0,
+                                    0.0,
+                                    false,
+                                    "clockwise"),
+                                new VectorPathLineSegment(
+                                    new(140.0, 140.0)),
+                            ],
+                            false),
+                    ],
                     Hairline),
                 new VectorPointCommand(
                     "focus-junction",
@@ -434,7 +520,12 @@ public static class RetainedVectorSceneCompiler
         int polylineCount =
             scene.Commands.Count(command => command.Kind == "polyline");
         int arcCount =
-            scene.Commands.Count(command => command.Kind == "arc");
+            scene.Commands.Count(command => command.Kind == "arc") +
+            scene.Commands
+                .OfType<VectorPathCommand>()
+                .Sum(path => path.ArcSegmentCount);
+        int pathCount =
+            scene.Commands.Count(command => command.Kind == "path");
         int planeCount =
             scene.Commands.Count(command => command.Kind == "plane");
         int staticCount =
@@ -474,6 +565,7 @@ public static class RetainedVectorSceneCompiler
             lineCount,
             polylineCount,
             arcCount,
+            pathCount,
             planeCount,
             staticCount,
             perFrameCount,
@@ -567,6 +659,11 @@ public static class RetainedVectorSceneCompiler
                     360.0) &&
                 arc.Sweep is "clockwise" or "counter-clockwise" &&
                 ValidateStroke(arc.Stroke),
+            VectorPathCommand path =>
+                ValidatePath(
+                    path,
+                    designWidth,
+                    designHeight),
             VectorPlaneCommand plane =>
                 plane.Points.Count >= 3 &&
                 plane.Points.Count <= 4096 &&
@@ -599,12 +696,88 @@ public static class RetainedVectorSceneCompiler
         stroke.DashPattern.All(value =>
             IsFiniteRange(value, 0.01, 4096.0));
 
+    private static bool ValidatePath(
+        VectorPathCommand path,
+        double designWidth,
+        double designHeight) =>
+        path.Figures.Count is >= 1 and <= 1024 &&
+        path.Figures.Sum(figure => figure.Segments.Count) <= 4096 &&
+        path.Figures.All(figure =>
+            ValidatePathFigure(
+                figure,
+                designWidth,
+                designHeight)) &&
+        ValidateStroke(path.Stroke);
+
+    private static bool ValidatePathFigure(
+        VectorPathFigure figure,
+        double designWidth,
+        double designHeight)
+    {
+        if (!IsPointInDesignSpace(
+                figure.Start,
+                designWidth,
+                designHeight) ||
+            figure.Segments.Count is < 1 or > 4096)
+        {
+            return false;
+        }
+
+        VectorPoint current = figure.Start;
+        foreach (VectorPathSegment segment in figure.Segments)
+        {
+            if (!IsPointInDesignSpace(
+                    segment.End,
+                    designWidth,
+                    designHeight) ||
+                segment.End == current)
+            {
+                return false;
+            }
+
+            bool segmentValid =
+                segment switch
+                {
+                    VectorPathLineSegment => true,
+                    VectorPathArcSegment arc =>
+                        IsFinitePositiveRange(
+                            arc.RadiusX,
+                            designWidth) &&
+                        IsFinitePositiveRange(
+                            arc.RadiusY,
+                            designHeight) &&
+                        IsFiniteRange(
+                            arc.RotationDegrees,
+                            -360.0,
+                            360.0) &&
+                        arc.Sweep is
+                            "clockwise" or
+                            "counter-clockwise",
+                    _ => false,
+                };
+            if (!segmentValid)
+            {
+                return false;
+            }
+            current = segment.End;
+        }
+
+        return true;
+    }
+
     private static bool IsPointInDesignSpace(
         VectorPoint point,
         double designWidth,
         double designHeight) =>
         IsFiniteRange(point.X, 0.0, designWidth) &&
         IsFiniteRange(point.Y, 0.0, designHeight);
+
+    private static bool IsFinitePositiveRange(
+        double value,
+        double maximum) =>
+        double.IsFinite(value) &&
+        value > 0.0 &&
+        value <= maximum;
 
     private static bool HasAtLeastTwoDistinctPoints(
         IReadOnlyList<VectorPoint> points) =>

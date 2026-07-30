@@ -17,15 +17,18 @@ The retained language is:
 
 `ApertureFrame` is the reusable window-contour primitive. It keeps its static
 graphite contour and dynamic RGB focus junction in separate
-`DrawingVisual` objects. `NeuralVectorLayer` now sources its static planes,
-desktop datums and junction paths from the platform-neutral retained command
-buffer through a Win10 WPF adapter, while its two small signal junctions remain
-the only per-frame redraws. The adapter validates the complete semantic
-palette, stages every command in a frozen `DrawingGroup` and commits only
-after the whole scene succeeds. Invalid geometry or color input therefore
-produces an empty static layer instead of a partial frame. This keeps RGB
-animation bounded and makes the same contour grammar reusable by Explorer,
-Control Center, Win11 and the future Pi conversation surface.
+`DrawingVisual` objects. Its four tangent corners and eight split-edge figures
+now form one common compound-path command, preserving continuous line/arc
+joins and semi-transparent blending. Its three tiny registration squares and
+dynamic focus marks remain direct WPF geometry. `NeuralVectorLayer` likewise
+sources its static planes, desktop datums and junction paths from the
+platform-neutral retained command buffer, while its two small signal junctions
+remain per-frame redraws. The adapter validates the complete semantic palette,
+stages every command in a frozen `DrawingGroup` and commits only after the
+whole scene succeeds. Invalid geometry or color input therefore produces an
+empty static layer instead of a partial frame. This keeps RGB animation
+bounded and makes the same contour grammar reusable by Explorer, Control
+Center, Win11 and the future Pi conversation surface.
 
 No local glow shader, radial glow brush or particle emitter is implemented in
 these components. Every colored contour and junction binds to the same

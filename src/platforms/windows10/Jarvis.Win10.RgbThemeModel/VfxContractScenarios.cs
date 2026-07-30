@@ -394,13 +394,14 @@ internal static class VfxContractScenarios
                 return
                     receipt.Result ==
                         "compiled-retained-vector-scene" &&
-                    receipt.CommandCount == 5 &&
+                    receipt.CommandCount == 6 &&
                     receipt.PointCount == 1 &&
                     receipt.LineCount == 1 &&
                     receipt.PolylineCount == 1 &&
-                    receipt.ArcCount == 1 &&
+                    receipt.ArcCount == 2 &&
+                    receipt.PathCount == 1 &&
                     receipt.PlaneCount == 1 &&
-                    receipt.StaticCommandCount == 4 &&
+                    receipt.StaticCommandCount == 5 &&
                     receipt.PerFrameCommandCount == 1 &&
                     receipt.SharedSignalCommandCount == 1;
             });
@@ -517,6 +518,57 @@ internal static class VfxContractScenarios
                             RadiusX = 0.0,
                         }),
                 "vector-command-invalid:tangent-corner"));
+        Add(
+            scenarios,
+            "empty-vector-path-figure-rejected",
+            () => HasVectorFailure(
+                ReplaceVectorCommand(
+                    vectorScene,
+                    "compound-path",
+                    command =>
+                        ((VectorPathCommand)command) with
+                        {
+                            Figures =
+                            [
+                                new(
+                                    new(100.0, 100.0),
+                                    [],
+                                    false),
+                            ],
+                        }),
+                "vector-command-invalid:compound-path"));
+        Add(
+            scenarios,
+            "invalid-vector-path-arc-rejected",
+            () => HasVectorFailure(
+                ReplaceVectorCommand(
+                    vectorScene,
+                    "compound-path",
+                    command =>
+                    {
+                        VectorPathCommand path =
+                            (VectorPathCommand)command;
+                        VectorPathFigure figure =
+                            path.Figures.Single();
+                        VectorPathSegment[] segments =
+                            figure.Segments.ToArray();
+                        segments[1] =
+                            ((VectorPathArcSegment)segments[1]) with
+                            {
+                                RadiusX = 0.0,
+                            };
+                        return path with
+                        {
+                            Figures =
+                            [
+                                figure with
+                                {
+                                    Segments = segments,
+                                },
+                            ],
+                        };
+                    }),
+                "vector-command-invalid:compound-path"));
         Add(
             scenarios,
             "invalid-vector-scene-resolves-empty",

@@ -43,11 +43,12 @@ compiles the versioned inert preset plus the shared semantic visual frame in
 fail-closed tests. Every node remains disabled, the GPU backend is unselected,
 and no VFX renderer or parameter editor is implemented. The same common
 library now compiles a backend-neutral retained
-point/line/polyline/arc/plane command buffer. The first Win10 WPF adapter now
-consumes that buffer for the owned preview's static planes, datums and
-junction paths, renders every supported primitive kind in tests and fails
-closed before committing partial geometry. Four exact PNG hashes on Windows
-10 build 19045 prove the migration does not change the current WPF pixels. See
+point/line/polyline/arc/compound-path/plane command buffer. The first Win10 WPF
+adapter now consumes that buffer for the owned preview's static planes, datums,
+junction paths and reusable aperture contours, renders every supported
+primitive kind in tests and fails closed before committing partial geometry.
+Four exact PNG hashes on Windows 10 build 19045 prove the migration does not
+change the current WPF pixels. See
 `docs/NEURAL-VOID-GLOBAL-VFX-CONTRACT.md`.
 
 The owned `Jarvis.Win10.NativeStyleProbe` now consumes the same RGB frame for

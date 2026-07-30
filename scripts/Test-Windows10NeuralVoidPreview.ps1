@@ -21,6 +21,8 @@ $vectorLayerPath = Join-Path $sourceRoot (
     'NeuralVectorLayer.cs')
 $vectorSceneFactoryPath = Join-Path $sourceRoot (
     'Win10NeuralVectorSceneFactory.cs')
+$apertureVectorFactoryPath = Join-Path $sourceRoot (
+    'Win10ApertureVectorSceneFactory.cs')
 $wpfVectorRendererPath = Join-Path $sourceRoot (
     'WpfRetainedVectorSceneRenderer.cs')
 $wpfVectorScenariosPath = Join-Path $sourceRoot (
@@ -71,6 +73,8 @@ $surfaceText = [IO.File]::ReadAllText($surfacePath)
 $vectorLayerText = [IO.File]::ReadAllText($vectorLayerPath)
 $vectorSceneFactoryText =
     [IO.File]::ReadAllText($vectorSceneFactoryPath)
+$apertureVectorFactoryText =
+    [IO.File]::ReadAllText($apertureVectorFactoryPath)
 $wpfVectorRendererText =
     [IO.File]::ReadAllText($wpfVectorRendererPath)
 $wpfVectorScenariosText =
@@ -155,26 +159,34 @@ Add-Check `
         $wpfVectorRendererText.Contains(
             'VectorArcCommand') -and
         $wpfVectorRendererText.Contains(
+            'VectorPathCommand') -and
+        $wpfVectorRendererText.Contains(
             'VectorPlaneCommand') -and
         $wpfVectorRendererText.Contains('StreamGeometry') -and
         $wpfVectorRendererText.Contains('CreatePolyline(') -and
         $wpfVectorRendererText.Contains('CreatePolygon(') -and
         $wpfVectorRendererText.Contains('CreateArc(') -and
+        $wpfVectorRendererText.Contains('CreatePath(') -and
         $sourceText.Contains(
             'public sealed record RetainedVectorScene') -and
         $sourceText.Contains(
             'public static class RetainedVectorSceneCompiler') -and
         $apertureFrameText.Contains('DrawingVisual') -and
-        $apertureFrameText.Contains('StreamGeometry') -and
-        $apertureFrameText.Contains('DrawTangentCorner(') -and
-        $apertureFrameText.Contains('context.ArcTo(') -and
+        $apertureFrameText.Contains(
+            'Win10ApertureVectorSceneFactory.TryCreate(') -and
+        $apertureVectorFactoryText.Contains(
+            'VectorPathCommand') -and
+        $apertureVectorFactoryText.Contains(
+            'VectorPathArcSegment') -and
+        $apertureVectorFactoryText.Contains('AddTangentCorner(') -and
         $apertureFrameText.Contains('DrawRegistrationSquare(') -and
         -not $surfaceText.Contains('<Image ') -and
         -not $vectorLayerText.Contains('Bitmap') -and
         -not $apertureFrameText.Contains('Bitmap')) `
     -Detail (
         'Selected variant 4 must be drawn from mathematical points, lines, ' +
-        'arcs and planes without decorative bitmap resources.')
+        'arcs, compound paths and planes without decorative bitmap ' +
+        'resources.')
 
 Add-Check `
     -Name 'surface.retained-static-vector-layer' `
@@ -195,6 +207,8 @@ Add-Check `
         $vectorLayerText.Contains('RedrawSignal();') -and
         $apertureFrameText.Contains('RedrawStatic();') -and
         $apertureFrameText.Contains('RedrawFocus();') -and
+        $apertureFrameText.Contains(
+            'renderer.Render(context, inputs.Scene)') -and
         $wpfVectorRendererText.Contains('DrawingGroup staged') -and
         $wpfVectorRendererText.Contains('staged.Freeze();') -and
         $wpfVectorRendererText.Contains('geometry.Freeze();') -and
@@ -222,7 +236,9 @@ Add-Check `
         $surfaceText.Contains(
             'AccentBrush="{Binding AccentBrush, ElementName=Root}"') -and
         -not $surfaceText.Contains('<DropShadowEffect') -and
-        $apertureFrameText.Contains('DrawSplitEdge(') -and
+        $apertureVectorFactoryText.Contains('AddSplitEdge(') -and
+        $apertureVectorFactoryText.Contains(
+            'VectorPathArcSegment') -and
         $apertureFrameText.Contains('DrawEllipse(') -and
         -not $apertureFrameText.Contains('CreateGlowBrush(') -and
         -not $sourceText.Contains('RadialGradientBrush') -and
@@ -322,7 +338,7 @@ if ($buildExitCode -eq 0) {
             $adapterExitCode -eq 0 -and
             $null -ne $adapterReceipt -and
             $adapterReceipt.result -eq 'passed' -and
-            $adapterReceipt.scenarioCount -eq 7 -and
+            $adapterReceipt.scenarioCount -eq 12 -and
             $adapterReceipt.passedCount -eq
                 $adapterReceipt.scenarioCount -and
             -not $adapterReceipt.shellMutationSupported -and

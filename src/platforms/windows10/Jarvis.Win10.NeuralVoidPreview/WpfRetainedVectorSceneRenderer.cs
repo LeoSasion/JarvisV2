@@ -147,6 +147,12 @@ internal sealed class WpfRetainedVectorSceneRenderer
                     CreatePen(brush, arc.Stroke),
                     CreateArc(arc));
                 break;
+            case VectorPathCommand path:
+                context.DrawGeometry(
+                    null,
+                    CreatePen(brush, path.Stroke),
+                    CreatePath(path.Figures));
+                break;
             case VectorPlaneCommand plane:
                 context.DrawGeometry(
                     brush,
@@ -246,6 +252,56 @@ internal sealed class WpfRetainedVectorSceneRenderer
                     : SweepDirection.Counterclockwise,
                 true,
                 false);
+        }
+        geometry.Freeze();
+        return geometry;
+    }
+
+    private static StreamGeometry CreatePath(
+        IReadOnlyList<VectorPathFigure> figures)
+    {
+        StreamGeometry geometry = new();
+        using (StreamGeometryContext context = geometry.Open())
+        {
+            foreach (VectorPathFigure figure in figures)
+            {
+                context.BeginFigure(
+                    ToPoint(figure.Start),
+                    false,
+                    figure.Closed);
+                foreach (
+                    VectorPathSegment segment in
+                    figure.Segments)
+                {
+                    switch (segment)
+                    {
+                        case VectorPathLineSegment line:
+                            context.LineTo(
+                                ToPoint(line.End),
+                                true,
+                                false);
+                            break;
+                        case VectorPathArcSegment arc:
+                            context.ArcTo(
+                                ToPoint(arc.End),
+                                new Size(
+                                    arc.RadiusX,
+                                    arc.RadiusY),
+                                arc.RotationDegrees,
+                                arc.LargeArc,
+                                arc.Sweep == "clockwise"
+                                    ? SweepDirection.Clockwise
+                                    : SweepDirection
+                                        .Counterclockwise,
+                                true,
+                                false);
+                            break;
+                        default:
+                            throw new InvalidOperationException(
+                                "Unsupported retained path segment.");
+                    }
+                }
+            }
         }
         geometry.Freeze();
         return geometry;

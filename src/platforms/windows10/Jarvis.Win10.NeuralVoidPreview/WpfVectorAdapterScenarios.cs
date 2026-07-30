@@ -1,4 +1,7 @@
+using System.Security.Cryptography;
+using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Jarvis.VisualEffects;
 
 namespace Jarvis.Win10.NeuralVoidPreview;
@@ -62,8 +65,242 @@ internal static class WpfVectorAdapterScenarios
                 return
                     receipt.Result ==
                         "rendered-retained-vector-scene" &&
-                    receipt.CommandsDrawn == 5 &&
-                    receipt.PrimitiveKindCount == 5;
+                    receipt.CommandsDrawn == 6 &&
+                    receipt.PrimitiveKindCount == 6;
+            });
+        Add(
+            scenarios,
+            "aperture-contours-render-at-reviewed-sizes",
+            () =>
+            {
+                (double Width,
+                    double Height,
+                    double Radius,
+                    double Length,
+                    Color Color)[] cases =
+                    [
+                        (
+                            595.0,
+                            488.0,
+                            24.0,
+                            38.0,
+                            Color.FromRgb(
+                                0x1B,
+                                0x25,
+                                0x24)),
+                        (
+                            28.0,
+                            28.0,
+                            4.0,
+                            6.0,
+                            Color.FromArgb(
+                                0x98,
+                                0x00,
+                                0xFF,
+                                0x9A)),
+                        (
+                            1000.0,
+                            620.0,
+                            22.0,
+                            42.0,
+                            Color.FromRgb(
+                                0x34,
+                                0x40,
+                                0x3E)),
+                        (
+                            200.0,
+                            112.0,
+                            12.0,
+                            18.0,
+                            Color.FromRgb(
+                                0x34,
+                                0x40,
+                                0x3E)),
+                    ];
+                return cases.All(testCase =>
+                {
+                    bool created =
+                        Win10ApertureVectorSceneFactory.TryCreate(
+                            testCase.Width,
+                            testCase.Height,
+                            testCase.Radius,
+                            testCase.Length,
+                            new SolidColorBrush(testCase.Color),
+                            out
+                                Win10ApertureVectorSceneInputs?
+                                inputs);
+                    if (!created || inputs is null)
+                    {
+                        return false;
+                    }
+
+                    VectorSceneCompilationReceipt compilation =
+                        RetainedVectorSceneCompiler.Compile(
+                            inputs.Scene);
+                    WpfVectorSceneRenderReceipt receipt =
+                        Render(
+                            new WpfRetainedVectorSceneRenderer(
+                                inputs.Palette),
+                            inputs.Scene);
+                    return
+                        compilation.Result ==
+                            "compiled-retained-vector-scene" &&
+                        compilation.CommandCount == 1 &&
+                        compilation.ArcCount == 4 &&
+                        inputs.Scene.Commands.Single() is
+                            VectorPathCommand &&
+                        receipt.Result ==
+                            "rendered-retained-vector-scene" &&
+                        receipt.CommandsDrawn == 1 &&
+                        receipt.PrimitiveKindCount == 1;
+                });
+            });
+        Add(
+            scenarios,
+            "zero-radius-aperture-path-compiles",
+            () =>
+            {
+                bool created =
+                    Win10ApertureVectorSceneFactory.TryCreate(
+                        200.0,
+                        112.0,
+                        0.0,
+                        0.0,
+                        new SolidColorBrush(
+                            Color.FromRgb(
+                                0x34,
+                                0x40,
+                                0x3E)),
+                        out
+                            Win10ApertureVectorSceneInputs?
+                            inputs);
+                if (!created || inputs is null)
+                {
+                    return false;
+                }
+
+                VectorSceneCompilationReceipt receipt =
+                    RetainedVectorSceneCompiler.Compile(
+                        inputs.Scene);
+                return
+                    receipt.Result ==
+                        "compiled-retained-vector-scene" &&
+                    receipt.CommandCount == 1 &&
+                    receipt.ArcCount == 0;
+            });
+        Add(
+            scenarios,
+            "minimal-empty-aperture-scene-is-safe",
+            () =>
+            {
+                bool created =
+                    Win10ApertureVectorSceneFactory.TryCreate(
+                        4.0,
+                        4.0,
+                        0.0,
+                        0.0,
+                        new SolidColorBrush(
+                            Color.FromRgb(
+                                0x34,
+                                0x40,
+                                0x3E)),
+                        out
+                            Win10ApertureVectorSceneInputs?
+                            inputs);
+                if (!created || inputs is null)
+                {
+                    return false;
+                }
+
+                VectorSceneCompilationReceipt receipt =
+                    RetainedVectorSceneCompiler.Compile(
+                        inputs.Scene);
+                return
+                    receipt.Result ==
+                        "compiled-retained-vector-scene" &&
+                    receipt.CommandCount == 0 &&
+                    receipt.ArcCount == 0;
+            });
+        Add(
+            scenarios,
+            "unsupported-aperture-brush-fails-closed",
+            () =>
+            {
+                bool created =
+                    Win10ApertureVectorSceneFactory.TryCreate(
+                        200.0,
+                        112.0,
+                        12.0,
+                        18.0,
+                        new LinearGradientBrush(),
+                        out
+                            Win10ApertureVectorSceneInputs?
+                            inputs);
+                return !created && inputs is null;
+            });
+        Add(
+            scenarios,
+            "aperture-focus-corners-render-independently",
+            () =>
+            {
+                HashSet<string> hashes =
+                    new(StringComparer.Ordinal);
+                ApertureFocusCorner[] corners =
+                [
+                    ApertureFocusCorner.None,
+                    ApertureFocusCorner.TopLeft,
+                    ApertureFocusCorner.TopRight,
+                    ApertureFocusCorner.BottomLeft,
+                    ApertureFocusCorner.BottomRight,
+                ];
+                foreach (ApertureFocusCorner corner in corners)
+                {
+                    ApertureFrame frame =
+                        new()
+                        {
+                            Width = 200.0,
+                            Height = 112.0,
+                            CornerRadius = 12.0,
+                            CornerLength = 18.0,
+                            FocusCorner = corner,
+                            LineBrush =
+                                new SolidColorBrush(
+                                    Color.FromRgb(
+                                        0x34,
+                                        0x40,
+                                        0x3E)),
+                            AccentBrush =
+                                new SolidColorBrush(
+                                    Color.FromRgb(
+                                        0x00,
+                                        0xFF,
+                                        0x9A)),
+                        };
+                    frame.Measure(new Size(200.0, 112.0));
+                    frame.Arrange(
+                        new Rect(0.0, 0.0, 200.0, 112.0));
+                    frame.UpdateLayout();
+
+                    RenderTargetBitmap bitmap =
+                        new(
+                            200,
+                            112,
+                            96.0,
+                            96.0,
+                            PixelFormats.Pbgra32);
+                    bitmap.Render(frame);
+                    byte[] pixels =
+                        new byte[200 * 112 * 4];
+                    bitmap.CopyPixels(
+                        pixels,
+                        200 * 4,
+                        0);
+                    hashes.Add(
+                        Convert.ToHexString(
+                            SHA256.HashData(pixels)));
+                }
+
+                return hashes.Count == corners.Length;
             });
         Add(
             scenarios,

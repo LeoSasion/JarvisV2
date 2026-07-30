@@ -263,6 +263,7 @@
     "src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/PreviewContracts.cs",
     "src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/PreviewRenderer.cs",
     "src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/Program.cs",
+    "src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/Win10ApertureVectorSceneFactory.cs",
     "src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/Win10NeuralVectorSceneFactory.cs",
     "src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/WpfRetainedVectorSceneRenderer.cs",
     "src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/WpfVectorAdapterScenarios.cs",

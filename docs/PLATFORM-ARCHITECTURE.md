@@ -70,10 +70,11 @@ budgets and RGB binding while leaving every effect disabled.
 `Jarvis.VisualEffects` now implements this contract, the RGB sampler, a
 linear-sRGB semantic signal frame and schema-versioned inert preset validation
 without WPF or native Windows dependencies. It also defines a retained
-point/line/polyline/arc/plane command buffer with deterministic ordering,
-semantic color binding and explicit quality budgets. Platform backends may
-later implement separate renderers against that common contract; the contract
-does not authorize Shell integration. See
+point/line/polyline/arc/compound-path/plane command buffer with deterministic
+ordering, semantic color binding and explicit quality budgets. Compound paths
+retain multiple continuous line/arc figures as one draw operation. Platform
+backends may later implement separate renderers against that common contract;
+the contract does not authorize Shell integration. See
 `docs/NEURAL-VOID-GLOBAL-VFX-CONTRACT.md`.
 
 The current Supervisor remains under `src/platforms/windows11` because its
@@ -145,14 +146,17 @@ simulated controls. It consumes the shared RGB frame engine, exposes A/C/D
 shortcuts plus continuous hue and effects, and implements the selected fourth
 visual variant as a reusable `ApertureFrame`: subtractive open contours,
 tangent arcs and two local RGB focus junctions. Local components draw only
-point/line/arc/plane geometry; every colored primitive consumes the same RGB
+point/line/arc/compound-path/plane geometry; every colored primitive consumes
+the same RGB
 frame and no local glow is implemented. The desktop layer's static planes,
-datums and junction paths are now authored as common retained-vector commands
-and rendered by a Win10 WPF adapter that validates the semantic palette,
-stages a frozen drawing and fails closed before commit. Dynamic focus geometry
-and `ApertureFrame` remain in separate retained WPF visuals during the gradual
-migration. Exact four-case PNG hashes on Windows 10 build 19045 prove this
-adapter boundary is pixel-identical to the preceding implementation.
+datums and junction paths plus each `ApertureFrame` contour are now authored as
+common retained-vector commands and rendered by a Win10 WPF adapter that
+validates the semantic palette, stages a frozen drawing and fails closed
+before commit. `ApertureFrame` uses one compound path so its tangent joins keep
+single-draw alpha semantics; its registration squares and dynamic focus
+geometry remain direct retained WPF visuals. Exact four-case PNG hashes on
+Windows 10 build 19045 prove this adapter boundary is pixel-identical to the
+preceding implementation.
 
 Particles, glow and post processing are reserved for a future desktop-global
 VFX compositor with a film/game-engine-style parameter stack. This boundary

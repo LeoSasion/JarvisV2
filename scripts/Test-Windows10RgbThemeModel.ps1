@@ -147,7 +147,8 @@ Add-Check `
         $schema.'$defs'.vectorGrammar.properties.glowPolicy.const -eq
             'reserved-global-not-implemented') `
     -Detail (
-        'Selected variant 4 must remain an open point-line-arc-plane ' +
+        'Selected variant 4 must remain an open ' +
+        'point-line-arc-compound-path-plane ' +
         'grammar with two shared-frame focus junctions, no local glow and ' +
         'no bitmap dependency.')
 
@@ -510,14 +511,15 @@ if ($buildExitCode -eq 0) {
             $null -ne $vectorReceipt -and
             $vectorReceipt.result -eq
                 'compiled-retained-vector-scene' -and
-            $vectorReceipt.commandCount -eq 5 -and
-            $vectorReceipt.vertexCount -eq 13 -and
+            $vectorReceipt.commandCount -eq 6 -and
+            $vectorReceipt.vertexCount -eq 17 -and
             $vectorReceipt.pointCount -eq 1 -and
             $vectorReceipt.lineCount -eq 1 -and
             $vectorReceipt.polylineCount -eq 1 -and
-            $vectorReceipt.arcCount -eq 1 -and
+            $vectorReceipt.arcCount -eq 2 -and
+            $vectorReceipt.pathCount -eq 1 -and
             $vectorReceipt.planeCount -eq 1 -and
-            $vectorReceipt.staticCommandCount -eq 4 -and
+            $vectorReceipt.staticCommandCount -eq 5 -and
             $vectorReceipt.perFrameCommandCount -eq 1 -and
             $vectorReceipt.sharedSignalCommandCount -eq 1 -and
             $vectorReceipt.deterministicOrderValidated -and
