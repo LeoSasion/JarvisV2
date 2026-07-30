@@ -11,10 +11,10 @@
   "runtime": {
     "nodeMinimumMajor": 22,
     "integrationMode": "sdk-sidecar-jsonl",
-    "launchState": "transport-probe-only",
+    "launchState": "desktop-transport-probe",
     "piOfflineRequired": true,
     "sessionCreationEnabled": false,
-    "desktopLaunchImplemented": false
+    "desktopLaunchImplemented": true
   },
   "transport": {
     "framing": "lf-delimited-jsonl",

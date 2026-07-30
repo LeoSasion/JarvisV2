@@ -4,6 +4,8 @@ export function createReadyEvent(contract, runtimeReceipt) {
     protocol: contract.contractId,
     package: runtimeReceipt.package,
     version: runtimeReceipt.installedVersion,
+    credentialEnvironmentClean:
+      runtimeReceipt.credentialEnvironmentClean,
     sessionCreationEnabled: false,
   };
 }

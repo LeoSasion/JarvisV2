@@ -8,7 +8,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $matrixPath = Join-Path $root 'config\platform-matrix.json'
 $matrix =
     Get-Content -LiteralPath $matrixPath -Raw |
-        ConvertFrom-Json -Depth 50
+        ConvertFrom-Json
 $checks = [System.Collections.Generic.List[object]]::new()
 $errors = [System.Collections.Generic.List[string]]::new()
 
@@ -97,7 +97,7 @@ Add-Check `
 
 $compatibility =
     Get-Content -LiteralPath (Join-Path $root 'config\compatibility.json') -Raw |
-        ConvertFrom-Json -Depth 50
+        ConvertFrom-Json
 Add-Check `
     'windows11.compatibility-source-paths' `
     (@($compatibility.modules | Where-Object {
@@ -122,7 +122,7 @@ Add-Check `
 
 $publicationManifest =
     Get-Content -LiteralPath (Join-Path $root 'config\publication-manifest.json') -Raw |
-        ConvertFrom-Json -Depth 100
+        ConvertFrom-Json
 $handoffRequired = @(
     'WINDOWS10-HANDOFF.md',
     'config/platform-matrix.json',

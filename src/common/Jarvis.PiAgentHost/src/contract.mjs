@@ -29,10 +29,10 @@ export function validateContract(contract) {
   if (
     contract.runtime?.nodeMinimumMajor < 22 ||
     contract.runtime?.integrationMode !== "sdk-sidecar-jsonl" ||
-    contract.runtime?.launchState !== "transport-probe-only" ||
+    contract.runtime?.launchState !== "desktop-transport-probe" ||
     contract.runtime?.piOfflineRequired !== true ||
     contract.runtime?.sessionCreationEnabled !== false ||
-    contract.runtime?.desktopLaunchImplemented !== false
+    contract.runtime?.desktopLaunchImplemented !== true
   ) {
     failures.push("runtime");
   }

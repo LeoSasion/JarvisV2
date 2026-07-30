@@ -18,15 +18,25 @@ state outside the Windows Shell process.
 - verifies the session, runtime and model-control exports needed by the future
   desktop host;
 - serves a per-frame-bounded JSONL handshake and capability protocol;
+- provides a managed desktop bridge that starts the exact Node sidecar without
+  a shell, replaces the inherited environment with a minimal OS allowlist,
+  admits the ready frame, probes capabilities and owns orderly shutdown;
 - exposes only `read`, `grep`, `find` and `ls` as the intended first tool set;
 - rejects `start_session` with `policy-disabled`;
 - rejects credential-shaped fields and frames over 64 KiB while accepting
   batched valid frames;
+- reports whether any credential-shaped environment variable survived into the
+  sidecar; the managed desktop bridge rejects readiness unless the result is
+  clean;
+- fault-injects a wrong ready protocol, an oversized ready frame and a hung
+  startup; every case is rejected and cleanup is scoped to the owned Node
+  process;
 - forces `PI_OFFLINE=1` before importing Pi.
 
-This is a real dependency and transport probe, not yet a chat session. The
-desktop does not launch it yet, no provider credentials are read, and no Pi
-session is created.
+This is a real dependency and desktop-owned transport probe, not yet a chat
+session. The bridge can launch and supervise the isolated sidecar, but no
+provider credentials are inherited, no workspace is bound and no Pi session is
+created.
 
 ## Why the boundary starts disabled
 
@@ -41,7 +51,7 @@ The planned progression is:
 ```text
 WPF desktop
     |
-    +-- bounded JSONL sidecar transport (implemented)
+    +-- managed sidecar lifecycle and bounded JSONL transport (implemented)
             |
             +-- read-only Pi session admission
                     |
@@ -63,9 +73,10 @@ pnpm install --frozen-lockfile --ignore-scripts
 
 pwsh -NoLogo -NoProfile -File `
   .\scripts\Test-PiAgentHost.ps1 `
-  -NodePath C:\path\to\node.exe
+  -NodePath C:\path\to\node.exe `
+  -DotnetPath C:\path\to\dotnet.exe
 ```
 
-CI uses `-StaticOnly` to validate the exact package lock, schema, source
-boundary and disabled capabilities without provider credentials or a live
-agent session.
+CI uses `-StaticOnly` to build the managed bridge and validate the exact package
+lock, schema, source boundary and disabled capabilities without provider
+credentials or a live agent session.

@@ -8,7 +8,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $manifestPath = Join-Path $root 'config\publication-manifest.json'
 $manifest =
     Get-Content -LiteralPath $manifestPath -Raw |
-        ConvertFrom-Json -Depth 100
+        ConvertFrom-Json
 $errors = [System.Collections.Generic.List[string]]::new()
 
 function Add-BoundaryError {
@@ -76,6 +76,7 @@ $textExtensions = @(
     '.hpp',
     '.json',
     '.md',
+    '.mjs',
     '.ps1',
     '.yml',
     '.yaml'
@@ -174,7 +175,8 @@ if (-not $noticeText.Contains('Windows 11 Taskbar Styler') -or
     Add-BoundaryError 'third-party-notice-incomplete'
 }
 if (-not $readmeText.StartsWith('# JarvisV2') -or
-    -not $readmeText.Contains('内部运行时安全标识仍为 `JARVIS2`')) {
+    -not $readmeText.Contains('**JarvisV2**') -or
+    -not $readmeText.Contains('`JARVIS2`')) {
     Add-BoundaryError 'public-name-runtime-boundary-missing'
 }
 if (-not $compatibilityText.Contains('"project": "JARVIS2"') -or

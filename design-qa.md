@@ -2,8 +2,8 @@
 
 ## Visual truth
 
-- Selected style reference 1: `C:\Users\Administrator\.codex\generated_images\019fadf9-6d36-7352-9c2c-24f1bd9e17d2\call_hvjiAOmRItrbxQTBujUSukEt.png`
-- Selected style reference 3: `C:\Users\Administrator\.codex\generated_images\019fadf9-6d36-7352-9c2c-24f1bd9e17d2\call_M7RMEuV2MKX6ulnLRXfsNHYT.png`
+- Selected style reference 1: Codex image artifact `call_hvjiAOmRItrbxQTBujUSukEt.png`
+- Selected style reference 3: Codex image artifact `call_M7RMEuV2MKX6ulnLRXfsNHYT.png`
 - Scope: extract only the minimal outline, negative-space, layered rail, and signal-motion grammar. Do not reproduce either reference's layout, features, labels, or motifs.
 
 ## Implementation target

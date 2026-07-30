@@ -9,6 +9,18 @@ const requiredExports = [
   "SessionManager",
 ];
 
+function isCredentialEnvironmentKey(key) {
+  const normalized = key.replaceAll(/[-_]/g, "").toLowerCase();
+  return [
+    "accesskey",
+    "apikey",
+    "credential",
+    "password",
+    "secret",
+    "token",
+  ].some((shape) => normalized.includes(shape));
+}
+
 async function findPackageManifest(entryPath, packageName) {
   let current = dirname(entryPath);
   const root = parse(current).root;
@@ -29,6 +41,9 @@ async function findPackageManifest(entryPath, packageName) {
 
 export async function inspectPiRuntime(contract) {
   process.env.PI_OFFLINE = "1";
+  const credentialEnvironmentKeys = Object.keys(process.env)
+    .filter(isCredentialEnvironmentKey)
+    .sort();
   const packageName = contract.upstream.package;
   const entryPath = fileURLToPath(import.meta.resolve(packageName));
   const manifest = await findPackageManifest(entryPath, packageName);
@@ -52,8 +67,11 @@ export async function inspectPiRuntime(contract) {
     piOffline: process.env.PI_OFFLINE === "1",
     integrationMode: contract.runtime.integrationMode,
     transportReady: passed,
+    credentialEnvironmentClean:
+      credentialEnvironmentKeys.length === 0,
+    credentialEnvironmentKeyCount: credentialEnvironmentKeys.length,
     sessionCreationEnabled: false,
-    desktopLaunchImplemented: false,
+    desktopLaunchImplemented: true,
     credentialTransportAllowed: false,
     initialTools: [...contract.tools.initialAllowlist],
     shellMutationSupported: false,

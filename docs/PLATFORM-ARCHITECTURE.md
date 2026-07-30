@@ -39,10 +39,11 @@ operation has already been validated on both systems. Each live operation
 still requires a platform compatibility profile and exact target evidence.
 
 `Jarvis.PiAgentHost` pins the official Pi Agent SDK behind an isolated Node.js
-sidecar and bounded LF-delimited JSONL. Its first transport probe imports the
-real package but denies session creation, credentials and mutation tools. A
-future desktop conversation surface will consume that protocol; the agent
-runtime will never be loaded into Explorer. See
+sidecar and bounded LF-delimited JSONL. The managed desktop bridge now owns the
+no-shell child lifecycle, imports the real package, proves a clean child
+environment and denies session creation, credentials and mutation tools. A
+future desktop conversation surface will consume that admitted bridge; the
+agent runtime will never be loaded into Explorer. See
 `docs/PI-AGENT-DESKTOP-HOST.md`.
 
 The current Supervisor remains under `src/platforms/windows11` because its

@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [switch]$StaticOnly,
-    [string]$NodePath = 'node'
+    [string]$NodePath = 'node',
+    [string]$DotnetPath = 'dotnet'
 )
 
 Set-StrictMode -Version Latest
@@ -17,6 +18,10 @@ $packagePath = Join-Path $sourceRoot 'package.json'
 $lockPath = Join-Path $sourceRoot 'pnpm-lock.yaml'
 $hostPath = Join-Path $sourceRoot 'src\host.mjs'
 $protocolTestPath = Join-Path $sourceRoot 'test\protocol.test.mjs'
+$bridgeProjectPath = Join-Path $sourceRoot 'Jarvis.PiAgentHost.csproj'
+$bridgeSourcePath = Join-Path $sourceRoot 'DesktopBridge.cs'
+$bridgeProgramPath = Join-Path $sourceRoot 'Program.cs'
+$bridgeFixtureRoot = Join-Path $sourceRoot 'test\fixtures'
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()
@@ -40,13 +45,13 @@ function Add-Check {
 
 $contract =
     Get-Content -LiteralPath $contractPath -Raw |
-        ConvertFrom-Json -Depth 40
+        ConvertFrom-Json
 $schema =
     Get-Content -LiteralPath $schemaPath -Raw |
-        ConvertFrom-Json -Depth 40
+        ConvertFrom-Json
 $package =
     Get-Content -LiteralPath $packagePath -Raw |
-        ConvertFrom-Json -Depth 20
+        ConvertFrom-Json
 $runtimeSourceText = @(
     Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'src') `
         -File `
@@ -79,8 +84,8 @@ Add-Check `
     -Name 'contract.fail-closed-session-and-tools' `
     -Passed (
         -not $contract.runtime.sessionCreationEnabled -and
-        -not $contract.runtime.desktopLaunchImplemented -and
-        $contract.runtime.launchState -eq 'transport-probe-only' -and
+        $contract.runtime.desktopLaunchImplemented -and
+        $contract.runtime.launchState -eq 'desktop-transport-probe' -and
         -not $contract.session.enabled -and
         $contract.session.credentialTransport -eq 'forbidden' -and
         (@($contract.tools.initialAllowlist) -join '|') -eq
@@ -89,7 +94,7 @@ Add-Check `
             'bash|edit|write' -and
         -not $contract.tools.unattendedSelfIteration) `
     -Detail (
-        'The first embedded boundary exposes a transport probe only; ' +
+        'The managed desktop owns only a transport probe; ' +
         'session creation, credentials and mutation tools remain denied.')
 
 Add-Check `
@@ -120,6 +125,10 @@ Add-Check `
             '0.82.1' -and
         $schema.properties.runtime.properties.nodeMinimumMajor.const -eq
             22 -and
+        $schema.properties.runtime.properties.launchState.const -eq
+            'desktop-transport-probe' -and
+        $schema.properties.runtime.properties.desktopLaunchImplemented.const `
+            -eq $true -and
         $schema.properties.transport.properties.maxFrameBytes.const -eq
             65536 -and
         $schema.properties.runtime.properties.sessionCreationEnabled.const `
@@ -139,7 +148,7 @@ $forbiddenRuntimePattern = (
     'writeFile|appendFile|rmSync|unlinkSync)\b'
 )
 Add-Check `
-    -Name 'source.transport-probe-only' `
+    -Name 'source.session-disabled-sidecar' `
     -Passed (
         -not [regex]::IsMatch(
             $runtimeSourceText,
@@ -155,6 +164,69 @@ Add-Check `
         'Runtime source may inspect the pinned SDK and serve bounded JSONL; ' +
         'it may not launch children, create sessions, read credentials or ' +
         'write files.')
+
+$bridgeSourceText =
+    [IO.File]::ReadAllText($bridgeSourcePath) +
+    [Environment]::NewLine +
+    [IO.File]::ReadAllText($bridgeProgramPath)
+$forbiddenBridgePattern = (
+    '(?i)\b(?:DllImport|LibraryImport|OpenProcess|CreateRemoteThread|' +
+    'WriteProcessMemory|SetWindowsHookEx|Microsoft\.Win32\.Registry|' +
+    'ServiceController|HttpClient|ClientWebSocket|TcpClient|UdpClient|' +
+    'CreateAgentSession\s*\(|ModelRuntime\.create\s*\()\b'
+)
+Add-Check `
+    -Name 'desktop-bridge.owned-process-fail-closed' `
+    -Passed (
+        (Test-Path -LiteralPath $bridgeProjectPath -PathType Leaf) -and
+        -not [regex]::IsMatch(
+            $bridgeSourceText,
+            $forbiddenBridgePattern) -and
+        $bridgeSourceText.Contains('UseShellExecute = false') -and
+        $bridgeSourceText.Contains('CreateNoWindow = true') -and
+        $bridgeSourceText.Contains('RedirectStandardInput = true') -and
+        $bridgeSourceText.Contains('RedirectStandardOutput = true') -and
+        $bridgeSourceText.Contains('RedirectStandardError = true') -and
+        $bridgeSourceText.Contains(
+            'startInfo.Environment["PI_OFFLINE"] = "1"') -and
+        $bridgeSourceText.Contains(
+            'startInfo.Environment.Clear()') -and
+        $bridgeSourceText.Contains(
+            'process.Kill(entireProcessTree: true)') -and
+        $bridgeSourceText.Contains('"start_session"') -and
+        $bridgeSourceText.Contains('"policy-disabled"') -and
+        $bridgeSourceText.Contains('"shutdown"') -and
+        $bridgeSourceText.Contains('wrong-ready-rejected') -and
+        $bridgeSourceText.Contains('oversized-ready-rejected') -and
+        $bridgeSourceText.Contains('hung-ready-times-out') -and
+        (Test-Path -LiteralPath (
+            Join-Path $bridgeFixtureRoot 'wrong-ready\host.mjs'
+        ) -PathType Leaf) -and
+        (Test-Path -LiteralPath (
+            Join-Path $bridgeFixtureRoot 'oversized-ready\host.mjs'
+        ) -PathType Leaf) -and
+        (Test-Path -LiteralPath (
+            Join-Path $bridgeFixtureRoot 'hung-ready\host.mjs'
+        ) -PathType Leaf)) `
+    -Detail (
+        'The managed bridge may own only the exact no-shell Node child, ' +
+        'scrub credential variables, prove session denial and terminate its ' +
+        'own process on bounded cleanup.')
+
+$bridgeBuildOutput = @(
+    & $DotnetPath build `
+        $bridgeProjectPath `
+        --configuration Release `
+        --nologo `
+        --warnaserror 2>&1
+)
+$bridgeBuildExitCode = $LASTEXITCODE
+Add-Check `
+    -Name 'desktop-bridge.release-build' `
+    -Passed ($bridgeBuildExitCode -eq 0) `
+    -Detail (
+        ($bridgeBuildOutput | Select-Object -Last 8) -join
+            [Environment]::NewLine)
 
 $lockValid = $false
 if (Test-Path -LiteralPath $lockPath -PathType Leaf) {
@@ -194,7 +266,7 @@ if (-not $StaticOnly) {
     try {
         $inspectReceipt =
             ($inspectOutput -join [Environment]::NewLine) |
-                ConvertFrom-Json -Depth 30
+                ConvertFrom-Json
     }
     catch {
         $inspectReceipt = $null
@@ -222,6 +294,7 @@ if (-not $StaticOnly) {
             @($inspectReceipt.missingExports).Count -eq 0 -and
             $inspectReceipt.piOffline -and
             $inspectReceipt.transportReady -and
+            $inspectReceipt.desktopLaunchImplemented -and
             -not $inspectReceipt.sessionCreationEnabled -and
             -not $inspectReceipt.credentialTransportAllowed -and
             -not $inspectReceipt.shellMutationSupported -and
@@ -240,7 +313,7 @@ if (-not $StaticOnly) {
     try {
         $protocolReceipt =
             ($protocolOutput -join [Environment]::NewLine) |
-                ConvertFrom-Json -Depth 30
+                ConvertFrom-Json
     }
     catch {
         $protocolReceipt = $null
@@ -266,6 +339,7 @@ if (-not $StaticOnly) {
             $protocolReceipt.recordCount -eq 6 -and
             $protocolReceipt.framing -eq 'lf-delimited-jsonl' -and
             $protocolReceipt.credentialFieldsRejected -and
+            $protocolReceipt.credentialEnvironmentClean -and
             $protocolReceipt.batchedFramesAccepted -eq 81 -and
             $protocolReceipt.oversizedFrameRejected -and
             -not $protocolReceipt.sessionCreationEnabled -and
@@ -279,6 +353,113 @@ if (-not $StaticOnly) {
         -Detail (
             "Protocol exit $protocolExitCode; result " +
             "$protocolResult; records $recordCount.")
+
+    $bridgeOutput = @(
+        & $DotnetPath run `
+            --project $bridgeProjectPath `
+            --configuration Release `
+            --no-build `
+            -- `
+            probe `
+            --node $NodePath `
+            --sidecar $hostPath 2>&1
+    )
+    $bridgeExitCode = $LASTEXITCODE
+    $bridgeReceipt = $null
+    try {
+        $bridgeReceipt =
+            ($bridgeOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $bridgeReceipt = $null
+    }
+    $bridgeResult = if ($null -ne $bridgeReceipt) {
+        $bridgeReceipt.result
+    }
+    else {
+        'unparsed'
+    }
+    Add-Check `
+        -Name 'runtime.desktop-owned-transport-probe' `
+        -Passed (
+            $bridgeExitCode -eq 0 -and
+            $null -ne $bridgeReceipt -and
+            $bridgeReceipt.result -eq 'passed' -and
+            $bridgeReceipt.protocol -eq
+                'jarvisv2-pi-agent-desktop-host-v1' -and
+            $bridgeReceipt.package -eq
+                '@earendil-works/pi-coding-agent' -and
+            $bridgeReceipt.installedVersion -eq '0.82.1' -and
+            $bridgeReceipt.desktopLaunchImplemented -and
+            $bridgeReceipt.readyObserved -and
+            $bridgeReceipt.helloPassed -and
+            $bridgeReceipt.capabilitiesPassed -and
+            $bridgeReceipt.sessionCreationDenied -and
+            $bridgeReceipt.shutdownPassed -and
+            $bridgeReceipt.piOffline -and
+            $bridgeReceipt.credentialEnvironmentScrubbed -and
+            (@($bridgeReceipt.initialTools) -join '|') -eq
+                'read|grep|find|ls' -and
+            (@($bridgeReceipt.deniedTools) -join '|') -eq
+                'bash|edit|write' -and
+            -not $bridgeReceipt.sessionCreationEnabled -and
+            -not $bridgeReceipt.credentialTransportAllowed -and
+            -not $bridgeReceipt.shellMutationSupported -and
+            -not $bridgeReceipt.explorerMutationSupported -and
+            -not $bridgeReceipt.systemMutationSupported -and
+            -not $bridgeReceipt.activationPermitted -and
+            $bridgeReceipt.liveExplorer -eq 'not-run' -and
+            -not $bridgeReceipt.mutationPerformed) `
+        -Detail (
+            "Desktop bridge exit $bridgeExitCode; result $bridgeResult.")
+
+    $faultOutput = @(
+        & $DotnetPath run `
+            --project $bridgeProjectPath `
+            --configuration Release `
+            --no-build `
+            -- `
+            fault-tests `
+            --node $NodePath `
+            --fixtures $bridgeFixtureRoot 2>&1
+    )
+    $faultExitCode = $LASTEXITCODE
+    $faultReceipt = $null
+    try {
+        $faultReceipt =
+            ($faultOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $faultReceipt = $null
+    }
+    $faultResult = if ($null -ne $faultReceipt) {
+        $faultReceipt.result
+    }
+    else {
+        'unparsed'
+    }
+    Add-Check `
+        -Name 'runtime.desktop-bridge-fault-probe' `
+        -Passed (
+            $faultExitCode -eq 0 -and
+            $null -ne $faultReceipt -and
+            $faultReceipt.result -eq 'passed' -and
+            $faultReceipt.scenarioCount -eq 3 -and
+            $faultReceipt.passedCount -eq 3 -and
+            (@($faultReceipt.scenarios | ForEach-Object name) -join '|') -eq
+                'wrong-ready-rejected|oversized-ready-rejected|' +
+                'hung-ready-times-out' -and
+            -not $faultReceipt.sessionCreationEnabled -and
+            -not $faultReceipt.shellMutationSupported -and
+            -not $faultReceipt.explorerMutationSupported -and
+            -not $faultReceipt.systemMutationSupported -and
+            -not $faultReceipt.activationPermitted -and
+            $faultReceipt.liveExplorer -eq 'not-run' -and
+            -not $faultReceipt.mutationPerformed) `
+        -Detail (
+            "Desktop fault probe exit $faultExitCode; result $faultResult.")
 }
 
 $passed = $failures.Count -eq 0
@@ -294,7 +475,7 @@ $passed = $failures.Count -eq 0
     embeddedVersion = '0.82.1'
     transportProbeImplemented = $true
     sessionCreationEnabled = $false
-    desktopLaunchImplemented = $false
+    desktopLaunchImplemented = $true
     credentialTransportAllowed = $false
     shellMutationSupported = $false
     explorerMutationSupported = $false

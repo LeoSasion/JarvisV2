@@ -7,12 +7,28 @@ const hostPath = fileURLToPath(hostUrl);
 const hostRoot = fileURLToPath(new URL("..", import.meta.url));
 
 async function runHost(lines) {
+  const childEnvironment = {
+    ...process.env,
+    PI_OFFLINE: "1",
+  };
+  for (const key of Object.keys(childEnvironment)) {
+    const normalized = key.replaceAll(/[-_]/g, "").toLowerCase();
+    if (
+      [
+        "accesskey",
+        "apikey",
+        "credential",
+        "password",
+        "secret",
+        "token",
+      ].some((shape) => normalized.includes(shape))
+    ) {
+      delete childEnvironment[key];
+    }
+  }
   const child = spawn(process.execPath, [hostPath, "serve"], {
     cwd: hostRoot,
-    env: {
-      ...process.env,
-      PI_OFFLINE: "1",
-    },
+    env: childEnvironment,
     shell: false,
     stdio: ["pipe", "pipe", "pipe"],
   });
@@ -55,6 +71,7 @@ assert.equal(primary.exitCode, 0, primary.stderr);
 const records = primary.records;
 assert.equal(records.length, 6);
 assert.equal(records[0].type, "ready");
+assert.equal(records[0].credentialEnvironmentClean, true);
 assert.equal(records[0].sessionCreationEnabled, false);
 assert.equal(records[1].command, "hello");
 assert.equal(records[1].success, true);
@@ -114,6 +131,7 @@ process.stdout.write(
     recordCount: records.length,
     framing: "lf-delimited-jsonl",
     credentialFieldsRejected: true,
+    credentialEnvironmentClean: true,
     batchedFramesAccepted: batch.records.length - 1,
     oversizedFrameRejected: true,
     sessionCreationEnabled: false,

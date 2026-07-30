@@ -10,5 +10,6 @@ stable.
 
 `Jarvis.PiAgentHost` is the language-neutral AI runtime boundary shared by
 both Windows backends. It pins the official Pi SDK, verifies a bounded JSONL
-sidecar protocol and currently refuses session creation. It contains no Shell
-or platform styling transport.
+sidecar protocol and includes the managed desktop-owned sidecar lifecycle. It
+currently refuses session creation, replaces the child environment with a
+minimal OS allowlist and contains no Shell or platform styling transport.
