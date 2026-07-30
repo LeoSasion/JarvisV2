@@ -140,6 +140,8 @@
     "src/common/Jarvis.PiAgentHost/src/host.mjs",
     "src/common/Jarvis.PiAgentHost/src/pi-runtime-inspector.mjs",
     "src/common/Jarvis.PiAgentHost/src/protocol.mjs",
+    "src/common/Jarvis.PiAgentHost/src/read-only-session.mjs",
+    "src/common/Jarvis.PiAgentHost/src/workspace-policy.mjs",
     "src/common/Jarvis.PiAgentHost/test/fixtures/hung-ready/host.mjs",
     "src/common/Jarvis.PiAgentHost/test/fixtures/oversized-ready/host.mjs",
     "src/common/Jarvis.PiAgentHost/test/fixtures/wrong-ready/host.mjs",

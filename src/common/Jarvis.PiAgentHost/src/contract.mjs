@@ -29,9 +29,10 @@ export function validateContract(contract) {
   if (
     contract.runtime?.nodeMinimumMajor < 22 ||
     contract.runtime?.integrationMode !== "sdk-sidecar-jsonl" ||
-    contract.runtime?.launchState !== "desktop-transport-probe" ||
+    contract.runtime?.launchState !==
+      "read-only-session-admission" ||
     contract.runtime?.piOfflineRequired !== true ||
-    contract.runtime?.sessionCreationEnabled !== false ||
+    contract.runtime?.sessionCreationEnabled !== true ||
     contract.runtime?.desktopLaunchImplemented !== true
   ) {
     failures.push("runtime");
@@ -39,13 +40,24 @@ export function validateContract(contract) {
   if (
     contract.transport?.framing !== "lf-delimited-jsonl" ||
     contract.transport?.encoding !== "utf-8" ||
+    contract.transport?.maxFrameBytes !== 65_536 ||
+    contract.transport?.requestTypes?.join("|") !==
+      "hello|capabilities|start_session|shutdown" ||
     contract.transport?.credentialFieldsAllowed !== false
   ) {
     failures.push("transport");
   }
   if (
-    contract.session?.enabled !== false ||
-    contract.session?.credentialTransport !== "forbidden"
+    contract.session?.enabled !== true ||
+    contract.session?.promptingEnabled !== false ||
+    contract.session?.modelAuthentication !==
+      "disabled-during-admission" ||
+    contract.session?.credentialTransport !== "forbidden" ||
+    contract.session?.persistence !== "in-memory" ||
+    contract.session?.workspaceBinding !==
+      "single-explicit-root" ||
+    contract.session?.resourceDiscovery !== "disabled" ||
+    contract.session?.modelNetworkAllowed !== false
   ) {
     failures.push("session");
   }

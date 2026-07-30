@@ -70,7 +70,11 @@ export async function inspectPiRuntime(contract) {
     credentialEnvironmentClean:
       credentialEnvironmentKeys.length === 0,
     credentialEnvironmentKeyCount: credentialEnvironmentKeys.length,
-    sessionCreationEnabled: false,
+    sessionCreationEnabled: true,
+    promptingEnabled: false,
+    sessionPersistence: "in-memory",
+    modelNetworkAllowed: false,
+    resourceDiscoveryEnabled: false,
     desktopLaunchImplemented: true,
     credentialTransportAllowed: false,
     initialTools: [...contract.tools.initialAllowlist],

@@ -23,13 +23,16 @@ public sealed record PiAgentDesktopProbeReceipt(
     bool ReadyObserved,
     bool HelloPassed,
     bool CapabilitiesPassed,
-    bool SessionCreationDenied,
+    bool SessionCreationPassed,
+    bool WorkspaceBound,
     bool ShutdownPassed,
     bool PiOffline,
     bool CredentialEnvironmentScrubbed,
     IReadOnlyList<string> InitialTools,
     IReadOnlyList<string> DeniedTools,
     bool SessionCreationEnabled,
+    bool PromptingEnabled,
+    bool SessionPersisted,
     bool CredentialTransportAllowed,
     bool ShellMutationSupported,
     bool ExplorerMutationSupported,
@@ -152,13 +155,12 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 CreateTimeout(
                     cancellationToken,
                     options.RequestTimeoutMilliseconds);
-            JsonDocument ready = await controller.ReadFrameAsync(
+            using JsonDocument ready = await controller.ReadFrameAsync(
                 timeout.Token);
             ValidateReady(ready.RootElement);
             controller.CredentialEnvironmentClean = ready.RootElement
                 .GetProperty("credentialEnvironmentClean")
                 .GetBoolean();
-            ready.Dispose();
             return controller;
         }
         catch
@@ -169,6 +171,43 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
     }
 
     public async Task<JsonDocument> RequestAsync(
+        string type,
+        string id,
+        CancellationToken cancellationToken)
+    {
+        return await SendRequestAsync(
+            new { type, id },
+            type,
+            id,
+            cancellationToken);
+    }
+
+    public async Task<JsonDocument> StartReadOnlySessionAsync(
+        string workspaceRoot,
+        string id,
+        CancellationToken cancellationToken)
+    {
+        if (!Path.IsPathFullyQualified(workspaceRoot) ||
+            !Directory.Exists(workspaceRoot))
+        {
+            throw new ArgumentException(
+                "workspaceRoot must name an existing absolute directory.",
+                nameof(workspaceRoot));
+        }
+        return await SendRequestAsync(
+            new
+            {
+                type = "start_session",
+                id,
+                workspaceRoot,
+            },
+            "start_session",
+            id,
+            cancellationToken);
+    }
+
+    private async Task<JsonDocument> SendRequestAsync<TRequest>(
+        TRequest request,
         string type,
         string id,
         CancellationToken cancellationToken)
@@ -186,7 +225,7 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         }
 
         string payload = JsonSerializer.Serialize(
-            new { type, id },
+            request,
             SerializerOptions);
         if (Encoding.UTF8.GetByteCount(payload) > options.MaximumFrameBytes)
         {
@@ -271,7 +310,9 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             cancellationToken);
         if (line is null)
         {
-            string stderr = await stderrTask;
+            string stderr = process.HasExited
+                ? await stderrTask
+                : string.Empty;
             throw new InvalidOperationException(
                 "The Pi Agent sidecar closed its output before a complete " +
                 $"frame was received. {stderr.Trim()}");
@@ -345,7 +386,8 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             ready.GetProperty("package").GetString() == PackageName &&
             ready.GetProperty("version").GetString() == ExpectedVersion &&
             ready.GetProperty("credentialEnvironmentClean").GetBoolean() &&
-            !ready.GetProperty("sessionCreationEnabled").GetBoolean();
+            ready.GetProperty("sessionCreationEnabled").GetBoolean() &&
+            !ready.GetProperty("promptingEnabled").GetBoolean();
         if (!valid)
         {
             throw new InvalidOperationException(
@@ -412,8 +454,23 @@ public static class PiAgentDesktopProbe
             capabilities.RootElement.GetProperty("success").GetBoolean() &&
             initialTools.SequenceEqual(["read", "grep", "find", "ls"]) &&
             deniedTools.SequenceEqual(["bash", "edit", "write"]) &&
-            !capabilityData
+            capabilityData
                 .GetProperty("sessionCreationEnabled")
+                .GetBoolean() &&
+            !capabilityData
+                .GetProperty("promptingEnabled")
+                .GetBoolean() &&
+            capabilityData
+                .GetProperty("sessionPersistence")
+                .GetString() == "in-memory" &&
+            capabilityData
+                .GetProperty("workspaceBinding")
+                .GetString() == "single-explicit-root" &&
+            !capabilityData
+                .GetProperty("resourceDiscoveryEnabled")
+                .GetBoolean() &&
+            !capabilityData
+                .GetProperty("modelNetworkAllowed")
                 .GetBoolean() &&
             !capabilityData
                 .GetProperty("credentialTransportAllowed")
@@ -428,26 +485,55 @@ public static class PiAgentDesktopProbe
                 .GetProperty("activationPermitted")
                 .GetBoolean();
 
-        using JsonDocument deniedSession = await controller.RequestAsync(
-            "start_session",
-            "desktop-session-denial",
-            cancellationToken);
-        bool sessionCreationDenied =
-            !deniedSession.RootElement.GetProperty("success").GetBoolean() &&
-            deniedSession.RootElement
-                .GetProperty("error")
-                .GetProperty("code")
-                .GetString() == "policy-disabled";
+        string workspaceRoot =
+            Directory.GetParent(options.HostScriptPath)?
+                .Parent?.FullName
+            ?? throw new InvalidOperationException(
+                "The desktop probe workspace could not be resolved.");
+        using JsonDocument admittedSession =
+            await controller.StartReadOnlySessionAsync(
+                workspaceRoot,
+                "desktop-session-admission",
+                cancellationToken);
+        JsonElement sessionData =
+            admittedSession.RootElement.GetProperty("data");
+        string[] activeTools = sessionData
+            .GetProperty("activeTools")
+            .EnumerateArray()
+            .Select(value => value.GetString() ?? string.Empty)
+            .ToArray();
+        bool sessionCreationPassed =
+            admittedSession.RootElement
+                .GetProperty("success")
+                .GetBoolean() &&
+            activeTools.SequenceEqual(["read", "grep", "find", "ls"]) &&
+            !sessionData
+                .GetProperty("sessionPersisted")
+                .GetBoolean() &&
+            !sessionData
+                .GetProperty("promptingEnabled")
+                .GetBoolean() &&
+            !sessionData
+                .GetProperty("resourceDiscoveryEnabled")
+                .GetBoolean() &&
+            !sessionData
+                .GetProperty("modelNetworkAllowed")
+                .GetBoolean();
+        bool workspaceBound = string.Equals(
+            Path.GetFullPath(workspaceRoot),
+            sessionData.GetProperty("workspaceRoot").GetString(),
+            StringComparison.OrdinalIgnoreCase);
 
         await controller.ShutdownAsync(cancellationToken);
         bool passed =
             helloPassed &&
             capabilitiesPassed &&
-            sessionCreationDenied;
+            sessionCreationPassed &&
+            workspaceBound;
 
         return new PiAgentDesktopProbeReceipt(
             1,
-            "jarvisv2-pi-agent-desktop-transport-probe",
+            "jarvisv2-pi-agent-read-only-session-probe",
             passed ? "passed" : "failed",
             PiAgentSidecarController.ContractId,
             PiAgentSidecarController.PackageName,
@@ -457,12 +543,15 @@ public static class PiAgentDesktopProbe
             true,
             helloPassed,
             capabilitiesPassed,
-            sessionCreationDenied,
+            sessionCreationPassed,
+            workspaceBound,
             true,
             true,
             controller.CredentialEnvironmentClean,
             initialTools,
             deniedTools,
+            true,
+            false,
             false,
             false,
             false,
@@ -519,7 +608,7 @@ public static class PiAgentBridgeFaultProbe
             scenarios.Count,
             passedCount,
             scenarios,
-            false,
+            true,
             false,
             false,
             false,

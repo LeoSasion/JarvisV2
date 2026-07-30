@@ -11,9 +11,9 @@
   "runtime": {
     "nodeMinimumMajor": 22,
     "integrationMode": "sdk-sidecar-jsonl",
-    "launchState": "desktop-transport-probe",
+    "launchState": "read-only-session-admission",
     "piOfflineRequired": true,
-    "sessionCreationEnabled": false,
+    "sessionCreationEnabled": true,
     "desktopLaunchImplemented": true
   },
   "transport": {
@@ -29,11 +29,14 @@
     "credentialFieldsAllowed": false
   },
   "session": {
-    "enabled": false,
-    "modelAuthentication": "pi-owned-out-of-band",
+    "enabled": true,
+    "promptingEnabled": false,
+    "modelAuthentication": "disabled-during-admission",
     "credentialTransport": "forbidden",
-    "persistence": "disabled-until-desktop-policy-gate",
-    "workspaceBinding": "single-explicit-root"
+    "persistence": "in-memory",
+    "workspaceBinding": "single-explicit-root",
+    "resourceDiscovery": "disabled",
+    "modelNetworkAllowed": false
   },
   "tools": {
     "initialAllowlist": [

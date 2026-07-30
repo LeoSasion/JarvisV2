@@ -68,13 +68,13 @@
           "const": "sdk-sidecar-jsonl"
         },
         "launchState": {
-          "const": "desktop-transport-probe"
+          "const": "read-only-session-admission"
         },
         "piOfflineRequired": {
           "const": true
         },
         "sessionCreationEnabled": {
-          "const": false
+          "const": true
         },
         "desktopLaunchImplemented": {
           "const": true
@@ -129,26 +129,38 @@
       "additionalProperties": false,
       "required": [
         "enabled",
+        "promptingEnabled",
         "modelAuthentication",
         "credentialTransport",
         "persistence",
-        "workspaceBinding"
+        "workspaceBinding",
+        "resourceDiscovery",
+        "modelNetworkAllowed"
       ],
       "properties": {
         "enabled": {
+          "const": true
+        },
+        "promptingEnabled": {
           "const": false
         },
         "modelAuthentication": {
-          "const": "pi-owned-out-of-band"
+          "const": "disabled-during-admission"
         },
         "credentialTransport": {
           "const": "forbidden"
         },
         "persistence": {
-          "const": "disabled-until-desktop-policy-gate"
+          "const": "in-memory"
         },
         "workspaceBinding": {
           "const": "single-explicit-root"
+        },
+        "resourceDiscovery": {
+          "const": "disabled"
+        },
+        "modelNetworkAllowed": {
+          "const": false
         }
       }
     },

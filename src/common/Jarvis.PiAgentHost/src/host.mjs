@@ -1,6 +1,11 @@
 import { loadContract } from "./contract.mjs";
 import { inspectPiRuntime } from "./pi-runtime-inspector.mjs";
-import { createReadyEvent, handleRequest } from "./protocol.mjs";
+import {
+  createProtocolState,
+  createReadyEvent,
+  disposeProtocolState,
+  handleRequest,
+} from "./protocol.mjs";
 
 function writeRecord(record) {
   process.stdout.write(`${JSON.stringify(record)}\n`);
@@ -11,77 +16,83 @@ async function serve(contract, runtimeReceipt) {
   process.stdin.setEncoding("utf8");
   let buffer = "";
   let shuttingDown = false;
+  const state = createProtocolState();
 
-  for await (const chunk of process.stdin) {
-    buffer += chunk;
-    let newlineIndex = buffer.indexOf("\n");
-    while (newlineIndex >= 0) {
-      const line = buffer.slice(0, newlineIndex);
-      buffer = buffer.slice(newlineIndex + 1);
-      newlineIndex = buffer.indexOf("\n");
-      if (line.trim().length === 0) {
-        continue;
+  try {
+    for await (const chunk of process.stdin) {
+      buffer += chunk;
+      let newlineIndex = buffer.indexOf("\n");
+      while (newlineIndex >= 0) {
+        const line = buffer.slice(0, newlineIndex);
+        buffer = buffer.slice(newlineIndex + 1);
+        newlineIndex = buffer.indexOf("\n");
+        if (line.trim().length === 0) {
+          continue;
+        }
+        if (
+          Buffer.byteLength(line, "utf8") >
+          contract.transport.maxFrameBytes
+        ) {
+          writeRecord({
+            type: "fatal",
+            error: {
+              code: "frame-too-large",
+              message: "A JSONL frame exceeded the contract limit.",
+            },
+          });
+          process.exitCode = 13;
+          return;
+        }
+
+        let request;
+        try {
+          request = JSON.parse(line);
+        } catch {
+          writeRecord({
+            type: "response",
+            id: null,
+            command: "invalid",
+            success: false,
+            error: {
+              code: "invalid-json",
+              message: "The request is not valid JSON.",
+            },
+          });
+          continue;
+        }
+
+        const result = await handleRequest(
+          request,
+          contract,
+          runtimeReceipt,
+          state,
+        );
+        writeRecord(result.response);
+        if (result.shutdown) {
+          shuttingDown = true;
+          break;
+        }
+      }
+      if (shuttingDown) {
+        return;
       }
       if (
-        Buffer.byteLength(line, "utf8") >
+        Buffer.byteLength(buffer, "utf8") >
         contract.transport.maxFrameBytes
       ) {
         writeRecord({
           type: "fatal",
           error: {
             code: "frame-too-large",
-            message: "A JSONL frame exceeded the contract limit.",
+            message: "The pending JSONL frame exceeded the contract limit.",
           },
         });
         process.exitCode = 13;
         return;
       }
-
-      let request;
-      try {
-        request = JSON.parse(line);
-      } catch {
-        writeRecord({
-          type: "response",
-          id: null,
-          command: "invalid",
-          success: false,
-          error: {
-            code: "invalid-json",
-            message: "The request is not valid JSON.",
-          },
-        });
-        continue;
-      }
-
-      const result = handleRequest(
-        request,
-        contract,
-        runtimeReceipt,
-      );
-      writeRecord(result.response);
-      if (result.shutdown) {
-        shuttingDown = true;
-        break;
-      }
     }
-    if (shuttingDown) {
-      return;
-    }
-    if (
-      Buffer.byteLength(buffer, "utf8") >
-      contract.transport.maxFrameBytes
-    ) {
-      writeRecord({
-        type: "fatal",
-        error: {
-          code: "frame-too-large",
-          message: "The pending JSONL frame exceeded the contract limit.",
-        },
-      });
-      process.exitCode = 13;
-      return;
-    }
+  } finally {
+    disposeProtocolState(state);
   }
 }
 

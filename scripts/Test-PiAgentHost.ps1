@@ -81,21 +81,29 @@ Add-Check `
         'without a floating range.')
 
 Add-Check `
-    -Name 'contract.fail-closed-session-and-tools' `
+    -Name 'contract.read-only-session-and-tools' `
     -Passed (
-        -not $contract.runtime.sessionCreationEnabled -and
+        $contract.runtime.sessionCreationEnabled -and
         $contract.runtime.desktopLaunchImplemented -and
-        $contract.runtime.launchState -eq 'desktop-transport-probe' -and
-        -not $contract.session.enabled -and
+        $contract.runtime.launchState -eq
+            'read-only-session-admission' -and
+        $contract.session.enabled -and
+        -not $contract.session.promptingEnabled -and
         $contract.session.credentialTransport -eq 'forbidden' -and
+        $contract.session.persistence -eq 'in-memory' -and
+        $contract.session.workspaceBinding -eq
+            'single-explicit-root' -and
+        $contract.session.resourceDiscovery -eq 'disabled' -and
+        -not $contract.session.modelNetworkAllowed -and
         (@($contract.tools.initialAllowlist) -join '|') -eq
             'read|grep|find|ls' -and
         (@($contract.tools.initiallyDenied) -join '|') -eq
             'bash|edit|write' -and
         -not $contract.tools.unattendedSelfIteration) `
     -Detail (
-        'The managed desktop owns only a transport probe; ' +
-        'session creation, credentials and mutation tools remain denied.')
+        'The managed desktop may create one real in-memory Pi session for ' +
+        'one admitted workspace; prompting, credentials, discovery and ' +
+        'mutation tools remain denied.')
 
 Add-Check `
     -Name 'contract.jsonl-and-shell-boundary' `
@@ -126,44 +134,67 @@ Add-Check `
         $schema.properties.runtime.properties.nodeMinimumMajor.const -eq
             22 -and
         $schema.properties.runtime.properties.launchState.const -eq
-            'desktop-transport-probe' -and
+            'read-only-session-admission' -and
         $schema.properties.runtime.properties.desktopLaunchImplemented.const `
             -eq $true -and
         $schema.properties.transport.properties.maxFrameBytes.const -eq
             65536 -and
         $schema.properties.runtime.properties.sessionCreationEnabled.const `
+            -eq $true -and
+        $schema.properties.session.properties.promptingEnabled.const `
+            -eq $false -and
+        $schema.properties.session.properties.modelNetworkAllowed.const `
             -eq $false -and
         $schema.properties.transport.properties.credentialFieldsAllowed.const `
             -eq $false -and
         $schema.properties.boundaries.properties.activationPermitted.const `
             -eq $false) `
     -Detail (
-        'The published schema must hard-code the initial disabled ' +
-        'session, credential and activation boundary.')
+        'The published schema must hard-code the single-root in-memory ' +
+        'session plus disabled prompting, credentials, network and activation.')
 
 $forbiddenRuntimePattern = (
     '(?i)\b(?:child_process|spawn|execFile|execSync|shell\s*:|' +
-    'createAgentSession\s*\(|ModelRuntime\.create\s*\(|' +
+    '\.prompt\s*\(|' +
     'ANTHROPIC_API_KEY|OPENAI_API_KEY|auth\.json|' +
     'writeFile|appendFile|rmSync|unlinkSync)\b'
 )
+$sessionCreateCount = [regex]::Matches(
+    $runtimeSourceText,
+    'createAgentSession\s*\('
+).Count
+$modelRuntimeCreateCount = [regex]::Matches(
+    $runtimeSourceText,
+    'ModelRuntime\.create\s*\('
+).Count
 Add-Check `
-    -Name 'source.session-disabled-sidecar' `
+    -Name 'source.root-confined-session-sidecar' `
     -Passed (
         -not [regex]::IsMatch(
             $runtimeSourceText,
             $forbiddenRuntimePattern) -and
+        $sessionCreateCount -eq 1 -and
+        $modelRuntimeCreateCount -eq 1 -and
         $runtimeSourceText.Contains('process.env.PI_OFFLINE = "1"') -and
         $runtimeSourceText.Contains(
-            'Pi Agent session creation is disabled') -and
+            'allowModelNetwork: false') -and
+        $runtimeSourceText.Contains(
+            'SessionManager.inMemory') -and
+        $runtimeSourceText.Contains(
+            'SettingsManager.inMemory') -and
+        $runtimeSourceText.Contains(
+            'single-explicit-root') -and
+        $runtimeSourceText.Contains(
+            'path-outside-workspace') -and
+        $runtimeSourceText.Contains(
+            'reparse-point-forbidden') -and
         $runtimeSourceText.Contains('Buffer.byteLength') -and
         $runtimeSourceText.Contains('Buffer.byteLength(line, "utf8")') -and
         $runtimeSourceText.Contains('buffer.indexOf("\n")') -and
         $runtimeSourceText.Contains('credential-field-forbidden')) `
     -Detail (
-        'Runtime source may inspect the pinned SDK and serve bounded JSONL; ' +
-        'it may not launch children, create sessions, read credentials or ' +
-        'write files.')
+        'Runtime source must create exactly one root-confined in-memory SDK ' +
+        'session without credential files, writes or child processes.')
 
 $bridgeSourceText =
     [IO.File]::ReadAllText($bridgeSourcePath) +
@@ -193,8 +224,9 @@ Add-Check `
             'startInfo.Environment.Clear()') -and
         $bridgeSourceText.Contains(
             'process.Kill(entireProcessTree: true)') -and
-        $bridgeSourceText.Contains('"start_session"') -and
-        $bridgeSourceText.Contains('"policy-disabled"') -and
+        $bridgeSourceText.Contains('StartReadOnlySessionAsync') -and
+        $bridgeSourceText.Contains('sessionCreationPassed') -and
+        $bridgeSourceText.Contains('workspaceBound') -and
         $bridgeSourceText.Contains('"shutdown"') -and
         $bridgeSourceText.Contains('wrong-ready-rejected') -and
         $bridgeSourceText.Contains('oversized-ready-rejected') -and
@@ -210,8 +242,8 @@ Add-Check `
         ) -PathType Leaf)) `
     -Detail (
         'The managed bridge may own only the exact no-shell Node child, ' +
-        'scrub credential variables, prove session denial and terminate its ' +
-        'own process on bounded cleanup.')
+        'scrub credential variables, bind one read-only session and terminate ' +
+        'its own process on bounded cleanup.')
 
 $bridgeBuildOutput = @(
     & $DotnetPath build `
@@ -295,7 +327,11 @@ if (-not $StaticOnly) {
             $inspectReceipt.piOffline -and
             $inspectReceipt.transportReady -and
             $inspectReceipt.desktopLaunchImplemented -and
-            -not $inspectReceipt.sessionCreationEnabled -and
+            $inspectReceipt.sessionCreationEnabled -and
+            -not $inspectReceipt.promptingEnabled -and
+            $inspectReceipt.sessionPersistence -eq 'in-memory' -and
+            -not $inspectReceipt.modelNetworkAllowed -and
+            -not $inspectReceipt.resourceDiscoveryEnabled -and
             -not $inspectReceipt.credentialTransportAllowed -and
             -not $inspectReceipt.shellMutationSupported -and
             -not $inspectReceipt.explorerMutationSupported -and
@@ -336,13 +372,23 @@ if (-not $StaticOnly) {
             $protocolExitCode -eq 0 -and
             $null -ne $protocolReceipt -and
             $protocolReceipt.result -eq 'passed' -and
-            $protocolReceipt.recordCount -eq 6 -and
+            $protocolReceipt.recordCount -eq 7 -and
             $protocolReceipt.framing -eq 'lf-delimited-jsonl' -and
             $protocolReceipt.credentialFieldsRejected -and
             $protocolReceipt.credentialEnvironmentClean -and
             $protocolReceipt.batchedFramesAccepted -eq 81 -and
             $protocolReceipt.oversizedFrameRejected -and
-            -not $protocolReceipt.sessionCreationEnabled -and
+            $protocolReceipt.sessionCreationEnabled -and
+            -not $protocolReceipt.promptingEnabled -and
+            $protocolReceipt.sessionPersistence -eq 'in-memory' -and
+            $protocolReceipt.workspaceBinding -eq
+                'single-explicit-root' -and
+            $protocolReceipt.protectedRootRejected -and
+            $protocolReceipt.workspaceEscapeRejected -and
+            $protocolReceipt.reparsePointRejected -and
+            $protocolReceipt.repeatedBindingRejected -and
+            -not $protocolReceipt.modelNetworkAllowed -and
+            -not $protocolReceipt.resourceDiscoveryEnabled -and
             -not $protocolReceipt.credentialTransportAllowed -and
             (@($protocolReceipt.initialTools) -join '|') -eq
                 'read|grep|find|ls' -and
@@ -395,7 +441,8 @@ if (-not $StaticOnly) {
             $bridgeReceipt.readyObserved -and
             $bridgeReceipt.helloPassed -and
             $bridgeReceipt.capabilitiesPassed -and
-            $bridgeReceipt.sessionCreationDenied -and
+            $bridgeReceipt.sessionCreationPassed -and
+            $bridgeReceipt.workspaceBound -and
             $bridgeReceipt.shutdownPassed -and
             $bridgeReceipt.piOffline -and
             $bridgeReceipt.credentialEnvironmentScrubbed -and
@@ -403,7 +450,9 @@ if (-not $StaticOnly) {
                 'read|grep|find|ls' -and
             (@($bridgeReceipt.deniedTools) -join '|') -eq
                 'bash|edit|write' -and
-            -not $bridgeReceipt.sessionCreationEnabled -and
+            $bridgeReceipt.sessionCreationEnabled -and
+            -not $bridgeReceipt.promptingEnabled -and
+            -not $bridgeReceipt.sessionPersisted -and
             -not $bridgeReceipt.credentialTransportAllowed -and
             -not $bridgeReceipt.shellMutationSupported -and
             -not $bridgeReceipt.explorerMutationSupported -and
@@ -451,7 +500,7 @@ if (-not $StaticOnly) {
             (@($faultReceipt.scenarios | ForEach-Object name) -join '|') -eq
                 'wrong-ready-rejected|oversized-ready-rejected|' +
                 'hung-ready-times-out' -and
-            -not $faultReceipt.sessionCreationEnabled -and
+            $faultReceipt.sessionCreationEnabled -and
             -not $faultReceipt.shellMutationSupported -and
             -not $faultReceipt.explorerMutationSupported -and
             -not $faultReceipt.systemMutationSupported -and
@@ -474,7 +523,10 @@ $passed = $failures.Count -eq 0
     embeddedPackage = '@earendil-works/pi-coding-agent'
     embeddedVersion = '0.82.1'
     transportProbeImplemented = $true
-    sessionCreationEnabled = $false
+    sessionCreationEnabled = $true
+    promptingEnabled = $false
+    sessionPersistence = 'in-memory'
+    workspaceBinding = 'single-explicit-root'
     desktopLaunchImplemented = $true
     credentialTransportAllowed = $false
     shellMutationSupported = $false

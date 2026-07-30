@@ -1,3 +1,10 @@
+import {
+  createReadOnlyAgentSession,
+} from "./read-only-session.mjs";
+import {
+  WorkspacePolicyError,
+} from "./workspace-policy.mjs";
+
 export function createReadyEvent(contract, runtimeReceipt) {
   return {
     type: "ready",
@@ -6,7 +13,8 @@ export function createReadyEvent(contract, runtimeReceipt) {
     version: runtimeReceipt.installedVersion,
     credentialEnvironmentClean:
       runtimeReceipt.credentialEnvironmentClean,
-    sessionCreationEnabled: false,
+    sessionCreationEnabled: true,
+    promptingEnabled: false,
   };
 }
 
@@ -38,27 +46,42 @@ function containsCredentialField(value) {
   });
 }
 
-export function handleRequest(request, contract, runtimeReceipt) {
+export function createProtocolState() {
+  return {
+    sessionHandle: null,
+  };
+}
+
+function failure(id, command, code, message) {
+  return {
+    response: {
+      type: "response",
+      id,
+      command,
+      success: false,
+      error: { code, message },
+    },
+    shutdown: false,
+  };
+}
+
+export async function handleRequest(
+  request,
+  contract,
+  runtimeReceipt,
+  state,
+) {
   const id =
     typeof request?.id === "string" ? request.id : null;
   if (containsCredentialField(request)) {
-    return {
-      response: {
-        type: "response",
-        id,
-        command:
-          typeof request?.type === "string"
-            ? request.type
-            : "invalid",
-        success: false,
-        error: {
-          code: "credential-field-forbidden",
-          message:
-            "Credential fields are forbidden on the desktop host transport.",
-        },
-      },
-      shutdown: false,
-    };
+    return failure(
+      id,
+      typeof request?.type === "string"
+        ? request.type
+        : "invalid",
+      "credential-field-forbidden",
+      "Credential fields are forbidden on the desktop host transport.",
+    );
   }
 
   switch (request?.type) {
@@ -85,7 +108,12 @@ export function handleRequest(request, contract, runtimeReceipt) {
             integrationMode: contract.runtime.integrationMode,
             initialTools: [...contract.tools.initialAllowlist],
             deniedTools: [...contract.tools.initiallyDenied],
-            sessionCreationEnabled: false,
+            sessionCreationEnabled: true,
+            promptingEnabled: false,
+            sessionPersistence: "in-memory",
+            workspaceBinding: "single-explicit-root",
+            resourceDiscoveryEnabled: false,
+            modelNetworkAllowed: false,
             credentialTransportAllowed: false,
             shellMutationSupported: false,
             explorerMutationSupported: false,
@@ -95,20 +123,55 @@ export function handleRequest(request, contract, runtimeReceipt) {
         shutdown: false,
       };
     case "start_session":
-      return {
-        response: {
-          type: "response",
+      if (state.sessionHandle !== null) {
+        return failure(
           id,
-          command: "start_session",
-          success: false,
-          error: {
-            code: "policy-disabled",
-            message:
-              "Pi Agent session creation is disabled until the desktop policy gate is implemented.",
+          "start_session",
+          "session-already-bound",
+          "This sidecar is already bound to one workspace.",
+        );
+      }
+      try {
+        state.sessionHandle = await createReadOnlyAgentSession(
+          request.workspaceRoot,
+        );
+        return {
+          response: {
+            type: "response",
+            id,
+            command: "start_session",
+            success: true,
+            data: {
+              workspaceRoot:
+                state.sessionHandle.admission.canonicalRoot,
+              activeTools: state.sessionHandle.activeTools,
+              sessionPersisted: state.sessionHandle.persisted,
+              modelSelected:
+                state.sessionHandle.modelSelected,
+              promptingEnabled: false,
+              resourceDiscoveryEnabled: false,
+              modelNetworkAllowed: false,
+            },
           },
-        },
-        shutdown: false,
-      };
+          shutdown: false,
+        };
+      } catch (error) {
+        state.sessionHandle = null;
+        if (error instanceof WorkspacePolicyError) {
+          return failure(
+            id,
+            "start_session",
+            error.code,
+            error.message,
+          );
+        }
+        return failure(
+          id,
+          "start_session",
+          "session-admission-failed",
+          "The read-only Pi Agent session failed closed during admission.",
+        );
+      }
     case "shutdown":
       return {
         response: {
@@ -120,21 +183,18 @@ export function handleRequest(request, contract, runtimeReceipt) {
         shutdown: true,
       };
     default:
-      return {
-        response: {
-          type: "response",
-          id,
-          command:
-            typeof request?.type === "string"
-              ? request.type
-              : "invalid",
-          success: false,
-          error: {
-            code: "unsupported-request",
-            message: "The request type is not in the host allowlist.",
-          },
-        },
-        shutdown: false,
-      };
+      return failure(
+        id,
+        typeof request?.type === "string"
+          ? request.type
+          : "invalid",
+        "unsupported-request",
+        "The request type is not in the host allowlist.",
+      );
   }
+}
+
+export function disposeProtocolState(state) {
+  state.sessionHandle?.session.dispose();
+  state.sessionHandle = null;
 }
