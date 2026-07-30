@@ -24,8 +24,17 @@ $bridgeProjectPath = Join-Path $sourceRoot 'Jarvis.PiAgentHost.csproj'
 $bridgeSourcePath = Join-Path $sourceRoot 'DesktopBridge.cs'
 $productionBrokerSourcePath = Join-Path $sourceRoot 'DesktopModelBroker.cs'
 $brokerSourcePath = Join-Path $sourceRoot 'DiagnosticModelBroker.cs'
+$conversationSourcePath = Join-Path $sourceRoot 'ConversationState.cs'
+$conversationProbeSourcePath = Join-Path $sourceRoot (
+    'DiagnosticConversation.cs')
 $bridgeProgramPath = Join-Path $sourceRoot 'Program.cs'
 $bridgeFixtureRoot = Join-Path $sourceRoot 'test\fixtures'
+$controlCenterRoot = Join-Path $root (
+    'src\common\Jarvis.ControlCenter')
+$controlCenterProjectPath = Join-Path $controlCenterRoot (
+    'Jarvis.ControlCenter.csproj')
+$controlCenterBindingPath = Join-Path $controlCenterRoot (
+    'PiAgentConversationBinding.cs')
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()
@@ -110,6 +119,13 @@ Add-Check `
         $contract.session.desktopTurnEventBufferCapacity -eq 512 -and
         $contract.session.desktopTurnEventBackpressurePolicy -eq
             'fail-closed-at-request-timeout' -and
+        $contract.session.desktopConversationStateModel -eq
+            'immutable-revisioned-single-active-turn' -and
+        $contract.session.desktopConversationRetainedTurns -eq 128 -and
+        $contract.session.desktopConversationMaxAssistantCharacters -eq
+            262144 -and
+        $contract.session.desktopConversationNotificationDispatch -eq
+            'captured-synchronization-context' -and
         $contract.session.credentialTransport -eq 'forbidden' -and
         $contract.session.persistence -eq 'in-memory' -and
         $contract.session.workspaceBinding -eq
@@ -182,6 +198,14 @@ Add-Check `
             -eq 512 -and
         $schema.properties.session.properties.desktopTurnEventBackpressurePolicy.const `
             -eq 'fail-closed-at-request-timeout' -and
+        $schema.properties.session.properties.desktopConversationStateModel.const `
+            -eq 'immutable-revisioned-single-active-turn' -and
+        $schema.properties.session.properties.desktopConversationRetainedTurns.const `
+            -eq 128 -and
+        $schema.properties.session.properties.desktopConversationMaxAssistantCharacters.const `
+            -eq 262144 -and
+        $schema.properties.session.properties.desktopConversationNotificationDispatch.const `
+            -eq 'captured-synchronization-context' -and
         $schema.properties.session.properties.modelNetworkAllowed.const `
             -eq $false -and
         $schema.properties.transport.properties.credentialFieldsAllowed.const `
@@ -251,6 +275,10 @@ $bridgeSourceText =
     [Environment]::NewLine +
     [IO.File]::ReadAllText($brokerSourcePath) +
     [Environment]::NewLine +
+    [IO.File]::ReadAllText($conversationSourcePath) +
+    [Environment]::NewLine +
+    [IO.File]::ReadAllText($conversationProbeSourcePath) +
+    [Environment]::NewLine +
     [IO.File]::ReadAllText($bridgeProgramPath)
 $forbiddenBridgePattern = (
     '(?i)\b(?:DllImport|LibraryImport|OpenProcess|CreateRemoteThread|' +
@@ -289,6 +317,15 @@ Add-Check `
             'TurnEventBufferCapacity = 512') -and
         $bridgeSourceText.Contains(
             'backpressure deadline') -and
+        $bridgeSourceText.Contains('PiAgentConversationState') -and
+        $bridgeSourceText.Contains(
+            'MaximumRetainedTurns = 128') -and
+        $bridgeSourceText.Contains(
+            'MaximumAssistantCharacters = 262_144') -and
+        $bridgeSourceText.Contains(
+            'PiAgentConversationSnapshot') -and
+        $bridgeSourceText.Contains('SynchronizationContext') -and
+        $bridgeSourceText.Contains('CancelActiveTurnAsync') -and
         $bridgeSourceText.Contains('DesktopModelBrokerServer') -and
         $bridgeSourceText.Contains('IDesktopModelProvider') -and
         $bridgeSourceText.Contains(
@@ -318,6 +355,30 @@ Add-Check `
         'multi-request current-user model pipe and terminate only its owned ' +
         'processes and connections on cleanup.')
 
+$controlCenterProjectText =
+    [IO.File]::ReadAllText($controlCenterProjectPath)
+$controlCenterBindingText =
+    [IO.File]::ReadAllText($controlCenterBindingPath)
+Add-Check `
+    -Name 'desktop-conversation.nonvisual-wpf-binding' `
+    -Passed (
+        $controlCenterProjectText.Contains(
+            '..\Jarvis.PiAgentHost\Jarvis.PiAgentHost.csproj') -and
+        $controlCenterBindingText.Contains(
+            'INotifyPropertyChanged') -and
+        $controlCenterBindingText.Contains(
+            'PiAgentConversationSnapshot') -and
+        $controlCenterBindingText.Contains(
+            'SubmitAsync') -and
+        $controlCenterBindingText.Contains(
+            'CancelAsync') -and
+        -not $controlCenterBindingText.Contains('System.Windows') -and
+        -not $controlCenterBindingText.Contains('Process.') -and
+        -not $controlCenterBindingText.Contains('Registry')) `
+    -Detail (
+        'Control Center may reference the reviewed Pi host and compile a ' +
+        'property-change adapter without changing XAML or owning transport.')
+
 $bridgeBuildOutput = @(
     & $DotnetPath build `
         $bridgeProjectPath `
@@ -331,6 +392,21 @@ Add-Check `
     -Passed ($bridgeBuildExitCode -eq 0) `
     -Detail (
         ($bridgeBuildOutput | Select-Object -Last 8) -join
+            [Environment]::NewLine)
+
+$controlCenterBuildOutput = @(
+    & $DotnetPath build `
+        $controlCenterProjectPath `
+        --configuration Release `
+        --nologo `
+        --warnaserror 2>&1
+)
+$controlCenterBuildExitCode = $LASTEXITCODE
+Add-Check `
+    -Name 'desktop-conversation.control-center-release-build' `
+    -Passed ($controlCenterBuildExitCode -eq 0) `
+    -Detail (
+        ($controlCenterBuildOutput | Select-Object -Last 10) -join
             [Environment]::NewLine)
 
 $lockValid = $false
@@ -653,6 +729,61 @@ if (-not $StaticOnly) {
             "Desktop broker exit $brokerBridgeExitCode; result " +
             "$brokerBridgeResult.")
 
+    $conversationOutput = @(
+        & $DotnetPath run `
+            --project $bridgeProjectPath `
+            --configuration Release `
+            --no-build `
+            -- `
+            conversation-probe `
+            --node $NodePath `
+            --sidecar $hostPath 2>&1
+    )
+    $conversationExitCode = $LASTEXITCODE
+    $conversationReceipt = $null
+    try {
+        $conversationReceipt =
+            ($conversationOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $conversationReceipt = $null
+    }
+    $conversationResult = if ($null -ne $conversationReceipt) {
+        $conversationReceipt.result
+    }
+    else {
+        'unparsed'
+    }
+    Add-Check `
+        -Name 'runtime.desktop-conversation-state-probe' `
+        -Passed (
+            $conversationExitCode -eq 0 -and
+            $null -ne $conversationReceipt -and
+            $conversationReceipt.result -eq 'passed' -and
+            $conversationReceipt.normalTurnPassed -and
+            $conversationReceipt.deltaSnapshotsObserved -and
+            $conversationReceipt.revisionOrderPassed -and
+            $conversationReceipt.toolLifecyclePassed -and
+            $conversationReceipt.singleActiveTurnEnforced -and
+            $conversationReceipt.cancelRequestObserved -and
+            $conversationReceipt.abortTurnPassed -and
+            $conversationReceipt.notificationContextUsed -and
+            $conversationReceipt.retainedTurnLimit -eq 128 -and
+            $conversationReceipt.assistantCharacterLimit -eq 262144 -and
+            $conversationReceipt.completedTurnCount -eq 3 -and
+            $conversationReceipt.observedSnapshotCount -ge 16 -and
+            $conversationReceipt.canSubmitAfterTerminal -and
+            -not $conversationReceipt.canCancelAfterTerminal -and
+            -not $conversationReceipt.credentialTransportAllowed -and
+            -not $conversationReceipt.piSidecarModelNetworkAllowed -and
+            $conversationReceipt.liveModelNetwork -eq 'diagnostic-only' -and
+            $conversationReceipt.liveExplorer -eq 'not-run' -and
+            -not $conversationReceipt.mutationPerformed) `
+        -Detail (
+            "Desktop conversation exit $conversationExitCode; result " +
+            "$conversationResult.")
+
     $faultOutput = @(
         & $DotnetPath run `
             --project $bridgeProjectPath `
@@ -723,6 +854,11 @@ $passed = $failures.Count -eq 0
     providerToolAllowlistEnforced = $true
     orderedTurnEventStreamingImplemented = $true
     turnEventBufferCapacity = 512
+    desktopConversationStateImplemented = $true
+    desktopConversationRetainedTurns = 128
+    desktopConversationMaxAssistantCharacters = 262144
+    desktopConversationNotificationDispatch =
+        'captured-synchronization-context'
     asynchronousTurnsImplemented = $true
     activeTurnCancellationImplemented = $true
     sessionPersistence = 'in-memory'

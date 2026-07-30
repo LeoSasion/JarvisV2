@@ -12,4 +12,9 @@
     <RootNamespace>Jarvis.ControlCenter</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference
+      Include="..\Jarvis.PiAgentHost\Jarvis.PiAgentHost.csproj" />
+  </ItemGroup>
+
 </Project>

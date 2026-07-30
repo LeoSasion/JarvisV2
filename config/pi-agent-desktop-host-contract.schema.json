@@ -145,6 +145,10 @@
         "desktopTurnEventStream",
         "desktopTurnEventBufferCapacity",
         "desktopTurnEventBackpressurePolicy",
+        "desktopConversationStateModel",
+        "desktopConversationRetainedTurns",
+        "desktopConversationMaxAssistantCharacters",
+        "desktopConversationNotificationDispatch",
         "credentialTransport",
         "persistence",
         "workspaceBinding",
@@ -184,6 +188,18 @@
         },
         "desktopTurnEventBackpressurePolicy": {
           "const": "fail-closed-at-request-timeout"
+        },
+        "desktopConversationStateModel": {
+          "const": "immutable-revisioned-single-active-turn"
+        },
+        "desktopConversationRetainedTurns": {
+          "const": 128
+        },
+        "desktopConversationMaxAssistantCharacters": {
+          "const": 262144
+        },
+        "desktopConversationNotificationDispatch": {
+          "const": "captured-synchronization-context"
         },
         "credentialTransport": {
           "const": "forbidden"

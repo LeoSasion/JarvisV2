@@ -1,5 +1,7 @@
 [CmdletBinding()]
-param()
+param(
+    [string]$DotnetPath = 'dotnet'
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -135,7 +137,11 @@ Add-Check `
     )
 
 $buildOutput = @(
-    & dotnet build $projectPath --configuration Release --nologo 2>&1
+    & $DotnetPath build `
+        $projectPath `
+        --configuration Release `
+        --nologo `
+        --warnaserror 2>&1
 )
 $buildExitCode = $LASTEXITCODE
 Add-Check `

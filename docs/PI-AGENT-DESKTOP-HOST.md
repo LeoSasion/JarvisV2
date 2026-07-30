@@ -46,6 +46,9 @@ state outside the Windows Shell process.
   result through a 512-event bounded, ordered, single-consumer stream suitable
   for a future WPF conversation surface; if that consumer stops draining the
   buffer beyond the request deadline, the bridge fails the sidecar closed;
+- folds that stream into immutable, revisioned desktop conversation snapshots
+  with one active turn, bounded history, tool lifecycle state, cancellation
+  command state and captured synchronization-context notification dispatch;
 - replaces the SDK file tools with root-confined `read`, `grep`, `find` and
   `ls` definitions; `bash`, `edit` and `write` stay unavailable;
 - rejects drive roots, protected OS/profile roots, relative paths, canonical
@@ -83,6 +86,10 @@ authenticated production model provider, choosing its credential store and
 building the product conversation surface remain separate reviewed steps.
 The future UI can consume `PiAgentTurnHandle.ReadEventsAsync()` once per turn;
 the aggregate completion task remains available for non-streaming callers.
+`PiAgentConversationState` now owns that single event consumer for product UI
+use, and `Jarvis.ControlCenter` contains a non-visual
+`INotifyPropertyChanged` binding adapter. See
+`PI-AGENT-DESKTOP-CONVERSATION-STATE.md`.
 
 ## Prompting admission
 

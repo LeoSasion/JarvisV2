@@ -66,6 +66,12 @@ export function validateContract(contract) {
     contract.session?.desktopTurnEventBufferCapacity !== 512 ||
     contract.session?.desktopTurnEventBackpressurePolicy !==
       "fail-closed-at-request-timeout" ||
+    contract.session?.desktopConversationStateModel !==
+      "immutable-revisioned-single-active-turn" ||
+    contract.session?.desktopConversationRetainedTurns !== 128 ||
+    contract.session?.desktopConversationMaxAssistantCharacters !== 262_144 ||
+    contract.session?.desktopConversationNotificationDispatch !==
+      "captured-synchronization-context" ||
     contract.session?.credentialTransport !== "forbidden" ||
     contract.session?.persistence !== "in-memory" ||
     contract.session?.workspaceBinding !==

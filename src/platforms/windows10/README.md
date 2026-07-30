@@ -51,6 +51,9 @@ and active generation cancellation. Each turn also exposes a bounded, ordered
 stream of text, tool and terminal events for future WPF binding. The default
 sidecar remains non-prompting unless that reviewed current-user named pipe is
 present; no authenticated production provider or credential is connected yet.
+The shared host now also folds the stream into bounded, immutable conversation
+snapshots, and `Jarvis.ControlCenter` compiles a non-visual WPF binding
+adapter. No conversation panel or XAML layout has been added.
 
 See `WINDOWS10-HANDOFF.md`,
 `docs/WINDOWS10-NATIVE-STYLE-PROBE.md` and
