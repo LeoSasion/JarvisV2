@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Jarvis.PiAgentHost;
 
-const int TimeoutMilliseconds = 15_000;
+const int TimeoutMilliseconds = 45_000;
 JsonSerializerOptions serializerOptions = new()
 {
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,

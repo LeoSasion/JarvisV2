@@ -30,6 +30,13 @@ state outside the Windows Shell process.
   `\\.\pipe\jarvis2-pi-model-{guid}` endpoint;
 - keeps provider credentials out of the sidecar and sends model context through
   a bounded, current-user named pipe owned by the desktop process;
+- provides a provider-neutral `DesktopModelBrokerServer` that remains alive
+  across multiple requests, admits at most four current-user connections and
+  caps every broker frame at 1 MiB;
+- validates provider event order and permits only the session's `read`, `grep`,
+  `find` and `ls` tool identities before forwarding tool calls to Pi;
+- rejects an offline provider attempt to emit `bash`, returns a closed failure
+  to the Pi turn and proves the broker remains isolated from the Shell;
 - exposes conditional `start_turn` and `abort_turn` requests; assistant text,
   tool lifecycle and the terminal turn receipt stream independently of command
   responses;
@@ -51,8 +58,9 @@ state outside the Windows Shell process.
   and oversized broker response; each prompt fails closed;
 - holds a model request open and proves both the Node host and managed desktop
   can abort the active Pi turn and observe `turn-aborted`;
-- includes a C# diagnostic model broker that proves the full desktop-to-Pi
-  streaming path without using an online model or provider credential;
+- uses a deterministic `IDesktopModelProvider` to prove two ordinary turns,
+  one real root-confined `read` tool round trip and active-turn cancellation
+  through the production broker boundary without online model access;
 - executes direct inside/outside file-tool probes and forces `PI_OFFLINE=1`
   before importing Pi.
 
@@ -60,12 +68,15 @@ This is now a real desktop-owned Pi conversation transport, but it is not yet a
 product chat surface. With no broker pipe, readiness and capabilities continue
 to report `promptingEnabled: false`. With the reviewed pipe present, the bridge
 can bind one read-only workspace, run a real Pi prompt and receive incremental
-assistant text. A turn runs in the background, so the desktop can issue
-`abort_turn` without waiting for generation to finish. No provider credential
-is inherited or transported, no
-resource is discovered from the workspace and no session file is created. The
-current broker implementation is diagnostic; connecting a production model
-provider remains a separate reviewed step.
+assistant text across multiple turns. A turn runs in the background, so the
+desktop can issue `abort_turn` without waiting for generation to finish. No
+provider credential is inherited or transported, no resource is discovered
+from the workspace and no session file is created.
+
+The broker server and provider interface are production-facing boundaries; the
+provider used by the audit is still deterministic and offline. Connecting an
+authenticated production model provider, choosing its credential store and
+building the product conversation surface remain separate reviewed steps.
 
 ## Prompting admission
 
@@ -87,11 +98,16 @@ WPF desktop
                     |
                     +-- brokered streaming + active-turn abort (implemented)
                             |
-                            +-- production provider adapter
+                            +-- provider-neutral multi-request broker
+                                (implemented)
                                     |
-                                    +-- per-session mutation capability
+                                    +-- authenticated production provider
                                             |
-                                            +-- reviewed self-iteration workflow
+                                            +-- product conversation surface
+                                                    |
+                                                    +-- per-session mutation capability
+                                                            |
+                                                            +-- reviewed self-iteration workflow
 ```
 
 No stage grants Shell injection, Explorer mutation, registry writes or
@@ -115,7 +131,9 @@ CI uses `-StaticOnly` to build the managed bridge and validate the exact package
 lock, schema and source boundary without provider credentials. The full local
 audit additionally creates an offline, in-memory SDK session, proves
 single-root binding, executes inside/outside path and junction rejection tests,
-and sends one deterministic prompt through a local diagnostic broker. A second
-probe deliberately holds generation open and cancels it through the concurrent
-desktop response pump. It does not contact a model provider or carry provider
-credentials.
+and completes three turns through the desktop-owned broker. The third turn
+executes the real root-confined `read` tool and requires a second model request.
+A separate held request proves cancellation through the concurrent desktop
+response pump. The valid path observes five model requests and zero broker
+faults; an isolated negative provider records exactly one rejected `bash`
+fault. No path contacts an online model or transports a provider credential.

@@ -55,6 +55,12 @@ export function validateContract(contract) {
     contract.session?.modelAuthentication !==
       "desktop-process-only" ||
     contract.session?.modelTransport !== "local-named-pipe" ||
+    contract.session?.modelBrokerProtocol !==
+      "jarvisv2-pi-model-broker-v1" ||
+    contract.session?.modelBrokerLifetime !==
+      "desktop-owned-multi-request" ||
+    contract.session?.modelBrokerMaxFrameBytes !== 1_048_576 ||
+    contract.session?.modelBrokerMaxConcurrentConnections !== 4 ||
     contract.session?.credentialTransport !== "forbidden" ||
     contract.session?.persistence !== "in-memory" ||
     contract.session?.workspaceBinding !==

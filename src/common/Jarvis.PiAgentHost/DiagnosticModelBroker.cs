@@ -1,5 +1,4 @@
-using System.IO.Pipes;
-using System.Text;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace Jarvis.PiAgentHost;
@@ -13,12 +12,19 @@ public sealed record PiAgentDesktopBrokerProbeReceipt(
     bool CapabilitiesPassed,
     bool SessionCreationPassed,
     bool PromptPassed,
+    bool MultiTurnPassed,
+    bool ToolRoundTripPassed,
+    int ToolExecutionCount,
+    int CompletedTurnCount,
     bool AbortPassed,
     string AbortStatus,
+    bool InvalidToolRejected,
+    int ProviderFaultCount,
     bool ConcurrentResponsePump,
     string Response,
     int DeltaCount,
     int BrokerRequestCount,
+    int BrokerFaultCount,
     bool NamedPipeOnly,
     bool CredentialTransportAllowed,
     bool PiSidecarModelNetworkAllowed,
@@ -28,48 +34,19 @@ public sealed record PiAgentDesktopBrokerProbeReceipt(
 
 internal sealed class DiagnosticDesktopModelBroker : IAsyncDisposable
 {
-    public const string Protocol = "jarvisv2-pi-model-broker-v1";
-    private const int MaximumFrameBytes = 1_048_576;
+    public const string Protocol = DesktopModelBrokerServer.Protocol;
 
-    private static readonly HashSet<string> ForbiddenCredentialFields =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            "apikey",
-            "authorization",
-            "credential",
-            "credentials",
-            "password",
-            "secret",
-            "token",
-            "accesstoken",
-            "refreshtoken",
-        };
+    private readonly DiagnosticDesktopModelProvider provider;
+    private readonly DesktopModelBrokerServer server;
 
-    private readonly CancellationTokenSource cancellation = new();
-    private readonly bool holdResponse;
-    private readonly NamedPipeServerStream server;
-    private readonly Task serverTask;
-    private readonly TaskCompletionSource<bool> requestObserved = new(
-        TaskCreationOptions.RunContinuationsAsynchronously);
-    private int requestCount;
-
-    public string PipePath { get; }
-    public int RequestCount => Volatile.Read(ref requestCount);
+    public string PipePath => server.PipePath;
+    public int FaultCount => server.FaultCount;
+    public int RequestCount => server.RequestCount;
 
     private DiagnosticDesktopModelBroker(bool holdResponse)
     {
-        this.holdResponse = holdResponse;
-        string pipeName = $"jarvis2-pi-model-{Guid.NewGuid():N}";
-        PipePath = $@"\\.\pipe\{pipeName}";
-        server = new NamedPipeServerStream(
-            pipeName,
-            PipeDirection.InOut,
-            1,
-            PipeTransmissionMode.Byte,
-            PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly,
-            4_096,
-            4_096);
-        serverTask = RunAsync(cancellation.Token);
+        provider = new DiagnosticDesktopModelProvider(holdResponse);
+        server = DesktopModelBrokerServer.Start(provider);
     }
 
     public static DiagnosticDesktopModelBroker Start(
@@ -81,196 +58,12 @@ internal sealed class DiagnosticDesktopModelBroker : IAsyncDisposable
     public async Task WaitForRequestAsync(
         CancellationToken cancellationToken)
     {
-        await requestObserved.Task.WaitAsync(cancellationToken);
-    }
-
-    private async Task RunAsync(CancellationToken cancellationToken)
-    {
-        await server.WaitForConnectionAsync(cancellationToken);
-        using StreamReader reader = new(
-            server,
-            new UTF8Encoding(false, true),
-            detectEncodingFromByteOrderMarks: false,
-            bufferSize: 4_096,
-            leaveOpen: true);
-        using StreamWriter writer = new(
-            server,
-            new UTF8Encoding(false, true),
-            bufferSize: 4_096,
-            leaveOpen: true)
-        {
-            AutoFlush = true,
-            NewLine = "\n",
-        };
-
-        using JsonDocument hello = await ReadFrameAsync(
-            reader,
-            cancellationToken);
-        JsonElement helloRoot = hello.RootElement;
-        if (
-            helloRoot.GetProperty("type").GetString() != "broker_hello" ||
-            helloRoot.GetProperty("protocol").GetString() != Protocol)
-        {
-            throw new InvalidOperationException(
-                "The Pi model broker hello failed admission.");
-        }
-        await WriteFrameAsync(
-            writer,
-            new
-            {
-                type = "broker_ready",
-                protocol = Protocol,
-            },
-            cancellationToken);
-
-        using JsonDocument request = await ReadFrameAsync(
-            reader,
-            cancellationToken);
-        JsonElement requestRoot = request.RootElement;
-        if (
-            requestRoot.GetProperty("type").GetString() != "model_request" ||
-            requestRoot.GetProperty("protocol").GetString() != Protocol ||
-            requestRoot
-                .GetProperty("model")
-                .GetProperty("provider")
-                .GetString() != "jarvis-desktop-broker" ||
-            requestRoot
-                .GetProperty("model")
-                .GetProperty("id")
-                .GetString() != "desktop-default" ||
-            ContainsCredentialField(requestRoot))
-        {
-            throw new InvalidOperationException(
-                "The Pi model request failed desktop admission.");
-        }
-        string requestId =
-            requestRoot.GetProperty("id").GetString()
-            ?? throw new InvalidOperationException(
-                "The Pi model request id was missing.");
-        Interlocked.Increment(ref requestCount);
-        requestObserved.TrySetResult(true);
-        if (holdResponse)
-        {
-            await reader.ReadLineAsync(cancellationToken);
-            return;
-        }
-
-        await WriteFrameAsync(
-            writer,
-            new
-            {
-                type = "model_delta",
-                id = requestId,
-                delta = "JARVIS ",
-            },
-            cancellationToken);
-        await WriteFrameAsync(
-            writer,
-            new
-            {
-                type = "model_delta",
-                id = requestId,
-                delta = "desktop broker online.",
-            },
-            cancellationToken);
-        await WriteFrameAsync(
-            writer,
-            new
-            {
-                type = "model_done",
-                id = requestId,
-                reason = "stop",
-                usage = new
-                {
-                    input = 7,
-                    output = 4,
-                    cacheRead = 0,
-                    cacheWrite = 0,
-                },
-            },
-            cancellationToken);
-    }
-
-    private static async Task<JsonDocument> ReadFrameAsync(
-        StreamReader reader,
-        CancellationToken cancellationToken)
-    {
-        string? line = await reader.ReadLineAsync(cancellationToken);
-        if (line is null)
-        {
-            throw new InvalidOperationException(
-                "The Pi model broker peer closed before a complete frame.");
-        }
-        if (Encoding.UTF8.GetByteCount(line) > MaximumFrameBytes)
-        {
-            throw new InvalidOperationException(
-                "The Pi model broker input exceeded its frame limit.");
-        }
-        return JsonDocument.Parse(line);
-    }
-
-    private static async Task WriteFrameAsync<T>(
-        StreamWriter writer,
-        T value,
-        CancellationToken cancellationToken)
-    {
-        string payload = JsonSerializer.Serialize(value);
-        if (Encoding.UTF8.GetByteCount(payload) > MaximumFrameBytes)
-        {
-            throw new InvalidOperationException(
-                "The Pi model broker output exceeded its frame limit.");
-        }
-        await writer.WriteLineAsync(
-            payload.AsMemory(),
-            cancellationToken);
-    }
-
-    private static bool ContainsCredentialField(JsonElement element)
-    {
-        if (element.ValueKind == JsonValueKind.Array)
-        {
-            return element
-                .EnumerateArray()
-                .Any(ContainsCredentialField);
-        }
-        if (element.ValueKind != JsonValueKind.Object)
-        {
-            return false;
-        }
-        foreach (JsonProperty property in element.EnumerateObject())
-        {
-            string normalized = property.Name
-                .Replace("-", string.Empty, StringComparison.Ordinal)
-                .Replace("_", string.Empty, StringComparison.Ordinal);
-            if (
-                ForbiddenCredentialFields.Contains(normalized) ||
-                ContainsCredentialField(property.Value))
-            {
-                return true;
-            }
-        }
-        return false;
+        await provider.WaitForRequestAsync(cancellationToken);
     }
 
     public async ValueTask DisposeAsync()
     {
-        cancellation.Cancel();
-        if (!serverTask.IsCompleted)
-        {
-            await server.DisposeAsync();
-        }
-        try
-        {
-            await serverTask;
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (ObjectDisposedException)
-        {
-        }
-        server.Dispose();
-        cancellation.Dispose();
+        await server.DisposeAsync();
     }
 }
 
@@ -323,19 +116,41 @@ public static class PiAgentDesktopBrokerProbe
                 .GetBoolean() &&
             sessionData
                 .GetProperty("modelProvider")
-                .GetString() == "jarvis-desktop-broker" &&
+                .GetString() == DesktopModelBrokerServer.ProviderId &&
             sessionData
                 .GetProperty("modelId")
-                .GetString() == "desktop-default";
+                .GetString() == DesktopModelBrokerServer.ModelId;
 
-        PiAgentPromptResult prompt = await controller.PromptAsync(
+        PiAgentPromptResult firstPrompt = await controller.PromptAsync(
             "Confirm the desktop-owned model broker is online.",
-            "broker-prompt",
+            "broker-prompt-one",
             cancellationToken);
         bool promptPassed =
-            prompt.Response == "JARVIS desktop broker online." &&
-            prompt.DeltaCount == 2 &&
-            prompt.ToolExecutionCount == 0;
+            firstPrompt.Response == "JARVIS desktop broker online." &&
+            firstPrompt.DeltaCount == 2 &&
+            firstPrompt.ToolExecutionCount == 0;
+
+        PiAgentPromptResult secondPrompt = await controller.PromptAsync(
+            "Confirm that the same broker accepts another turn.",
+            "broker-prompt-two",
+            cancellationToken);
+        bool multiTurnPassed =
+            secondPrompt.Response == "JARVIS desktop broker online." &&
+            secondPrompt.DeltaCount == 2 &&
+            secondPrompt.ToolExecutionCount == 0 &&
+            broker.RequestCount == 2 &&
+            broker.FaultCount == 0;
+
+        PiAgentPromptResult toolPrompt = await controller.PromptAsync(
+            "Read the admitted package manifest and confirm the tool path.",
+            "broker-tool-turn",
+            cancellationToken);
+        bool toolRoundTripPassed =
+            toolPrompt.Response == "JARVIS workspace tool online." &&
+            toolPrompt.DeltaCount == 1 &&
+            toolPrompt.ToolExecutionCount == 1 &&
+            broker.RequestCount == 4 &&
+            broker.FaultCount == 0;
 
         await controller.ShutdownAsync(cancellationToken);
         await using DiagnosticDesktopModelBroker abortBroker =
@@ -377,17 +192,63 @@ public static class PiAgentDesktopBrokerProbe
         bool abortPassed =
             !abortResult.Success &&
             abortResult.Status == "aborted" &&
-            abortResult.ErrorCode == "turn-aborted";
+            abortResult.ErrorCode == "turn-aborted" &&
+            abortBroker.RequestCount == 1;
         await abortController.ShutdownAsync(cancellationToken);
+
+        await using DesktopModelBrokerServer invalidToolBroker =
+            DesktopModelBrokerServer.Start(
+                new InvalidToolDesktopModelProvider());
+        PiAgentSidecarOptions invalidToolOptions = options with
+        {
+            ModelBrokerPipePath = invalidToolBroker.PipePath,
+        };
+        await using PiAgentSidecarController invalidToolController =
+            await PiAgentSidecarController.StartAsync(
+                invalidToolOptions,
+                cancellationToken);
+        using JsonDocument invalidToolSession =
+            await invalidToolController.StartReadOnlySessionAsync(
+                workspaceRoot,
+                "invalid-tool-session",
+                cancellationToken);
+        if (!invalidToolSession.RootElement
+            .GetProperty("success")
+            .GetBoolean())
+        {
+            throw new InvalidOperationException(
+                "The invalid-tool probe session failed admission.");
+        }
+        bool invalidToolRejected = false;
+        try
+        {
+            await invalidToolController.PromptAsync(
+                "Reject a provider attempt to invoke an unadmitted tool.",
+                "invalid-tool-turn",
+                cancellationToken);
+        }
+        catch (InvalidOperationException)
+        {
+            invalidToolRejected =
+                invalidToolBroker.RequestCount == 1 &&
+                invalidToolBroker.FaultCount == 1;
+        }
+        await invalidToolController.ShutdownAsync(cancellationToken);
 
         int brokerRequestCount =
             broker.RequestCount + abortBroker.RequestCount;
+        int brokerFaultCount =
+            broker.FaultCount + abortBroker.FaultCount;
         bool passed =
             capabilitiesPassed &&
             sessionCreationPassed &&
             promptPassed &&
+            multiTurnPassed &&
+            toolRoundTripPassed &&
             abortPassed &&
-            brokerRequestCount == 2;
+            invalidToolRejected &&
+            brokerRequestCount == 5 &&
+            brokerFaultCount == 0;
         return new PiAgentDesktopBrokerProbeReceipt(
             1,
             "jarvisv2-pi-desktop-broker-bridge-probe",
@@ -397,17 +258,40 @@ public static class PiAgentDesktopBrokerProbe
             capabilitiesPassed,
             sessionCreationPassed,
             promptPassed,
+            multiTurnPassed,
+            toolRoundTripPassed,
+            toolPrompt.ToolExecutionCount,
+            3,
             abortPassed,
             abortResult.Status,
+            invalidToolRejected,
+            invalidToolBroker.FaultCount,
             true,
-            prompt.Response,
-            prompt.DeltaCount,
+            firstPrompt.Response,
+            firstPrompt.DeltaCount,
             brokerRequestCount,
+            brokerFaultCount,
             true,
             false,
             false,
             "diagnostic-only",
             "not-run",
             false);
+    }
+}
+
+internal sealed class InvalidToolDesktopModelProvider :
+    IDesktopModelProvider
+{
+    public async IAsyncEnumerable<DesktopModelStreamEvent> StreamAsync(
+        DesktopModelBrokerRequest request,
+        [EnumeratorCancellation]
+        CancellationToken cancellationToken)
+    {
+        await Task.Yield();
+        cancellationToken.ThrowIfCancellationRequested();
+        yield return new DesktopModelToolCallStarted(
+            "invalid-tool-1",
+            "bash");
     }
 }

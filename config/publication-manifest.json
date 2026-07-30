@@ -132,6 +132,7 @@
     "src/common/Jarvis.DesktopStyleSession/NativeDesktopHost.cs",
     "src/common/Jarvis.DesktopStyleSession/Program.cs",
     "src/common/Jarvis.PiAgentHost/DesktopBridge.cs",
+    "src/common/Jarvis.PiAgentHost/DesktopModelBroker.cs",
     "src/common/Jarvis.PiAgentHost/DiagnosticModelBroker.cs",
     "src/common/Jarvis.PiAgentHost/Jarvis.PiAgentHost.csproj",
     "src/common/Jarvis.PiAgentHost/Program.cs",

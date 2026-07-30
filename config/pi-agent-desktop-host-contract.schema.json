@@ -138,6 +138,10 @@
         "promptingEnabled",
         "modelAuthentication",
         "modelTransport",
+        "modelBrokerProtocol",
+        "modelBrokerLifetime",
+        "modelBrokerMaxFrameBytes",
+        "modelBrokerMaxConcurrentConnections",
         "credentialTransport",
         "persistence",
         "workspaceBinding",
@@ -156,6 +160,18 @@
         },
         "modelTransport": {
           "const": "local-named-pipe"
+        },
+        "modelBrokerProtocol": {
+          "const": "jarvisv2-pi-model-broker-v1"
+        },
+        "modelBrokerLifetime": {
+          "const": "desktop-owned-multi-request"
+        },
+        "modelBrokerMaxFrameBytes": {
+          "const": 1048576
+        },
+        "modelBrokerMaxConcurrentConnections": {
+          "const": 4
         },
         "credentialTransport": {
           "const": "forbidden"

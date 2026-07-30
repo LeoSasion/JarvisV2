@@ -22,6 +22,7 @@ $brokerTestPath = Join-Path $sourceRoot (
     'test\desktop-model-broker.test.mjs')
 $bridgeProjectPath = Join-Path $sourceRoot 'Jarvis.PiAgentHost.csproj'
 $bridgeSourcePath = Join-Path $sourceRoot 'DesktopBridge.cs'
+$productionBrokerSourcePath = Join-Path $sourceRoot 'DesktopModelBroker.cs'
 $brokerSourcePath = Join-Path $sourceRoot 'DiagnosticModelBroker.cs'
 $bridgeProgramPath = Join-Path $sourceRoot 'Program.cs'
 $bridgeFixtureRoot = Join-Path $sourceRoot 'test\fixtures'
@@ -98,6 +99,12 @@ Add-Check `
             'desktop-process-only' -and
         $contract.session.modelTransport -eq
             'local-named-pipe' -and
+        $contract.session.modelBrokerProtocol -eq
+            'jarvisv2-pi-model-broker-v1' -and
+        $contract.session.modelBrokerLifetime -eq
+            'desktop-owned-multi-request' -and
+        $contract.session.modelBrokerMaxFrameBytes -eq 1048576 -and
+        $contract.session.modelBrokerMaxConcurrentConnections -eq 4 -and
         $contract.session.credentialTransport -eq 'forbidden' -and
         $contract.session.persistence -eq 'in-memory' -and
         $contract.session.workspaceBinding -eq
@@ -156,6 +163,14 @@ Add-Check `
             -eq 'desktop-process-only' -and
         $schema.properties.session.properties.modelTransport.const `
             -eq 'local-named-pipe' -and
+        $schema.properties.session.properties.modelBrokerProtocol.const `
+            -eq 'jarvisv2-pi-model-broker-v1' -and
+        $schema.properties.session.properties.modelBrokerLifetime.const `
+            -eq 'desktop-owned-multi-request' -and
+        $schema.properties.session.properties.modelBrokerMaxFrameBytes.const `
+            -eq 1048576 -and
+        $schema.properties.session.properties.modelBrokerMaxConcurrentConnections.const `
+            -eq 4 -and
         $schema.properties.session.properties.modelNetworkAllowed.const `
             -eq $false -and
         $schema.properties.transport.properties.credentialFieldsAllowed.const `
@@ -221,6 +236,8 @@ Add-Check `
 $bridgeSourceText =
     [IO.File]::ReadAllText($bridgeSourcePath) +
     [Environment]::NewLine +
+    [IO.File]::ReadAllText($productionBrokerSourcePath) +
+    [Environment]::NewLine +
     [IO.File]::ReadAllText($brokerSourcePath) +
     [Environment]::NewLine +
     [IO.File]::ReadAllText($bridgeProgramPath)
@@ -255,6 +272,12 @@ Add-Check `
         $bridgeSourceText.Contains('StartTurnAsync') -and
         $bridgeSourceText.Contains('AbortTurnAsync') -and
         $bridgeSourceText.Contains('PumpOutputAsync') -and
+        $bridgeSourceText.Contains('DesktopModelBrokerServer') -and
+        $bridgeSourceText.Contains('IDesktopModelProvider') -and
+        $bridgeSourceText.Contains(
+            'MaximumConcurrentConnections = 4') -and
+        $bridgeSourceText.Contains(
+            'AllowedToolNames.Contains') -and
         $bridgeSourceText.Contains('PipeOptions.CurrentUserOnly') -and
         $bridgeSourceText.Contains('jarvisv2-pi-model-broker-v1') -and
         $bridgeSourceText.Contains('sessionCreationPassed') -and
@@ -275,7 +298,8 @@ Add-Check `
     -Detail (
         'The managed bridge may own only the exact no-shell Node child, ' +
         'scrub credential variables, bind one read-only session, admit one ' +
-        'current-user model pipe and terminate its own process on cleanup.')
+        'multi-request current-user model pipe and terminate only its owned ' +
+        'processes and connections on cleanup.')
 
 $bridgeBuildOutput = @(
     & $DotnetPath build `
@@ -583,13 +607,20 @@ if (-not $StaticOnly) {
             $brokerBridgeReceipt.capabilitiesPassed -and
             $brokerBridgeReceipt.sessionCreationPassed -and
             $brokerBridgeReceipt.promptPassed -and
+            $brokerBridgeReceipt.multiTurnPassed -and
+            $brokerBridgeReceipt.toolRoundTripPassed -and
+            $brokerBridgeReceipt.toolExecutionCount -eq 1 -and
+            $brokerBridgeReceipt.completedTurnCount -eq 3 -and
             $brokerBridgeReceipt.abortPassed -and
             $brokerBridgeReceipt.abortStatus -eq 'aborted' -and
+            $brokerBridgeReceipt.invalidToolRejected -and
+            $brokerBridgeReceipt.providerFaultCount -eq 1 -and
             $brokerBridgeReceipt.concurrentResponsePump -and
             $brokerBridgeReceipt.response -eq
                 'JARVIS desktop broker online.' -and
             $brokerBridgeReceipt.deltaCount -eq 2 -and
-            $brokerBridgeReceipt.brokerRequestCount -eq 2 -and
+            $brokerBridgeReceipt.brokerRequestCount -eq 5 -and
+            $brokerBridgeReceipt.brokerFaultCount -eq 0 -and
             $brokerBridgeReceipt.namedPipeOnly -and
             -not $brokerBridgeReceipt.credentialTransportAllowed -and
             -not $brokerBridgeReceipt.piSidecarModelNetworkAllowed -and
@@ -664,6 +695,10 @@ $passed = $failures.Count -eq 0
     promptingEnabled = $false
     promptingAdmission = 'desktop-broker-required'
     desktopModelBrokerImplemented = $true
+    desktopModelBrokerLifetime = 'desktop-owned-multi-request'
+    multiTurnPromptingImplemented = $true
+    toolRoundTripImplemented = $true
+    providerToolAllowlistEnforced = $true
     asynchronousTurnsImplemented = $true
     activeTurnCancellationImplemented = $true
     sessionPersistence = 'in-memory'
