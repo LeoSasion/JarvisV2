@@ -18,8 +18,11 @@ $packagePath = Join-Path $sourceRoot 'package.json'
 $lockPath = Join-Path $sourceRoot 'pnpm-lock.yaml'
 $hostPath = Join-Path $sourceRoot 'src\host.mjs'
 $protocolTestPath = Join-Path $sourceRoot 'test\protocol.test.mjs'
+$brokerTestPath = Join-Path $sourceRoot (
+    'test\desktop-model-broker.test.mjs')
 $bridgeProjectPath = Join-Path $sourceRoot 'Jarvis.PiAgentHost.csproj'
 $bridgeSourcePath = Join-Path $sourceRoot 'DesktopBridge.cs'
+$brokerSourcePath = Join-Path $sourceRoot 'DiagnosticModelBroker.cs'
 $bridgeProgramPath = Join-Path $sourceRoot 'Program.cs'
 $bridgeFixtureRoot = Join-Path $sourceRoot 'test\fixtures'
 
@@ -74,6 +77,7 @@ Add-Check `
         $contract.upstream.repository -eq
             'https://github.com/earendil-works/pi' -and
         $contract.upstream.license -eq 'MIT' -and
+        $package.dependencies.'@earendil-works/pi-ai' -eq '0.82.1' -and
         $package.dependencies.'@earendil-works/pi-coding-agent' -eq
             '0.82.1') `
     -Detail (
@@ -88,7 +92,12 @@ Add-Check `
         $contract.runtime.launchState -eq
             'read-only-session-admission' -and
         $contract.session.enabled -and
-        -not $contract.session.promptingEnabled -and
+        $contract.session.promptingEnabled -eq
+            'desktop-broker-required' -and
+        $contract.session.modelAuthentication -eq
+            'desktop-process-only' -and
+        $contract.session.modelTransport -eq
+            'local-named-pipe' -and
         $contract.session.credentialTransport -eq 'forbidden' -and
         $contract.session.persistence -eq 'in-memory' -and
         $contract.session.workspaceBinding -eq
@@ -102,8 +111,8 @@ Add-Check `
         -not $contract.tools.unattendedSelfIteration) `
     -Detail (
         'The managed desktop may create one real in-memory Pi session for ' +
-        'one admitted workspace; prompting, credentials, discovery and ' +
-        'mutation tools remain denied.')
+        'one admitted workspace; prompting requires a desktop-owned named ' +
+        'pipe while credentials, discovery and mutation tools remain denied.')
 
 Add-Check `
     -Name 'contract.jsonl-and-shell-boundary' `
@@ -142,7 +151,11 @@ Add-Check `
         $schema.properties.runtime.properties.sessionCreationEnabled.const `
             -eq $true -and
         $schema.properties.session.properties.promptingEnabled.const `
-            -eq $false -and
+            -eq 'desktop-broker-required' -and
+        $schema.properties.session.properties.modelAuthentication.const `
+            -eq 'desktop-process-only' -and
+        $schema.properties.session.properties.modelTransport.const `
+            -eq 'local-named-pipe' -and
         $schema.properties.session.properties.modelNetworkAllowed.const `
             -eq $false -and
         $schema.properties.transport.properties.credentialFieldsAllowed.const `
@@ -151,11 +164,11 @@ Add-Check `
             -eq $false) `
     -Detail (
         'The published schema must hard-code the single-root in-memory ' +
-        'session plus disabled prompting, credentials, network and activation.')
+        'session plus desktop-broker-only prompting and disabled credential ' +
+        'transport, sidecar network and activation.')
 
 $forbiddenRuntimePattern = (
     '(?i)\b(?:child_process|spawn|execFile|execSync|shell\s*:|' +
-    '\.prompt\s*\(|' +
     'ANTHROPIC_API_KEY|OPENAI_API_KEY|auth\.json|' +
     'writeFile|appendFile|rmSync|unlinkSync)\b'
 )
@@ -167,6 +180,10 @@ $modelRuntimeCreateCount = [regex]::Matches(
     $runtimeSourceText,
     'ModelRuntime\.create\s*\('
 ).Count
+$sessionPromptCount = [regex]::Matches(
+    $runtimeSourceText,
+    '\.prompt\s*\('
+).Count
 Add-Check `
     -Name 'source.root-confined-session-sidecar' `
     -Passed (
@@ -175,6 +192,7 @@ Add-Check `
             $forbiddenRuntimePattern) -and
         $sessionCreateCount -eq 1 -and
         $modelRuntimeCreateCount -eq 1 -and
+        $sessionPromptCount -eq 1 -and
         $runtimeSourceText.Contains('process.env.PI_OFFLINE = "1"') -and
         $runtimeSourceText.Contains(
             'allowModelNetwork: false') -and
@@ -188,16 +206,22 @@ Add-Check `
             'path-outside-workspace') -and
         $runtimeSourceText.Contains(
             'reparse-point-forbidden') -and
+        $runtimeSourceText.Contains('JARVIS_MODEL_BROKER_PIPE') -and
+        $runtimeSourceText.Contains('jarvisv2-pi-model-broker-v1') -and
+        $runtimeSourceText.Contains('desktop-broker-capability') -and
         $runtimeSourceText.Contains('Buffer.byteLength') -and
         $runtimeSourceText.Contains('Buffer.byteLength(line, "utf8")') -and
         $runtimeSourceText.Contains('buffer.indexOf("\n")') -and
         $runtimeSourceText.Contains('credential-field-forbidden')) `
     -Detail (
         'Runtime source must create exactly one root-confined in-memory SDK ' +
-        'session without credential files, writes or child processes.')
+        'session and one broker-gated prompt path without credential files, ' +
+        'writes or child processes.')
 
 $bridgeSourceText =
     [IO.File]::ReadAllText($bridgeSourcePath) +
+    [Environment]::NewLine +
+    [IO.File]::ReadAllText($brokerSourcePath) +
     [Environment]::NewLine +
     [IO.File]::ReadAllText($bridgeProgramPath)
 $forbiddenBridgePattern = (
@@ -223,8 +247,13 @@ Add-Check `
         $bridgeSourceText.Contains(
             'startInfo.Environment.Clear()') -and
         $bridgeSourceText.Contains(
+            'startInfo.Environment["JARVIS_MODEL_BROKER_PIPE"]') -and
+        $bridgeSourceText.Contains(
             'process.Kill(entireProcessTree: true)') -and
         $bridgeSourceText.Contains('StartReadOnlySessionAsync') -and
+        $bridgeSourceText.Contains('PromptAsync') -and
+        $bridgeSourceText.Contains('PipeOptions.CurrentUserOnly') -and
+        $bridgeSourceText.Contains('jarvisv2-pi-model-broker-v1') -and
         $bridgeSourceText.Contains('sessionCreationPassed') -and
         $bridgeSourceText.Contains('workspaceBound') -and
         $bridgeSourceText.Contains('"shutdown"') -and
@@ -242,8 +271,8 @@ Add-Check `
         ) -PathType Leaf)) `
     -Detail (
         'The managed bridge may own only the exact no-shell Node child, ' +
-        'scrub credential variables, bind one read-only session and terminate ' +
-        'its own process on bounded cleanup.')
+        'scrub credential variables, bind one read-only session, admit one ' +
+        'current-user model pipe and terminate its own process on cleanup.')
 
 $bridgeBuildOutput = @(
     & $DotnetPath build `
@@ -264,6 +293,8 @@ $lockValid = $false
 if (Test-Path -LiteralPath $lockPath -PathType Leaf) {
     $lockText = [IO.File]::ReadAllText($lockPath)
     $lockValid =
+        $lockText.Contains(
+            "'@earendil-works/pi-ai@0.82.1'") -and
         $lockText.Contains(
             "'@earendil-works/pi-coding-agent@0.82.1'") -and
         $lockText.Contains('integrity:')
@@ -400,6 +431,53 @@ if (-not $StaticOnly) {
             "Protocol exit $protocolExitCode; result " +
             "$protocolResult; records $recordCount.")
 
+    $brokerTestOutput = @(
+        & $NodePath $brokerTestPath 2>&1
+    )
+    $brokerTestExitCode = $LASTEXITCODE
+    $brokerTestReceipt = $null
+    try {
+        $brokerTestReceipt =
+            ($brokerTestOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $brokerTestReceipt = $null
+    }
+    $brokerTestResult = if ($null -ne $brokerTestReceipt) {
+        $brokerTestReceipt.result
+    }
+    else {
+        'unparsed'
+    }
+    Add-Check `
+        -Name 'runtime.pi-desktop-model-broker-probe' `
+        -Passed (
+            $brokerTestExitCode -eq 0 -and
+            $null -ne $brokerTestReceipt -and
+            $brokerTestReceipt.result -eq 'passed' -and
+            $brokerTestReceipt.protocol -eq
+                'jarvisv2-pi-model-broker-v1' -and
+            $brokerTestReceipt.provider -eq
+                'jarvis-desktop-broker' -and
+            $brokerTestReceipt.model -eq 'desktop-default' -and
+            $brokerTestReceipt.namedPipeOnly -and
+            -not $brokerTestReceipt.credentialTransportAllowed -and
+            $brokerTestReceipt.promptingEnabled -and
+            $brokerTestReceipt.deltaCount -eq 2 -and
+            $brokerTestReceipt.response -eq 'JARVIS broker online.' -and
+            $brokerTestReceipt.faultScenarioCount -eq 4 -and
+            $brokerTestReceipt.invalidPipeRejected -and
+            $brokerTestReceipt.wrongProtocolRejected -and
+            $brokerTestReceipt.disconnectRejected -and
+            $brokerTestReceipt.oversizedFrameRejected -and
+            $brokerTestReceipt.liveModelNetwork -eq 'not-run' -and
+            $brokerTestReceipt.liveExplorer -eq 'not-run' -and
+            -not $brokerTestReceipt.mutationPerformed) `
+        -Detail (
+            "Node broker exit $brokerTestExitCode; result " +
+            "$brokerTestResult.")
+
     $bridgeOutput = @(
         & $DotnetPath run `
             --project $bridgeProjectPath `
@@ -463,6 +541,58 @@ if (-not $StaticOnly) {
         -Detail (
             "Desktop bridge exit $bridgeExitCode; result $bridgeResult.")
 
+    $brokerBridgeOutput = @(
+        & $DotnetPath run `
+            --project $bridgeProjectPath `
+            --configuration Release `
+            --no-build `
+            -- `
+            broker-probe `
+            --node $NodePath `
+            --sidecar $hostPath 2>&1
+    )
+    $brokerBridgeExitCode = $LASTEXITCODE
+    $brokerBridgeReceipt = $null
+    try {
+        $brokerBridgeReceipt =
+            ($brokerBridgeOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $brokerBridgeReceipt = $null
+    }
+    $brokerBridgeResult = if ($null -ne $brokerBridgeReceipt) {
+        $brokerBridgeReceipt.result
+    }
+    else {
+        'unparsed'
+    }
+    Add-Check `
+        -Name 'runtime.desktop-owned-model-broker-probe' `
+        -Passed (
+            $brokerBridgeExitCode -eq 0 -and
+            $null -ne $brokerBridgeReceipt -and
+            $brokerBridgeReceipt.result -eq 'passed' -and
+            $brokerBridgeReceipt.protocol -eq
+                'jarvisv2-pi-model-broker-v1' -and
+            $brokerBridgeReceipt.readyObserved -and
+            $brokerBridgeReceipt.capabilitiesPassed -and
+            $brokerBridgeReceipt.sessionCreationPassed -and
+            $brokerBridgeReceipt.promptPassed -and
+            $brokerBridgeReceipt.response -eq
+                'JARVIS desktop broker online.' -and
+            $brokerBridgeReceipt.deltaCount -eq 2 -and
+            $brokerBridgeReceipt.brokerRequestCount -eq 1 -and
+            $brokerBridgeReceipt.namedPipeOnly -and
+            -not $brokerBridgeReceipt.credentialTransportAllowed -and
+            -not $brokerBridgeReceipt.piSidecarModelNetworkAllowed -and
+            $brokerBridgeReceipt.liveModelNetwork -eq 'diagnostic-only' -and
+            $brokerBridgeReceipt.liveExplorer -eq 'not-run' -and
+            -not $brokerBridgeReceipt.mutationPerformed) `
+        -Detail (
+            "Desktop broker exit $brokerBridgeExitCode; result " +
+            "$brokerBridgeResult.")
+
     $faultOutput = @(
         & $DotnetPath run `
             --project $bridgeProjectPath `
@@ -525,6 +655,8 @@ $passed = $failures.Count -eq 0
     transportProbeImplemented = $true
     sessionCreationEnabled = $true
     promptingEnabled = $false
+    promptingAdmission = 'desktop-broker-required'
+    desktopModelBrokerImplemented = $true
     sessionPersistence = 'in-memory'
     workspaceBinding = 'single-explicit-root'
     desktopLaunchImplemented = $true

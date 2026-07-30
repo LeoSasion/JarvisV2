@@ -24,14 +24,16 @@
       "hello",
       "capabilities",
       "start_session",
+      "prompt",
       "shutdown"
     ],
     "credentialFieldsAllowed": false
   },
   "session": {
     "enabled": true,
-    "promptingEnabled": false,
-    "modelAuthentication": "disabled-during-admission",
+    "promptingEnabled": "desktop-broker-required",
+    "modelAuthentication": "desktop-process-only",
+    "modelTransport": "local-named-pipe",
     "credentialTransport": "forbidden",
     "persistence": "in-memory",
     "workspaceBinding": "single-explicit-root",

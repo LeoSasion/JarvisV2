@@ -42,16 +42,18 @@ export function validateContract(contract) {
     contract.transport?.encoding !== "utf-8" ||
     contract.transport?.maxFrameBytes !== 65_536 ||
     contract.transport?.requestTypes?.join("|") !==
-      "hello|capabilities|start_session|shutdown" ||
+      "hello|capabilities|start_session|prompt|shutdown" ||
     contract.transport?.credentialFieldsAllowed !== false
   ) {
     failures.push("transport");
   }
   if (
     contract.session?.enabled !== true ||
-    contract.session?.promptingEnabled !== false ||
+    contract.session?.promptingEnabled !==
+      "desktop-broker-required" ||
     contract.session?.modelAuthentication !==
-      "disabled-during-admission" ||
+      "desktop-process-only" ||
+    contract.session?.modelTransport !== "local-named-pipe" ||
     contract.session?.credentialTransport !== "forbidden" ||
     contract.session?.persistence !== "in-memory" ||
     contract.session?.workspaceBinding !==

@@ -4,8 +4,15 @@ import {
 import {
   WorkspacePolicyError,
 } from "./workspace-policy.mjs";
+import {
+  validateDesktopBrokerPipe,
+} from "./desktop-model-broker.mjs";
 
-export function createReadyEvent(contract, runtimeReceipt) {
+export function createReadyEvent(
+  contract,
+  runtimeReceipt,
+  state,
+) {
   return {
     type: "ready",
     protocol: contract.contractId,
@@ -14,7 +21,7 @@ export function createReadyEvent(contract, runtimeReceipt) {
     credentialEnvironmentClean:
       runtimeReceipt.credentialEnvironmentClean,
     sessionCreationEnabled: true,
-    promptingEnabled: false,
+    promptingEnabled: state.modelBrokerPipe !== null,
   };
 }
 
@@ -46,9 +53,21 @@ function containsCredentialField(value) {
   });
 }
 
-export function createProtocolState() {
+export function createProtocolState(options = {}) {
+  const candidate = options.modelBrokerPipe;
+  if (
+    candidate !== undefined &&
+    candidate !== null &&
+    !validateDesktopBrokerPipe(candidate)
+  ) {
+    throw new WorkspacePolicyError(
+      "invalid-model-broker-pipe",
+      "The desktop model broker pipe failed admission.",
+    );
+  }
   return {
     sessionHandle: null,
+    modelBrokerPipe: candidate ?? null,
   };
 }
 
@@ -70,6 +89,7 @@ export async function handleRequest(
   contract,
   runtimeReceipt,
   state,
+  emitEvent = () => {},
 ) {
   const id =
     typeof request?.id === "string" ? request.id : null;
@@ -109,7 +129,7 @@ export async function handleRequest(
             initialTools: [...contract.tools.initialAllowlist],
             deniedTools: [...contract.tools.initiallyDenied],
             sessionCreationEnabled: true,
-            promptingEnabled: false,
+            promptingEnabled: state.modelBrokerPipe !== null,
             sessionPersistence: "in-memory",
             workspaceBinding: "single-explicit-root",
             resourceDiscoveryEnabled: false,
@@ -134,6 +154,9 @@ export async function handleRequest(
       try {
         state.sessionHandle = await createReadOnlyAgentSession(
           request.workspaceRoot,
+          {
+            modelBrokerPipe: state.modelBrokerPipe,
+          },
         );
         return {
           response: {
@@ -148,7 +171,11 @@ export async function handleRequest(
               sessionPersisted: state.sessionHandle.persisted,
               modelSelected:
                 state.sessionHandle.modelSelected,
-              promptingEnabled: false,
+              promptingEnabled:
+                state.sessionHandle.promptingEnabled,
+              modelProvider:
+                state.sessionHandle.modelProvider,
+              modelId: state.sessionHandle.modelId,
               resourceDiscoveryEnabled: false,
               modelNetworkAllowed: false,
             },
@@ -171,6 +198,117 @@ export async function handleRequest(
           "session-admission-failed",
           "The read-only Pi Agent session failed closed during admission.",
         );
+      }
+    case "prompt":
+      if (state.sessionHandle === null) {
+        return failure(
+          id,
+          "prompt",
+          "session-not-bound",
+          "A workspace session must be admitted before prompting.",
+        );
+      }
+      if (!state.sessionHandle.promptingEnabled) {
+        return failure(
+          id,
+          "prompt",
+          "prompting-disabled",
+          "Prompting requires a desktop-owned model broker.",
+        );
+      }
+      if (
+        typeof request.text !== "string" ||
+        request.text.trim().length === 0 ||
+        Buffer.byteLength(request.text, "utf8") > 16_384
+      ) {
+        return failure(
+          id,
+          "prompt",
+          "invalid-prompt",
+          "Prompt text must contain between 1 and 16384 UTF-8 bytes.",
+        );
+      }
+      {
+        let deltaCount = 0;
+        let toolExecutionCount = 0;
+        let assistantStopReason = null;
+        const unsubscribe =
+          state.sessionHandle.session.subscribe((event) => {
+            if (
+              event.type === "message_update" &&
+              event.assistantMessageEvent?.type === "text_delta"
+            ) {
+              deltaCount += 1;
+              emitEvent({
+                type: "event",
+                event: "assistant_text_delta",
+                requestId: id,
+                delta: event.assistantMessageEvent.delta,
+              });
+            } else if (event.type === "tool_execution_start") {
+              toolExecutionCount += 1;
+              emitEvent({
+                type: "event",
+                event: "tool_execution_start",
+                requestId: id,
+                toolCallId: event.toolCallId,
+                toolName: event.toolName,
+              });
+            } else if (event.type === "tool_execution_end") {
+              emitEvent({
+                type: "event",
+                event: "tool_execution_end",
+                requestId: id,
+                toolCallId: event.toolCallId,
+                toolName: event.toolName,
+                isError: event.isError === true,
+              });
+            } else if (
+              event.type === "message_end" &&
+              event.message?.role === "assistant"
+            ) {
+              assistantStopReason = event.message.stopReason;
+            }
+          });
+        try {
+          await state.sessionHandle.session.prompt(request.text);
+          await state.sessionHandle.session.waitForIdle();
+          if (
+            assistantStopReason === null ||
+            assistantStopReason === "error" ||
+            assistantStopReason === "aborted"
+          ) {
+            return failure(
+              id,
+              "prompt",
+              "prompt-failed",
+              "The desktop-brokered Pi prompt failed closed.",
+            );
+          }
+          return {
+            response: {
+              type: "response",
+              id,
+              command: "prompt",
+              success: true,
+              data: {
+                status: "completed",
+                deltaCount,
+                toolExecutionCount,
+              },
+            },
+            shutdown: false,
+          };
+        } catch {
+          return failure(
+            id,
+            "prompt",
+            "prompt-failed",
+            "The desktop-brokered Pi prompt failed closed.",
+          );
+        } finally {
+          unsubscribe();
+        }
       }
     case "shutdown":
       return {

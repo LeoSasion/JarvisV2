@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Jarvis.PiAgentHost;
 
@@ -9,7 +10,13 @@ public sealed record PiAgentSidecarOptions(
     string HostScriptPath,
     int MaximumFrameBytes = 65_536,
     int RequestTimeoutMilliseconds = 10_000,
-    int ShutdownTimeoutMilliseconds = 3_000);
+    int ShutdownTimeoutMilliseconds = 3_000,
+    string? ModelBrokerPipePath = null);
+
+public sealed record PiAgentPromptResult(
+    string Response,
+    int DeltaCount,
+    int ToolExecutionCount);
 
 public sealed record PiAgentDesktopProbeReceipt(
     int SchemaVersion,
@@ -87,6 +94,7 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
 
     private readonly PiAgentSidecarOptions options;
     private readonly Process process;
+    private readonly SemaphoreSlim requestGate = new(1, 1);
     private readonly Task<string> stderrTask;
     private bool shutdownCompleted;
 
@@ -135,6 +143,11 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             }
         }
         startInfo.Environment["PI_OFFLINE"] = "1";
+        if (options.ModelBrokerPipePath is not null)
+        {
+            startInfo.Environment["JARVIS_MODEL_BROKER_PIPE"] =
+                options.ModelBrokerPipePath;
+        }
 
         Process process = new()
         {
@@ -157,7 +170,9 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                     options.RequestTimeoutMilliseconds);
             using JsonDocument ready = await controller.ReadFrameAsync(
                 timeout.Token);
-            ValidateReady(ready.RootElement);
+            ValidateReady(
+                ready.RootElement,
+                options.ModelBrokerPipePath is not null);
             controller.CredentialEnvironmentClean = ready.RootElement
                 .GetProperty("credentialEnvironmentClean")
                 .GetBoolean();
@@ -206,6 +221,125 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             cancellationToken);
     }
 
+    public async Task<PiAgentPromptResult> PromptAsync(
+        string text,
+        string id,
+        CancellationToken cancellationToken)
+    {
+        if (options.ModelBrokerPipePath is null)
+        {
+            throw new InvalidOperationException(
+                "Prompting requires a desktop-owned model broker.");
+        }
+        if (string.IsNullOrWhiteSpace(text) ||
+            Encoding.UTF8.GetByteCount(text) > 16_384 ||
+            string.IsNullOrWhiteSpace(id))
+        {
+            throw new ArgumentException(
+                "Prompt text and id do not match the reviewed limits.");
+        }
+
+        await requestGate.WaitAsync(cancellationToken);
+        try
+        {
+            using CancellationTokenSource timeout =
+                CreateTimeout(
+                    cancellationToken,
+                    options.RequestTimeoutMilliseconds);
+            await WriteRequestAsync(
+                new
+                {
+                    type = "prompt",
+                    id,
+                    text,
+                },
+                timeout.Token);
+
+            StringBuilder responseText = new();
+            int deltaCount = 0;
+            int toolExecutionCount = 0;
+            while (true)
+            {
+                JsonDocument frame = await ReadFrameAsync(timeout.Token);
+                JsonElement root = frame.RootElement;
+                if (root.GetProperty("type").GetString() == "event")
+                {
+                    try
+                    {
+                        if (root.GetProperty("requestId").GetString() != id)
+                        {
+                            throw new InvalidOperationException(
+                                "The Pi Agent event did not match its prompt.");
+                        }
+                        string? eventName =
+                            root.GetProperty("event").GetString();
+                        if (eventName == "assistant_text_delta")
+                        {
+                            string delta =
+                                root.GetProperty("delta").GetString()
+                                ?? throw new InvalidOperationException(
+                                    "The Pi Agent emitted an invalid text delta.");
+                            responseText.Append(delta);
+                            deltaCount++;
+                        }
+                        else if (eventName == "tool_execution_start")
+                        {
+                            toolExecutionCount++;
+                        }
+                        else if (eventName != "tool_execution_end")
+                        {
+                            throw new InvalidOperationException(
+                                "The Pi Agent emitted an unsupported event.");
+                        }
+                    }
+                    finally
+                    {
+                        frame.Dispose();
+                    }
+                    continue;
+                }
+
+                try
+                {
+                    ValidateResponseEnvelope(root, "prompt", id);
+                    if (!root.GetProperty("success").GetBoolean())
+                    {
+                        string code = root
+                            .GetProperty("error")
+                            .GetProperty("code")
+                            .GetString() ?? "prompt-failed";
+                        throw new InvalidOperationException(
+                            $"The Pi Agent prompt failed closed: {code}.");
+                    }
+                    JsonElement data = root.GetProperty("data");
+                    if (
+                        data.GetProperty("status").GetString() !=
+                            "completed" ||
+                        data.GetProperty("deltaCount").GetInt32() !=
+                            deltaCount ||
+                        data.GetProperty("toolExecutionCount").GetInt32() !=
+                            toolExecutionCount)
+                    {
+                        throw new InvalidOperationException(
+                            "The Pi Agent prompt receipt did not match its events.");
+                    }
+                    return new PiAgentPromptResult(
+                        responseText.ToString(),
+                        deltaCount,
+                        toolExecutionCount);
+                }
+                finally
+                {
+                    frame.Dispose();
+                }
+            }
+        }
+        finally
+        {
+            requestGate.Release();
+        }
+    }
+
     private async Task<JsonDocument> SendRequestAsync<TRequest>(
         TRequest request,
         string type,
@@ -224,6 +358,33 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 "Request type and id must be non-empty.");
         }
 
+        await requestGate.WaitAsync(cancellationToken);
+        try
+        {
+            using CancellationTokenSource timeout =
+                CreateTimeout(
+                    cancellationToken,
+                    options.RequestTimeoutMilliseconds);
+            await WriteRequestAsync(request, timeout.Token);
+            JsonDocument response = await ReadFrameAsync(timeout.Token);
+            ValidateResponseEnvelope(response.RootElement, type, id);
+            return response;
+        }
+        finally
+        {
+            requestGate.Release();
+        }
+    }
+
+    private async Task WriteRequestAsync<TRequest>(
+        TRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (shutdownCompleted)
+        {
+            throw new InvalidOperationException(
+                "The Pi Agent sidecar has already shut down.");
+        }
         string payload = JsonSerializer.Serialize(
             request,
             SerializerOptions);
@@ -233,17 +394,10 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 "The outgoing Pi Agent frame exceeds the contract limit.");
         }
 
-        using CancellationTokenSource timeout =
-            CreateTimeout(
-                cancellationToken,
-                options.RequestTimeoutMilliseconds);
         await process.StandardInput.WriteLineAsync(
             payload.AsMemory(),
-            timeout.Token);
-        await process.StandardInput.FlushAsync(timeout.Token);
-        JsonDocument response = await ReadFrameAsync(timeout.Token);
-        ValidateResponseEnvelope(response.RootElement, type, id);
-        return response;
+            cancellationToken);
+        await process.StandardInput.FlushAsync(cancellationToken);
     }
 
     public async Task ShutdownAsync(CancellationToken cancellationToken)
@@ -300,6 +454,7 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 }
             }
         }
+        requestGate.Dispose();
         process.Dispose();
     }
 
@@ -365,6 +520,17 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 nameof(options),
                 "The sidecar limits do not match the reviewed desktop policy.");
         }
+        if (
+            options.ModelBrokerPipePath is not null &&
+            !Regex.IsMatch(
+                options.ModelBrokerPipePath,
+                @"^\\\\\.\\pipe\\jarvis2-pi-model-[0-9a-f]{32}$",
+                RegexOptions.IgnoreCase |
+                    RegexOptions.CultureInvariant))
+        {
+            throw new ArgumentException(
+                "ModelBrokerPipePath failed local named-pipe admission.");
+        }
     }
 
     private static CancellationTokenSource CreateTimeout(
@@ -378,7 +544,9 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         return timeout;
     }
 
-    private static void ValidateReady(JsonElement ready)
+    private static void ValidateReady(
+        JsonElement ready,
+        bool promptingExpected)
     {
         bool valid =
             ready.GetProperty("type").GetString() == "ready" &&
@@ -387,7 +555,8 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             ready.GetProperty("version").GetString() == ExpectedVersion &&
             ready.GetProperty("credentialEnvironmentClean").GetBoolean() &&
             ready.GetProperty("sessionCreationEnabled").GetBoolean() &&
-            !ready.GetProperty("promptingEnabled").GetBoolean();
+            ready.GetProperty("promptingEnabled").GetBoolean() ==
+                promptingExpected;
         if (!valid)
         {
             throw new InvalidOperationException(

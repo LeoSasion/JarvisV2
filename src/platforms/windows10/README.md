@@ -30,8 +30,10 @@ without contacting or modifying the live Shell.
 The owned `Jarvis.Win10.NativeStyleProbe` now consumes the same RGB frame for
 its client surface while retaining the single reviewed Win10 dark-caption
 attribute. Arbitrary caption color is not claimed. The shared
-`Jarvis.PiAgentHost` has also reached a pinned SDK and disabled JSONL transport
-probe; no agent session is created or launched by the desktop yet.
+`Jarvis.PiAgentHost` now creates a root-confined, in-memory SDK session and
+proves a real streaming prompt through a desktop-owned diagnostic model broker.
+The default sidecar remains non-prompting unless that reviewed current-user
+named pipe is present; no production provider or credential is connected yet.
 
 See `WINDOWS10-HANDOFF.md`,
 `docs/WINDOWS10-NATIVE-STYLE-PROBE.md` and
@@ -43,8 +45,8 @@ runnable preview and reproducible screenshot.
 
 The Shell probe reads window structure but does not collect titles or modify
 Explorer. Neither probe uses Windhawk.
-The next visible slice may connect the disabled Pi sidecar to an owned
-conversation panel with read-only session admission while real Explorer
+The next visible slice may connect the admitted Pi bridge to an owned
+conversation panel and production desktop model adapter while real Explorer
 remains untouched.
 Future projects continue to use `Jarvis.Win10.<Feature>` and must not reuse
 Win11 private symbols, selectors, DWM backdrops or module IDs.

@@ -7,16 +7,25 @@ import {
   handleRequest,
 } from "./protocol.mjs";
 
-function writeRecord(record) {
-  process.stdout.write(`${JSON.stringify(record)}\n`);
+function writeRecord(record, maximumBytes = 65_536) {
+  const line = JSON.stringify(record);
+  if (Buffer.byteLength(line, "utf8") > maximumBytes) {
+    throw new Error("An outgoing JSONL frame exceeded the contract limit.");
+  }
+  process.stdout.write(`${line}\n`);
 }
 
 async function serve(contract, runtimeReceipt) {
-  writeRecord(createReadyEvent(contract, runtimeReceipt));
   process.stdin.setEncoding("utf8");
   let buffer = "";
   let shuttingDown = false;
-  const state = createProtocolState();
+  const state = createProtocolState({
+    modelBrokerPipe: process.env.JARVIS_MODEL_BROKER_PIPE,
+  });
+  writeRecord(
+    createReadyEvent(contract, runtimeReceipt, state),
+    contract.transport.maxFrameBytes,
+  );
 
   try {
     for await (const chunk of process.stdin) {
@@ -66,8 +75,15 @@ async function serve(contract, runtimeReceipt) {
           contract,
           runtimeReceipt,
           state,
+          (event) => writeRecord(
+            event,
+            contract.transport.maxFrameBytes,
+          ),
         );
-        writeRecord(result.response);
+        writeRecord(
+          result.response,
+          contract.transport.maxFrameBytes,
+        );
         if (result.shutdown) {
           shuttingDown = true;
           break;

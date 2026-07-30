@@ -24,6 +24,11 @@ import {
   assertWorkspacePath,
   WorkspacePolicyError,
 } from "./workspace-policy.mjs";
+import {
+  brokerModelId,
+  brokerProviderId,
+  registerDesktopBrokerProvider,
+} from "./desktop-model-broker.mjs";
 
 const maximumSearchFiles = 10_000;
 const maximumFileBytes = 1_048_576;
@@ -412,13 +417,22 @@ function createGrepTool(admission) {
   };
 }
 
-export async function createReadOnlyAgentSession(workspaceRoot) {
+export async function createReadOnlyAgentSession(
+  workspaceRoot,
+  options = {},
+) {
   const admission = await admitWorkspaceRoot(workspaceRoot);
   const modelRuntime = await ModelRuntime.create({
     credentials: createCredentialDenyStore(),
     modelsPath: null,
     allowModelNetwork: false,
   });
+  const model = options.modelBrokerPipe
+    ? registerDesktopBrokerProvider(
+      modelRuntime,
+      options.modelBrokerPipe,
+    )
+    : undefined;
   const settingsManager = SettingsManager.inMemory({
     compaction: { enabled: false },
     retry: { enabled: false },
@@ -442,6 +456,7 @@ export async function createReadOnlyAgentSession(workspaceRoot) {
   ];
   const result = await createAgentSession({
     cwd: admission.canonicalRoot,
+    ...(model ? { model } : {}),
     modelRuntime,
     tools: ["read", "grep", "find", "ls"],
     excludeTools: ["bash", "edit", "write"],
@@ -453,9 +468,15 @@ export async function createReadOnlyAgentSession(workspaceRoot) {
   });
   const activeTools = result.session.getActiveToolNames();
   const persisted = result.session.sessionManager.isPersisted();
+  const promptingEnabled = model !== undefined;
+  const modelBoundaryPreserved = !promptingEnabled || (
+    result.session.model?.provider === brokerProviderId &&
+    result.session.model?.id === brokerModelId
+  );
   if (
     activeTools.join("|") !== "read|grep|find|ls" ||
-    persisted
+    persisted ||
+    !modelBoundaryPreserved
   ) {
     result.session.dispose();
     throw new WorkspacePolicyError(
@@ -469,5 +490,8 @@ export async function createReadOnlyAgentSession(workspaceRoot) {
     activeTools,
     persisted,
     modelSelected: typeof result.session.model !== "undefined",
+    promptingEnabled,
+    modelProvider: result.session.model?.provider ?? null,
+    modelId: result.session.model?.id ?? null,
   };
 }

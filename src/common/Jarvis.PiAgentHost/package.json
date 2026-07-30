@@ -8,9 +8,11 @@
   },
   "scripts": {
     "inspect": "node ./src/host.mjs inspect",
-    "protocol:test": "node ./test/protocol.test.mjs"
+    "protocol:test": "node ./test/protocol.test.mjs",
+    "broker:test": "node ./test/desktop-model-broker.test.mjs"
   },
   "dependencies": {
+    "@earendil-works/pi-ai": "0.82.1",
     "@earendil-works/pi-coding-agent": "0.82.1"
   }
 }

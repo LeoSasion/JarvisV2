@@ -5,7 +5,8 @@ JarvisV2 will embed the official
 The desktop host is a .NET/WPF process, so the first cross-language boundary
 uses strict LF-delimited JSONL over standard input and output.
 
-The dependency is pinned exactly to `0.82.1`. Pi exposes both an SDK for
+The Pi Agent and Pi AI dependencies are pinned exactly to `0.82.1`. Pi exposes
+both an SDK for
 in-process JavaScript applications and RPC for language-neutral clients. The
 sidecar uses the SDK package boundary while keeping Node and model-provider
 state outside the Windows Shell process.
@@ -24,7 +25,13 @@ state outside the Windows Shell process.
 - creates one real Pi SDK session bound to one explicit canonical workspace
   root;
 - keeps the session in memory and disables project resource discovery,
-  provider network access, credential storage and prompting;
+  sidecar provider network access and credential storage;
+- registers one custom Pi provider only when the desktop supplies a reviewed
+  `\\.\pipe\jarvis2-pi-model-{guid}` endpoint;
+- keeps provider credentials out of the sidecar and sends model context through
+  a bounded, current-user named pipe owned by the desktop process;
+- exposes a conditional `prompt` request and streams assistant text and
+  tool-lifecycle events before its final response;
 - replaces the SDK file tools with root-confined `read`, `grep`, `find` and
   `ls` definitions; `bash`, `edit` and `write` stay unavailable;
 - rejects drive roots, protected OS/profile roots, relative paths, canonical
@@ -37,23 +44,30 @@ state outside the Windows Shell process.
 - fault-injects a wrong ready protocol, an oversized ready frame and a hung
   startup; every case is rejected and cleanup is scoped to the owned Node
   process;
+- fault-injects an invalid model pipe, wrong broker protocol, early disconnect
+  and oversized broker response; each prompt fails closed;
+- includes a C# diagnostic model broker that proves the full desktop-to-Pi
+  streaming path without using an online model or provider credential;
 - executes direct inside/outside file-tool probes and forces `PI_OFFLINE=1`
   before importing Pi.
 
-This is now a real desktop-owned Pi session admission path, but it is not yet a
-chat surface. The bridge can launch and supervise the isolated sidecar and bind
-one read-only workspace. No prompt request exists, no provider credential is
-inherited or transported, no resource is discovered from the workspace and no
-session file is created.
+This is now a real desktop-owned Pi conversation transport, but it is not yet a
+product chat surface. With no broker pipe, readiness and capabilities continue
+to report `promptingEnabled: false`. With the reviewed pipe present, the bridge
+can bind one read-only workspace, run a real Pi prompt and receive incremental
+assistant text. No provider credential is inherited or transported, no
+resource is discovered from the workspace and no session file is created. The
+current broker implementation is diagnostic; connecting a production model
+provider remains a separate reviewed step.
 
-## Why prompting remains disabled
+## Prompting admission
 
 Pi runs with the permissions of its host process and does not provide a
 built-in operating-system permission sandbox. Jarvis therefore cannot treat
 an authenticated agent session as equivalent to a UI widget. Workspace
-admission is now independent from provider authentication and conversation.
-Prompting, mutation tools and unattended self-iteration must each become
-explicit supervisor capabilities.
+admission remains independent from provider authentication. Prompting is
+enabled only by a desktop-owned named-pipe capability; mutation tools and
+unattended self-iteration still require separate supervisor capabilities.
 
 The planned progression is:
 
@@ -64,11 +78,13 @@ WPF desktop
             |
             +-- single-root read-only Pi session admission (implemented)
                     |
-                    +-- authenticated desktop conversation gate
+                    +-- desktop model broker + streaming prompt (implemented)
                             |
-                            +-- per-session mutation capability
+                            +-- production provider adapter
                                     |
-                                    +-- reviewed self-iteration workflow
+                                    +-- per-session mutation capability
+                                            |
+                                            +-- reviewed self-iteration workflow
 ```
 
 No stage grants Shell injection, Explorer mutation, registry writes or
@@ -91,5 +107,6 @@ pwsh -NoLogo -NoProfile -File `
 CI uses `-StaticOnly` to build the managed bridge and validate the exact package
 lock, schema and source boundary without provider credentials. The full local
 audit additionally creates an offline, in-memory SDK session, proves
-single-root binding and executes inside/outside path and junction rejection
-tests; it does not send a model prompt.
+single-root binding, executes inside/outside path and junction rejection tests,
+and sends one deterministic prompt through a local diagnostic broker. It does
+not contact a model provider or carry provider credentials.

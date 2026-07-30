@@ -114,6 +114,9 @@
               "const": "start_session"
             },
             {
+              "const": "prompt"
+            },
+            {
               "const": "shutdown"
             }
           ],
@@ -131,6 +134,7 @@
         "enabled",
         "promptingEnabled",
         "modelAuthentication",
+        "modelTransport",
         "credentialTransport",
         "persistence",
         "workspaceBinding",
@@ -142,10 +146,13 @@
           "const": true
         },
         "promptingEnabled": {
-          "const": false
+          "const": "desktop-broker-required"
         },
         "modelAuthentication": {
-          "const": "disabled-during-admission"
+          "const": "desktop-process-only"
+        },
+        "modelTransport": {
+          "const": "local-named-pipe"
         },
         "credentialTransport": {
           "const": "forbidden"
