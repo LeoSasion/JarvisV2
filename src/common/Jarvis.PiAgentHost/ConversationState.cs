@@ -151,6 +151,8 @@ public sealed class PiAgentConversationState
 
     public event EventHandler<
         PiAgentConversationSnapshotChangedEventArgs>? SnapshotChanged;
+    internal event Action<PiAgentConversationCheckpoint>?
+        TerminalCheckpointAvailable;
 
     public PiAgentConversationSnapshot Snapshot
     {
@@ -437,6 +439,7 @@ public sealed class PiAgentConversationState
             }
 
             PiAgentTurnResult result = await handle.Completion;
+            PiAgentConversationTurnSnapshot finalTurn;
             lock (gate)
             {
                 MutableTurn turn = FindTurnLocked(handle.TurnId);
@@ -447,11 +450,11 @@ public sealed class PiAgentConversationState
                     throw new InvalidOperationException(
                         "The desktop conversation terminal state diverged.");
                 }
-                PiAgentConversationTurnSnapshot finalTurn =
-                    ToSnapshot(turn);
+                finalTurn = ToSnapshot(turn);
                 idleCompletion.TrySetResult(true);
-                return finalTurn;
             }
+            PublishTerminalCheckpoint(ExportCheckpoint());
+            return finalTurn;
         }
         catch
         {
@@ -686,6 +689,28 @@ public sealed class PiAgentConversationState
         notificationContext.Post(
             static state => ((Action)state!).Invoke(),
             (Action)Raise);
+    }
+
+    private void PublishTerminalCheckpoint(
+        PiAgentConversationCheckpoint checkpoint)
+    {
+        Action<PiAgentConversationCheckpoint>? handlers =
+            TerminalCheckpointAvailable;
+        if (handlers is null)
+        {
+            return;
+        }
+        foreach (Action<PiAgentConversationCheckpoint> handler in
+                 handlers.GetInvocationList())
+        {
+            try
+            {
+                handler(checkpoint);
+            }
+            catch
+            {
+            }
+        }
     }
 
     private static bool IsTerminal(

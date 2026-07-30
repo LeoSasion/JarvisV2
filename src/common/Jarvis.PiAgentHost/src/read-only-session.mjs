@@ -8,7 +8,7 @@ import {
   ModelRuntime,
   SessionManager,
   SettingsManager,
-} from "@earendil-works/pi-coding-agent";
+} from "./pi-sdk-adapter.mjs";
 import {
   lstat,
   readFile,

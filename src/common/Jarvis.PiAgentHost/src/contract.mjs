@@ -29,6 +29,8 @@ export function validateContract(contract) {
   if (
     contract.runtime?.nodeMinimumMajor < 22 ||
     contract.runtime?.integrationMode !== "sdk-sidecar-jsonl" ||
+    contract.runtime?.sdkImportModel !==
+      "pinned-package-core-module-adapter" ||
     contract.runtime?.launchState !==
       "read-only-session-admission" ||
     contract.runtime?.piOfflineRequired !== true ||
@@ -87,7 +89,11 @@ export function validateContract(contract) {
     contract.session?.desktopConversationCheckpointEnvelopeMaxBytes !==
       65_536 ||
     contract.session?.desktopConversationCheckpointSave !==
-      "write-through-on-orderly-shutdown" ||
+      "ordered-terminal-autosave-and-shutdown-flush" ||
+    contract.session
+      ?.desktopConversationCheckpointSaveTimeoutMilliseconds !== 5_000 ||
+    contract.session?.desktopConversationCheckpointFailure !==
+      "close-submissions-and-surface-on-shutdown" ||
     contract.session?.credentialTransport !== "forbidden" ||
     contract.session?.persistence !== "in-memory" ||
     contract.session?.workspaceBinding !==

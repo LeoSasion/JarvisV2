@@ -150,6 +150,7 @@
     "src/common/Jarvis.PiAgentHost/src/desktop-model-broker.mjs",
     "src/common/Jarvis.PiAgentHost/src/host.mjs",
     "src/common/Jarvis.PiAgentHost/src/pi-runtime-inspector.mjs",
+    "src/common/Jarvis.PiAgentHost/src/pi-sdk-adapter.mjs",
     "src/common/Jarvis.PiAgentHost/src/protocol.mjs",
     "src/common/Jarvis.PiAgentHost/src/read-only-session.mjs",
     "src/common/Jarvis.PiAgentHost/src/workspace-policy.mjs",

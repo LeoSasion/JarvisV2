@@ -47,7 +47,7 @@ export async function inspectPiRuntime(contract) {
   const packageName = contract.upstream.package;
   const entryPath = fileURLToPath(import.meta.resolve(packageName));
   const manifest = await findPackageManifest(entryPath, packageName);
-  const pi = await import(packageName);
+  const pi = await import("./pi-sdk-adapter.mjs");
   const missingExports = requiredExports.filter(
     (name) => typeof pi[name] === "undefined",
   );
@@ -66,6 +66,7 @@ export async function inspectPiRuntime(contract) {
     missingExports,
     piOffline: process.env.PI_OFFLINE === "1",
     integrationMode: contract.runtime.integrationMode,
+    sdkImportModel: contract.runtime.sdkImportModel,
     transportReady: passed,
     credentialEnvironmentClean:
       credentialEnvironmentKeys.length === 0,

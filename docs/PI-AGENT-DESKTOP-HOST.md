@@ -6,16 +6,21 @@ The desktop host is a .NET/WPF process, so the first cross-language boundary
 uses strict LF-delimited JSONL over standard input and output.
 
 The Pi Agent and Pi AI dependencies are pinned exactly to `0.82.1`. Pi exposes
-both an SDK for
-in-process JavaScript applications and RPC for language-neutral clients. The
-sidecar uses the SDK package boundary while keeping Node and model-provider
-state outside the Windows Shell process.
+both an SDK for in-process JavaScript applications and RPC for
+language-neutral clients. The sidecar resolves the pinned package entry and
+loads only its reviewed core SDK modules through a fail-closed local adapter.
+This keeps the package's CLI, TUI and media utility graph out of sidecar
+readiness while keeping Node and model-provider state outside the Windows
+Shell process.
 
 ## Current implemented slice
 
 `Jarvis.PiAgentHost` now:
 
 - imports and fingerprints the pinned Pi package;
+- validates the pinned `dist/index.js` layout and loads only the SDK, model,
+  session, settings, extension and tool-definition core modules needed by the
+  desktop host;
 - verifies the session, runtime and model-control exports needed by the future
   desktop host;
 - serves a per-frame-bounded JSONL handshake and capability protocol;
@@ -56,9 +61,10 @@ state outside the Windows Shell process.
   the model context;
 - provides a workspace-bound Windows CurrentUser-DPAPI checkpoint store with a
   64 KiB envelope, reparse-point rejection and write-through atomic commit;
-- quiesces submissions, cancels any active turn, waits for its terminal event,
-  saves the encrypted checkpoint and shuts down the owned sidecar before
-  disposing the broker;
+- serializes one encrypted save after each terminal turn; a persistence failure
+  closes new submissions and is surfaced without abandoning sidecar cleanup;
+- quiesces submissions, cancels any active turn, flushes queued checkpoint
+  saves and shuts down the owned sidecar before disposing the broker;
 - replaces the SDK file tools with root-confined `read`, `grep`, `find` and
   `ls` definitions; `bash`, `edit` and `write` stay unavailable;
 - rejects drive roots, protected OS/profile roots, relative paths, canonical
@@ -166,6 +172,8 @@ and completes three turns through the desktop-owned broker. It then stores those
 turns under a temporary CurrentUser-DPAPI envelope, starts a fresh runtime from
 that store, verifies the restored model context and saves the continuation. The
 store probe also rejects a copied workspace envelope and modified ciphertext.
+It proves three ordered terminal saves, one resumed-turn save and a forced
+autosave failure that closes submissions while preserving sidecar shutdown.
 The third ordinary turn executes the real root-confined `read` tool and requires
 a second model request. A separate held request proves cancellation through the
 concurrent desktop response pump. The tool turn proves four ordered desktop

@@ -9,8 +9,9 @@ Win11-only DWM assumption. Existing assembly names and namespaces remain
 stable.
 
 `Jarvis.PiAgentHost` is the language-neutral AI runtime boundary shared by
-both Windows backends. It pins the official Pi SDK, verifies a bounded JSONL
-sidecar protocol and includes the managed desktop-owned sidecar lifecycle. It
+both Windows backends. It pins the official Pi SDK, resolves only its reviewed
+core modules through a fail-closed adapter, verifies a bounded JSONL sidecar
+protocol and includes the managed desktop-owned sidecar lifecycle. It
 creates one root-confined in-memory session, replaces the child environment
 with a minimal OS allowlist and enables prompting only through a
 desktop-owned, current-user named pipe. Its asynchronous turn transport can
@@ -20,4 +21,5 @@ the broker, sidecar, admitted session and conversation state, then quiesces and
 disposes them in reviewed order. A caller-supplied
 `PiAgentConversationCheckpointStore` binds bounded completed-text history to
 one workspace, protects it with Windows CurrentUser DPAPI, commits it
-atomically on orderly shutdown and restores it before a new sidecar session.
+atomically after each terminal turn, closes submissions on persistence failure
+and restores it before a new sidecar session.

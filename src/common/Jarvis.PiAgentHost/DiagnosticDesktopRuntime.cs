@@ -20,6 +20,7 @@ public sealed record PiAgentDesktopRuntimeProbeReceipt(
     bool CheckpointStoreBindingPassed,
     bool CheckpointStoreCorruptionRejected,
     bool CheckpointStoreFailureShutdownPassed,
+    bool CheckpointTerminalAutosavePassed,
     bool QuiesceClosedSubmission,
     bool ShutdownCancelledActiveTurn,
     bool OrderlyShutdownPassed,
@@ -31,6 +32,8 @@ public sealed record PiAgentDesktopRuntimeProbeReceipt(
     int ExportedCheckpointTurnCount,
     int RestoredCheckpointTurnCount,
     int PersistedCheckpointTurnCount,
+    int NormalCheckpointSaveCount,
+    int ResumeCheckpointSaveCount,
     int BrokerFaultCount,
     bool CredentialTransportAllowed,
     bool PiSidecarModelNetworkAllowed,
@@ -65,6 +68,8 @@ public static class PiAgentDesktopRuntimeProbe
                 cancellationToken) is null;
         PiAgentConversationCheckpointStoreReceipt?
             normalStoreReceipt;
+        int normalCheckpointSaveCount;
+        bool normalCheckpointPersistenceHealthy;
 
         DiagnosticDesktopModelProvider normalProvider = new(
             holdResponse: false);
@@ -142,6 +147,10 @@ public static class PiAgentDesktopRuntimeProbe
             await runtime.ShutdownAsync(cancellationToken);
             normalStoreReceipt =
                 runtime.LastCheckpointStoreReceipt;
+            normalCheckpointSaveCount =
+                runtime.CheckpointSaveCount;
+            normalCheckpointPersistenceHealthy =
+                !runtime.CheckpointPersistenceFaulted;
             normalShutdownPassed =
                 runtime.IsShutdown &&
                 runtime.Conversation.Snapshot.ActiveTurnId is null &&
@@ -203,6 +212,8 @@ public static class PiAgentDesktopRuntimeProbe
         bool checkpointContextRestorePassed;
         PiAgentConversationCheckpointStoreReceipt?
             resumeStoreReceipt;
+        int resumeCheckpointSaveCount;
+        bool resumeCheckpointPersistenceHealthy;
         DiagnosticDesktopModelProvider resumeProvider = new(
             holdResponse: false);
         await using (
@@ -250,6 +261,10 @@ public static class PiAgentDesktopRuntimeProbe
             await runtime.ShutdownAsync(cancellationToken);
             resumeStoreReceipt =
                 runtime.LastCheckpointStoreReceipt;
+            resumeCheckpointSaveCount =
+                runtime.CheckpointSaveCount;
+            resumeCheckpointPersistenceHealthy =
+                !runtime.CheckpointPersistenceFaulted;
             resumeBrokerRequestCount = runtime.BrokerRequestCount;
             resumeBrokerFaultCount = runtime.BrokerFaultCount;
         }
@@ -281,6 +296,11 @@ public static class PiAgentDesktopRuntimeProbe
                 cancellationToken);
         int persistedCheckpointTurnCount =
             resumeStoreReceipt?.TurnCount ?? 0;
+        bool checkpointTerminalAutosavePassed =
+            normalCheckpointPersistenceHealthy &&
+            resumeCheckpointPersistenceHealthy &&
+            normalCheckpointSaveCount == 3 &&
+            resumeCheckpointSaveCount == 1;
 
         int abortBrokerRequestCount;
         int abortBrokerFaultCount;
@@ -354,6 +374,7 @@ public static class PiAgentDesktopRuntimeProbe
             checkpointStoreBindingPassed &&
             checkpointStoreCorruptionRejected &&
             storeFailureProbe.Passed &&
+            checkpointTerminalAutosavePassed &&
             normalQuiesceClosedSubmission &&
             shutdownCancelledActiveTurn &&
             abortQuiesceClosedSubmission &&
@@ -386,6 +407,7 @@ public static class PiAgentDesktopRuntimeProbe
             checkpointStoreBindingPassed,
             checkpointStoreCorruptionRejected,
             storeFailureProbe.Passed,
+            checkpointTerminalAutosavePassed,
             normalQuiesceClosedSubmission &&
                 abortQuiesceClosedSubmission,
             shutdownCancelledActiveTurn,
@@ -399,6 +421,8 @@ public static class PiAgentDesktopRuntimeProbe
             checkpoint.Turns.Count,
             restoredCheckpointTurnCount,
             persistedCheckpointTurnCount,
+            normalCheckpointSaveCount,
+            resumeCheckpointSaveCount,
             brokerFaultCount,
             false,
             false,
@@ -442,6 +466,8 @@ public static class PiAgentDesktopRuntimeProbe
                     provider,
                     cancellationToken: cancellationToken))
         {
+            Directory.CreateDirectory(
+                failureStore.GetCheckpointPath(workspaceRoot));
             PiAgentConversationTurn turn =
                 await runtime.Conversation.SubmitAsync(
                     "Persist this turn through a forced commit failure.",
@@ -450,8 +476,6 @@ public static class PiAgentDesktopRuntimeProbe
             PiAgentConversationTurnSnapshot final =
                 await turn.Completion.WaitAsync(
                     cancellationToken);
-            Directory.CreateDirectory(
-                failureStore.GetCheckpointPath(workspaceRoot));
             try
             {
                 await runtime.ShutdownAsync(cancellationToken);
@@ -460,6 +484,7 @@ public static class PiAgentDesktopRuntimeProbe
                 when (exception is
                     IOException or
                     InvalidDataException or
+                    InvalidOperationException or
                     UnauthorizedAccessException)
             {
                 saveRejected = true;
@@ -467,7 +492,10 @@ public static class PiAgentDesktopRuntimeProbe
             sidecarStopped =
                 final.Status ==
                     PiAgentConversationTurnStatus.Completed &&
-                runtime.IsShutdown;
+                runtime.IsShutdown &&
+                runtime.CheckpointPersistenceFaulted &&
+                !runtime.Conversation.Snapshot.CanSubmit &&
+                runtime.CheckpointSaveCount == 0;
             noReceipt =
                 runtime.LastCheckpointStoreReceipt is null;
             noTemporaryFile =

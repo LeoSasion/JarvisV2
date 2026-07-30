@@ -66,7 +66,10 @@ Pi model context describe the same conversation.
 The caller-supplied `PiAgentConversationCheckpointStore` protects this value
 with Windows CurrentUser DPAPI and binds it to the admitted workspace. The
 conversation state itself remains storage-agnostic; the desktop runtime loads
-before session creation and saves after quiescing.
+before session creation and subscribes to an internal terminal-checkpoint
+notification. UI notifications still use the captured synchronization context;
+the persistence notification is synchronous and non-visual so it can queue an
+ordered save without depending on the WPF dispatcher.
 
 The adapter also rejects:
 

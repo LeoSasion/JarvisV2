@@ -55,6 +55,7 @@
       "required": [
         "nodeMinimumMajor",
         "integrationMode",
+        "sdkImportModel",
         "launchState",
         "piOfflineRequired",
         "sessionCreationEnabled",
@@ -66,6 +67,9 @@
         },
         "integrationMode": {
           "const": "sdk-sidecar-jsonl"
+        },
+        "sdkImportModel": {
+          "const": "pinned-package-core-module-adapter"
         },
         "launchState": {
           "const": "read-only-session-admission"
@@ -158,6 +162,8 @@
         "desktopConversationCheckpointStoreRoot",
         "desktopConversationCheckpointEnvelopeMaxBytes",
         "desktopConversationCheckpointSave",
+        "desktopConversationCheckpointSaveTimeoutMilliseconds",
+        "desktopConversationCheckpointFailure",
         "desktopRuntimeOwnership",
         "desktopRuntimeShutdown",
         "credentialTransport",
@@ -237,13 +243,19 @@
           "const": 65536
         },
         "desktopConversationCheckpointSave": {
-          "const": "write-through-on-orderly-shutdown"
+          "const": "ordered-terminal-autosave-and-shutdown-flush"
+        },
+        "desktopConversationCheckpointSaveTimeoutMilliseconds": {
+          "const": 5000
+        },
+        "desktopConversationCheckpointFailure": {
+          "const": "close-submissions-and-surface-on-shutdown"
         },
         "desktopRuntimeOwnership": {
           "const": "desktop-owned-broker-sidecar-session-conversation"
         },
         "desktopRuntimeShutdown": {
-          "const": "quiesce-cancel-checkpoint-save-sidecar-shutdown-broker-dispose"
+          "const": "quiesce-cancel-checkpoint-flush-sidecar-shutdown-broker-dispose"
         },
         "credentialTransport": {
           "const": "forbidden"

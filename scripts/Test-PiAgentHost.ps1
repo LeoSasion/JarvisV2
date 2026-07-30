@@ -17,6 +17,10 @@ $schemaPath = Join-Path $root (
 $packagePath = Join-Path $sourceRoot 'package.json'
 $lockPath = Join-Path $sourceRoot 'pnpm-lock.yaml'
 $hostPath = Join-Path $sourceRoot 'src\host.mjs'
+$piSdkAdapterPath = Join-Path $sourceRoot 'src\pi-sdk-adapter.mjs'
+$runtimeInspectorPath = Join-Path $sourceRoot (
+    'src\pi-runtime-inspector.mjs')
+$readOnlySessionPath = Join-Path $sourceRoot 'src\read-only-session.mjs'
 $protocolTestPath = Join-Path $sourceRoot 'test\protocol.test.mjs'
 $brokerTestPath = Join-Path $sourceRoot (
     'test\desktop-model-broker.test.mjs')
@@ -79,6 +83,9 @@ $runtimeSourceText = @(
             [IO.File]::ReadAllText($_.FullName)
         }
 ) -join [Environment]::NewLine
+$piSdkAdapterText = [IO.File]::ReadAllText($piSdkAdapterPath)
+$runtimeInspectorText = [IO.File]::ReadAllText($runtimeInspectorPath)
+$readOnlySessionText = [IO.File]::ReadAllText($readOnlySessionPath)
 
 Add-Check `
     -Name 'contract.official-exact-upstream' `
@@ -92,12 +99,40 @@ Add-Check `
         $contract.upstream.repository -eq
             'https://github.com/earendil-works/pi' -and
         $contract.upstream.license -eq 'MIT' -and
+        $contract.runtime.sdkImportModel -eq
+            'pinned-package-core-module-adapter' -and
         $package.dependencies.'@earendil-works/pi-ai' -eq '0.82.1' -and
         $package.dependencies.'@earendil-works/pi-coding-agent' -eq
             '0.82.1') `
     -Detail (
         'The sidecar must pin the reviewed official Pi package exactly, ' +
         'without a floating range.')
+
+Add-Check `
+    -Name 'runtime.pinned-core-sdk-adapter' `
+    -Passed (
+        (Test-Path -LiteralPath $piSdkAdapterPath -PathType Leaf) -and
+        $piSdkAdapterText.Contains(
+            'import.meta.resolve(packageName)') -and
+        $piSdkAdapterText.Contains(
+            'packageEntryUrl.pathname.endsWith("/dist/index.js")') -and
+        $piSdkAdapterText.Contains(
+            'import(new URL("./core/sdk.js", packageEntryUrl))') -and
+        $piSdkAdapterText.Contains(
+            'import(new URL("./core/extensions/index.js", packageEntryUrl))') -and
+        $piSdkAdapterText.Contains(
+            'import(new URL("./core/tools/index.js", packageEntryUrl))') -and
+        $readOnlySessionText.Contains(
+            'from "./pi-sdk-adapter.mjs"') -and
+        $runtimeInspectorText.Contains(
+            'await import("./pi-sdk-adapter.mjs")') -and
+        -not $readOnlySessionText.Contains(
+            'from "@earendil-works/pi-coding-agent"') -and
+        -not $runtimeInspectorText.Contains(
+            'await import(packageName)')) `
+    -Detail (
+        'The exact pinned package entry must resolve to the reviewed layout, ' +
+        'and sidecar readiness may load only the required core SDK modules.')
 
 Add-Check `
     -Name 'contract.read-only-session-and-tools' `
@@ -147,11 +182,15 @@ Add-Check `
         $contract.session.desktopConversationCheckpointEnvelopeMaxBytes -eq
             65536 -and
         $contract.session.desktopConversationCheckpointSave -eq
-            'write-through-on-orderly-shutdown' -and
+            'ordered-terminal-autosave-and-shutdown-flush' -and
+        $contract.session.desktopConversationCheckpointSaveTimeoutMilliseconds -eq
+            5000 -and
+        $contract.session.desktopConversationCheckpointFailure -eq
+            'close-submissions-and-surface-on-shutdown' -and
         $contract.session.desktopRuntimeOwnership -eq
             'desktop-owned-broker-sidecar-session-conversation' -and
         $contract.session.desktopRuntimeShutdown -eq
-            'quiesce-cancel-checkpoint-save-sidecar-shutdown-broker-dispose' -and
+            'quiesce-cancel-checkpoint-flush-sidecar-shutdown-broker-dispose' -and
         $contract.session.credentialTransport -eq 'forbidden' -and
         $contract.session.persistence -eq 'in-memory' -and
         $contract.session.workspaceBinding -eq
@@ -196,6 +235,8 @@ Add-Check `
             '0.82.1' -and
         $schema.properties.runtime.properties.nodeMinimumMajor.const -eq
             22 -and
+        $schema.properties.runtime.properties.sdkImportModel.const -eq
+            'pinned-package-core-module-adapter' -and
         $schema.properties.runtime.properties.launchState.const -eq
             'read-only-session-admission' -and
         $schema.properties.runtime.properties.desktopLaunchImplemented.const `
@@ -249,11 +290,15 @@ Add-Check `
         $schema.properties.session.properties.desktopConversationCheckpointEnvelopeMaxBytes.const `
             -eq 65536 -and
         $schema.properties.session.properties.desktopConversationCheckpointSave.const `
-            -eq 'write-through-on-orderly-shutdown' -and
+            -eq 'ordered-terminal-autosave-and-shutdown-flush' -and
+        $schema.properties.session.properties.desktopConversationCheckpointSaveTimeoutMilliseconds.const `
+            -eq 5000 -and
+        $schema.properties.session.properties.desktopConversationCheckpointFailure.const `
+            -eq 'close-submissions-and-surface-on-shutdown' -and
         $schema.properties.session.properties.desktopRuntimeOwnership.const `
             -eq 'desktop-owned-broker-sidecar-session-conversation' -and
         $schema.properties.session.properties.desktopRuntimeShutdown.const `
-            -eq 'quiesce-cancel-checkpoint-save-sidecar-shutdown-broker-dispose' -and
+            -eq 'quiesce-cancel-checkpoint-flush-sidecar-shutdown-broker-dispose' -and
         $schema.properties.session.properties.modelNetworkAllowed.const `
             -eq $false -and
         $schema.properties.transport.properties.credentialFieldsAllowed.const `
@@ -414,7 +459,13 @@ Add-Check `
         $bridgeSourceText.Contains(
             'desktop-owned-broker-sidecar-session-conversation') -and
         $bridgeSourceText.Contains(
-            'quiesce-cancel-checkpoint-save-sidecar-shutdown-broker-dispose') -and
+            'quiesce-cancel-checkpoint-flush-sidecar-shutdown-broker-dispose') -and
+        $bridgeSourceText.Contains(
+            'ordered-terminal-autosave-fail-closed') -and
+        $bridgeSourceText.Contains(
+            'CheckpointSaveTimeoutMilliseconds = 5_000') -and
+        $bridgeSourceText.Contains(
+            'TerminalCheckpointAvailable') -and
         $bridgeSourceText.Contains('DesktopModelBrokerServer') -and
         $bridgeSourceText.Contains('IDesktopModelProvider') -and
         $bridgeSourceText.Contains(
@@ -563,6 +614,8 @@ if (-not $StaticOnly) {
             $inspectReceipt.result -eq
                 'passed-embedded-dependency' -and
             $inspectReceipt.installedVersion -eq '0.82.1' -and
+            $inspectReceipt.sdkImportModel -eq
+                'pinned-package-core-module-adapter' -and
             @($inspectReceipt.missingExports).Count -eq 0 -and
             $inspectReceipt.piOffline -and
             $inspectReceipt.transportReady -and
@@ -908,7 +961,7 @@ if (-not $StaticOnly) {
             $desktopRuntimeReceipt.ownershipModel -eq
                 'desktop-owned-broker-sidecar-session-conversation' -and
             $desktopRuntimeReceipt.shutdownModel -eq
-                'quiesce-cancel-checkpoint-save-sidecar-shutdown-broker-dispose' -and
+                'quiesce-cancel-checkpoint-flush-sidecar-shutdown-broker-dispose' -and
             $desktopRuntimeReceipt.runtimeCompositionPassed -and
             $desktopRuntimeReceipt.multiTurnPassed -and
             $desktopRuntimeReceipt.toolRoundTripPassed -and
@@ -920,6 +973,7 @@ if (-not $StaticOnly) {
             $desktopRuntimeReceipt.checkpointStoreBindingPassed -and
             $desktopRuntimeReceipt.checkpointStoreCorruptionRejected -and
             $desktopRuntimeReceipt.checkpointStoreFailureShutdownPassed -and
+            $desktopRuntimeReceipt.checkpointTerminalAutosavePassed -and
             $desktopRuntimeReceipt.quiesceClosedSubmission -and
             $desktopRuntimeReceipt.shutdownCancelledActiveTurn -and
             $desktopRuntimeReceipt.orderlyShutdownPassed -and
@@ -931,6 +985,8 @@ if (-not $StaticOnly) {
             $desktopRuntimeReceipt.exportedCheckpointTurnCount -eq 3 -and
             $desktopRuntimeReceipt.restoredCheckpointTurnCount -eq 3 -and
             $desktopRuntimeReceipt.persistedCheckpointTurnCount -eq 4 -and
+            $desktopRuntimeReceipt.normalCheckpointSaveCount -eq 3 -and
+            $desktopRuntimeReceipt.resumeCheckpointSaveCount -eq 1 -and
             $desktopRuntimeReceipt.brokerFaultCount -eq 0 -and
             -not $desktopRuntimeReceipt.credentialTransportAllowed -and
             -not $desktopRuntimeReceipt.piSidecarModelNetworkAllowed -and
@@ -1029,12 +1085,15 @@ $passed = $failures.Count -eq 0
         'local-appdata-jarvis2-pi-agent-conversations'
     desktopConversationCheckpointEnvelopeMaxBytes = 65536
     desktopConversationCheckpointSave =
-        'write-through-on-orderly-shutdown'
+        'ordered-terminal-autosave-and-shutdown-flush'
+    desktopConversationCheckpointSaveTimeoutMilliseconds = 5000
+    desktopConversationCheckpointFailure =
+        'close-submissions-and-surface-on-shutdown'
     desktopRuntimeImplemented = $true
     desktopRuntimeOwnership =
         'desktop-owned-broker-sidecar-session-conversation'
     desktopRuntimeShutdown =
-        'quiesce-cancel-checkpoint-save-sidecar-shutdown-broker-dispose'
+        'quiesce-cancel-checkpoint-flush-sidecar-shutdown-broker-dispose'
     asynchronousTurnsImplemented = $true
     activeTurnCancellationImplemented = $true
     sessionPersistence = 'in-memory'

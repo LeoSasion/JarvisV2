@@ -21,6 +21,11 @@ must prove the exact four read-only tools, the desktop broker model identity,
 in-memory session state, disabled resource discovery and disabled sidecar model
 network.
 
+Sidecar readiness uses a fail-closed adapter anchored to the exact pinned Pi
+package entry. It imports only the reviewed core modules used by the desktop
+session instead of evaluating the package's full CLI, TUI and media export
+graph.
+
 The runtime may receive one explicit desktop-owned conversation checkpoint or
 a `PiAgentConversationCheckpointStore`. Before the sidecar starts, managed code
 loads the CurrentUser-DPAPI envelope when needed and admits its schema, exact
@@ -42,8 +47,8 @@ ownership transfers to the runtime and is released with the broker.
 1. quiesces the conversation so new turns are rejected;
 2. requests cancellation of the active turn, if any;
 3. waits for the terminal conversation event;
-4. exports completed turns and commits the encrypted checkpoint, when a store
-   is configured;
+4. waits for ordered terminal autosaves and queues the final checkpoint when
+   needed;
 5. requests orderly sidecar shutdown.
 
 `DisposeAsync` then disposes the owned sidecar and broker. If orderly shutdown
@@ -62,6 +67,8 @@ The Pi sidecar remains offline and has only `read`, `grep`, `find` and `ls`
 inside one admitted workspace. Pi SDK session persistence remains disabled.
 The desktop can persist only the bounded completed-text checkpoint in its
 CurrentUser-DPAPI store; the sidecar never reads the store or encryption key.
+Each terminal turn is saved in order. A persistence failure closes further
+submissions and is surfaced during shutdown while sidecar cleanup still runs.
 The runtime does not enable mutation tools, contact Explorer, modify the
 registry or control physical RGB devices.
 
@@ -73,6 +80,8 @@ The deterministic `runtime-probe` command proves:
   all six context messages before a continuation prompt;
 - CurrentUser-DPAPI encrypted save/load, automatic store-backed restore,
   workspace-copy rejection and ciphertext-corruption rejection;
+- three ordered terminal autosaves, one resumed-turn autosave and fail-closed
+  submission shutdown after a forced commit failure;
 - fail-closed rejection of duplicate and over-limit checkpoints;
 - exact broker/session admission;
 - rejection of submissions after quiesce;

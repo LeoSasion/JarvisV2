@@ -13,13 +13,24 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
     public const string OwnershipModel =
         "desktop-owned-broker-sidecar-session-conversation";
     public const string ShutdownModel =
-        "quiesce-cancel-checkpoint-save-sidecar-shutdown-broker-dispose";
+        "quiesce-cancel-checkpoint-flush-sidecar-shutdown-broker-dispose";
+    public const string CheckpointPersistenceModel =
+        "ordered-terminal-autosave-fail-closed";
+    public const int CheckpointSaveTimeoutMilliseconds = 5_000;
 
     private readonly DesktopModelBrokerServer broker;
     private readonly PiAgentSidecarController controller;
     private readonly PiAgentConversationCheckpointStore? checkpointStore;
+    private readonly object checkpointPersistenceGate = new();
     private readonly SemaphoreSlim shutdownGate = new(1, 1);
     private readonly int shutdownTimeoutMilliseconds;
+    private Task checkpointPersistenceTask = Task.CompletedTask;
+    private PiAgentConversationCheckpoint? lastQueuedCheckpoint;
+    private PiAgentConversationCheckpointStoreReceipt?
+        lastCheckpointStoreReceipt;
+    private Exception? checkpointPersistenceFailure;
+    private bool checkpointPersistenceClosed;
+    private int checkpointSaveCount;
     private int shutdownCompleted;
     private int disposeStarted;
 
@@ -29,6 +40,8 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
         PiAgentConversationState conversation,
         string workspaceRoot,
         PiAgentConversationCheckpointStore? checkpointStore,
+        PiAgentConversationCheckpoint? restoredCheckpoint,
+        bool checkpointLoadedFromStore,
         int restoredCheckpointTurnCount,
         int shutdownTimeoutMilliseconds)
     {
@@ -37,8 +50,14 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
         Conversation = conversation;
         WorkspaceRoot = workspaceRoot;
         this.checkpointStore = checkpointStore;
+        if (checkpointLoadedFromStore)
+        {
+            lastQueuedCheckpoint = restoredCheckpoint;
+        }
         RestoredCheckpointTurnCount = restoredCheckpointTurnCount;
         this.shutdownTimeoutMilliseconds = shutdownTimeoutMilliseconds;
+        Conversation.TerminalCheckpointAvailable +=
+            QueueCheckpointPersistence;
     }
 
     public PiAgentConversationState Conversation { get; }
@@ -49,7 +68,36 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
     public int BrokerFaultCount => broker.FaultCount;
     public int RestoredCheckpointTurnCount { get; }
     public PiAgentConversationCheckpointStoreReceipt?
-        LastCheckpointStoreReceipt { get; private set; }
+        LastCheckpointStoreReceipt
+    {
+        get
+        {
+            lock (checkpointPersistenceGate)
+            {
+                return lastCheckpointStoreReceipt;
+            }
+        }
+    }
+    public int CheckpointSaveCount
+    {
+        get
+        {
+            lock (checkpointPersistenceGate)
+            {
+                return checkpointSaveCount;
+            }
+        }
+    }
+    public bool CheckpointPersistenceFaulted
+    {
+        get
+        {
+            lock (checkpointPersistenceGate)
+            {
+                return checkpointPersistenceFailure is not null;
+            }
+        }
+    }
     public bool IsShutdown =>
         Volatile.Read(ref shutdownCompleted) != 0;
 
@@ -63,6 +111,7 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(options.Sidecar);
         ArgumentNullException.ThrowIfNull(provider);
         ValidateOptions(options);
+        bool checkpointLoadedFromStore = false;
         PiAgentConversationCheckpoint? checkpoint =
             PiAgentConversationState.AdmitCheckpoint(
                 options.ConversationCheckpoint);
@@ -74,6 +123,7 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
                 await options.ConversationCheckpointStore.LoadAsync(
                     options.WorkspaceRoot,
                     cancellationToken);
+            checkpointLoadedFromStore = checkpoint is not null;
         }
 
         DesktopModelBrokerServer broker =
@@ -109,6 +159,8 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
                 conversation,
                 canonicalWorkspaceRoot,
                 options.ConversationCheckpointStore,
+                checkpoint,
+                checkpointLoadedFromStore,
                 checkpoint?.Turns.Count ?? 0,
                 options.Sidecar.ShutdownTimeoutMilliseconds);
         }
@@ -155,16 +207,29 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
             {
                 if (checkpointStore is not null)
                 {
-                    PiAgentConversationCheckpoint checkpoint =
-                        Conversation.ExportCheckpoint();
-                    if (checkpoint.Turns.Count != 0)
-                    {
-                        LastCheckpointStoreReceipt =
-                            await checkpointStore.SaveAsync(
-                                WorkspaceRoot,
-                                checkpoint,
-                                cancellationToken);
-                    }
+                    QueueCheckpointPersistence(
+                        Conversation.ExportCheckpoint());
+                }
+                Task persistenceTask;
+                lock (checkpointPersistenceGate)
+                {
+                    checkpointPersistenceClosed = true;
+                    persistenceTask = checkpointPersistenceTask;
+                }
+                await persistenceTask.WaitAsync(
+                    cancellationToken);
+                Exception? persistenceFailure;
+                lock (checkpointPersistenceGate)
+                {
+                    persistenceFailure =
+                        checkpointPersistenceFailure;
+                }
+                if (persistenceFailure is not null)
+                {
+                    throw new InvalidOperationException(
+                        "The desktop conversation checkpoint failed " +
+                        "closed during persistence.",
+                        persistenceFailure);
                 }
             }
             finally
@@ -205,6 +270,8 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
         }
         finally
         {
+            Conversation.TerminalCheckpointAvailable -=
+                QueueCheckpointPersistence;
             try
             {
                 await controller.DisposeAsync();
@@ -215,6 +282,95 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
             }
         }
     }
+
+    private void QueueCheckpointPersistence(
+        PiAgentConversationCheckpoint checkpoint)
+    {
+        if (
+            checkpointStore is null ||
+            checkpoint.Turns.Count == 0)
+        {
+            return;
+        }
+        PiAgentConversationCheckpoint admitted =
+            PiAgentConversationState.AdmitCheckpoint(checkpoint) ??
+            throw new InvalidOperationException(
+                "The terminal conversation checkpoint was absent.");
+        lock (checkpointPersistenceGate)
+        {
+            if (
+                checkpointPersistenceClosed ||
+                checkpointPersistenceFailure is not null ||
+                CheckpointsEqual(
+                    lastQueuedCheckpoint,
+                    admitted))
+            {
+                return;
+            }
+            lastQueuedCheckpoint = admitted;
+            Task previous = checkpointPersistenceTask;
+            checkpointPersistenceTask =
+                PersistCheckpointAfterAsync(
+                    previous,
+                    admitted);
+        }
+    }
+
+    private async Task PersistCheckpointAfterAsync(
+        Task previous,
+        PiAgentConversationCheckpoint checkpoint)
+    {
+        await previous.ConfigureAwait(false);
+        lock (checkpointPersistenceGate)
+        {
+            if (checkpointPersistenceFailure is not null)
+            {
+                return;
+            }
+        }
+        try
+        {
+            using CancellationTokenSource timeout = new(
+                TimeSpan.FromMilliseconds(
+                    CheckpointSaveTimeoutMilliseconds));
+            PiAgentConversationCheckpointStoreReceipt receipt =
+                await checkpointStore!.SaveAsync(
+                    WorkspaceRoot,
+                    checkpoint,
+                    timeout.Token).ConfigureAwait(false);
+            lock (checkpointPersistenceGate)
+            {
+                lastCheckpointStoreReceipt = receipt;
+                checkpointSaveCount++;
+            }
+        }
+        catch (Exception exception)
+        {
+            lock (checkpointPersistenceGate)
+            {
+                checkpointPersistenceFailure ??= exception;
+            }
+            try
+            {
+                await Conversation.QuiesceAsync(
+                    CancellationToken.None).ConfigureAwait(false);
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private static bool CheckpointsEqual(
+        PiAgentConversationCheckpoint? left,
+        PiAgentConversationCheckpoint? right) =>
+        ReferenceEquals(left, right) ||
+        (
+            left is not null &&
+            right is not null &&
+            left.SchemaVersion == right.SchemaVersion &&
+            left.Turns.SequenceEqual(right.Turns)
+        );
 
     private static void ValidateOptions(
         PiAgentDesktopRuntimeOptions options)

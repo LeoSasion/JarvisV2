@@ -48,31 +48,38 @@ an unbound workspace.
 ## Runtime lifecycle
 
 `PiAgentDesktopRuntime` loads from the store before starting its broker and
-sidecar when no explicit import checkpoint was supplied. During orderly
-shutdown it:
+sidecar when no explicit import checkpoint was supplied. Every terminal turn
+publishes one storage-agnostic checkpoint to the runtime. The runtime serializes
+those saves, skips duplicate values and gives each local commit a five-second
+deadline.
+
+During orderly shutdown it:
 
 1. stops new submissions;
 2. cancels and drains an active turn;
 3. exports completed text turns;
-4. commits the encrypted checkpoint;
+4. waits for queued terminal autosaves and queues the final value if needed;
 5. shuts down the sidecar;
 6. disposes the sidecar and broker.
 
-The runtime exposes the restored turn count and the last store receipt for
-desktop diagnostics. The store is caller-supplied and reusable; the runtime
-does not own its lifetime.
+The runtime exposes the restored turn count, save count and last store receipt
+for desktop diagnostics. The store is caller-supplied and reusable; the runtime
+does not own its lifetime. A save failure is latched, closes new conversation
+submissions, is surfaced by shutdown and does not prevent the owned sidecar
+from shutting down.
 
-This milestone saves on orderly shutdown. Crash-consistent per-turn autosave is
-still future work, so a process or machine failure before shutdown can lose the
-latest in-memory turns.
+Completed turns are therefore durable without waiting for window close. A
+process or machine failure can still lose an active turn or a terminal save
+that had not reached its atomic replace.
 
 ## Diagnostic boundary
 
 The deterministic runtime probe uses a unique directory under the Windows
 temporary directory. It proves encrypted round-trip, automatic fresh-runtime
 restore, absence of plaintext prompts and workspace paths, workspace-copy
-rejection, ciphertext-corruption rejection, bounded envelopes and cleanup.
-It also forces an atomic-commit failure and proves that the error is surfaced
-while the owned sidecar still shuts down. It does not write the production
-LocalAppData store, contact a live model, touch Explorer or perform system
-mutation.
+rejection, ciphertext-corruption rejection, three ordered autosaves for three
+terminal turns, one continuation autosave, bounded envelopes and cleanup. It
+also forces an autosave failure and proves that submissions close, the error is
+surfaced and the owned sidecar still shuts down. It does not write the
+production LocalAppData store, contact a live model, touch Explorer or perform
+system mutation.
