@@ -13,6 +13,9 @@ public sealed record PiAgentDesktopBrokerProbeReceipt(
     bool CapabilitiesPassed,
     bool SessionCreationPassed,
     bool PromptPassed,
+    bool AbortPassed,
+    string AbortStatus,
+    bool ConcurrentResponsePump,
     string Response,
     int DeltaCount,
     int BrokerRequestCount,
@@ -43,15 +46,19 @@ internal sealed class DiagnosticDesktopModelBroker : IAsyncDisposable
         };
 
     private readonly CancellationTokenSource cancellation = new();
+    private readonly bool holdResponse;
     private readonly NamedPipeServerStream server;
     private readonly Task serverTask;
+    private readonly TaskCompletionSource<bool> requestObserved = new(
+        TaskCreationOptions.RunContinuationsAsynchronously);
     private int requestCount;
 
     public string PipePath { get; }
     public int RequestCount => Volatile.Read(ref requestCount);
 
-    private DiagnosticDesktopModelBroker()
+    private DiagnosticDesktopModelBroker(bool holdResponse)
     {
+        this.holdResponse = holdResponse;
         string pipeName = $"jarvis2-pi-model-{Guid.NewGuid():N}";
         PipePath = $@"\\.\pipe\{pipeName}";
         server = new NamedPipeServerStream(
@@ -65,9 +72,16 @@ internal sealed class DiagnosticDesktopModelBroker : IAsyncDisposable
         serverTask = RunAsync(cancellation.Token);
     }
 
-    public static DiagnosticDesktopModelBroker Start()
+    public static DiagnosticDesktopModelBroker Start(
+        bool holdResponse = false)
     {
-        return new DiagnosticDesktopModelBroker();
+        return new DiagnosticDesktopModelBroker(holdResponse);
+    }
+
+    public async Task WaitForRequestAsync(
+        CancellationToken cancellationToken)
+    {
+        await requestObserved.Task.WaitAsync(cancellationToken);
     }
 
     private async Task RunAsync(CancellationToken cancellationToken)
@@ -134,6 +148,12 @@ internal sealed class DiagnosticDesktopModelBroker : IAsyncDisposable
             ?? throw new InvalidOperationException(
                 "The Pi model request id was missing.");
         Interlocked.Increment(ref requestCount);
+        requestObserved.TrySetResult(true);
+        if (holdResponse)
+        {
+            await reader.ReadLineAsync(cancellationToken);
+            return;
+        }
 
         await WriteFrameAsync(
             writer,
@@ -318,11 +338,56 @@ public static class PiAgentDesktopBrokerProbe
             prompt.ToolExecutionCount == 0;
 
         await controller.ShutdownAsync(cancellationToken);
+        await using DiagnosticDesktopModelBroker abortBroker =
+            DiagnosticDesktopModelBroker.Start(holdResponse: true);
+        PiAgentSidecarOptions abortOptions = options with
+        {
+            ModelBrokerPipePath = abortBroker.PipePath,
+        };
+        await using PiAgentSidecarController abortController =
+            await PiAgentSidecarController.StartAsync(
+                abortOptions,
+                cancellationToken);
+        using JsonDocument abortSession =
+            await abortController.StartReadOnlySessionAsync(
+                workspaceRoot,
+                "abort-session",
+                cancellationToken);
+        if (!abortSession.RootElement
+            .GetProperty("success")
+            .GetBoolean())
+        {
+            throw new InvalidOperationException(
+                "The abort probe session failed admission.");
+        }
+        PiAgentTurnHandle abortHandle =
+            await abortController.StartTurnAsync(
+                "Wait until the desktop cancels this turn.",
+                "abort-target",
+                cancellationToken);
+        await abortBroker.WaitForRequestAsync(cancellationToken);
+        await abortController.AbortTurnAsync(
+            abortHandle.TurnId,
+            "abort-command",
+            cancellationToken);
+        PiAgentTurnResult abortResult =
+            await abortController.WaitForTurnAsync(
+                abortHandle,
+                cancellationToken);
+        bool abortPassed =
+            !abortResult.Success &&
+            abortResult.Status == "aborted" &&
+            abortResult.ErrorCode == "turn-aborted";
+        await abortController.ShutdownAsync(cancellationToken);
+
+        int brokerRequestCount =
+            broker.RequestCount + abortBroker.RequestCount;
         bool passed =
             capabilitiesPassed &&
             sessionCreationPassed &&
             promptPassed &&
-            broker.RequestCount == 1;
+            abortPassed &&
+            brokerRequestCount == 2;
         return new PiAgentDesktopBrokerProbeReceipt(
             1,
             "jarvisv2-pi-desktop-broker-bridge-probe",
@@ -332,9 +397,12 @@ public static class PiAgentDesktopBrokerProbe
             capabilitiesPassed,
             sessionCreationPassed,
             promptPassed,
+            abortPassed,
+            abortResult.Status,
+            true,
             prompt.Response,
             prompt.DeltaCount,
-            broker.RequestCount,
+            brokerRequestCount,
             true,
             false,
             false,

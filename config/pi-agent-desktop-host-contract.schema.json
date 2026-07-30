@@ -114,7 +114,10 @@
               "const": "start_session"
             },
             {
-              "const": "prompt"
+              "const": "start_turn"
+            },
+            {
+              "const": "abort_turn"
             },
             {
               "const": "shutdown"

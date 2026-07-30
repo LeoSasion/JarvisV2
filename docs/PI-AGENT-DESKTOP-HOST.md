@@ -30,8 +30,11 @@ state outside the Windows Shell process.
   `\\.\pipe\jarvis2-pi-model-{guid}` endpoint;
 - keeps provider credentials out of the sidecar and sends model context through
   a bounded, current-user named pipe owned by the desktop process;
-- exposes a conditional `prompt` request and streams assistant text and
-  tool-lifecycle events before its final response;
+- exposes conditional `start_turn` and `abort_turn` requests; assistant text,
+  tool lifecycle and the terminal turn receipt stream independently of command
+  responses;
+- runs one managed output pump that demultiplexes concurrent responses and turn
+  events, allowing the desktop to cancel generation while a prompt is active;
 - replaces the SDK file tools with root-confined `read`, `grep`, `find` and
   `ls` definitions; `bash`, `edit` and `write` stay unavailable;
 - rejects drive roots, protected OS/profile roots, relative paths, canonical
@@ -46,6 +49,8 @@ state outside the Windows Shell process.
   process;
 - fault-injects an invalid model pipe, wrong broker protocol, early disconnect
   and oversized broker response; each prompt fails closed;
+- holds a model request open and proves both the Node host and managed desktop
+  can abort the active Pi turn and observe `turn-aborted`;
 - includes a C# diagnostic model broker that proves the full desktop-to-Pi
   streaming path without using an online model or provider credential;
 - executes direct inside/outside file-tool probes and forces `PI_OFFLINE=1`
@@ -55,7 +60,9 @@ This is now a real desktop-owned Pi conversation transport, but it is not yet a
 product chat surface. With no broker pipe, readiness and capabilities continue
 to report `promptingEnabled: false`. With the reviewed pipe present, the bridge
 can bind one read-only workspace, run a real Pi prompt and receive incremental
-assistant text. No provider credential is inherited or transported, no
+assistant text. A turn runs in the background, so the desktop can issue
+`abort_turn` without waiting for generation to finish. No provider credential
+is inherited or transported, no
 resource is discovered from the workspace and no session file is created. The
 current broker implementation is diagnostic; connecting a production model
 provider remains a separate reviewed step.
@@ -78,7 +85,7 @@ WPF desktop
             |
             +-- single-root read-only Pi session admission (implemented)
                     |
-                    +-- desktop model broker + streaming prompt (implemented)
+                    +-- brokered streaming + active-turn abort (implemented)
                             |
                             +-- production provider adapter
                                     |
@@ -108,5 +115,7 @@ CI uses `-StaticOnly` to build the managed bridge and validate the exact package
 lock, schema and source boundary without provider credentials. The full local
 audit additionally creates an offline, in-memory SDK session, proves
 single-root binding, executes inside/outside path and junction rejection tests,
-and sends one deterministic prompt through a local diagnostic broker. It does
-not contact a model provider or carry provider credentials.
+and sends one deterministic prompt through a local diagnostic broker. A second
+probe deliberately holds generation open and cancels it through the concurrent
+desktop response pump. It does not contact a model provider or carry provider
+credentials.

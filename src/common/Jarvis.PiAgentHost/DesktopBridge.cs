@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
@@ -17,6 +18,19 @@ public sealed record PiAgentPromptResult(
     string Response,
     int DeltaCount,
     int ToolExecutionCount);
+
+public sealed record PiAgentTurnResult(
+    string TurnId,
+    bool Success,
+    string Status,
+    string Response,
+    int DeltaCount,
+    int ToolExecutionCount,
+    string? ErrorCode);
+
+public sealed record PiAgentTurnHandle(
+    string TurnId,
+    Task<PiAgentTurnResult> Completion);
 
 public sealed record PiAgentDesktopProbeReceipt(
     int SchemaVersion,
@@ -70,6 +84,15 @@ public sealed record PiAgentBridgeFaultReceipt(
 
 public sealed class PiAgentSidecarController : IAsyncDisposable
 {
+    private sealed class PendingTurn
+    {
+        public StringBuilder Response { get; } = new();
+        public int DeltaCount { get; set; }
+        public int ToolExecutionCount { get; set; }
+        public TaskCompletionSource<PiAgentTurnResult> Completion { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
     public const string ContractId = "jarvisv2-pi-agent-desktop-host-v1";
     public const string PackageName = "@earendil-works/pi-coding-agent";
     public const string ExpectedVersion = "0.82.1";
@@ -94,8 +117,18 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
 
     private readonly PiAgentSidecarOptions options;
     private readonly Process process;
-    private readonly SemaphoreSlim requestGate = new(1, 1);
+    private readonly SemaphoreSlim writeGate = new(1, 1);
+    private readonly ConcurrentDictionary<
+        string,
+        TaskCompletionSource<JsonDocument>> pendingResponses = new(
+            StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, PendingTurn> pendingTurns =
+        new(StringComparer.Ordinal);
+    private readonly CancellationTokenSource outputPumpCancellation = new();
     private readonly Task<string> stderrTask;
+    private Task outputPumpTask = Task.CompletedTask;
+    private bool admitted;
+    private bool shutdownRequested;
     private bool shutdownCompleted;
 
     public bool CredentialEnvironmentClean { get; private set; }
@@ -176,6 +209,9 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             controller.CredentialEnvironmentClean = ready.RootElement
                 .GetProperty("credentialEnvironmentClean")
                 .GetBoolean();
+            controller.admitted = true;
+            controller.outputPumpTask = controller.PumpOutputAsync(
+                controller.outputPumpCancellation.Token);
             return controller;
         }
         catch
@@ -226,6 +262,29 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         string id,
         CancellationToken cancellationToken)
     {
+        PiAgentTurnHandle handle = await StartTurnAsync(
+            text,
+            id,
+            cancellationToken);
+        PiAgentTurnResult result = await WaitForTurnAsync(
+            handle,
+            cancellationToken);
+        if (!result.Success)
+        {
+            throw new InvalidOperationException(
+                $"The Pi Agent turn failed closed: {result.ErrorCode}.");
+        }
+        return new PiAgentPromptResult(
+            result.Response,
+            result.DeltaCount,
+            result.ToolExecutionCount);
+    }
+
+    public async Task<PiAgentTurnHandle> StartTurnAsync(
+        string text,
+        string id,
+        CancellationToken cancellationToken)
+    {
         if (options.ModelBrokerPipePath is null)
         {
             throw new InvalidOperationException(
@@ -239,104 +298,104 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 "Prompt text and id do not match the reviewed limits.");
         }
 
-        await requestGate.WaitAsync(cancellationToken);
+        PendingTurn pendingTurn = new();
+        if (!pendingTurns.TryAdd(id, pendingTurn))
+        {
+            throw new InvalidOperationException(
+                "The Pi Agent turn id is already in use.");
+        }
         try
         {
-            using CancellationTokenSource timeout =
-                CreateTimeout(
-                    cancellationToken,
-                    options.RequestTimeoutMilliseconds);
-            await WriteRequestAsync(
+            using JsonDocument response = await SendRequestAsync(
                 new
                 {
-                    type = "prompt",
+                    type = "start_turn",
                     id,
                     text,
                 },
-                timeout.Token);
-
-            StringBuilder responseText = new();
-            int deltaCount = 0;
-            int toolExecutionCount = 0;
-            while (true)
+                "start_turn",
+                id,
+                cancellationToken);
+            JsonElement root = response.RootElement;
+            if (!root.GetProperty("success").GetBoolean())
             {
-                JsonDocument frame = await ReadFrameAsync(timeout.Token);
-                JsonElement root = frame.RootElement;
-                if (root.GetProperty("type").GetString() == "event")
-                {
-                    try
-                    {
-                        if (root.GetProperty("requestId").GetString() != id)
-                        {
-                            throw new InvalidOperationException(
-                                "The Pi Agent event did not match its prompt.");
-                        }
-                        string? eventName =
-                            root.GetProperty("event").GetString();
-                        if (eventName == "assistant_text_delta")
-                        {
-                            string delta =
-                                root.GetProperty("delta").GetString()
-                                ?? throw new InvalidOperationException(
-                                    "The Pi Agent emitted an invalid text delta.");
-                            responseText.Append(delta);
-                            deltaCount++;
-                        }
-                        else if (eventName == "tool_execution_start")
-                        {
-                            toolExecutionCount++;
-                        }
-                        else if (eventName != "tool_execution_end")
-                        {
-                            throw new InvalidOperationException(
-                                "The Pi Agent emitted an unsupported event.");
-                        }
-                    }
-                    finally
-                    {
-                        frame.Dispose();
-                    }
-                    continue;
-                }
-
-                try
-                {
-                    ValidateResponseEnvelope(root, "prompt", id);
-                    if (!root.GetProperty("success").GetBoolean())
-                    {
-                        string code = root
-                            .GetProperty("error")
-                            .GetProperty("code")
-                            .GetString() ?? "prompt-failed";
-                        throw new InvalidOperationException(
-                            $"The Pi Agent prompt failed closed: {code}.");
-                    }
-                    JsonElement data = root.GetProperty("data");
-                    if (
-                        data.GetProperty("status").GetString() !=
-                            "completed" ||
-                        data.GetProperty("deltaCount").GetInt32() !=
-                            deltaCount ||
-                        data.GetProperty("toolExecutionCount").GetInt32() !=
-                            toolExecutionCount)
-                    {
-                        throw new InvalidOperationException(
-                            "The Pi Agent prompt receipt did not match its events.");
-                    }
-                    return new PiAgentPromptResult(
-                        responseText.ToString(),
-                        deltaCount,
-                        toolExecutionCount);
-                }
-                finally
-                {
-                    frame.Dispose();
-                }
+                string code = root
+                    .GetProperty("error")
+                    .GetProperty("code")
+                    .GetString() ?? "turn-start-failed";
+                throw new InvalidOperationException(
+                    $"The Pi Agent turn failed to start: {code}.");
             }
+            JsonElement data = root.GetProperty("data");
+            if (
+                data.GetProperty("turnId").GetString() != id ||
+                data.GetProperty("status").GetString() != "started")
+            {
+                throw new InvalidOperationException(
+                    "The Pi Agent turn start receipt was invalid.");
+            }
+            return new PiAgentTurnHandle(
+                id,
+                pendingTurn.Completion.Task);
+        }
+        catch
+        {
+            pendingTurns.TryRemove(id, out _);
+            throw;
+        }
+    }
+
+    public async Task<PiAgentTurnResult> WaitForTurnAsync(
+        PiAgentTurnHandle handle,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await handle.Completion.WaitAsync(cancellationToken);
         }
         finally
         {
-            requestGate.Release();
+            pendingTurns.TryRemove(handle.TurnId, out _);
+        }
+    }
+
+    public async Task AbortTurnAsync(
+        string turnId,
+        string id,
+        CancellationToken cancellationToken)
+    {
+        if (!pendingTurns.ContainsKey(turnId))
+        {
+            throw new InvalidOperationException(
+                "The requested Pi Agent turn is not pending.");
+        }
+        using JsonDocument response = await SendRequestAsync(
+            new
+            {
+                type = "abort_turn",
+                id,
+                turnId,
+            },
+            "abort_turn",
+            id,
+            cancellationToken);
+        JsonElement root = response.RootElement;
+        if (!root.GetProperty("success").GetBoolean())
+        {
+            string code = root
+                .GetProperty("error")
+                .GetProperty("code")
+                .GetString() ?? "abort-failed";
+            throw new InvalidOperationException(
+                $"The Pi Agent abort failed closed: {code}.");
+        }
+        JsonElement data = root.GetProperty("data");
+        if (
+            data.GetProperty("turnId").GetString() != turnId ||
+            data.GetProperty("status").GetString() != "abort-requested")
+        {
+            throw new InvalidOperationException(
+                "The Pi Agent abort receipt was invalid.");
         }
     }
 
@@ -358,7 +417,13 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 "Request type and id must be non-empty.");
         }
 
-        await requestGate.WaitAsync(cancellationToken);
+        TaskCompletionSource<JsonDocument> completion = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!pendingResponses.TryAdd(id, completion))
+        {
+            throw new InvalidOperationException(
+                "The Pi Agent request id is already in use.");
+        }
         try
         {
             using CancellationTokenSource timeout =
@@ -366,13 +431,22 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                     cancellationToken,
                     options.RequestTimeoutMilliseconds);
             await WriteRequestAsync(request, timeout.Token);
-            JsonDocument response = await ReadFrameAsync(timeout.Token);
-            ValidateResponseEnvelope(response.RootElement, type, id);
-            return response;
+            JsonDocument response = await completion.Task.WaitAsync(
+                timeout.Token);
+            try
+            {
+                ValidateResponseEnvelope(response.RootElement, type, id);
+                return response;
+            }
+            catch
+            {
+                response.Dispose();
+                throw;
+            }
         }
         finally
         {
-            requestGate.Release();
+            pendingResponses.TryRemove(id, out _);
         }
     }
 
@@ -394,10 +468,203 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 "The outgoing Pi Agent frame exceeds the contract limit.");
         }
 
-        await process.StandardInput.WriteLineAsync(
-            payload.AsMemory(),
-            cancellationToken);
-        await process.StandardInput.FlushAsync(cancellationToken);
+        await writeGate.WaitAsync(cancellationToken);
+        try
+        {
+            await process.StandardInput.WriteLineAsync(
+                payload.AsMemory(),
+                cancellationToken);
+            await process.StandardInput.FlushAsync(cancellationToken);
+        }
+        finally
+        {
+            writeGate.Release();
+        }
+    }
+
+    private async Task PumpOutputAsync(
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                JsonDocument frame = await ReadFrameAsync(
+                    cancellationToken);
+                bool transferred = false;
+                try
+                {
+                    JsonElement root = frame.RootElement;
+                    string? type = root.GetProperty("type").GetString();
+                    if (type == "response")
+                    {
+                        if (
+                            root.GetProperty("command").GetString() ==
+                                "shutdown" &&
+                            root.GetProperty("success").GetBoolean())
+                        {
+                            shutdownRequested = true;
+                        }
+                        string id =
+                            root.GetProperty("id").GetString()
+                            ?? throw new InvalidOperationException(
+                                "The Pi Agent response id was missing.");
+                        if (!pendingResponses.TryRemove(id, out
+                            TaskCompletionSource<JsonDocument>? pending))
+                        {
+                            throw new InvalidOperationException(
+                                "The Pi Agent response id was not pending.");
+                        }
+                        transferred = pending.TrySetResult(frame);
+                        if (!transferred)
+                        {
+                            throw new InvalidOperationException(
+                                "The Pi Agent response was already completed.");
+                        }
+                    }
+                    else if (type == "event")
+                    {
+                        RouteTurnEvent(root);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException(
+                            "The Pi Agent output frame type was not admitted.");
+                    }
+                }
+                finally
+                {
+                    if (!transferred)
+                    {
+                        frame.Dispose();
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (shutdownRequested)
+        {
+            FailPendingOperations(exception);
+        }
+        catch (Exception exception)
+        {
+            FailPendingOperations(exception);
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+    }
+
+    private void RouteTurnEvent(JsonElement root)
+    {
+        string turnId =
+            root.GetProperty("requestId").GetString()
+            ?? throw new InvalidOperationException(
+                "The Pi Agent event turn id was missing.");
+        if (!pendingTurns.TryGetValue(
+            turnId,
+            out PendingTurn? pending))
+        {
+            throw new InvalidOperationException(
+                "The Pi Agent event turn id was not pending.");
+        }
+
+        string? eventName = root.GetProperty("event").GetString();
+        if (eventName == "assistant_text_delta")
+        {
+            string delta =
+                root.GetProperty("delta").GetString()
+                ?? throw new InvalidOperationException(
+                    "The Pi Agent emitted an invalid text delta.");
+            pending.Response.Append(delta);
+            pending.DeltaCount++;
+            return;
+        }
+        if (eventName == "tool_execution_start")
+        {
+            _ = root.GetProperty("toolCallId").GetString()
+                ?? throw new InvalidOperationException(
+                    "The Pi Agent tool call id was missing.");
+            _ = root.GetProperty("toolName").GetString()
+                ?? throw new InvalidOperationException(
+                    "The Pi Agent tool name was missing.");
+            pending.ToolExecutionCount++;
+            return;
+        }
+        if (eventName == "tool_execution_end")
+        {
+            _ = root.GetProperty("toolCallId").GetString()
+                ?? throw new InvalidOperationException(
+                    "The Pi Agent tool call id was missing.");
+            _ = root.GetProperty("toolName").GetString()
+                ?? throw new InvalidOperationException(
+                    "The Pi Agent tool name was missing.");
+            return;
+        }
+        if (eventName != "turn_completed")
+        {
+            throw new InvalidOperationException(
+                "The Pi Agent emitted an unsupported event.");
+        }
+
+        bool success = root.GetProperty("success").GetBoolean();
+        string status =
+            root.GetProperty("status").GetString()
+            ?? throw new InvalidOperationException(
+                "The Pi Agent turn status was missing.");
+        int deltaCount = root.GetProperty("deltaCount").GetInt32();
+        int toolExecutionCount =
+            root.GetProperty("toolExecutionCount").GetInt32();
+        if (
+            deltaCount != pending.DeltaCount ||
+            toolExecutionCount != pending.ToolExecutionCount ||
+            (success && status != "completed") ||
+            (!success && status is not ("aborted" or "failed")))
+        {
+            throw new InvalidOperationException(
+                "The Pi Agent turn receipt did not match its events.");
+        }
+        string? errorCode = success
+            ? null
+            : root
+                .GetProperty("error")
+                .GetProperty("code")
+                .GetString();
+        PiAgentTurnResult result = new(
+            turnId,
+            success,
+            status,
+            pending.Response.ToString(),
+            deltaCount,
+            toolExecutionCount,
+            errorCode);
+        if (!pending.Completion.TrySetResult(result))
+        {
+            throw new InvalidOperationException(
+                "The Pi Agent turn completed more than once.");
+        }
+    }
+
+    private void FailPendingOperations(Exception exception)
+    {
+        foreach (KeyValuePair<
+            string,
+            TaskCompletionSource<JsonDocument>> entry in pendingResponses)
+        {
+            if (pendingResponses.TryRemove(entry.Key, out
+                TaskCompletionSource<JsonDocument>? pending))
+            {
+                pending.TrySetException(exception);
+            }
+        }
+        foreach (KeyValuePair<string, PendingTurn> entry in pendingTurns)
+        {
+            entry.Value.Completion.TrySetException(exception);
+        }
     }
 
     public async Task ShutdownAsync(CancellationToken cancellationToken)
@@ -417,6 +684,7 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 "The Pi Agent sidecar rejected orderly shutdown.");
         }
 
+        shutdownRequested = true;
         process.StandardInput.Close();
         using CancellationTokenSource timeout =
             CreateTimeout(
@@ -430,6 +698,7 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 $"The Pi Agent sidecar exited with {process.ExitCode}: " +
                 stderr.Trim());
         }
+        await outputPumpTask.WaitAsync(timeout.Token);
         shutdownCompleted = true;
     }
 
@@ -439,13 +708,24 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         {
             using CancellationTokenSource timeout = new(
                 options.ShutdownTimeoutMilliseconds);
-            try
+            if (admitted)
             {
-                await ShutdownAsync(timeout.Token);
+                try
+                {
+                    await ShutdownAsync(timeout.Token);
+                }
+                catch (Exception exception)
+                    when (exception is OperationCanceledException or
+                        InvalidOperationException or IOException)
+                {
+                    if (!process.HasExited)
+                    {
+                        process.Kill(entireProcessTree: true);
+                        await process.WaitForExitAsync();
+                    }
+                }
             }
-            catch (Exception exception)
-                when (exception is OperationCanceledException or
-                    InvalidOperationException or IOException)
+            else
             {
                 if (!process.HasExited)
                 {
@@ -454,7 +734,20 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 }
             }
         }
-        requestGate.Dispose();
+        shutdownRequested = true;
+        outputPumpCancellation.Cancel();
+        try
+        {
+            await outputPumpTask;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        FailPendingOperations(
+            new ObjectDisposedException(
+                nameof(PiAgentSidecarController)));
+        outputPumpCancellation.Dispose();
+        writeGate.Dispose();
         process.Dispose();
     }
 

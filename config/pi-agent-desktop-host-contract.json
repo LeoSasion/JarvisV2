@@ -24,7 +24,8 @@
       "hello",
       "capabilities",
       "start_session",
-      "prompt",
+      "start_turn",
+      "abort_turn",
       "shutdown"
     ],
     "credentialFieldsAllowed": false

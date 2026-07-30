@@ -252,6 +252,9 @@ Add-Check `
             'process.Kill(entireProcessTree: true)') -and
         $bridgeSourceText.Contains('StartReadOnlySessionAsync') -and
         $bridgeSourceText.Contains('PromptAsync') -and
+        $bridgeSourceText.Contains('StartTurnAsync') -and
+        $bridgeSourceText.Contains('AbortTurnAsync') -and
+        $bridgeSourceText.Contains('PumpOutputAsync') -and
         $bridgeSourceText.Contains('PipeOptions.CurrentUserOnly') -and
         $bridgeSourceText.Contains('jarvisv2-pi-model-broker-v1') -and
         $bridgeSourceText.Contains('sessionCreationPassed') -and
@@ -466,11 +469,12 @@ if (-not $StaticOnly) {
             $brokerTestReceipt.promptingEnabled -and
             $brokerTestReceipt.deltaCount -eq 2 -and
             $brokerTestReceipt.response -eq 'JARVIS broker online.' -and
-            $brokerTestReceipt.faultScenarioCount -eq 4 -and
+            $brokerTestReceipt.faultScenarioCount -eq 5 -and
             $brokerTestReceipt.invalidPipeRejected -and
             $brokerTestReceipt.wrongProtocolRejected -and
             $brokerTestReceipt.disconnectRejected -and
             $brokerTestReceipt.oversizedFrameRejected -and
+            $brokerTestReceipt.activeTurnAbortPassed -and
             $brokerTestReceipt.liveModelNetwork -eq 'not-run' -and
             $brokerTestReceipt.liveExplorer -eq 'not-run' -and
             -not $brokerTestReceipt.mutationPerformed) `
@@ -579,10 +583,13 @@ if (-not $StaticOnly) {
             $brokerBridgeReceipt.capabilitiesPassed -and
             $brokerBridgeReceipt.sessionCreationPassed -and
             $brokerBridgeReceipt.promptPassed -and
+            $brokerBridgeReceipt.abortPassed -and
+            $brokerBridgeReceipt.abortStatus -eq 'aborted' -and
+            $brokerBridgeReceipt.concurrentResponsePump -and
             $brokerBridgeReceipt.response -eq
                 'JARVIS desktop broker online.' -and
             $brokerBridgeReceipt.deltaCount -eq 2 -and
-            $brokerBridgeReceipt.brokerRequestCount -eq 1 -and
+            $brokerBridgeReceipt.brokerRequestCount -eq 2 -and
             $brokerBridgeReceipt.namedPipeOnly -and
             -not $brokerBridgeReceipt.credentialTransportAllowed -and
             -not $brokerBridgeReceipt.piSidecarModelNetworkAllowed -and
@@ -657,6 +664,8 @@ $passed = $failures.Count -eq 0
     promptingEnabled = $false
     promptingAdmission = 'desktop-broker-required'
     desktopModelBrokerImplemented = $true
+    asynchronousTurnsImplemented = $true
+    activeTurnCancellationImplemented = $true
     sessionPersistence = 'in-memory'
     workspaceBinding = 'single-explicit-root'
     desktopLaunchImplemented = $true

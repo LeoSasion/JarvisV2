@@ -42,7 +42,8 @@ export function validateContract(contract) {
     contract.transport?.encoding !== "utf-8" ||
     contract.transport?.maxFrameBytes !== 65_536 ||
     contract.transport?.requestTypes?.join("|") !==
-      "hello|capabilities|start_session|prompt|shutdown" ||
+      "hello|capabilities|start_session|start_turn|" +
+        "abort_turn|shutdown" ||
     contract.transport?.credentialFieldsAllowed !== false
   ) {
     failures.push("transport");

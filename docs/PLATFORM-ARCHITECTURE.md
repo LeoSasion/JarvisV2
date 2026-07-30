@@ -46,7 +46,8 @@ Its custom `read`, `grep`, `find` and `ls` tools reject path escape and reparse
 points. Prompting is admitted only when the desktop owns a current-user local
 model-broker pipe; resource discovery, sidecar provider network access,
 credential transport and mutation tools remain disabled. The diagnostic broker
-proves real Pi streaming without contacting a model provider. A future desktop
+proves real Pi streaming and active-turn cancellation through a managed
+response pump without contacting a model provider. A future desktop
 conversation surface will consume that admitted bridge; the agent runtime will
 never be loaded into Explorer. See
 `docs/PI-AGENT-DESKTOP-HOST.md`.

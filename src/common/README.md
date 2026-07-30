@@ -13,5 +13,6 @@ both Windows backends. It pins the official Pi SDK, verifies a bounded JSONL
 sidecar protocol and includes the managed desktop-owned sidecar lifecycle. It
 creates one root-confined in-memory session, replaces the child environment
 with a minimal OS allowlist and enables prompting only through a
-desktop-owned, current-user named pipe. It contains no Shell or platform
+desktop-owned, current-user named pipe. Its asynchronous turn transport can
+stream events and cancel active generation. It contains no Shell or platform
 styling transport.

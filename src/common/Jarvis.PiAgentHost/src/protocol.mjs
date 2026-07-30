@@ -68,6 +68,7 @@ export function createProtocolState(options = {}) {
   return {
     sessionHandle: null,
     modelBrokerPipe: candidate ?? null,
+    activeTurn: null,
   };
 }
 
@@ -199,11 +200,11 @@ export async function handleRequest(
           "The read-only Pi Agent session failed closed during admission.",
         );
       }
-    case "prompt":
+    case "start_turn":
       if (state.sessionHandle === null) {
         return failure(
           id,
-          "prompt",
+          "start_turn",
           "session-not-bound",
           "A workspace session must be admitted before prompting.",
         );
@@ -211,9 +212,17 @@ export async function handleRequest(
       if (!state.sessionHandle.promptingEnabled) {
         return failure(
           id,
-          "prompt",
+          "start_turn",
           "prompting-disabled",
           "Prompting requires a desktop-owned model broker.",
+        );
+      }
+      if (state.activeTurn !== null) {
+        return failure(
+          id,
+          "start_turn",
+          "turn-already-active",
+          "Only one Pi Agent turn may run at a time.",
         );
       }
       if (
@@ -223,12 +232,17 @@ export async function handleRequest(
       ) {
         return failure(
           id,
-          "prompt",
+          "start_turn",
           "invalid-prompt",
           "Prompt text must contain between 1 and 16384 UTF-8 bytes.",
         );
       }
       {
+        const turn = {
+          id,
+          completion: null,
+        };
+        state.activeTurn = turn;
         let deltaCount = 0;
         let toolExecutionCount = 0;
         let assistantStopReason = null;
@@ -242,7 +256,7 @@ export async function handleRequest(
               emitEvent({
                 type: "event",
                 event: "assistant_text_delta",
-                requestId: id,
+                requestId: turn.id,
                 delta: event.assistantMessageEvent.delta,
               });
             } else if (event.type === "tool_execution_start") {
@@ -250,7 +264,7 @@ export async function handleRequest(
               emitEvent({
                 type: "event",
                 event: "tool_execution_start",
-                requestId: id,
+                requestId: turn.id,
                 toolCallId: event.toolCallId,
                 toolName: event.toolName,
               });
@@ -258,7 +272,7 @@ export async function handleRequest(
               emitEvent({
                 type: "event",
                 event: "tool_execution_end",
-                requestId: id,
+                requestId: turn.id,
                 toolCallId: event.toolCallId,
                 toolName: event.toolName,
                 isError: event.isError === true,
@@ -270,31 +284,106 @@ export async function handleRequest(
               assistantStopReason = event.message.stopReason;
             }
           });
-        try {
-          await state.sessionHandle.session.prompt(request.text);
-          await state.sessionHandle.session.waitForIdle();
-          if (
-            assistantStopReason === null ||
-            assistantStopReason === "error" ||
-            assistantStopReason === "aborted"
-          ) {
-            return failure(
-              id,
-              "prompt",
-              "prompt-failed",
-              "The desktop-brokered Pi prompt failed closed.",
-            );
+        turn.completion = (async () => {
+          let terminal;
+          try {
+            await state.sessionHandle.session.prompt(request.text);
+            await state.sessionHandle.session.waitForIdle();
+            const success = ![
+              null,
+              "error",
+              "aborted",
+            ].includes(assistantStopReason);
+            terminal = {
+              type: "event",
+              event: "turn_completed",
+              requestId: turn.id,
+              success,
+              status: success
+                ? "completed"
+                : assistantStopReason === "aborted"
+                  ? "aborted"
+                  : "failed",
+              stopReason: assistantStopReason,
+              deltaCount,
+              toolExecutionCount,
+              ...(success ? {} : {
+                error: {
+                  code: assistantStopReason === "aborted"
+                    ? "turn-aborted"
+                    : "prompt-failed",
+                  message: assistantStopReason === "aborted"
+                    ? "The Pi Agent turn was aborted."
+                    : "The desktop-brokered Pi prompt failed closed.",
+                },
+              }),
+            };
+          } catch {
+            terminal = {
+              type: "event",
+              event: "turn_completed",
+              requestId: turn.id,
+              success: false,
+              status: "failed",
+              stopReason: assistantStopReason,
+              deltaCount,
+              toolExecutionCount,
+              error: {
+                code: "prompt-failed",
+                message:
+                  "The desktop-brokered Pi prompt failed closed.",
+              },
+            };
+          } finally {
+            unsubscribe();
           }
+          try {
+            emitEvent(terminal);
+          } finally {
+            if (state.activeTurn === turn) {
+              state.activeTurn = null;
+            }
+          }
+        })();
+        return {
+          response: {
+            type: "response",
+            id,
+            command: "start_turn",
+            success: true,
+            data: {
+              turnId: turn.id,
+              status: "started",
+            },
+          },
+          shutdown: false,
+        };
+      }
+    case "abort_turn":
+      if (
+        state.activeTurn === null ||
+        request.turnId !== state.activeTurn.id
+      ) {
+        return failure(
+          id,
+          "abort_turn",
+          "turn-not-active",
+          "The requested Pi Agent turn is not active.",
+        );
+      }
+      {
+        const activeTurn = state.activeTurn;
+        try {
+          await state.sessionHandle.session.abort();
           return {
             response: {
               type: "response",
               id,
-              command: "prompt",
+              command: "abort_turn",
               success: true,
               data: {
-                status: "completed",
-                deltaCount,
-                toolExecutionCount,
+                turnId: activeTurn.id,
+                status: "abort-requested",
               },
             },
             shutdown: false,
@@ -302,15 +391,22 @@ export async function handleRequest(
         } catch {
           return failure(
             id,
-            "prompt",
-            "prompt-failed",
-            "The desktop-brokered Pi prompt failed closed.",
+            "abort_turn",
+            "abort-failed",
+            "The Pi Agent turn could not be aborted cleanly.",
           );
-        } finally {
-          unsubscribe();
         }
       }
     case "shutdown":
+      if (state.activeTurn !== null) {
+        const activeTurn = state.activeTurn;
+        try {
+          await state.sessionHandle.session.abort();
+          await activeTurn.completion;
+        } catch {
+          // Shutdown still disposes the owned in-memory session below.
+        }
+      }
       return {
         response: {
           type: "response",
@@ -332,7 +428,17 @@ export async function handleRequest(
   }
 }
 
-export function disposeProtocolState(state) {
+export async function disposeProtocolState(state) {
+  if (state.activeTurn !== null) {
+    const activeTurn = state.activeTurn;
+    try {
+      await state.sessionHandle?.session.abort();
+      await activeTurn.completion;
+    } catch {
+      // Disposal remains scoped to the owned in-memory session.
+    }
+  }
   state.sessionHandle?.session.dispose();
   state.sessionHandle = null;
+  state.activeTurn = null;
 }

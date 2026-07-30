@@ -33,7 +33,8 @@ attribute. Arbitrary caption color is not claimed. The shared
 `Jarvis.PiAgentHost` now creates a root-confined, in-memory SDK session and
 proves a real streaming prompt through a desktop-owned diagnostic model broker.
 The default sidecar remains non-prompting unless that reviewed current-user
-named pipe is present; no production provider or credential is connected yet.
+named pipe is present. The managed response pump also proves active generation
+can be cancelled; no production provider or credential is connected yet.
 
 See `WINDOWS10-HANDOFF.md`,
 `docs/WINDOWS10-NATIVE-STYLE-PROBE.md` and

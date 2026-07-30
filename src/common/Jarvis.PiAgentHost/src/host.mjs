@@ -108,7 +108,7 @@ async function serve(contract, runtimeReceipt) {
       }
     }
   } finally {
-    disposeProtocolState(state);
+    await disposeProtocolState(state);
   }
 }
 
