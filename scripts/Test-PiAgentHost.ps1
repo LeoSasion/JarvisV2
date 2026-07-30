@@ -27,6 +27,9 @@ $brokerSourcePath = Join-Path $sourceRoot 'DiagnosticModelBroker.cs'
 $conversationSourcePath = Join-Path $sourceRoot 'ConversationState.cs'
 $conversationProbeSourcePath = Join-Path $sourceRoot (
     'DiagnosticConversation.cs')
+$desktopRuntimeSourcePath = Join-Path $sourceRoot 'DesktopRuntime.cs'
+$desktopRuntimeProbeSourcePath = Join-Path $sourceRoot (
+    'DiagnosticDesktopRuntime.cs')
 $bridgeProgramPath = Join-Path $sourceRoot 'Program.cs'
 $bridgeFixtureRoot = Join-Path $sourceRoot 'test\fixtures'
 $controlCenterRoot = Join-Path $root (
@@ -126,6 +129,10 @@ Add-Check `
             262144 -and
         $contract.session.desktopConversationNotificationDispatch -eq
             'captured-synchronization-context' -and
+        $contract.session.desktopRuntimeOwnership -eq
+            'desktop-owned-broker-sidecar-session-conversation' -and
+        $contract.session.desktopRuntimeShutdown -eq
+            'quiesce-cancel-sidecar-shutdown-broker-dispose' -and
         $contract.session.credentialTransport -eq 'forbidden' -and
         $contract.session.persistence -eq 'in-memory' -and
         $contract.session.workspaceBinding -eq
@@ -206,6 +213,10 @@ Add-Check `
             -eq 262144 -and
         $schema.properties.session.properties.desktopConversationNotificationDispatch.const `
             -eq 'captured-synchronization-context' -and
+        $schema.properties.session.properties.desktopRuntimeOwnership.const `
+            -eq 'desktop-owned-broker-sidecar-session-conversation' -and
+        $schema.properties.session.properties.desktopRuntimeShutdown.const `
+            -eq 'quiesce-cancel-sidecar-shutdown-broker-dispose' -and
         $schema.properties.session.properties.modelNetworkAllowed.const `
             -eq $false -and
         $schema.properties.transport.properties.credentialFieldsAllowed.const `
@@ -279,6 +290,10 @@ $bridgeSourceText =
     [Environment]::NewLine +
     [IO.File]::ReadAllText($conversationProbeSourcePath) +
     [Environment]::NewLine +
+    [IO.File]::ReadAllText($desktopRuntimeSourcePath) +
+    [Environment]::NewLine +
+    [IO.File]::ReadAllText($desktopRuntimeProbeSourcePath) +
+    [Environment]::NewLine +
     [IO.File]::ReadAllText($bridgeProgramPath)
 $forbiddenBridgePattern = (
     '(?i)\b(?:DllImport|LibraryImport|OpenProcess|CreateRemoteThread|' +
@@ -326,6 +341,12 @@ Add-Check `
             'PiAgentConversationSnapshot') -and
         $bridgeSourceText.Contains('SynchronizationContext') -and
         $bridgeSourceText.Contains('CancelActiveTurnAsync') -and
+        $bridgeSourceText.Contains('QuiesceAsync') -and
+        $bridgeSourceText.Contains('PiAgentDesktopRuntime') -and
+        $bridgeSourceText.Contains(
+            'desktop-owned-broker-sidecar-session-conversation') -and
+        $bridgeSourceText.Contains(
+            'quiesce-cancel-sidecar-shutdown-broker-dispose') -and
         $bridgeSourceText.Contains('DesktopModelBrokerServer') -and
         $bridgeSourceText.Contains('IDesktopModelProvider') -and
         $bridgeSourceText.Contains(
@@ -784,6 +805,62 @@ if (-not $StaticOnly) {
             "Desktop conversation exit $conversationExitCode; result " +
             "$conversationResult.")
 
+    $desktopRuntimeOutput = @(
+        & $DotnetPath run `
+            --project $bridgeProjectPath `
+            --configuration Release `
+            --no-build `
+            -- `
+            runtime-probe `
+            --node $NodePath `
+            --sidecar $hostPath 2>&1
+    )
+    $desktopRuntimeExitCode = $LASTEXITCODE
+    $desktopRuntimeReceipt = $null
+    try {
+        $desktopRuntimeReceipt =
+            ($desktopRuntimeOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $desktopRuntimeReceipt = $null
+    }
+    $desktopRuntimeResult = if ($null -ne $desktopRuntimeReceipt) {
+        $desktopRuntimeReceipt.result
+    }
+    else {
+        'unparsed'
+    }
+    Add-Check `
+        -Name 'runtime.desktop-owned-lifecycle-probe' `
+        -Passed (
+            $desktopRuntimeExitCode -eq 0 -and
+            $null -ne $desktopRuntimeReceipt -and
+            $desktopRuntimeReceipt.result -eq 'passed' -and
+            $desktopRuntimeReceipt.ownershipModel -eq
+                'desktop-owned-broker-sidecar-session-conversation' -and
+            $desktopRuntimeReceipt.shutdownModel -eq
+                'quiesce-cancel-sidecar-shutdown-broker-dispose' -and
+            $desktopRuntimeReceipt.runtimeCompositionPassed -and
+            $desktopRuntimeReceipt.multiTurnPassed -and
+            $desktopRuntimeReceipt.toolRoundTripPassed -and
+            $desktopRuntimeReceipt.quiesceClosedSubmission -and
+            $desktopRuntimeReceipt.shutdownCancelledActiveTurn -and
+            $desktopRuntimeReceipt.orderlyShutdownPassed -and
+            $desktopRuntimeReceipt.startupRollbackPassed -and
+            $desktopRuntimeReceipt.credentialEnvironmentClean -and
+            $desktopRuntimeReceipt.normalBrokerRequestCount -eq 4 -and
+            $desktopRuntimeReceipt.abortBrokerRequestCount -eq 1 -and
+            $desktopRuntimeReceipt.brokerFaultCount -eq 0 -and
+            -not $desktopRuntimeReceipt.credentialTransportAllowed -and
+            -not $desktopRuntimeReceipt.piSidecarModelNetworkAllowed -and
+            $desktopRuntimeReceipt.liveModelNetwork -eq 'diagnostic-only' -and
+            $desktopRuntimeReceipt.liveExplorer -eq 'not-run' -and
+            -not $desktopRuntimeReceipt.mutationPerformed) `
+        -Detail (
+            "Desktop runtime exit $desktopRuntimeExitCode; result " +
+            "$desktopRuntimeResult.")
+
     $faultOutput = @(
         & $DotnetPath run `
             --project $bridgeProjectPath `
@@ -859,6 +936,11 @@ $passed = $failures.Count -eq 0
     desktopConversationMaxAssistantCharacters = 262144
     desktopConversationNotificationDispatch =
         'captured-synchronization-context'
+    desktopRuntimeImplemented = $true
+    desktopRuntimeOwnership =
+        'desktop-owned-broker-sidecar-session-conversation'
+    desktopRuntimeShutdown =
+        'quiesce-cancel-sidecar-shutdown-broker-dispose'
     asynchronousTurnsImplemented = $true
     activeTurnCancellationImplemented = $true
     sessionPersistence = 'in-memory'

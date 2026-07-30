@@ -15,4 +15,6 @@ creates one root-confined in-memory session, replaces the child environment
 with a minimal OS allowlist and enables prompting only through a
 desktop-owned, current-user named pipe. Its asynchronous turn transport can
 stream events and cancel active generation. It contains no Shell or platform
-styling transport.
+styling transport. `PiAgentDesktopRuntime` is the composition root that owns
+the broker, sidecar, admitted session and conversation state, then quiesces and
+disposes them in reviewed order.

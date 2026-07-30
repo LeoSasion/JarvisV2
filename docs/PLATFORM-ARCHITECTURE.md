@@ -52,12 +52,15 @@ publishes a bounded, ordered, single-consumer turn stream for future WPF
 binding. A revisioned conversation-state adapter now consumes that stream,
 tracks text and tools, enforces one active turn and dispatches immutable
 snapshots through a captured synchronization context. `Jarvis.ControlCenter`
-compiles an `INotifyPropertyChanged` wrapper without exposing a panel yet. Its
-offline provider proves multi-turn Pi streaming, a real `read` tool round trip
-and active-turn cancellation. A future authenticated provider and reviewed
-desktop conversation surface will consume these admitted boundaries; the
-agent runtime will never be loaded into Explorer. See
-`docs/PI-AGENT-DESKTOP-HOST.md`.
+compiles an `INotifyPropertyChanged` wrapper without exposing a panel yet. A
+desktop-owned runtime now composes the broker, sidecar, admitted session and
+conversation state, then quiesces submissions and cancels an active turn
+before orderly shutdown. Its offline provider proves multi-turn Pi streaming,
+a real `read` tool round trip and active-turn cancellation. A future
+authenticated provider and reviewed desktop conversation surface will consume
+these admitted boundaries; the agent runtime will never be loaded into
+Explorer. See `docs/PI-AGENT-DESKTOP-HOST.md` and
+`docs/PI-AGENT-DESKTOP-RUNTIME.md`.
 
 Neural Void visual effects use one platform-neutral
 `neural-void-global-vfx-v1` parameter contract for Win10 and Win11. It defines

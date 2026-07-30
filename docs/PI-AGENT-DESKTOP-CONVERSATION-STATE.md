@@ -31,6 +31,11 @@ Cancellation first publishes `CancelRequested`, disables the cancel command,
 then waits for the Pi terminal event. A failed abort request restores the
 cancel command unless the turn already became terminal.
 
+`QuiesceAsync` permanently closes submission admission, publishes the changed
+snapshot, requests cancellation of an active turn and waits for its terminal
+event. `PiAgentDesktopRuntime` uses this before sidecar shutdown so window
+closing cannot race a new prompt against transport disposal.
+
 ## UI dispatch
 
 The adapter accepts a captured `SynchronizationContext`. Stream events may

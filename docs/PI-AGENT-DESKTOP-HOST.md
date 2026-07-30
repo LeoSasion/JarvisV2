@@ -49,6 +49,10 @@ state outside the Windows Shell process.
 - folds that stream into immutable, revisioned desktop conversation snapshots
   with one active turn, bounded history, tool lifecycle state, cancellation
   command state and captured synchronization-context notification dispatch;
+- composes the desktop-owned model broker, exact Node sidecar, admitted
+  read-only session and conversation state behind one `PiAgentDesktopRuntime`;
+- quiesces submissions, cancels any active turn, waits for its terminal event
+  and shuts down the owned sidecar before disposing the broker;
 - replaces the SDK file tools with root-confined `read`, `grep`, `find` and
   `ls` definitions; `bash`, `edit` and `write` stay unavailable;
 - rejects drive roots, protected OS/profile roots, relative paths, canonical
@@ -89,7 +93,8 @@ the aggregate completion task remains available for non-streaming callers.
 `PiAgentConversationState` now owns that single event consumer for product UI
 use, and `Jarvis.ControlCenter` contains a non-visual
 `INotifyPropertyChanged` binding adapter. See
-`PI-AGENT-DESKTOP-CONVERSATION-STATE.md`.
+`PI-AGENT-DESKTOP-CONVERSATION-STATE.md`. The lifecycle composition root is
+documented in `PI-AGENT-DESKTOP-RUNTIME.md`.
 
 ## Prompting admission
 
@@ -114,13 +119,16 @@ WPF desktop
                             +-- provider-neutral multi-request broker
                                 (implemented)
                                     |
-                                    +-- authenticated production provider
+                                    +-- desktop-owned runtime lifecycle
+                                        (implemented)
                                             |
-                                            +-- product conversation surface
+                                            +-- authenticated production provider
                                                     |
-                                                    +-- per-session mutation capability
+                                                    +-- product conversation surface
                                                             |
-                                                            +-- reviewed self-iteration workflow
+                                                            +-- per-session mutation capability
+                                                                    |
+                                                                    +-- reviewed self-iteration workflow
 ```
 
 No stage grants Shell injection, Explorer mutation, registry writes or

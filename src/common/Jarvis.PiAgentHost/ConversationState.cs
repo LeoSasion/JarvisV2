@@ -93,6 +93,9 @@ public sealed class PiAgentConversationState
     private int revision;
     private int generatedTurnSequence;
     private int abortRequestSequence;
+    private bool acceptingSubmissions = true;
+    private TaskCompletionSource<bool> idleCompletion =
+        CreateCompletedIdleSource();
 
     public PiAgentConversationState(
         PiAgentSidecarController controller,
@@ -132,6 +135,11 @@ public sealed class PiAgentConversationState
         PiAgentConversationSnapshot startingSnapshot;
         lock (gate)
         {
+            if (!acceptingSubmissions)
+            {
+                throw new InvalidOperationException(
+                    "The desktop conversation is quiescing.");
+            }
             if (activeTurnId is not null)
             {
                 throw new InvalidOperationException(
@@ -151,6 +159,8 @@ public sealed class PiAgentConversationState
                     UserText = text,
                 });
             activeTurnId = admittedTurnId;
+            idleCompletion = new(
+                TaskCreationOptions.RunContinuationsAsynchronously);
             startingSnapshot = AdvanceSnapshotLocked();
         }
         Publish(startingSnapshot);
@@ -172,6 +182,7 @@ public sealed class PiAgentConversationState
                 turn.Status = PiAgentConversationTurnStatus.Failed;
                 turn.ErrorCode = "turn-start-failed";
                 activeTurnId = null;
+                idleCompletion.TrySetResult(true);
                 failedSnapshot = AdvanceSnapshotLocked();
             }
             Publish(failedSnapshot);
@@ -243,6 +254,29 @@ public sealed class PiAgentConversationState
         }
     }
 
+    public async Task QuiesceAsync(
+        CancellationToken cancellationToken = default)
+    {
+        PiAgentConversationSnapshot? quiescingSnapshot = null;
+        Task idleTask;
+        lock (gate)
+        {
+            if (acceptingSubmissions)
+            {
+                acceptingSubmissions = false;
+                quiescingSnapshot = AdvanceSnapshotLocked();
+            }
+            idleTask = idleCompletion.Task;
+        }
+        if (quiescingSnapshot is not null)
+        {
+            Publish(quiescingSnapshot);
+        }
+
+        _ = await CancelActiveTurnAsync(cancellationToken);
+        await idleTask.WaitAsync(cancellationToken);
+    }
+
     private async Task<PiAgentConversationTurnSnapshot> ConsumeTurnAsync(
         PiAgentTurnHandle handle)
     {
@@ -268,7 +302,10 @@ public sealed class PiAgentConversationState
                     throw new InvalidOperationException(
                         "The desktop conversation terminal state diverged.");
                 }
-                return ToSnapshot(turn);
+                PiAgentConversationTurnSnapshot finalTurn =
+                    ToSnapshot(turn);
+                idleCompletion.TrySetResult(true);
+                return finalTurn;
             }
         }
         catch
@@ -282,6 +319,7 @@ public sealed class PiAgentConversationState
                 turn.Status = PiAgentConversationTurnStatus.Failed;
                 turn.ErrorCode = "conversation-event-stream-failed";
                 activeTurnId = null;
+                idleCompletion.TrySetResult(true);
                 failedSnapshot = AdvanceSnapshotLocked();
                 failedTurn = ToSnapshot(turn);
             }
@@ -441,7 +479,7 @@ public sealed class PiAgentConversationState
         return new PiAgentConversationSnapshot(
             revision,
             activeTurnId,
-            activeTurnId is null,
+            acceptingSubmissions && activeTurnId is null,
             active is not null && !active.CancelRequested,
             turns.Select(ToSnapshot).ToArray());
     }
@@ -511,6 +549,14 @@ public sealed class PiAgentConversationState
             PiAgentConversationTurnStatus.Completed or
             PiAgentConversationTurnStatus.Aborted or
             PiAgentConversationTurnStatus.Failed;
+
+    private static TaskCompletionSource<bool> CreateCompletedIdleSource()
+    {
+        TaskCompletionSource<bool> completion = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        completion.SetResult(true);
+        return completion;
+    }
 
     private static void ValidateText(string text)
     {

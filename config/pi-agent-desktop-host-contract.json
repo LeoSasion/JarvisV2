@@ -46,6 +46,8 @@
     "desktopConversationRetainedTurns": 128,
     "desktopConversationMaxAssistantCharacters": 262144,
     "desktopConversationNotificationDispatch": "captured-synchronization-context",
+    "desktopRuntimeOwnership": "desktop-owned-broker-sidecar-session-conversation",
+    "desktopRuntimeShutdown": "quiesce-cancel-sidecar-shutdown-broker-dispose",
     "credentialTransport": "forbidden",
     "persistence": "in-memory",
     "workspaceBinding": "single-explicit-root",

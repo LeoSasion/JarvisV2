@@ -149,6 +149,8 @@
         "desktopConversationRetainedTurns",
         "desktopConversationMaxAssistantCharacters",
         "desktopConversationNotificationDispatch",
+        "desktopRuntimeOwnership",
+        "desktopRuntimeShutdown",
         "credentialTransport",
         "persistence",
         "workspaceBinding",
@@ -200,6 +202,12 @@
         },
         "desktopConversationNotificationDispatch": {
           "const": "captured-synchronization-context"
+        },
+        "desktopRuntimeOwnership": {
+          "const": "desktop-owned-broker-sidecar-session-conversation"
+        },
+        "desktopRuntimeShutdown": {
+          "const": "quiesce-cancel-sidecar-shutdown-broker-dispose"
         },
         "credentialTransport": {
           "const": "forbidden"

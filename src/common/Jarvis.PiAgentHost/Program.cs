@@ -26,6 +26,14 @@ bool conversationProbeCommand =
         StringComparison.Ordinal) &&
     string.Equals(args[1], "--node", StringComparison.Ordinal) &&
     string.Equals(args[3], "--sidecar", StringComparison.Ordinal);
+bool runtimeProbeCommand =
+    args.Length == 5 &&
+    string.Equals(
+        args[0],
+        "runtime-probe",
+        StringComparison.Ordinal) &&
+    string.Equals(args[1], "--node", StringComparison.Ordinal) &&
+    string.Equals(args[3], "--sidecar", StringComparison.Ordinal);
 bool faultCommand =
     args.Length == 5 &&
     string.Equals(args[0], "fault-tests", StringComparison.Ordinal) &&
@@ -35,6 +43,7 @@ if (
     !probeCommand &&
     !brokerProbeCommand &&
     !conversationProbeCommand &&
+    !runtimeProbeCommand &&
     !faultCommand)
 {
     Console.Error.WriteLine(
@@ -43,6 +52,8 @@ if (
         "broker-probe --node <absolute-node.exe> " +
         "--sidecar <absolute-host.mjs> | " +
         "conversation-probe --node <absolute-node.exe> " +
+        "--sidecar <absolute-host.mjs> | " +
+        "runtime-probe --node <absolute-node.exe> " +
         "--sidecar <absolute-host.mjs> | " +
         "fault-tests --node <absolute-node.exe> " +
         "--fixtures <absolute-fixture-root>>");
@@ -81,6 +92,18 @@ try
             Path.GetFullPath(args[4]));
         PiAgentConversationProbeReceipt receipt =
             await PiAgentConversationProbe.RunAsync(
+                options,
+                timeout.Token);
+        Console.WriteLine(JsonSerializer.Serialize(receipt, serializerOptions));
+        return receipt.Result == "passed" ? 0 : 1;
+    }
+    if (runtimeProbeCommand)
+    {
+        PiAgentSidecarOptions options = new(
+            Path.GetFullPath(args[2]),
+            Path.GetFullPath(args[4]));
+        PiAgentDesktopRuntimeProbeReceipt receipt =
+            await PiAgentDesktopRuntimeProbe.RunAsync(
                 options,
                 timeout.Token);
         Console.WriteLine(JsonSerializer.Serialize(receipt, serializerOptions));
