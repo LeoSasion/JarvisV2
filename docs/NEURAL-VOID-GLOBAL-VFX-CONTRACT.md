@@ -85,6 +85,26 @@ inactive preset; there is no best-effort execution. Unknown parameters,
 out-of-range values, enabled modules and quality-budget overflow are also
 rejected.
 
+## Retained vector scene
+
+`jarvis-retained-vector-scene-v1` is the backend-neutral command buffer for
+mathematical geometry. A scene declares its design coordinate space, quality
+profile, stable revision and visual-signal binding, then stores deterministically
+ordered point, line, polyline, tangent-arc and plane commands.
+
+Commands reference semantic color channels and relative luminance/opacity;
+they cannot carry literal RGB colors. Each command is marked `static` or
+`per-frame`, which lets a future adapter retain stable geometry and update only
+small signal regions. The compiler reports command, vertex, arc, plane and
+shared-signal counts against the selected quality budget.
+
+Bitmap requests, runtime-effect requests, unknown color channels, malformed
+geometry, unstable ordering and budget drift are rejected. A rejected scene
+resolves to an empty low-power scene instead of partial rendering. This
+contract does not yet replace the current WPF drawing adapter or change its
+pixels; it establishes the common data boundary for future Win10 and Win11
+renderers.
+
 ## Render order and quality
 
 The contract fixes four composition stages: background particles, retained
@@ -124,6 +144,8 @@ The compiler rejects:
 - unknown preset schema versions or parameter IDs;
 - enabled preset modules and preset values outside their typed bounds;
 - malformed visual-signal channels or RGB/safety-color drift.
+- malformed, reordered or over-budget retained vector commands;
+- bitmap, literal-color or runtime-effect requests in vector scenes.
 
 The current milestone is ready only for an owned-process renderer prototype.
 It cannot mutate Explorer, activate a Shell module or control physical

@@ -167,6 +167,7 @@
     "src/common/Jarvis.PiAgentHost/test/fixtures/wrong-ready/host.mjs",
     "src/common/Jarvis.PiAgentHost/test/protocol.test.mjs",
     "src/common/Jarvis.VisualEffects/Jarvis.VisualEffects.csproj",
+    "src/common/Jarvis.VisualEffects/RetainedVectorScene.cs",
     "src/common/Jarvis.VisualEffects/RgbEffectEngine.cs",
     "src/common/Jarvis.VisualEffects/VfxParameterContract.cs",
     "src/common/Jarvis.VisualEffects/VfxPreset.cs",

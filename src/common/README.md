@@ -14,7 +14,10 @@ the `jarvis-visual-signal-v1` linear-sRGB semantic frame, the typed Neural Void
 particle/post contract and schema-versioned inert preset validation. It has no
 WPF, native Windows, Shell or device SDK dependency. Unknown preset versions,
 enabled effects, malformed channels and device-I/O requests fail closed to an
-inactive state.
+inactive state. Its retained vector-scene contract stores mathematical point,
+line, polyline, arc and plane commands in a design coordinate space, separates
+static from per-frame updates and rejects literal colors, bitmaps, runtime
+effects, unstable ordering and quality-budget overflow.
 
 `Jarvis.PiAgentHost` is the language-neutral AI runtime boundary shared by
 both Windows backends. It pins the official Pi SDK, resolves only its reviewed

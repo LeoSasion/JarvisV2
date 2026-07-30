@@ -126,6 +126,10 @@ Add-Check `
         $vectorLayerText.Contains('StreamGeometry') -and
         $vectorLayerText.Contains('CreatePolyline(') -and
         $vectorLayerText.Contains('CreatePolygon(') -and
+        $sourceText.Contains(
+            'public sealed record RetainedVectorScene') -and
+        $sourceText.Contains(
+            'public static class RetainedVectorSceneCompiler') -and
         $apertureFrameText.Contains('DrawingVisual') -and
         $apertureFrameText.Contains('StreamGeometry') -and
         $apertureFrameText.Contains('DrawTangentCorner(') -and

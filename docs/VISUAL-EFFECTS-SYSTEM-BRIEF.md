@@ -154,12 +154,14 @@ The nonvisual foundation now implements:
   diagnostic consumer and available to a future Win11 renderer;
 - typed particle/post parameter metadata plus schema-versioned inert preset
   data;
+- a backend-neutral retained command buffer for point, line, polyline, arc and
+  plane geometry with semantic color bindings;
 - deterministic fixed-step, seed and quality-profile contracts;
 - fail-closed compilation to an inactive frame or preset when input is
   unsupported.
 
-Backend-neutral retained point/line/plane command buffers, render counters and
-an actual compositor remain future work. The current implementation must not:
+Platform render adapters, live frame-time counters and an actual compositor
+remain future work. The current implementation must not:
 
 - enable glow, particles or post-processing in the product UI;
 - add decorative mouse or keyboard objects to the screen;

@@ -382,6 +382,168 @@ internal static class VfxContractScenarios
                         channel.Intensity == 0.0);
             });
 
+        RetainedVectorScene vectorScene =
+            RetainedVectorSceneFactory.CreateContractProbe();
+        Add(
+            scenarios,
+            "canonical-retained-vector-scene-compiles",
+            () =>
+            {
+                VectorSceneCompilationReceipt receipt =
+                    RetainedVectorSceneCompiler.Compile(vectorScene);
+                return
+                    receipt.Result ==
+                        "compiled-retained-vector-scene" &&
+                    receipt.CommandCount == 5 &&
+                    receipt.PointCount == 1 &&
+                    receipt.LineCount == 1 &&
+                    receipt.PolylineCount == 1 &&
+                    receipt.ArcCount == 1 &&
+                    receipt.PlaneCount == 1 &&
+                    receipt.StaticCommandCount == 4 &&
+                    receipt.PerFrameCommandCount == 1 &&
+                    receipt.SharedSignalCommandCount == 1;
+            });
+        Add(
+            scenarios,
+            "vector-bitmap-resource-rejected",
+            () => HasVectorFailure(
+                vectorScene with
+                {
+                    BitmapResourcesRequested = true,
+                },
+                "vector-scene-bitmap-resource-forbidden"));
+        Add(
+            scenarios,
+            "vector-runtime-effect-rejected",
+            () => HasVectorFailure(
+                vectorScene with
+                {
+                    RuntimeEffectsRequested = true,
+                },
+                "vector-scene-runtime-effect-forbidden"));
+        Add(
+            scenarios,
+            "vector-command-reordering-rejected",
+            () => HasVectorFailure(
+                vectorScene with
+                {
+                    Commands =
+                        vectorScene.Commands.Reverse().ToArray(),
+                },
+                "vector-scene-command-order-invalid"));
+        Add(
+            scenarios,
+            "vector-literal-color-channel-rejected",
+            () => HasVectorFailure(
+                ReplaceVectorCommand(
+                    vectorScene,
+                    "horizontal-datum",
+                    command => command with
+                    {
+                        Material = command.Material with
+                        {
+                            ColorChannel = "#00FF9A",
+                        },
+                    }),
+                "vector-command-invalid:horizontal-datum"));
+        Add(
+            scenarios,
+            "vector-out-of-bounds-point-rejected",
+            () => HasVectorFailure(
+                ReplaceVectorCommand(
+                    vectorScene,
+                    "focus-junction",
+                    command =>
+                        ((VectorPointCommand)command) with
+                        {
+                            Center = new VectorPoint(-1.0, 78.5),
+                        }),
+                "vector-command-invalid:focus-junction"));
+        Add(
+            scenarios,
+            "degenerate-vector-plane-rejected",
+            () => HasVectorFailure(
+                ReplaceVectorCommand(
+                    vectorScene,
+                    "background-plane",
+                    command =>
+                        ((VectorPlaneCommand)command) with
+                        {
+                            Points =
+                            [
+                                new(0.0, 0.0),
+                                new(1.0, 1.0),
+                                new(2.0, 2.0),
+                            ],
+                        }),
+                "vector-command-invalid:background-plane"));
+        Add(
+            scenarios,
+            "vector-quality-budget-drift-rejected",
+            () => HasVectorFailure(
+                vectorScene with
+                {
+                    Budget = vectorScene.Budget with
+                    {
+                        MaxCommands =
+                            vectorScene.Budget.MaxCommands - 1,
+                    },
+                },
+                "vector-scene-quality-budget-invalid"));
+        Add(
+            scenarios,
+            "duplicate-vector-command-id-rejected",
+            () => HasVectorFailure(
+                ReplaceVectorCommand(
+                    vectorScene,
+                    "horizontal-datum",
+                    command =>
+                        ((VectorLineCommand)command) with
+                        {
+                            Id = "background-plane",
+                        }),
+                "vector-scene-command-id-invalid"));
+        Add(
+            scenarios,
+            "invalid-vector-arc-rejected",
+            () => HasVectorFailure(
+                ReplaceVectorCommand(
+                    vectorScene,
+                    "tangent-corner",
+                    command =>
+                        ((VectorArcCommand)command) with
+                        {
+                            RadiusX = 0.0,
+                        }),
+                "vector-command-invalid:tangent-corner"));
+        Add(
+            scenarios,
+            "invalid-vector-scene-resolves-empty",
+            () =>
+            {
+                VectorSceneCompilationReceipt receipt =
+                    RetainedVectorSceneCompiler.Compile(
+                        vectorScene with
+                        {
+                            VisualSignalBinding =
+                                "component-local-color",
+                        });
+                return
+                    receipt.Result ==
+                        "blocked-empty-vector-scene" &&
+                    receipt.Failures.Contains(
+                        "vector-scene-visual-signal-binding-invalid",
+                        StringComparer.Ordinal) &&
+                    receipt.SafeScene.Commands.Count == 0 &&
+                    receipt.SafeScene.QualityProfile == "low-power" &&
+                    !receipt.SafeScene.BitmapResourcesRequested &&
+                    !receipt.SafeScene.RuntimeEffectsRequested &&
+                    RetainedVectorSceneCompiler.Compile(
+                        receipt.SafeScene).Result ==
+                        "compiled-retained-vector-scene";
+            });
+
         int passedCount =
             scenarios.Count(scenario => scenario.Passed);
         return new VfxModelTestReceipt(
@@ -432,6 +594,13 @@ internal static class VfxContractScenarios
         VisualSignalFrame frame,
         string failure) =>
         VisualSignalFrameCompiler.Compile(frame).Failures.Contains(
+            failure,
+            StringComparer.Ordinal);
+
+    private static bool HasVectorFailure(
+        RetainedVectorScene scene,
+        string failure) =>
+        RetainedVectorSceneCompiler.Compile(scene).Failures.Contains(
             failure,
             StringComparer.Ordinal);
 
@@ -515,6 +684,20 @@ internal static class VfxContractScenarios
                     channel.Id == channelId
                         ? mutate(channel)
                         : channel)
+                .ToArray(),
+        };
+
+    private static RetainedVectorScene ReplaceVectorCommand(
+        RetainedVectorScene scene,
+        string commandId,
+        Func<VectorCommand, VectorCommand> mutate) =>
+        scene with
+        {
+            Commands = scene.Commands
+                .Select(command =>
+                    command.Id == commandId
+                        ? mutate(command)
+                        : command)
                 .ToArray(),
         };
 

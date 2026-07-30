@@ -301,7 +301,11 @@ Add-Check `
         ($sourceText.Contains('Jarvis.VisualEffects.csproj') -and
          $sourceText.Contains('namespace Jarvis.VisualEffects;') -and
          $sourceText.Contains('public sealed record VisualSignalFrame') -and
-         $sourceText.Contains('public static class VfxPresetCompiler'))) `
+         $sourceText.Contains('public static class VfxPresetCompiler') -and
+         $sourceText.Contains(
+            'public sealed record RetainedVectorScene') -and
+         $sourceText.Contains(
+            'public static class RetainedVectorSceneCompiler'))) `
     -Detail (
         'RGB sampling, visual signal frames and VFX contract/preset ' +
         'validation must live in the reviewed Win10/Win11 common library.')
@@ -486,6 +490,49 @@ if ($buildExitCode -eq 0) {
             "VFX preset exit $vfxPresetExitCode; overrides " +
             "$($vfxPresetReceipt.overrideCount).")
 
+    $vectorOutput = @(
+        & $DotnetPath $assemblyPath compile-vector 2>&1
+    )
+    $vectorExitCode = $LASTEXITCODE
+    $vectorReceipt = $null
+    try {
+        $vectorReceipt =
+            ($vectorOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $vectorReceipt = $null
+    }
+    Add-Check `
+        -Name 'vector.retained-scene-compilation' `
+        -Passed (
+            $vectorExitCode -eq 0 -and
+            $null -ne $vectorReceipt -and
+            $vectorReceipt.result -eq
+                'compiled-retained-vector-scene' -and
+            $vectorReceipt.commandCount -eq 5 -and
+            $vectorReceipt.vertexCount -eq 13 -and
+            $vectorReceipt.pointCount -eq 1 -and
+            $vectorReceipt.lineCount -eq 1 -and
+            $vectorReceipt.polylineCount -eq 1 -and
+            $vectorReceipt.arcCount -eq 1 -and
+            $vectorReceipt.planeCount -eq 1 -and
+            $vectorReceipt.staticCommandCount -eq 4 -and
+            $vectorReceipt.perFrameCommandCount -eq 1 -and
+            $vectorReceipt.sharedSignalCommandCount -eq 1 -and
+            $vectorReceipt.deterministicOrderValidated -and
+            $vectorReceipt.budgetValidated -and
+            -not $vectorReceipt.bitmapResourcesRequested -and
+            -not $vectorReceipt.runtimeEffectsRequested -and
+            -not $vectorReceipt.readyForShellMutation -and
+            -not $vectorReceipt.activationPermitted -and
+            $vectorReceipt.liveExplorer -eq 'not-run' -and
+            -not $vectorReceipt.mutationPerformed) `
+        -Detail (
+            "Vector compile exit $vectorExitCode; commands " +
+            "$($vectorReceipt.commandCount), vertices " +
+            "$($vectorReceipt.vertexCount).")
+
     $vfxTestOutput = @(
         & $DotnetPath $assemblyPath test-vfx 2>&1
     )
@@ -505,7 +552,7 @@ if ($buildExitCode -eq 0) {
             $vfxTestExitCode -eq 0 -and
             $null -ne $vfxTestReceipt -and
             $vfxTestReceipt.result -eq 'passed' -and
-            $vfxTestReceipt.scenarioCount -ge 26 -and
+            $vfxTestReceipt.scenarioCount -ge 41 -and
             $vfxTestReceipt.passedCount -eq
                 $vfxTestReceipt.scenarioCount -and
             -not $vfxTestReceipt.runtimeEnabled -and
@@ -532,6 +579,7 @@ $passed = $failures.Count -eq 0
     globalVfxParameterContractCompiled = $passed
     sharedVisualSignalContractCompiled = $passed
     inertVfxPresetCompiled = $passed
+    retainedVectorSceneCompiled = $passed
     globalVfxRuntimeEnabled = $false
     globalVfxEditorImplemented = $false
     readyForShellMutation = $false

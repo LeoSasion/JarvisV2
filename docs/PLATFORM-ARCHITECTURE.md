@@ -69,9 +69,11 @@ the shared particle-module vocabulary, render order, post stack, quality
 budgets and RGB binding while leaving every effect disabled.
 `Jarvis.VisualEffects` now implements this contract, the RGB sampler, a
 linear-sRGB semantic signal frame and schema-versioned inert preset validation
-without WPF or native Windows dependencies. Platform backends may later
-implement separate renderers against that common contract; the contract does
-not authorize Shell integration. See
+without WPF or native Windows dependencies. It also defines a retained
+point/line/polyline/arc/plane command buffer with deterministic ordering,
+semantic color binding and explicit quality budgets. Platform backends may
+later implement separate renderers against that common contract; the contract
+does not authorize Shell integration. See
 `docs/NEURAL-VOID-GLOBAL-VFX-CONTRACT.md`.
 
 The current Supervisor remains under `src/platforms/windows11` because its

@@ -83,6 +83,19 @@ internal static class Program
                 : 12;
         }
 
+        if (args.Length == 1 && args[0] == "compile-vector")
+        {
+            RetainedVectorScene scene =
+                RetainedVectorSceneFactory.CreateContractProbe();
+            VectorSceneCompilationReceipt receipt =
+                RetainedVectorSceneCompiler.Compile(scene);
+            Write(receipt);
+            return receipt.Result ==
+                    "compiled-retained-vector-scene"
+                ? 0
+                : 12;
+        }
+
         if (args.Length == 6 && args[0] == "sample")
         {
             if (!TryDouble(args[1], out double hue) ||
@@ -115,7 +128,8 @@ internal static class Program
 
         Console.Error.WriteLine(
             "Usage: jarvis-win10-rgb-theme-model " +
-            "<compile|test|compile-vfx|compile-vfx-preset|test-vfx> " +
+            "<compile|test|compile-vfx|compile-vfx-preset|" +
+            "compile-vector|test-vfx> " +
             "or sample <hue> <saturation> <value> <effect> <phase>");
         return 2;
     }
