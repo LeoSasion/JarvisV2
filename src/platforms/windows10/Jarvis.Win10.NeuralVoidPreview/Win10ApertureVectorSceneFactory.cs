@@ -97,26 +97,42 @@ internal static class Win10ApertureVectorSceneFactory
 
         Color source = solidColorBrush.Color;
         VectorMaterial material =
-            new(
+            CreateMaterial(
                 "neutral-structure",
-                1.0,
-                (source.A / 255.0) *
-                    solidColorBrush.Opacity,
-                "alpha");
-        IReadOnlyList<VectorCommand> commands =
-            figures.Count == 0
-                ? []
-                :
-                [
-                    new VectorPathCommand(
-                        "aperture-contour",
-                        200,
-                        10,
-                        "static",
-                        material,
-                        figures,
-                        Hairline),
-                ];
+                source,
+                solidColorBrush.Opacity,
+                1.0);
+        List<VectorCommand> commands = [];
+        if (figures.Count != 0)
+        {
+            commands.Add(
+                new VectorPathCommand(
+                    "aperture-contour",
+                    200,
+                    10,
+                    "static",
+                    material,
+                    figures,
+                    Hairline));
+        }
+        AddRegistrationSquare(
+            commands,
+            "registration-top-left",
+            new(left + 4.0, top + 4.0),
+            20,
+            material);
+        AddRegistrationSquare(
+            commands,
+            "registration-top-right",
+            new(right - 4.0, top + 4.0),
+            30,
+            material);
+        AddRegistrationSquare(
+            commands,
+            "registration-bottom-right",
+            new(right - 4.0, bottom - 4.0),
+            40,
+            material);
         RetainedVectorScene scene =
             new(
                 RetainedVectorSceneContract.ContractVersion,
@@ -133,20 +149,220 @@ internal static class Win10ApertureVectorSceneFactory
                 false,
                 false);
         IReadOnlyDictionary<string, Color> palette =
-            new Dictionary<string, Color>(StringComparer.Ordinal)
-            {
-                ["neutral-structure"] =
-                    Color.FromRgb(
-                        source.R,
-                        source.G,
-                        source.B),
-            };
+            CreatePalette("neutral-structure", source);
         inputs =
             new Win10ApertureVectorSceneInputs(
                 scene,
                 palette);
         return true;
     }
+
+    public static bool TryCreateFocus(
+        double width,
+        double height,
+        ApertureFocusCorner focusCorner,
+        Brush accentBrush,
+        out Win10ApertureVectorSceneInputs? inputs)
+    {
+        inputs = null;
+        if (!IsFiniteRange(width, 4.0, 32768.0) ||
+            !IsFiniteRange(height, 4.0, 32768.0) ||
+            !Enum.IsDefined(focusCorner) ||
+            accentBrush is not
+                SolidColorBrush solidColorBrush ||
+            !IsFiniteRange(
+                solidColorBrush.Opacity,
+                0.0,
+                1.0))
+        {
+            return false;
+        }
+
+        Color source = solidColorBrush.Color;
+        VectorMaterial accent =
+            CreateMaterial(
+                "accent",
+                source,
+                solidColorBrush.Opacity,
+                1.0);
+        List<VectorCommand> commands = [];
+        if (focusCorner != ApertureFocusCorner.None)
+        {
+            VectorPoint focus =
+                focusCorner switch
+                {
+                    ApertureFocusCorner.TopLeft =>
+                        new(0.5, 0.5),
+                    ApertureFocusCorner.TopRight =>
+                        new(width - 0.5, 0.5),
+                    ApertureFocusCorner.BottomLeft =>
+                        new(0.5, height - 0.5),
+                    ApertureFocusCorner.BottomRight =>
+                        new(width - 0.5, height - 0.5),
+                    _ => throw new InvalidOperationException(
+                        "Unsupported aperture focus corner."),
+                };
+            double horizontalDirection =
+                focusCorner is
+                    ApertureFocusCorner.TopLeft or
+                    ApertureFocusCorner.BottomLeft
+                    ? 1.0
+                    : -1.0;
+            double verticalDirection =
+                focusCorner is
+                    ApertureFocusCorner.TopLeft or
+                    ApertureFocusCorner.TopRight
+                    ? 1.0
+                    : -1.0;
+            double horizontalLength =
+                Math.Min(122.0, width * 0.34);
+            double verticalLength =
+                Math.Min(82.0, height * 0.28);
+
+            commands.Add(
+                new VectorLineCommand(
+                    "focus-horizontal-ray",
+                    300,
+                    10,
+                    "per-frame",
+                    accent,
+                    focus,
+                    new(
+                        focus.X +
+                            (horizontalDirection *
+                                horizontalLength),
+                        focus.Y),
+                    Hairline));
+            commands.Add(
+                new VectorLineCommand(
+                    "focus-vertical-ray",
+                    300,
+                    20,
+                    "per-frame",
+                    accent,
+                    focus,
+                    new(
+                        focus.X,
+                        focus.Y +
+                            (verticalDirection *
+                                verticalLength)),
+                    Hairline));
+            commands.Add(
+                new VectorLineCommand(
+                    "focus-horizontal-cross",
+                    300,
+                    30,
+                    "per-frame",
+                    accent,
+                    new(focus.X - 6.0, focus.Y),
+                    new(focus.X + 6.0, focus.Y),
+                    Hairline));
+            commands.Add(
+                new VectorLineCommand(
+                    "focus-vertical-cross",
+                    300,
+                    40,
+                    "per-frame",
+                    accent,
+                    new(focus.X, focus.Y - 6.0),
+                    new(focus.X, focus.Y + 6.0),
+                    Hairline));
+
+            VectorMaterial ring =
+                CreateMaterial(
+                    "accent",
+                    source,
+                    solidColorBrush.Opacity,
+                    1.0);
+            commands.Add(
+                new VectorEllipseCommand(
+                    "focus-ring",
+                    300,
+                    50,
+                    "per-frame",
+                    ring,
+                    focus,
+                    5.0,
+                    5.0,
+                    0.42,
+                    Hairline));
+            commands.Add(
+                new VectorPointCommand(
+                    "focus-core",
+                    300,
+                    60,
+                    "per-frame",
+                    accent,
+                    focus,
+                    2.0));
+        }
+
+        RetainedVectorScene scene =
+            new(
+                RetainedVectorSceneContract.ContractVersion,
+                RetainedVectorSceneContract.ContractId,
+                "win10-aperture-focus-v1",
+                1,
+                width,
+                height,
+                "low-power",
+                RetainedVectorSceneContract.GetRequiredBudget(
+                    "low-power"),
+                RetainedVectorSceneContract.VisualSignalBinding,
+                commands,
+                false,
+                false);
+        inputs =
+            new Win10ApertureVectorSceneInputs(
+                scene,
+                CreatePalette("accent", source));
+        return true;
+    }
+
+    private static void AddRegistrationSquare(
+        ICollection<VectorCommand> commands,
+        string id,
+        VectorPoint center,
+        int order,
+        VectorMaterial material)
+    {
+        commands.Add(
+            new VectorRectangleCommand(
+                id,
+                200,
+                order,
+                "static",
+                material,
+                new(center.X - 1.5, center.Y - 1.5),
+                3.0,
+                3.0,
+                Hairline));
+    }
+
+    private static VectorMaterial CreateMaterial(
+        string channel,
+        Color source,
+        double brushOpacity,
+        double opacityScale) =>
+        new(
+            channel,
+            1.0,
+            (source.A / 255.0) *
+                brushOpacity *
+                opacityScale,
+            "alpha");
+
+    private static IReadOnlyDictionary<string, Color> CreatePalette(
+        string channel,
+        Color source) =>
+        new Dictionary<string, Color>(StringComparer.Ordinal)
+        {
+            [channel] =
+                Color.FromRgb(
+                    source.R,
+                    source.G,
+                    source.B),
+        };
 
     private static void AddTangentCorner(
         ICollection<VectorPathFigure> figures,

@@ -33,9 +33,9 @@ The theme intent records the direction, while the separate
 `neural-void-global-vfx-v1` contract now provides a validated, platform-neutral
 parameter vocabulary:
 
-- component geometry remains point/line/arc/compound-path/plane and consumes
-  the shared RGB
-  frame;
+- component geometry remains
+  point/line/arc/compound-path/rectangle/ellipse/plane and consumes the shared
+  RGB frame;
 - the global compositor may consume the same frame and add synchronized
   particle and post-effect layers;
 - 30 scalar, integer, range, enum and curve parameters are organized into five

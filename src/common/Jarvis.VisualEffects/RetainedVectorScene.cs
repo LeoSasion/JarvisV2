@@ -7,6 +7,7 @@ public static class RetainedVectorSceneContract
     public const int ContractVersion = 1;
     public const string ContractId = "jarvis-retained-vector-scene-v1";
     public const string VisualSignalBinding = "jarvis-visual-signal-v1";
+    public const double MaxOverscan = 64.0;
 
     public static readonly IReadOnlySet<string> ColorChannels =
         new HashSet<string>(
@@ -60,6 +61,8 @@ public sealed record VectorStroke(
 [JsonDerivedType(typeof(VectorPolylineCommand), "polyline")]
 [JsonDerivedType(typeof(VectorArcCommand), "arc")]
 [JsonDerivedType(typeof(VectorPathCommand), "path")]
+[JsonDerivedType(typeof(VectorRectangleCommand), "rectangle")]
+[JsonDerivedType(typeof(VectorEllipseCommand), "ellipse")]
 [JsonDerivedType(typeof(VectorPlaneCommand), "plane")]
 public abstract record VectorCommand(
     string Id,
@@ -219,6 +222,51 @@ public sealed record VectorPathCommand(
                 segment is VectorPathArcSegment));
 }
 
+public sealed record VectorRectangleCommand(
+    string Id,
+    int Layer,
+    int Order,
+    string UpdateClass,
+    VectorMaterial Material,
+    VectorPoint TopLeft,
+    double Width,
+    double Height,
+    VectorStroke Stroke)
+    : VectorCommand(
+        Id,
+        Layer,
+        Order,
+        UpdateClass,
+        Material)
+{
+    public override string Kind => "rectangle";
+
+    public override int VertexCount => 4;
+}
+
+public sealed record VectorEllipseCommand(
+    string Id,
+    int Layer,
+    int Order,
+    string UpdateClass,
+    VectorMaterial Material,
+    VectorPoint Center,
+    double RadiusX,
+    double RadiusY,
+    double DrawingOpacity,
+    VectorStroke Stroke)
+    : VectorCommand(
+        Id,
+        Layer,
+        Order,
+        UpdateClass,
+        Material)
+{
+    public override string Kind => "ellipse";
+
+    public override int VertexCount => 4;
+}
+
 public sealed record VectorPlaneCommand(
     string Id,
     int Layer,
@@ -272,6 +320,8 @@ public sealed record VectorSceneCompilationReceipt(
     int PolylineCount,
     int ArcCount,
     int PathCount,
+    int RectangleCount,
+    int EllipseCount,
     int PlaneCount,
     int StaticCommandCount,
     int PerFrameCommandCount,
@@ -389,6 +439,27 @@ public static class RetainedVectorSceneFactory
                             ],
                             false),
                     ],
+                    Hairline),
+                new VectorRectangleCommand(
+                    "registration-rectangle",
+                    200,
+                    50,
+                    "static",
+                    Structure,
+                    new(180.0, 100.0),
+                    12.0,
+                    12.0,
+                    Hairline),
+                new VectorEllipseCommand(
+                    "signal-ring",
+                    200,
+                    60,
+                    "static",
+                    Structure,
+                    new(220.0, 120.0),
+                    10.0,
+                    8.0,
+                    1.0,
                     Hairline),
                 new VectorPointCommand(
                     "focus-junction",
@@ -519,13 +590,19 @@ public static class RetainedVectorSceneCompiler
             scene.Commands.Count(command => command.Kind == "line");
         int polylineCount =
             scene.Commands.Count(command => command.Kind == "polyline");
+        int pathCount =
+            scene.Commands.Count(command => command.Kind == "path");
+        int rectangleCount =
+            scene.Commands.Count(command =>
+                command.Kind == "rectangle");
+        int ellipseCount =
+            scene.Commands.Count(command => command.Kind == "ellipse");
         int arcCount =
             scene.Commands.Count(command => command.Kind == "arc") +
             scene.Commands
                 .OfType<VectorPathCommand>()
-                .Sum(path => path.ArcSegmentCount);
-        int pathCount =
-            scene.Commands.Count(command => command.Kind == "path");
+                .Sum(path => path.ArcSegmentCount) +
+            (ellipseCount * 2);
         int planeCount =
             scene.Commands.Count(command => command.Kind == "plane");
         int staticCount =
@@ -566,6 +643,8 @@ public static class RetainedVectorSceneCompiler
             polylineCount,
             arcCount,
             pathCount,
+            rectangleCount,
+            ellipseCount,
             planeCount,
             staticCount,
             perFrameCount,
@@ -664,6 +743,66 @@ public static class RetainedVectorSceneCompiler
                     path,
                     designWidth,
                     designHeight),
+            VectorRectangleCommand rectangle =>
+                IsPointInDesignSpace(
+                    rectangle.TopLeft,
+                    designWidth,
+                    designHeight) &&
+                IsFinitePositiveRange(
+                    rectangle.Width,
+                    designWidth +
+                        (RetainedVectorSceneContract
+                            .MaxOverscan * 2.0)) &&
+                IsFinitePositiveRange(
+                    rectangle.Height,
+                    designHeight +
+                        (RetainedVectorSceneContract
+                            .MaxOverscan * 2.0)) &&
+                IsPointInDesignSpace(
+                    new VectorPoint(
+                        rectangle.TopLeft.X +
+                            rectangle.Width,
+                        rectangle.TopLeft.Y +
+                            rectangle.Height),
+                    designWidth,
+                    designHeight) &&
+                ValidateStroke(rectangle.Stroke),
+            VectorEllipseCommand ellipse =>
+                IsPointInDesignSpace(
+                    ellipse.Center,
+                    designWidth,
+                    designHeight) &&
+                IsFinitePositiveRange(
+                    ellipse.RadiusX,
+                    designWidth +
+                        RetainedVectorSceneContract
+                            .MaxOverscan) &&
+                IsFinitePositiveRange(
+                    ellipse.RadiusY,
+                    designHeight +
+                        RetainedVectorSceneContract
+                            .MaxOverscan) &&
+                IsPointInDesignSpace(
+                    new VectorPoint(
+                        ellipse.Center.X -
+                            ellipse.RadiusX,
+                        ellipse.Center.Y -
+                            ellipse.RadiusY),
+                    designWidth,
+                    designHeight) &&
+                IsPointInDesignSpace(
+                    new VectorPoint(
+                        ellipse.Center.X +
+                            ellipse.RadiusX,
+                        ellipse.Center.Y +
+                            ellipse.RadiusY),
+                    designWidth,
+                    designHeight) &&
+                IsFiniteRange(
+                    ellipse.DrawingOpacity,
+                    0.0,
+                    1.0) &&
+                ValidateStroke(ellipse.Stroke),
             VectorPlaneCommand plane =>
                 plane.Points.Count >= 3 &&
                 plane.Points.Count <= 4096 &&
@@ -742,10 +881,14 @@ public static class RetainedVectorSceneCompiler
                     VectorPathArcSegment arc =>
                         IsFinitePositiveRange(
                             arc.RadiusX,
-                            designWidth) &&
+                            designWidth +
+                                RetainedVectorSceneContract
+                                    .MaxOverscan) &&
                         IsFinitePositiveRange(
                             arc.RadiusY,
-                            designHeight) &&
+                            designHeight +
+                                RetainedVectorSceneContract
+                                    .MaxOverscan) &&
                         IsFiniteRange(
                             arc.RotationDegrees,
                             -360.0,
@@ -769,8 +912,16 @@ public static class RetainedVectorSceneCompiler
         VectorPoint point,
         double designWidth,
         double designHeight) =>
-        IsFiniteRange(point.X, 0.0, designWidth) &&
-        IsFiniteRange(point.Y, 0.0, designHeight);
+        IsFiniteRange(
+            point.X,
+            -RetainedVectorSceneContract.MaxOverscan,
+            designWidth +
+                RetainedVectorSceneContract.MaxOverscan) &&
+        IsFiniteRange(
+            point.Y,
+            -RetainedVectorSceneContract.MaxOverscan,
+            designHeight +
+                RetainedVectorSceneContract.MaxOverscan);
 
     private static bool IsFinitePositiveRange(
         double value,

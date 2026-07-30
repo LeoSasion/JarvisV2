@@ -161,6 +161,10 @@ Add-Check `
         $wpfVectorRendererText.Contains(
             'VectorPathCommand') -and
         $wpfVectorRendererText.Contains(
+            'VectorRectangleCommand') -and
+        $wpfVectorRendererText.Contains(
+            'VectorEllipseCommand') -and
+        $wpfVectorRendererText.Contains(
             'VectorPlaneCommand') -and
         $wpfVectorRendererText.Contains('StreamGeometry') -and
         $wpfVectorRendererText.Contains('CreatePolyline(') -and
@@ -179,14 +183,23 @@ Add-Check `
         $apertureVectorFactoryText.Contains(
             'VectorPathArcSegment') -and
         $apertureVectorFactoryText.Contains('AddTangentCorner(') -and
-        $apertureFrameText.Contains('DrawRegistrationSquare(') -and
+        $apertureVectorFactoryText.Contains(
+            'AddRegistrationSquare(') -and
+        $apertureVectorFactoryText.Contains(
+            'VectorRectangleCommand') -and
+        $apertureVectorFactoryText.Contains(
+            'TryCreateFocus(') -and
+        $apertureVectorFactoryText.Contains(
+            'VectorPointCommand') -and
+        $apertureVectorFactoryText.Contains(
+            'VectorEllipseCommand') -and
         -not $surfaceText.Contains('<Image ') -and
         -not $vectorLayerText.Contains('Bitmap') -and
         -not $apertureFrameText.Contains('Bitmap')) `
     -Detail (
         'Selected variant 4 must be drawn from mathematical points, lines, ' +
-        'arcs, compound paths and planes without decorative bitmap ' +
-        'resources.')
+        'arcs, compound paths, rectangles, ellipses and planes without ' +
+        'decorative bitmap resources.')
 
 Add-Check `
     -Name 'surface.retained-static-vector-layer' `
@@ -209,8 +222,12 @@ Add-Check `
         $apertureFrameText.Contains('RedrawFocus();') -and
         $apertureFrameText.Contains(
             'renderer.Render(context, inputs.Scene)') -and
+        $apertureFrameText.Contains(
+            'Win10ApertureVectorSceneFactory.TryCreateFocus(') -and
         $wpfVectorRendererText.Contains('DrawingGroup staged') -and
         $wpfVectorRendererText.Contains('staged.Freeze();') -and
+        $wpfVectorRendererText.Contains(
+            'foreach (Drawing drawing in staged.Children)') -and
         $wpfVectorRendererText.Contains('geometry.Freeze();') -and
         $wpfVectorScenariosText.Contains(
             'missing-semantic-color-fails-closed') -and
@@ -239,7 +256,10 @@ Add-Check `
         $apertureVectorFactoryText.Contains('AddSplitEdge(') -and
         $apertureVectorFactoryText.Contains(
             'VectorPathArcSegment') -and
-        $apertureFrameText.Contains('DrawEllipse(') -and
+        $apertureVectorFactoryText.Contains(
+            '"focus-ring"') -and
+        $apertureVectorFactoryText.Contains(
+            '"focus-core"') -and
         -not $apertureFrameText.Contains('CreateGlowBrush(') -and
         -not $sourceText.Contains('RadialGradientBrush') -and
         -not $sourceText.Contains('DropShadowEffect') -and
@@ -338,7 +358,7 @@ if ($buildExitCode -eq 0) {
             $adapterExitCode -eq 0 -and
             $null -ne $adapterReceipt -and
             $adapterReceipt.result -eq 'passed' -and
-            $adapterReceipt.scenarioCount -eq 12 -and
+            $adapterReceipt.scenarioCount -eq 13 -and
             $adapterReceipt.passedCount -eq
                 $adapterReceipt.scenarioCount -and
             -not $adapterReceipt.shellMutationSupported -and

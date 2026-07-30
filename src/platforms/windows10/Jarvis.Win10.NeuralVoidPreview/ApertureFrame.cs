@@ -154,26 +154,6 @@ public sealed class ApertureFrame : FrameworkElement
         {
             return;
         }
-
-        Rect frame =
-            new(
-                0.5,
-                0.5,
-                RenderSize.Width - 1.0,
-                RenderSize.Height - 1.0);
-        Pen linePen = CreatePen(LineBrush, 1.0);
-        DrawRegistrationSquare(
-            context,
-            linePen,
-            new Point(frame.Left + 4.0, frame.Top + 4.0));
-        DrawRegistrationSquare(
-            context,
-            linePen,
-            new Point(frame.Right - 4.0, frame.Top + 4.0));
-        DrawRegistrationSquare(
-            context,
-            linePen,
-            new Point(frame.Right - 4.0, frame.Bottom - 4.0));
     }
 
     private void RedrawFocus()
@@ -187,100 +167,21 @@ public sealed class ApertureFrame : FrameworkElement
             return;
         }
 
-        Point focus =
-            FocusCorner switch
-            {
-                ApertureFocusCorner.TopLeft =>
-                    new Point(0.5, 0.5),
-                ApertureFocusCorner.TopRight =>
-                    new Point(RenderSize.Width - 0.5, 0.5),
-                ApertureFocusCorner.BottomLeft =>
-                    new Point(0.5, RenderSize.Height - 0.5),
-                ApertureFocusCorner.BottomRight =>
-                    new Point(
-                        RenderSize.Width - 0.5,
-                        RenderSize.Height - 0.5),
-                _ => default,
-            };
-        double horizontalDirection =
-            FocusCorner is
-                ApertureFocusCorner.TopLeft or
-                ApertureFocusCorner.BottomLeft
-                ? 1.0
-                : -1.0;
-        double verticalDirection =
-            FocusCorner is
-                ApertureFocusCorner.TopLeft or
-                ApertureFocusCorner.TopRight
-                ? 1.0
-                : -1.0;
-        double horizontalLength =
-            Math.Min(122.0, RenderSize.Width * 0.34);
-        double verticalLength =
-            Math.Min(82.0, RenderSize.Height * 0.28);
-        Pen accentPen = CreatePen(AccentBrush, 1.0);
-
-        context.DrawLine(
-            accentPen,
-            focus,
-            new Point(
-                focus.X + (horizontalDirection * horizontalLength),
-                focus.Y));
-        context.DrawLine(
-            accentPen,
-            focus,
-            new Point(
-                focus.X,
-                focus.Y + (verticalDirection * verticalLength)));
-        context.DrawLine(
-            accentPen,
-            new Point(focus.X - 6.0, focus.Y),
-            new Point(focus.X + 6.0, focus.Y));
-        context.DrawLine(
-            accentPen,
-            new Point(focus.X, focus.Y - 6.0),
-            new Point(focus.X, focus.Y + 6.0));
-
-        context.PushOpacity(0.42);
-        context.DrawEllipse(
-            null,
-            accentPen,
-            focus,
-            5.0,
-            5.0);
-        context.Pop();
-        context.DrawEllipse(
-            AccentBrush,
-            null,
-            focus,
-            2.0,
-            2.0);
-    }
-
-    private static void DrawRegistrationSquare(
-        DrawingContext context,
-        Pen pen,
-        Point center)
-    {
-        context.DrawRectangle(
-            null,
-            pen,
-            new Rect(
-                center.X - 1.5,
-                center.Y - 1.5,
-                3.0,
-                3.0));
-    }
-
-    private static Pen CreatePen(
-        Brush brush,
-        double thickness) =>
-        new(brush, thickness)
+        if (!Win10ApertureVectorSceneFactory.TryCreateFocus(
+                RenderSize.Width,
+                RenderSize.Height,
+                FocusCorner,
+                AccentBrush,
+                out Win10ApertureVectorSceneInputs? inputs) ||
+            inputs is null)
         {
-            StartLineCap = PenLineCap.Square,
-            EndLineCap = PenLineCap.Square,
-            LineJoin = PenLineJoin.Round,
-        };
+            return;
+        }
+
+        WpfRetainedVectorSceneRenderer renderer =
+            new(inputs.Palette);
+        renderer.Render(context, inputs.Scene);
+    }
 
     private static bool IsFiniteNonNegative(object value) =>
         value is double number &&

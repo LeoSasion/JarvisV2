@@ -155,10 +155,11 @@ The implementation foundation now includes:
 - typed particle/post parameter metadata plus schema-versioned inert preset
   data;
 - a backend-neutral retained command buffer for point, line, polyline, arc,
-  compound-path and plane geometry with semantic color bindings;
-- a first Win10 WPF adapter that renders all six primitive kinds, currently
-  consuming the owned preview's static planes, datums, junction paths and
-  reusable aperture contours;
+  compound-path, rectangle, ellipse and plane geometry with semantic color
+  bindings and a bounded 64-DIP overscan margin;
+- a first Win10 WPF adapter that renders all eight primitive kinds, currently
+  consuming the owned preview's static planes, datums, junction paths,
+  reusable aperture contours, registration marks and per-frame focus geometry;
 - deterministic fixed-step, seed and quality-profile contracts;
 - fail-closed compilation to an inactive frame or preset when input is
   unsupported.

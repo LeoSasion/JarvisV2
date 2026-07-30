@@ -88,7 +88,10 @@ internal sealed class WpfRetainedVectorSceneRenderer
                 }
             }
             staged.Freeze();
-            destination.DrawDrawing(staged);
+            foreach (Drawing drawing in staged.Children)
+            {
+                destination.DrawDrawing(drawing);
+            }
             return Receipt(
                 "rendered-retained-vector-scene",
                 scene.SceneId,
@@ -152,6 +155,26 @@ internal sealed class WpfRetainedVectorSceneRenderer
                     null,
                     CreatePen(brush, path.Stroke),
                     CreatePath(path.Figures));
+                break;
+            case VectorRectangleCommand rectangle:
+                context.DrawRectangle(
+                    null,
+                    CreatePen(brush, rectangle.Stroke),
+                    new Rect(
+                        ToPoint(rectangle.TopLeft),
+                        new Size(
+                            rectangle.Width,
+                            rectangle.Height)));
+                break;
+            case VectorEllipseCommand ellipse:
+                context.PushOpacity(ellipse.DrawingOpacity);
+                context.DrawEllipse(
+                    null,
+                    CreatePen(brush, ellipse.Stroke),
+                    ToPoint(ellipse.Center),
+                    ellipse.RadiusX,
+                    ellipse.RadiusY);
+                context.Pop();
                 break;
             case VectorPlaneCommand plane:
                 context.DrawGeometry(

@@ -148,7 +148,7 @@ Add-Check `
             'reserved-global-not-implemented') `
     -Detail (
         'Selected variant 4 must remain an open ' +
-        'point-line-arc-compound-path-plane ' +
+        'point-line-arc-compound-path-rectangle-ellipse-plane ' +
         'grammar with two shared-frame focus junctions, no local glow and ' +
         'no bitmap dependency.')
 
@@ -511,15 +511,17 @@ if ($buildExitCode -eq 0) {
             $null -ne $vectorReceipt -and
             $vectorReceipt.result -eq
                 'compiled-retained-vector-scene' -and
-            $vectorReceipt.commandCount -eq 6 -and
-            $vectorReceipt.vertexCount -eq 17 -and
+            $vectorReceipt.commandCount -eq 8 -and
+            $vectorReceipt.vertexCount -eq 25 -and
             $vectorReceipt.pointCount -eq 1 -and
             $vectorReceipt.lineCount -eq 1 -and
             $vectorReceipt.polylineCount -eq 1 -and
-            $vectorReceipt.arcCount -eq 2 -and
+            $vectorReceipt.arcCount -eq 4 -and
             $vectorReceipt.pathCount -eq 1 -and
+            $vectorReceipt.rectangleCount -eq 1 -and
+            $vectorReceipt.ellipseCount -eq 1 -and
             $vectorReceipt.planeCount -eq 1 -and
-            $vectorReceipt.staticCommandCount -eq 5 -and
+            $vectorReceipt.staticCommandCount -eq 7 -and
             $vectorReceipt.perFrameCommandCount -eq 1 -and
             $vectorReceipt.sharedSignalCommandCount -eq 1 -and
             $vectorReceipt.deterministicOrderValidated -and

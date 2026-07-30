@@ -90,10 +90,16 @@ rejected.
 `jarvis-retained-vector-scene-v1` is the backend-neutral command buffer for
 mathematical geometry. A scene declares its design coordinate space, quality
 profile, stable revision and visual-signal binding, then stores deterministically
-ordered point, line, polyline, tangent-arc, compound-path and plane commands.
-A compound path retains multiple open or closed figures whose ordered line and
-arc segments must remain one draw operation; this prevents translucent tangent
-joins from being composited twice by a platform adapter.
+ordered point, line, polyline, tangent-arc, compound-path, rectangle, ellipse
+and plane commands. A compound path retains multiple open or closed figures
+whose ordered line and arc segments must remain one draw operation; this
+prevents translucent tangent joins from being composited twice by a platform
+adapter. Rectangle and ellipse commands preserve native mathematical shape
+rasterization instead of approximating them with unrelated path segments.
+
+Coordinates may overscan each design-space edge by at most 64
+device-independent pixels. This bounded margin covers clipped strokes, rings
+and focus crosses at an owned surface boundary; larger excursions fail closed.
 
 Commands reference semantic color channels and relative luminance/opacity;
 they cannot carry literal RGB colors. Each command is marked `static` or
@@ -104,14 +110,14 @@ shared-signal counts against the selected quality budget.
 Bitmap requests, runtime-effect requests, unknown color channels, malformed
 geometry, unstable ordering and budget drift are rejected. A rejected scene
 resolves to an empty low-power scene instead of partial rendering. This
-contract now drives the static planes, datums, junction paths and reusable
-`ApertureFrame` contours in the Win10 owned-process preview through its first
-WPF adapter. The adapter stages a complete frozen drawing and fails closed
-before committing partial geometry. Dynamic focus junctions and the three tiny
-`ApertureFrame` registration squares remain direct retained WPF geometry.
-Target-build PNG hashes prove that these adapter steps do not change the
-current pixels; the same command boundary remains available to a future Win11
-renderer.
+contract now drives the static planes, datums, junction paths and every
+`ApertureFrame` contour, registration rectangle and per-frame focus command in
+the Win10 owned-process preview. The WPF adapter validates and freezes a
+complete staging group before replaying its immutable child drawings; replay
+is required because nesting the whole group does not establish offscreen
+`DrawingVisual` content bounds. Target-build PNG hashes prove that these
+adapter steps do not change the current pixels; the same command boundary
+remains available to a future Win11 renderer.
 
 ## Render order and quality
 

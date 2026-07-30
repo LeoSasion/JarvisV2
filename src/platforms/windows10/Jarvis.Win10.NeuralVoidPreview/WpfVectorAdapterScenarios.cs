@@ -65,8 +65,8 @@ internal static class WpfVectorAdapterScenarios
                 return
                     receipt.Result ==
                         "rendered-retained-vector-scene" &&
-                    receipt.CommandsDrawn == 6 &&
-                    receipt.PrimitiveKindCount == 6;
+                    receipt.CommandsDrawn == 8 &&
+                    receipt.PrimitiveKindCount == 8;
             });
         Add(
             scenarios,
@@ -145,14 +145,14 @@ internal static class WpfVectorAdapterScenarios
                     return
                         compilation.Result ==
                             "compiled-retained-vector-scene" &&
-                        compilation.CommandCount == 1 &&
+                        compilation.CommandCount == 4 &&
                         compilation.ArcCount == 4 &&
-                        inputs.Scene.Commands.Single() is
-                            VectorPathCommand &&
+                        compilation.PathCount == 1 &&
+                        compilation.RectangleCount == 3 &&
                         receipt.Result ==
                             "rendered-retained-vector-scene" &&
-                        receipt.CommandsDrawn == 1 &&
-                        receipt.PrimitiveKindCount == 1;
+                        receipt.CommandsDrawn == 4 &&
+                        receipt.PrimitiveKindCount == 2;
                 });
             });
         Add(
@@ -185,12 +185,56 @@ internal static class WpfVectorAdapterScenarios
                 return
                     receipt.Result ==
                         "compiled-retained-vector-scene" &&
-                    receipt.CommandCount == 1 &&
+                    receipt.CommandCount == 4 &&
+                    receipt.PathCount == 1 &&
+                    receipt.RectangleCount == 3 &&
                     receipt.ArcCount == 0;
             });
         Add(
             scenarios,
-            "minimal-empty-aperture-scene-is-safe",
+            "aperture-adapter-emits-visible-pixels",
+            () =>
+            {
+                bool created =
+                    Win10ApertureVectorSceneFactory.TryCreate(
+                        200.0,
+                        112.0,
+                        12.0,
+                        18.0,
+                        new SolidColorBrush(
+                            Color.FromRgb(
+                                0x34,
+                                0x40,
+                                0x3E)),
+                        out
+                            Win10ApertureVectorSceneInputs?
+                            inputs);
+                if (!created || inputs is null)
+                {
+                    return false;
+                }
+
+                (WpfVectorSceneRenderReceipt receipt,
+                    int visibleBytes) =
+                    RenderWithVisibleBytes(
+                        new WpfRetainedVectorSceneRenderer(
+                            inputs.Palette),
+                        inputs.Scene,
+                        200,
+                        112);
+                if (receipt.Result !=
+                        "rendered-retained-vector-scene" ||
+                    visibleBytes == 0)
+                {
+                    throw new InvalidOperationException(
+                        $"aperture-visible-failed:" +
+                        $"{receipt.Result}:{visibleBytes}");
+                }
+                return true;
+            });
+        Add(
+            scenarios,
+            "minimal-aperture-registration-scene-is-safe",
             () =>
             {
                 bool created =
@@ -218,7 +262,9 @@ internal static class WpfVectorAdapterScenarios
                 return
                     receipt.Result ==
                         "compiled-retained-vector-scene" &&
-                    receipt.CommandCount == 0 &&
+                    receipt.CommandCount == 3 &&
+                    receipt.PathCount == 0 &&
+                    receipt.RectangleCount == 3 &&
                     receipt.ArcCount == 0;
             });
         Add(
@@ -226,7 +272,7 @@ internal static class WpfVectorAdapterScenarios
             "unsupported-aperture-brush-fails-closed",
             () =>
             {
-                bool created =
+                bool contourCreated =
                     Win10ApertureVectorSceneFactory.TryCreate(
                         200.0,
                         112.0,
@@ -236,7 +282,20 @@ internal static class WpfVectorAdapterScenarios
                         out
                             Win10ApertureVectorSceneInputs?
                             inputs);
-                return !created && inputs is null;
+                bool focusCreated =
+                    Win10ApertureVectorSceneFactory.TryCreateFocus(
+                        200.0,
+                        112.0,
+                        ApertureFocusCorner.TopLeft,
+                        new LinearGradientBrush(),
+                        out
+                            Win10ApertureVectorSceneInputs?
+                            focusInputs);
+                return
+                    !contourCreated &&
+                    inputs is null &&
+                    !focusCreated &&
+                    focusInputs is null;
             });
         Add(
             scenarios,
@@ -245,6 +304,7 @@ internal static class WpfVectorAdapterScenarios
             {
                 HashSet<string> hashes =
                     new(StringComparer.Ordinal);
+                List<string> renderDiagnostics = [];
                 ApertureFocusCorner[] corners =
                 [
                     ApertureFocusCorner.None,
@@ -255,6 +315,75 @@ internal static class WpfVectorAdapterScenarios
                 ];
                 foreach (ApertureFocusCorner corner in corners)
                 {
+                    bool created =
+                        Win10ApertureVectorSceneFactory
+                            .TryCreateFocus(
+                                200.0,
+                                112.0,
+                                corner,
+                                new SolidColorBrush(
+                                    Color.FromRgb(
+                                        0x00,
+                                        0xFF,
+                                        0x9A)),
+                                out
+                                    Win10ApertureVectorSceneInputs?
+                                    inputs);
+                    if (!created || inputs is null)
+                    {
+                        throw new InvalidOperationException(
+                            $"focus-create-failed:{corner}");
+                    }
+
+                    VectorSceneCompilationReceipt compilation =
+                        RetainedVectorSceneCompiler.Compile(
+                            inputs.Scene);
+                    int expectedCommands =
+                        corner == ApertureFocusCorner.None
+                            ? 0
+                            : 6;
+                    if (compilation.Result !=
+                            "compiled-retained-vector-scene" ||
+                        compilation.CommandCount !=
+                            expectedCommands ||
+                        compilation.PerFrameCommandCount !=
+                            expectedCommands ||
+                        compilation.SharedSignalCommandCount !=
+                            expectedCommands ||
+                        compilation.LineCount !=
+                            (corner ==
+                                ApertureFocusCorner.None
+                                ? 0
+                                : 4) ||
+                        compilation.PathCount !=
+                            0 ||
+                        compilation.EllipseCount !=
+                            (corner ==
+                                ApertureFocusCorner.None
+                                ? 0
+                                : 1) ||
+                        compilation.ArcCount !=
+                            (corner ==
+                                ApertureFocusCorner.None
+                                ? 0
+                                : 2) ||
+                        compilation.PointCount !=
+                            (corner ==
+                                ApertureFocusCorner.None
+                                ? 0
+                                : 1))
+                    {
+                        throw new InvalidOperationException(
+                            $"focus-compile-failed:{corner}:" +
+                            $"{compilation.Result}:" +
+                            $"commands={compilation.CommandCount}:" +
+                            $"lines={compilation.LineCount}:" +
+                            $"paths={compilation.PathCount}:" +
+                            $"ellipses={compilation.EllipseCount}:" +
+                            $"arcs={compilation.ArcCount}:" +
+                            $"points={compilation.PointCount}");
+                    }
+
                     ApertureFrame frame =
                         new()
                         {
@@ -295,12 +424,26 @@ internal static class WpfVectorAdapterScenarios
                         pixels,
                         200 * 4,
                         0);
-                    hashes.Add(
+                    string hash =
                         Convert.ToHexString(
-                            SHA256.HashData(pixels)));
+                            SHA256.HashData(pixels));
+                    hashes.Add(hash);
+                    int visibleBytes =
+                        pixels.Count(value => value != 0);
+                    renderDiagnostics.Add(
+                        $"{corner}:{hash[..8]}:" +
+                        $"visible={visibleBytes}");
                 }
 
-                return hashes.Count == corners.Length;
+                if (hashes.Count != corners.Length)
+                {
+                    throw new InvalidOperationException(
+                        $"focus-render-hash-count:{hashes.Count}:" +
+                        string.Join(
+                            ",",
+                            renderDiagnostics));
+                }
+                return true;
             });
         Add(
             scenarios,
@@ -440,6 +583,37 @@ internal static class WpfVectorAdapterScenarios
         DrawingVisual visual = new();
         using DrawingContext context = visual.RenderOpen();
         return renderer.Render(context, scene);
+    }
+
+    private static (
+        WpfVectorSceneRenderReceipt Receipt,
+        int VisibleBytes)
+        RenderWithVisibleBytes(
+            WpfRetainedVectorSceneRenderer renderer,
+            RetainedVectorScene scene,
+            int width,
+            int height)
+    {
+        DrawingVisual visual = new();
+        WpfVectorSceneRenderReceipt receipt;
+        using (DrawingContext context = visual.RenderOpen())
+        {
+            receipt = renderer.Render(context, scene);
+        }
+
+        RenderTargetBitmap bitmap =
+            new(
+                width,
+                height,
+                96.0,
+                96.0,
+                PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        byte[] pixels = new byte[width * height * 4];
+        bitmap.CopyPixels(pixels, width * 4, 0);
+        return (
+            receipt,
+            pixels.Count(value => value != 0));
     }
 
     private static void Add(

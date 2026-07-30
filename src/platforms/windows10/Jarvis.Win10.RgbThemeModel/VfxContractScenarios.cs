@@ -394,14 +394,16 @@ internal static class VfxContractScenarios
                 return
                     receipt.Result ==
                         "compiled-retained-vector-scene" &&
-                    receipt.CommandCount == 6 &&
+                    receipt.CommandCount == 8 &&
                     receipt.PointCount == 1 &&
                     receipt.LineCount == 1 &&
                     receipt.PolylineCount == 1 &&
-                    receipt.ArcCount == 2 &&
+                    receipt.ArcCount == 4 &&
                     receipt.PathCount == 1 &&
+                    receipt.RectangleCount == 1 &&
+                    receipt.EllipseCount == 1 &&
                     receipt.PlaneCount == 1 &&
-                    receipt.StaticCommandCount == 5 &&
+                    receipt.StaticCommandCount == 7 &&
                     receipt.PerFrameCommandCount == 1 &&
                     receipt.SharedSignalCommandCount == 1;
             });
@@ -450,7 +452,29 @@ internal static class VfxContractScenarios
                 "vector-command-invalid:horizontal-datum"));
         Add(
             scenarios,
-            "vector-out-of-bounds-point-rejected",
+            "bounded-vector-overscan-accepted",
+            () =>
+            {
+                VectorSceneCompilationReceipt receipt =
+                    RetainedVectorSceneCompiler.Compile(
+                        ReplaceVectorCommand(
+                            vectorScene,
+                            "focus-junction",
+                            command =>
+                                ((VectorPointCommand)command) with
+                                {
+                                    Center =
+                                        new VectorPoint(
+                                            -6.0,
+                                            78.5),
+                                }));
+                return
+                    receipt.Result ==
+                        "compiled-retained-vector-scene";
+            });
+        Add(
+            scenarios,
+            "excessive-vector-overscan-rejected",
             () => HasVectorFailure(
                 ReplaceVectorCommand(
                     vectorScene,
@@ -458,7 +482,10 @@ internal static class VfxContractScenarios
                     command =>
                         ((VectorPointCommand)command) with
                         {
-                            Center = new VectorPoint(-1.0, 78.5),
+                            Center =
+                                new VectorPoint(
+                                    -65.0,
+                                    78.5),
                         }),
                 "vector-command-invalid:focus-junction"));
         Add(
@@ -569,6 +596,32 @@ internal static class VfxContractScenarios
                         };
                     }),
                 "vector-command-invalid:compound-path"));
+        Add(
+            scenarios,
+            "invalid-vector-rectangle-rejected",
+            () => HasVectorFailure(
+                ReplaceVectorCommand(
+                    vectorScene,
+                    "registration-rectangle",
+                    command =>
+                        ((VectorRectangleCommand)command) with
+                        {
+                            Width = 0.0,
+                        }),
+                "vector-command-invalid:registration-rectangle"));
+        Add(
+            scenarios,
+            "invalid-vector-ellipse-rejected",
+            () => HasVectorFailure(
+                ReplaceVectorCommand(
+                    vectorScene,
+                    "signal-ring",
+                    command =>
+                        ((VectorEllipseCommand)command) with
+                        {
+                            RadiusY = 0.0,
+                        }),
+                "vector-command-invalid:signal-ring"));
         Add(
             scenarios,
             "invalid-vector-scene-resolves-empty",
