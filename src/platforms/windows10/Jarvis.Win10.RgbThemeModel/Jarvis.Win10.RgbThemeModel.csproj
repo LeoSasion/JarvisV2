@@ -11,6 +11,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference
+      Include="..\..\..\common\Jarvis.VisualEffects\Jarvis.VisualEffects.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource
       Include="..\..\..\..\config\windows10-neural-void-rgb-theme.json"
       Link="windows10-neural-void-rgb-theme.json"
@@ -19,5 +24,9 @@
       Include="..\..\..\..\config\neural-void-global-vfx-contract.json"
       Link="neural-void-global-vfx-contract.json"
       LogicalName="Jarvis.Win10.RgbThemeModel.global-vfx-contract.json" />
+    <EmbeddedResource
+      Include="..\..\..\..\config\neural-void-vfx-preset.json"
+      Link="neural-void-vfx-preset.json"
+      LogicalName="Jarvis.Win10.RgbThemeModel.vfx-preset.json" />
   </ItemGroup>
 </Project>

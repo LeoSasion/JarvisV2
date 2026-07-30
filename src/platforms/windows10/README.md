@@ -17,7 +17,8 @@ registry or mutation transport.
 
 The fourth slice, `Jarvis.Win10.RgbThemeModel`, records the approved D /
 Neural Void desktop direction. A cyan, C amber and D emerald are recommended
-accent presets over one continuous HSV color system. The desktop composition
+accent presets over the continuous HSV engine in the shared
+`Jarvis.VisualEffects` library. The desktop composition
 contains no peripheral controls or illustrations; a future external device
 bridge may consume the same RGB frame without becoming a Shell dependency.
 
@@ -34,11 +35,13 @@ only, not the future VFX editor. Deterministic 1600x900 renders and the latest
 source/implementation comparison pass for the approved style-only scope.
 Neither path contacts or modifies the live Shell.
 
-The platform-neutral `neural-void-global-vfx-v1` contract now defines 30 typed
+The platform-neutral `Jarvis.VisualEffects` library and
+`neural-void-global-vfx-v1` contract now define 30 typed
 parameters across five particle modules and five ordered post effects, plus
-three bounded quality profiles. The Win10 RGB model compiles and fail-closed
-tests that vocabulary. Every node remains disabled, the GPU backend is
-unselected, and no renderer or parameter editor is implemented. See
+three bounded quality profiles. The Win10 RGB model is the first consumer and
+compiles the versioned inert preset plus the shared semantic visual frame in
+fail-closed tests. Every node remains disabled, the GPU backend is unselected,
+and no renderer or parameter editor is implemented. See
 `docs/NEURAL-VOID-GLOBAL-VFX-CONTRACT.md`.
 
 The owned `Jarvis.Win10.NativeStyleProbe` now consumes the same RGB frame for

@@ -3,8 +3,10 @@
 `config/neural-void-global-vfx-contract.json` is the platform-neutral
 authoring contract for the future Neural Void particle system and
 post-processing compositor. It is shared by the Win10 and Win11 directions.
-The current Win10 theme model embeds and compiles the contract, but no renderer
-or editor is enabled.
+`src/common/Jarvis.VisualEffects` owns the pure .NET data model, RGB sampler,
+visual-signal frame, contract compiler and inert-preset compiler. The current
+Win10 theme model embeds the JSON inputs and acts as the first diagnostic
+consumer, but no renderer or editor is enabled.
 
 The design follows the parameter vocabulary used by 3D film tools and game
 engines:
@@ -58,6 +60,31 @@ These nodes define adjustable capability, not an approved visible preset.
 Before any renderer or parameter UI changes the desktop appearance, four
 visual proposals must be reviewed with the user.
 
+## Shared visual signal
+
+`jarvis-visual-signal-v1` is the cross-version frame boundary. It carries a
+monotonic sequence, phase, tempo, transition value and the current RGB accent
+in linear sRGB. Its ordered semantic channels are `accent`, `active`, `pulse`,
+`warning` and `fault`.
+
+Accent, active and pulse are derived from the same continuous RGB frame.
+Warning and fault use isolated safety colors so a custom hue cannot make a
+fault indistinguishable from normal activity. Invalid timing, color, channel
+or device-I/O data compiles to an all-zero inactive frame.
+
+## Versioned inert preset
+
+`config/neural-void-vfx-preset.json` is schema version 1 of the first preset
+data boundary. It selects the balanced quality vocabulary and records 15
+typed overrides across the ten modules, but all ten modules are disabled,
+runtime execution is false and physical-device I/O is false.
+
+The compiler admits only the current schema version. Unknown versions are
+reported as requiring an explicit migration and resolve to a blocked,
+inactive preset; there is no best-effort execution. Unknown parameters,
+out-of-range values, enabled modules and quality-budget overflow are also
+rejected.
+
 ## Render order and quality
 
 The contract fixes four composition stages: background particles, retained
@@ -94,6 +121,9 @@ The compiler rejects:
 - enum defaults outside their option set;
 - local fixed-color bindings;
 - live Shell, device or component-local effect capabilities.
+- unknown preset schema versions or parameter IDs;
+- enabled preset modules and preset values outside their typed bounds;
+- malformed visual-signal channels or RGB/safety-color drift.
 
 The current milestone is ready only for an owned-process renderer prototype.
 It cannot mutate Explorer, activate a Shell module or control physical

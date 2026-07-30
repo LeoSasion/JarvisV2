@@ -1,8 +1,8 @@
 using System.Text.Json;
 
-namespace Jarvis.Win10.RgbThemeModel;
+namespace Jarvis.VisualEffects;
 
-internal sealed record VfxContractDocument(
+public sealed record VfxContractDocument(
     int SchemaVersion,
     string ContractId,
     string[] PlatformScope,
@@ -20,29 +20,29 @@ internal sealed record VfxContractDocument(
     VfxModule[] PostEffects,
     VfxCapabilities Capabilities);
 
-internal sealed record VfxClock(
+public sealed record VfxClock(
     string Mode,
     int FixedStepHz,
     bool DeterministicSeedRequired);
 
-internal sealed record VfxOrderedEntry(
+public sealed record VfxOrderedEntry(
     string Id,
     int Order);
 
-internal sealed record VfxQualityProfile(
+public sealed record VfxQualityProfile(
     string Id,
     int MaxParticles,
     int MaxTrailPoints,
     int MaxPostPasses);
 
-internal sealed record VfxModule(
+public sealed record VfxModule(
     string Id,
     string Stage,
     int Order,
     bool EnabledByDefault,
     VfxParameterDefinition[] Parameters);
 
-internal sealed record VfxParameterDefinition(
+public sealed record VfxParameterDefinition(
     string Id,
     string ValueType,
     double? MinimumValue,
@@ -52,14 +52,14 @@ internal sealed record VfxParameterDefinition(
     string[] Options,
     string ColorBinding);
 
-internal sealed record VfxCapabilities(
+public sealed record VfxCapabilities(
     string GpuBackend,
     string SoftwareReference,
     bool ComponentLocalEffects,
     bool LiveShellIntegration,
     bool PhysicalDeviceIo);
 
-internal sealed record VfxCompilationReceipt(
+public sealed record VfxCompilationReceipt(
     int SchemaVersion,
     string ReceiptType,
     string Result,
@@ -82,12 +82,12 @@ internal sealed record VfxCompilationReceipt(
     bool MutationPerformed,
     IReadOnlyList<string> Failures);
 
-internal sealed record VfxScenarioResult(
+public sealed record VfxScenarioResult(
     string Name,
     bool Passed,
     string Detail);
 
-internal sealed record VfxModelTestReceipt(
+public sealed record VfxModelTestReceipt(
     int SchemaVersion,
     string ReceiptType,
     string Result,
@@ -102,7 +102,7 @@ internal sealed record VfxModelTestReceipt(
     bool MutationPerformed,
     IReadOnlyList<VfxScenarioResult> Scenarios);
 
-internal static class VfxContractCompiler
+public static class VfxContractCompiler
 {
     private const string ContractId = "neural-void-global-vfx-v1";
     private const string SharedRgbFrame = "shared-rgb-frame";

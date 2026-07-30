@@ -11,6 +11,8 @@ $sourceRoot = Join-Path $root (
     'src\platforms\windows10\Jarvis.Win10.NeuralVoidPreview')
 $modelRoot = Join-Path $root (
     'src\platforms\windows10\Jarvis.Win10.RgbThemeModel')
+$visualEffectsRoot = Join-Path $root (
+    'src\common\Jarvis.VisualEffects')
 $projectPath = Join-Path $sourceRoot (
     'Jarvis.Win10.NeuralVoidPreview.csproj')
 $surfacePath = Join-Path $sourceRoot (
@@ -46,7 +48,11 @@ function Add-Check {
 }
 
 $sourceText = @(
-    foreach ($currentSourceRoot in @($sourceRoot, $modelRoot)) {
+    foreach ($currentSourceRoot in @(
+        $sourceRoot,
+        $modelRoot,
+        $visualEffectsRoot
+    )) {
         Get-ChildItem -LiteralPath $currentSourceRoot -File -Recurse |
             Where-Object Extension -In @('.cs', '.csproj', '.xaml') |
             Sort-Object FullName |

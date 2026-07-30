@@ -225,19 +225,6 @@ internal sealed record ThemeCompilationReceipt(
     bool MutationPerformed,
     IReadOnlyList<string> Failures);
 
-public sealed record RgbFrame(
-    int ContractVersion,
-    string EffectId,
-    double Phase,
-    double HueDegrees,
-    double Saturation,
-    double Value,
-    double BrightnessScale,
-    byte Red,
-    byte Green,
-    byte Blue,
-    string Hex);
-
 internal sealed record ModelScenarioResult(
     string Name,
     bool Passed,

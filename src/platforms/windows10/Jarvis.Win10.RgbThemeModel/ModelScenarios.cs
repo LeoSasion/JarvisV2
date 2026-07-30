@@ -1,3 +1,5 @@
+using Jarvis.VisualEffects;
+
 namespace Jarvis.Win10.RgbThemeModel;
 
 internal static class ModelScenarios

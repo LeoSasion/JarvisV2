@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Jarvis.VisualEffects;
 
 namespace Jarvis.Win10.RgbThemeModel;
 
@@ -6,9 +7,12 @@ internal static class VfxContractScenarios
 {
     private const string ContractHash =
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    private const string PresetHash =
+        "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
 
     public static VfxModelTestReceipt Run(
-        VfxContractDocument contract)
+        VfxContractDocument contract,
+        VfxPresetDocument preset)
     {
         List<VfxScenarioResult> scenarios = [];
 
@@ -186,6 +190,197 @@ internal static class VfxContractScenarios
                     },
                 },
                 "vfx-capability-boundary-invalid"));
+        Add(
+            scenarios,
+            "canonical-inert-preset-compiles",
+            () => CompilePreset(
+                contract,
+                preset).Result == "compiled-inert-preset");
+        Add(
+            scenarios,
+            "invalid-preset-source-hash-rejected",
+            () => VfxPresetCompiler.Compile(
+                    contract,
+                    ContractHash,
+                    preset,
+                    "not-a-sha256")
+                .Failures.Contains(
+                    "vfx-preset-source-hash-invalid",
+                    StringComparer.Ordinal));
+        Add(
+            scenarios,
+            "unknown-preset-version-fails-closed",
+            () => HasPresetFailure(
+                contract,
+                preset with { SchemaVersion = 2 },
+                "vfx-preset-schema-version-unsupported:2"));
+        Add(
+            scenarios,
+            "enabled-preset-module-rejected",
+            () => HasPresetFailure(
+                contract,
+                ReplacePresetParticleModule(
+                    preset,
+                    "emission",
+                    module => module with { Enabled = true }),
+                "vfx-preset-module-activation-forbidden"));
+        Add(
+            scenarios,
+            "unknown-preset-parameter-rejected",
+            () => HasPresetFailure(
+                contract,
+                ReplacePresetParticleModule(
+                    preset,
+                    "motion",
+                    module => module with
+                    {
+                        ParameterOverrides =
+                            new Dictionary<string, JsonElement>(
+                                module.ParameterOverrides,
+                                StringComparer.Ordinal)
+                            {
+                                ["unreviewed-force"] = Number(1),
+                            },
+                    }),
+                "vfx-preset-parameter-unknown:" +
+                "motion:unreviewed-force"));
+        Add(
+            scenarios,
+            "preset-parameter-overflow-rejected",
+            () => HasPresetFailure(
+                contract,
+                ReplacePresetParticleModule(
+                    preset,
+                    "emission",
+                    module => module with
+                    {
+                        ParameterOverrides =
+                            new Dictionary<string, JsonElement>(
+                                module.ParameterOverrides,
+                                StringComparer.Ordinal)
+                            {
+                                ["max-particles"] = Number(9000),
+                            },
+                    }),
+                "vfx-preset-parameter-invalid:" +
+                "emission:max-particles"));
+        Add(
+            scenarios,
+            "preset-device-io-rejected",
+            () => HasPresetFailure(
+                contract,
+                preset with { PhysicalDeviceIo = true },
+                "vfx-preset-offline-boundary-invalid"));
+        Add(
+            scenarios,
+            "malformed-contract-blocks-preset-without-execution",
+            () => HasPresetFailure(
+                contract with
+                {
+                    QualityProfiles =
+                    [
+                        contract.QualityProfiles[0],
+                        contract.QualityProfiles[0],
+                        contract.QualityProfiles[2],
+                    ],
+                },
+                preset,
+                "vfx-preset-contract-not-admitted"));
+        Add(
+            scenarios,
+            "duplicate-preset-module-rejected",
+            () => HasPresetFailure(
+                contract,
+                preset with
+                {
+                    ParticleModules =
+                    [
+                        preset.ParticleModules[0],
+                        preset.ParticleModules[0],
+                        .. preset.ParticleModules.Skip(2),
+                    ],
+                },
+                "vfx-preset-particle-module-set-invalid"));
+
+        RgbFrame accent =
+            RgbEffectEngine.Sample(
+                156.235294,
+                1.0,
+                1.0,
+                "signal-pulse",
+                0.25);
+        VisualSignalFrame signal =
+            VisualSignalFrameFactory.Create(
+                42,
+                12.5,
+                120.0,
+                0.5,
+                accent);
+        Add(
+            scenarios,
+            "canonical-shared-visual-signal-compiles",
+            () => VisualSignalFrameCompiler.Compile(signal).Result ==
+                "admitted-owned-process-frame");
+        Add(
+            scenarios,
+            "visual-signal-device-io-rejected",
+            () => HasSignalFailure(
+                signal with { DeviceIoRequested = true },
+                "visual-signal-device-io-forbidden"));
+        Add(
+            scenarios,
+            "visual-signal-accent-drift-rejected",
+            () => HasSignalFailure(
+                ReplaceSignalChannel(
+                    signal,
+                    "active",
+                    channel => channel with
+                    {
+                        Color = new LinearRgbColor(0.0, 0.0, 0.0),
+                    }),
+                "visual-signal-shared-accent-invalid"));
+        Add(
+            scenarios,
+            "visual-signal-accent-encoding-rejected",
+            () => HasSignalFailure(
+                signal with
+                {
+                    Accent = signal.Accent with
+                    {
+                        Red = 0,
+                        Hex = "#000000",
+                    },
+                },
+                "visual-signal-accent-encoding-invalid"));
+        Add(
+            scenarios,
+            "visual-signal-safety-color-drift-rejected",
+            () => HasSignalFailure(
+                ReplaceSignalChannel(
+                    signal,
+                    "warning",
+                    channel => channel with
+                    {
+                        Color = new LinearRgbColor(0.0, 1.0, 0.0),
+                    }),
+                "visual-signal-safety-color-invalid"));
+        Add(
+            scenarios,
+            "invalid-visual-signal-resolves-inactive",
+            () =>
+            {
+                VisualSignalCompilationReceipt receipt =
+                    VisualSignalFrameCompiler.Compile(
+                        signal with { TempoBpm = 481.0 });
+                return
+                    receipt.Result == "blocked-inactive-frame" &&
+                    receipt.Failures.Contains(
+                        "visual-signal-timing-invalid",
+                        StringComparer.Ordinal) &&
+                    receipt.SafeFrame.Accent.Hex == "#000000" &&
+                    receipt.SafeFrame.SemanticChannels.All(channel =>
+                        channel.Intensity == 0.0);
+            });
 
         int passedCount =
             scenarios.Count(scenario => scenario.Passed);
@@ -213,6 +408,30 @@ internal static class VfxContractScenarios
         VfxContractDocument contract,
         string failure) =>
         Compile(contract).Failures.Contains(
+            failure,
+            StringComparer.Ordinal);
+
+    private static VfxPresetCompilationReceipt CompilePreset(
+        VfxContractDocument contract,
+        VfxPresetDocument preset) =>
+        VfxPresetCompiler.Compile(
+            contract,
+            ContractHash,
+            preset,
+            PresetHash);
+
+    private static bool HasPresetFailure(
+        VfxContractDocument contract,
+        VfxPresetDocument preset,
+        string failure) =>
+        CompilePreset(contract, preset).Failures.Contains(
+            failure,
+            StringComparer.Ordinal);
+
+    private static bool HasSignalFailure(
+        VisualSignalFrame frame,
+        string failure) =>
+        VisualSignalFrameCompiler.Compile(frame).Failures.Contains(
             failure,
             StringComparer.Ordinal);
 
@@ -268,6 +487,34 @@ internal static class VfxContractScenarios
                                         : parameter)
                                 .ToArray(),
                         })
+                .ToArray(),
+        };
+
+    private static VfxPresetDocument ReplacePresetParticleModule(
+        VfxPresetDocument preset,
+        string moduleId,
+        Func<VfxPresetModule, VfxPresetModule> mutate) =>
+        preset with
+        {
+            ParticleModules = preset.ParticleModules
+                .Select(module =>
+                    module.Id == moduleId
+                        ? mutate(module)
+                        : module)
+                .ToArray(),
+        };
+
+    private static VisualSignalFrame ReplaceSignalChannel(
+        VisualSignalFrame frame,
+        string channelId,
+        Func<SemanticVisualColor, SemanticVisualColor> mutate) =>
+        frame with
+        {
+            SemanticChannels = frame.SemanticChannels
+                .Select(channel =>
+                    channel.Id == channelId
+                        ? mutate(channel)
+                        : channel)
                 .ToArray(),
         };
 

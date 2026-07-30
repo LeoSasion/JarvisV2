@@ -9,6 +9,8 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $sourceRoot = Join-Path $root (
     'src\platforms\windows10\Jarvis.Win10.RgbThemeModel')
+$sharedSourceRoot = Join-Path $root (
+    'src\common\Jarvis.VisualEffects')
 $projectPath = Join-Path $sourceRoot (
     'Jarvis.Win10.RgbThemeModel.csproj')
 $themePath = Join-Path $root (
@@ -19,6 +21,10 @@ $vfxPath = Join-Path $root (
     'config\neural-void-global-vfx-contract.json')
 $vfxSchemaPath = Join-Path $root (
     'config\neural-void-global-vfx-contract.schema.json')
+$vfxPresetPath = Join-Path $root (
+    'config\neural-void-vfx-preset.json')
+$vfxPresetSchemaPath = Join-Path $root (
+    'config\neural-void-vfx-preset.schema.json')
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()
@@ -52,13 +58,21 @@ $vfx =
 $vfxSchema =
     Get-Content -LiteralPath $vfxSchemaPath -Raw |
         ConvertFrom-Json
+$vfxPreset =
+    Get-Content -LiteralPath $vfxPresetPath -Raw |
+        ConvertFrom-Json
+$vfxPresetSchema =
+    Get-Content -LiteralPath $vfxPresetSchemaPath -Raw |
+        ConvertFrom-Json
 $sourceText = @(
-    Get-ChildItem -LiteralPath $sourceRoot -File -Recurse |
-        Where-Object Extension -In @('.cs', '.csproj') |
-        Sort-Object FullName |
-        ForEach-Object {
-            [IO.File]::ReadAllText($_.FullName)
-        }
+    foreach ($currentSourceRoot in @($sourceRoot, $sharedSourceRoot)) {
+        Get-ChildItem -LiteralPath $currentSourceRoot -File -Recurse |
+            Where-Object Extension -In @('.cs', '.csproj') |
+            Sort-Object FullName |
+            ForEach-Object {
+                [IO.File]::ReadAllText($_.FullName)
+            }
+    }
 ) -join [Environment]::NewLine
 
 Add-Check `
@@ -251,6 +265,47 @@ Add-Check `
         'while its renderer, editor, local effects, Shell and device paths ' +
         'remain disabled.')
 
+$allPresetModules =
+    @($vfxPreset.particleModules) + @($vfxPreset.postEffects)
+Add-Check `
+    -Name 'vfx.versioned-inert-preset' `
+    -Passed (
+        $vfxPreset.schemaVersion -eq 1 -and
+        $vfxPreset.presetId -eq
+            'neural-void-inert-foundation-v1' -and
+        $vfxPreset.contractId -eq
+            'neural-void-global-vfx-v1' -and
+        $vfxPreset.lifecycleState -eq
+            'inert-parameter-preset' -and
+        $vfxPreset.visualSignalBinding -eq
+            'jarvis-visual-signal-v1' -and
+        -not $vfxPreset.runtimeEnabled -and
+        -not $vfxPreset.physicalDeviceIo -and
+        @($allPresetModules).Count -eq 10 -and
+        @($allPresetModules | Where-Object enabled).Count -eq 0 -and
+        $vfxPresetSchema.properties.schemaVersion.const -eq 1 -and
+        $vfxPresetSchema.properties.runtimeEnabled.const -eq $false -and
+        $vfxPresetSchema.properties.physicalDeviceIo.const -eq $false -and
+        $vfxPresetSchema.'$defs'.module.properties.enabled.const -eq
+            $false) `
+    -Detail (
+        'The versioned starter preset may preserve reviewed parameter ' +
+        'values, but every particle, post effect and physical-device path ' +
+        'must remain inert.')
+
+Add-Check `
+    -Name 'source.shared-cross-version-visual-library' `
+    -Passed (
+        $sourceText.Contains(
+            'src\common\Jarvis.VisualEffects') -or
+        ($sourceText.Contains('Jarvis.VisualEffects.csproj') -and
+         $sourceText.Contains('namespace Jarvis.VisualEffects;') -and
+         $sourceText.Contains('public sealed record VisualSignalFrame') -and
+         $sourceText.Contains('public static class VfxPresetCompiler'))) `
+    -Detail (
+        'RGB sampling, visual signal frames and VFX contract/preset ' +
+        'validation must live in the reviewed Win10/Win11 common library.')
+
 Add-Check `
     -Name 'theme.no-peripherals-inside-desktop' `
     -Passed (
@@ -398,6 +453,39 @@ if ($buildExitCode -eq 0) {
             "VFX compile exit $vfxCompileExitCode; parameters " +
             "$($vfxCompileReceipt.parameterCount).")
 
+    $vfxPresetOutput = @(
+        & $DotnetPath $assemblyPath compile-vfx-preset 2>&1
+    )
+    $vfxPresetExitCode = $LASTEXITCODE
+    $vfxPresetReceipt = $null
+    try {
+        $vfxPresetReceipt =
+            ($vfxPresetOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $vfxPresetReceipt = $null
+    }
+    Add-Check `
+        -Name 'vfx.inert-preset-compilation' `
+        -Passed (
+            $vfxPresetExitCode -eq 0 -and
+            $null -ne $vfxPresetReceipt -and
+            $vfxPresetReceipt.result -eq
+                'compiled-inert-preset' -and
+            $vfxPresetReceipt.overrideCount -eq 15 -and
+            $vfxPresetReceipt.allModulesDisabled -and
+            $vfxPresetReceipt.sharedVisualSignalValidated -and
+            -not $vfxPresetReceipt.runtimeEnabled -and
+            -not $vfxPresetReceipt.physicalDeviceIo -and
+            -not $vfxPresetReceipt.readyForShellMutation -and
+            -not $vfxPresetReceipt.activationPermitted -and
+            $vfxPresetReceipt.liveExplorer -eq 'not-run' -and
+            -not $vfxPresetReceipt.mutationPerformed) `
+        -Detail (
+            "VFX preset exit $vfxPresetExitCode; overrides " +
+            "$($vfxPresetReceipt.overrideCount).")
+
     $vfxTestOutput = @(
         & $DotnetPath $assemblyPath test-vfx 2>&1
     )
@@ -417,7 +505,7 @@ if ($buildExitCode -eq 0) {
             $vfxTestExitCode -eq 0 -and
             $null -ne $vfxTestReceipt -and
             $vfxTestReceipt.result -eq 'passed' -and
-            $vfxTestReceipt.scenarioCount -ge 15 -and
+            $vfxTestReceipt.scenarioCount -ge 26 -and
             $vfxTestReceipt.passedCount -eq
                 $vfxTestReceipt.scenarioCount -and
             -not $vfxTestReceipt.runtimeEnabled -and
@@ -442,6 +530,8 @@ $passed = $failures.Count -eq 0
     desktopContainsDeviceUi = $false
     readyForOwnedProcessPreview = $passed
     globalVfxParameterContractCompiled = $passed
+    sharedVisualSignalContractCompiled = $passed
+    inertVfxPresetCompiled = $passed
     globalVfxRuntimeEnabled = $false
     globalVfxEditorImplemented = $false
     readyForShellMutation = $false

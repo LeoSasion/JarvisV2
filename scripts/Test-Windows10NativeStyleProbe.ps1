@@ -14,6 +14,8 @@ $admissionRoot = Join-Path $root (
     'src\platforms\windows10\Jarvis.Win10.HostAdmission')
 $rgbModelRoot = Join-Path $root (
     'src\platforms\windows10\Jarvis.Win10.RgbThemeModel')
+$visualEffectsRoot = Join-Path $root (
+    'src\common\Jarvis.VisualEffects')
 $projectPath = Join-Path $sourceRoot (
     'Jarvis.Win10.NativeStyleProbe.csproj')
 $profilePath = Join-Path $root 'config\windows10-host-profiles.json'
@@ -46,7 +48,8 @@ $sourceText = @(
     foreach ($currentSourceRoot in @(
         $sourceRoot,
         $admissionRoot,
-        $rgbModelRoot
+        $rgbModelRoot,
+        $visualEffectsRoot
     )) {
         Get-ChildItem -LiteralPath $currentSourceRoot -File -Recurse |
             Where-Object Extension -In @('.cs', '.xaml', '.csproj') |

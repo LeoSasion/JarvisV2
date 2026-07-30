@@ -10,7 +10,8 @@
         "Jarvis.ControlCenter",
         "Jarvis.DesktopStyleProbe",
         "Jarvis.DesktopStyleSession",
-        "Jarvis.PiAgentHost"
+        "Jarvis.PiAgentHost",
+        "Jarvis.VisualEffects"
     ]
   },
   "platforms": [

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Jarvis.VisualEffects;
 
 namespace Jarvis.Win10.RgbThemeModel;
 
@@ -54,10 +55,32 @@ internal static class Program
         {
             EmbeddedVfxContract vfx =
                 EmbeddedVfxContractReader.Read();
+            EmbeddedVfxPreset preset =
+                EmbeddedVfxPresetReader.Read();
             VfxModelTestReceipt receipt =
-                VfxContractScenarios.Run(vfx.Document);
+                VfxContractScenarios.Run(
+                    vfx.Document,
+                    preset.Document);
             Write(receipt);
             return receipt.Result == "passed" ? 0 : 12;
+        }
+
+        if (args.Length == 1 && args[0] == "compile-vfx-preset")
+        {
+            EmbeddedVfxContract vfx =
+                EmbeddedVfxContractReader.Read();
+            EmbeddedVfxPreset preset =
+                EmbeddedVfxPresetReader.Read();
+            VfxPresetCompilationReceipt receipt =
+                VfxPresetCompiler.Compile(
+                    vfx.Document,
+                    vfx.Sha256,
+                    preset.Document,
+                    preset.Sha256);
+            Write(receipt);
+            return receipt.Result == "compiled-inert-preset"
+                ? 0
+                : 12;
         }
 
         if (args.Length == 6 && args[0] == "sample")
@@ -92,7 +115,7 @@ internal static class Program
 
         Console.Error.WriteLine(
             "Usage: jarvis-win10-rgb-theme-model " +
-            "<compile|test|compile-vfx|test-vfx> " +
+            "<compile|test|compile-vfx|compile-vfx-preset|test-vfx> " +
             "or sample <hue> <saturation> <value> <effect> <phase>");
         return 2;
     }

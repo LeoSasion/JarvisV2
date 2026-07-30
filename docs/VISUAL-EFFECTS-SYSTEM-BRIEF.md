@@ -146,14 +146,20 @@ device SDK cannot reduce desktop responsiveness.
 
 ## Current implementation boundary
 
-The next nonvisual foundation may define:
+The nonvisual foundation now implements:
 
-- the shared visual frame state and semantic color channels;
-- typed parameter metadata and validated preset data;
-- backend-neutral point/line/plane commands;
-- disabled post-process slots and performance counters.
+- the `jarvis-visual-signal-v1` frame with linear RGB and ordered semantic
+  color channels;
+- the platform-neutral `Jarvis.VisualEffects` library used by the Win10
+  diagnostic consumer and available to a future Win11 renderer;
+- typed particle/post parameter metadata plus schema-versioned inert preset
+  data;
+- deterministic fixed-step, seed and quality-profile contracts;
+- fail-closed compilation to an inactive frame or preset when input is
+  unsupported.
 
-It must not yet:
+Backend-neutral retained point/line/plane command buffers, render counters and
+an actual compositor remain future work. The current implementation must not:
 
 - enable glow, particles or post-processing in the product UI;
 - add decorative mouse or keyboard objects to the screen;

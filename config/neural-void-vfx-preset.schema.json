@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis2.local/schemas/neural-void-vfx-preset.schema.json",
+  "title": "JARVIS2 Neural Void inert VFX preset",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "presetId",
+    "revision",
+    "contractId",
+    "lifecycleState",
+    "qualityProfile",
+    "deterministicSeed",
+    "visualSignalBinding",
+    "runtimeEnabled",
+    "physicalDeviceIo",
+    "particleModules",
+    "postEffects"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "presetId": {
+      "const": "neural-void-inert-foundation-v1"
+    },
+    "revision": {
+      "const": 1
+    },
+    "contractId": {
+      "const": "neural-void-global-vfx-v1"
+    },
+    "lifecycleState": {
+      "const": "inert-parameter-preset"
+    },
+    "qualityProfile": {
+      "enum": [
+        "low-power",
+        "balanced",
+        "cinematic-preview"
+      ]
+    },
+    "deterministicSeed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "visualSignalBinding": {
+      "const": "jarvis-visual-signal-v1"
+    },
+    "runtimeEnabled": {
+      "const": false
+    },
+    "physicalDeviceIo": {
+      "const": false
+    },
+    "particleModules": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/module"
+      }
+    },
+    "postEffects": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/module"
+      }
+    }
+  },
+  "$defs": {
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "enabled",
+        "parameterOverrides"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enabled": {
+          "const": false
+        },
+        "parameterOverrides": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "number",
+              "string",
+              "array"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

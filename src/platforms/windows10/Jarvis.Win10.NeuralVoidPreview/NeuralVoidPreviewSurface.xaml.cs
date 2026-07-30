@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Jarvis.VisualEffects;
 using Jarvis.Win10.RgbThemeModel;
 
 namespace Jarvis.Win10.NeuralVoidPreview;

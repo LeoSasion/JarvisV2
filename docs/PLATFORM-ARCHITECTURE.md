@@ -31,7 +31,8 @@ create churn without improving backend separation.
 - `Jarvis.ControlCenter`;
 - `Jarvis.DesktopStyleProbe`;
 - `Jarvis.DesktopStyleSession`;
-- `Jarvis.PiAgentHost`.
+- `Jarvis.PiAgentHost`;
+- `Jarvis.VisualEffects`.
 
 These projects keep their existing namespaces and assembly names. “Common”
 means they are candidates for both Windows 10 and Windows 11, not that every
@@ -65,9 +66,12 @@ Explorer. See `docs/PI-AGENT-DESKTOP-HOST.md` and
 Neural Void visual effects use one platform-neutral
 `neural-void-global-vfx-v1` parameter contract for Win10 and Win11. It defines
 the shared particle-module vocabulary, render order, post stack, quality
-budgets and RGB binding while leaving every effect disabled. Platform backends
-may later implement separate renderers against that common contract; the
-contract does not authorize Shell integration. See
+budgets and RGB binding while leaving every effect disabled.
+`Jarvis.VisualEffects` now implements this contract, the RGB sampler, a
+linear-sRGB semantic signal frame and schema-versioned inert preset validation
+without WPF or native Windows dependencies. Platform backends may later
+implement separate renderers against that common contract; the contract does
+not authorize Shell integration. See
 `docs/NEURAL-VOID-GLOBAL-VFX-CONTRACT.md`.
 
 The current Supervisor remains under `src/platforms/windows11` because its
@@ -125,8 +129,9 @@ concepts must be reviewed before that visual boundary can advance. See
 `docs/WINDOWS10-SURFACE-SELECTOR-CANDIDATES.md`.
 
 That visual review selected concept D / Neural Void for the Windows desktop.
-`Jarvis.Win10.RgbThemeModel` now owns its neutral palette, continuous HSV
-accent frames and A/C/D recommended colors. The Windows visual adapter and a
+`Jarvis.Win10.RgbThemeModel` owns its neutral palette and A/C/D recommended
+colors while consuming the common continuous HSV frame engine. The Windows
+visual adapter and a
 future external device-lighting bridge are separate consumers of the same
 frame; Shell behavior never depends on physical-device availability. Keyboard,
 mouse and device controls are intentionally absent from the desktop

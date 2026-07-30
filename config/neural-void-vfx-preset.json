@@ -1,0 +1,95 @@
+{
+  "$schema": "./neural-void-vfx-preset.schema.json",
+  "schemaVersion": 1,
+  "presetId": "neural-void-inert-foundation-v1",
+  "revision": 1,
+  "contractId": "neural-void-global-vfx-v1",
+  "lifecycleState": "inert-parameter-preset",
+  "qualityProfile": "balanced",
+  "deterministicSeed": 20260730,
+  "visualSignalBinding": "jarvis-visual-signal-v1",
+  "runtimeEnabled": false,
+  "physicalDeviceIo": false,
+  "particleModules": [
+    {
+      "id": "emission",
+      "enabled": false,
+      "parameterOverrides": {
+        "spawn-rate": 0,
+        "max-particles": 512
+      }
+    },
+    {
+      "id": "motion",
+      "enabled": false,
+      "parameterOverrides": {
+        "turbulence-strength": 0
+      }
+    },
+    {
+      "id": "lifetime",
+      "enabled": false,
+      "parameterOverrides": {
+        "duration": [
+          0.8,
+          2.4
+        ]
+      }
+    },
+    {
+      "id": "appearance",
+      "enabled": false,
+      "parameterOverrides": {
+        "shape": "point",
+        "blend-mode": "alpha",
+        "color-source": "shared-rgb-frame"
+      }
+    },
+    {
+      "id": "trail",
+      "enabled": false,
+      "parameterOverrides": {
+        "duration": 0
+      }
+    }
+  ],
+  "postEffects": [
+    {
+      "id": "bloom",
+      "enabled": false,
+      "parameterOverrides": {
+        "intensity": 0,
+        "radius": 0
+      }
+    },
+    {
+      "id": "feedback-trails",
+      "enabled": false,
+      "parameterOverrides": {
+        "feedback": 0
+      }
+    },
+    {
+      "id": "chromatic-aberration",
+      "enabled": false,
+      "parameterOverrides": {
+        "amount": 0
+      }
+    },
+    {
+      "id": "displacement",
+      "enabled": false,
+      "parameterOverrides": {
+        "amplitude": 0
+      }
+    },
+    {
+      "id": "color-grade",
+      "enabled": false,
+      "parameterOverrides": {
+        "exposure": 0,
+        "saturation": 1
+      }
+    }
+  ]
+}

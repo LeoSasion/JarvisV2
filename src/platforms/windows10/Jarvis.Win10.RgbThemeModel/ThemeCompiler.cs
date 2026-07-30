@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Jarvis.VisualEffects;
 
 namespace Jarvis.Win10.RgbThemeModel;
 

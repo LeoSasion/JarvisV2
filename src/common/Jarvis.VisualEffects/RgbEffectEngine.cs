@@ -1,7 +1,28 @@
-namespace Jarvis.Win10.RgbThemeModel;
+namespace Jarvis.VisualEffects;
+
+public sealed record RgbFrame(
+    int ContractVersion,
+    string EffectId,
+    double Phase,
+    double HueDegrees,
+    double Saturation,
+    double Value,
+    double BrightnessScale,
+    byte Red,
+    byte Green,
+    byte Blue,
+    string Hex);
 
 public static class RgbEffectEngine
 {
+    private static readonly IReadOnlySet<string> SupportedEffects =
+        new HashSet<string>(
+            ["static", "breathe", "spectrum", "signal-pulse"],
+            StringComparer.Ordinal);
+
+    public static bool IsSupportedEffect(string effectId) =>
+        SupportedEffects.Contains(effectId);
+
     public static RgbFrame Sample(
         double hueDegrees,
         double saturation,
@@ -9,7 +30,7 @@ public static class RgbEffectEngine
         string effectId,
         double phase)
     {
-        if (!ThemeContract.RequiredEffects.ContainsKey(effectId))
+        if (!IsSupportedEffect(effectId))
         {
             throw new ArgumentOutOfRangeException(
                 nameof(effectId),
