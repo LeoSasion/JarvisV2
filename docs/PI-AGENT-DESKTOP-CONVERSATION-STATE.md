@@ -55,6 +55,14 @@ The presentation layer retains at most 128 terminal turns and 262,144
 assistant characters per turn. Old terminal turns are removed before a new
 turn is admitted. The single active turn is never evicted.
 
+`ExportCheckpoint` creates a separate resume boundary from that presentation
+retention. It selects a newest-first contiguous suffix of completed turns, then
+returns them in conversational order. A checkpoint is limited to 32
+user/assistant pairs, 32,768 serialized UTF-8 bytes and 16,384 UTF-8 bytes per
+text field. Failed, aborted, active and tool-event payloads are never exported.
+The turn IDs and final plain text are retained so restored UI state and restored
+Pi model context describe the same conversation.
+
 The adapter also rejects:
 
 - empty or over-limit input;
@@ -68,7 +76,8 @@ The adapter also rejects:
 ## Current boundary
 
 The diagnostic path proves three completed turns, incremental text snapshots,
-a real root-confined `read` tool lifecycle, single-active-turn rejection and a
+a real root-confined `read` tool lifecycle, checkpoint export and context
+restore into a fresh Pi SDK session, single-active-turn rejection and a
 separately aborted turn. It uses the deterministic offline desktop broker:
 credentials are not transported, the Pi sidecar has no model network, and
 Explorer is not touched.

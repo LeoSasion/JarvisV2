@@ -129,6 +129,15 @@ Add-Check `
             262144 -and
         $contract.session.desktopConversationNotificationDispatch -eq
             'captured-synchronization-context' -and
+        $contract.session.desktopConversationCheckpoint -eq
+            'bounded-completed-text-context-restore' -and
+        $contract.session.desktopConversationCheckpointMaxTurns -eq 32 -and
+        $contract.session.desktopConversationCheckpointMaxBytes -eq
+            32768 -and
+        $contract.session.desktopConversationCheckpointMaxTextBytes -eq
+            16384 -and
+        $contract.session.desktopConversationCheckpointPersistence -eq
+            'desktop-owned-external' -and
         $contract.session.desktopRuntimeOwnership -eq
             'desktop-owned-broker-sidecar-session-conversation' -and
         $contract.session.desktopRuntimeShutdown -eq
@@ -213,6 +222,16 @@ Add-Check `
             -eq 262144 -and
         $schema.properties.session.properties.desktopConversationNotificationDispatch.const `
             -eq 'captured-synchronization-context' -and
+        $schema.properties.session.properties.desktopConversationCheckpoint.const `
+            -eq 'bounded-completed-text-context-restore' -and
+        $schema.properties.session.properties.desktopConversationCheckpointMaxTurns.const `
+            -eq 32 -and
+        $schema.properties.session.properties.desktopConversationCheckpointMaxBytes.const `
+            -eq 32768 -and
+        $schema.properties.session.properties.desktopConversationCheckpointMaxTextBytes.const `
+            -eq 16384 -and
+        $schema.properties.session.properties.desktopConversationCheckpointPersistence.const `
+            -eq 'desktop-owned-external' -and
         $schema.properties.session.properties.desktopRuntimeOwnership.const `
             -eq 'desktop-owned-broker-sidecar-session-conversation' -and
         $schema.properties.session.properties.desktopRuntimeShutdown.const `
@@ -337,6 +356,14 @@ Add-Check `
             'MaximumRetainedTurns = 128') -and
         $bridgeSourceText.Contains(
             'MaximumAssistantCharacters = 262_144') -and
+        $bridgeSourceText.Contains(
+            'MaximumCheckpointTurns = 32') -and
+        $bridgeSourceText.Contains(
+            'MaximumCheckpointBytes = 32_768') -and
+        $bridgeSourceText.Contains(
+            'MaximumCheckpointTextBytes = 16_384') -and
+        $bridgeSourceText.Contains('ExportCheckpoint') -and
+        $bridgeSourceText.Contains('conversationCheckpoint') -and
         $bridgeSourceText.Contains(
             'PiAgentConversationSnapshot') -and
         $bridgeSourceText.Contains('SynchronizationContext') -and
@@ -844,13 +871,19 @@ if (-not $StaticOnly) {
             $desktopRuntimeReceipt.runtimeCompositionPassed -and
             $desktopRuntimeReceipt.multiTurnPassed -and
             $desktopRuntimeReceipt.toolRoundTripPassed -and
+            $desktopRuntimeReceipt.checkpointExportPassed -and
+            $desktopRuntimeReceipt.checkpointContextRestorePassed -and
+            $desktopRuntimeReceipt.checkpointAdmissionPassed -and
             $desktopRuntimeReceipt.quiesceClosedSubmission -and
             $desktopRuntimeReceipt.shutdownCancelledActiveTurn -and
             $desktopRuntimeReceipt.orderlyShutdownPassed -and
             $desktopRuntimeReceipt.startupRollbackPassed -and
             $desktopRuntimeReceipt.credentialEnvironmentClean -and
             $desktopRuntimeReceipt.normalBrokerRequestCount -eq 4 -and
+            $desktopRuntimeReceipt.resumeBrokerRequestCount -eq 1 -and
             $desktopRuntimeReceipt.abortBrokerRequestCount -eq 1 -and
+            $desktopRuntimeReceipt.exportedCheckpointTurnCount -eq 3 -and
+            $desktopRuntimeReceipt.restoredCheckpointTurnCount -eq 3 -and
             $desktopRuntimeReceipt.brokerFaultCount -eq 0 -and
             -not $desktopRuntimeReceipt.credentialTransportAllowed -and
             -not $desktopRuntimeReceipt.piSidecarModelNetworkAllowed -and
@@ -936,6 +969,13 @@ $passed = $failures.Count -eq 0
     desktopConversationMaxAssistantCharacters = 262144
     desktopConversationNotificationDispatch =
         'captured-synchronization-context'
+    desktopConversationCheckpoint =
+        'bounded-completed-text-context-restore'
+    desktopConversationCheckpointMaxTurns = 32
+    desktopConversationCheckpointMaxBytes = 32768
+    desktopConversationCheckpointMaxTextBytes = 16384
+    desktopConversationCheckpointPersistence =
+        'desktop-owned-external'
     desktopRuntimeImplemented = $true
     desktopRuntimeOwnership =
         'desktop-owned-broker-sidecar-session-conversation'

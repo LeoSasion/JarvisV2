@@ -15,6 +15,9 @@ import {
 import { fileURLToPath } from "node:url";
 import {
   createReadOnlyAgentSession,
+  maximumCheckpointBytes,
+  maximumCheckpointTextBytes,
+  maximumCheckpointTurns,
 } from "../src/read-only-session.mjs";
 import {
   admitWorkspaceRoot,
@@ -130,6 +133,26 @@ try {
   assert.equal(records[2].data.promptingEnabled, false);
   assert.equal(records[2].data.credentialTransportAllowed, false);
   assert.equal(records[2].data.sessionPersistence, "in-memory");
+  assert.equal(
+    records[2].data.conversationCheckpoint,
+    "bounded-completed-text-context-restore",
+  );
+  assert.equal(
+    records[2].data.conversationCheckpointMaxTurns,
+    32,
+  );
+  assert.equal(
+    records[2].data.conversationCheckpointMaxBytes,
+    32_768,
+  );
+  assert.equal(
+    records[2].data.conversationCheckpointMaxTextBytes,
+    16_384,
+  );
+  assert.equal(
+    records[2].data.conversationCheckpointPersistence,
+    "desktop-owned-external",
+  );
   assert.equal(records[2].data.resourceDiscoveryEnabled, false);
   assert.equal(records[2].data.modelNetworkAllowed, false);
   assert.equal(records[3].command, "hello");
@@ -146,6 +169,11 @@ try {
   );
   assert.equal(records[4].data.sessionPersisted, false);
   assert.equal(records[4].data.promptingEnabled, false);
+  assert.equal(records[4].data.restoredTurnCount, 0);
+  assert.equal(
+    records[4].data.restoredContextMessageCount,
+    0,
+  );
   assert.equal(records[4].data.resourceDiscoveryEnabled, false);
   assert.equal(records[4].data.modelNetworkAllowed, false);
   assert.equal(records[5].success, false);
@@ -172,6 +200,39 @@ try {
       id: "missing-root",
       workspaceRoot: join(temporaryRoot, "missing"),
     }),
+    JSON.stringify({
+      type: "start_session",
+      id: "invalid-checkpoint",
+      workspaceRoot,
+      conversationCheckpoint: {
+        schemaVersion: 1,
+        turns: [
+          {
+            turnId: "duplicate-turn",
+            userText: "First prompt.",
+            assistantText: "First response.",
+          },
+          {
+            turnId: "duplicate-turn",
+            userText: "Second prompt.",
+            assistantText: "Second response.",
+          },
+        ],
+      },
+    }),
+    JSON.stringify({
+      type: "start_session",
+      id: "checkpoint-without-broker",
+      workspaceRoot,
+      conversationCheckpoint: {
+        schemaVersion: 1,
+        turns: [{
+          turnId: "restored-turn",
+          userText: "Restore this prompt.",
+          assistantText: "Restore this response.",
+        }],
+      },
+    }),
     JSON.stringify({ type: "shutdown", id: "invalid-end" }),
   ]);
   assert.equal(invalid.exitCode, 0, invalid.stderr);
@@ -186,6 +247,14 @@ try {
   assert.equal(
     invalid.records[3].error.code,
     "workspace-root-not-found",
+  );
+  assert.equal(
+    invalid.records[4].error.code,
+    "invalid-conversation-checkpoint",
+  );
+  assert.equal(
+    invalid.records[5].error.code,
+    "checkpoint-requires-model-broker",
   );
 
   if (process.platform === "win32") {
@@ -316,6 +385,13 @@ try {
       sessionCreationEnabled: true,
       promptingEnabled: false,
       sessionPersistence: "in-memory",
+      conversationCheckpoint:
+        "bounded-completed-text-context-restore",
+      conversationCheckpointMaxTurns: maximumCheckpointTurns,
+      conversationCheckpointMaxBytes: maximumCheckpointBytes,
+      conversationCheckpointMaxTextBytes:
+        maximumCheckpointTextBytes,
+      checkpointWithoutBrokerRejected: true,
       workspaceBinding: "single-explicit-root",
       protectedRootRejected: true,
       workspaceEscapeRejected: true,

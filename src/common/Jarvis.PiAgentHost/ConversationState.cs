@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace Jarvis.PiAgentHost;
@@ -53,10 +54,22 @@ public sealed record PiAgentConversationTurn(
     string TurnId,
     Task<PiAgentConversationTurnSnapshot> Completion);
 
+public sealed record PiAgentConversationCheckpointTurn(
+    string TurnId,
+    string UserText,
+    string AssistantText);
+
+public sealed record PiAgentConversationCheckpoint(
+    int SchemaVersion,
+    IReadOnlyList<PiAgentConversationCheckpointTurn> Turns);
+
 public sealed class PiAgentConversationState
 {
     public const int MaximumRetainedTurns = 128;
     public const int MaximumAssistantCharacters = 262_144;
+    public const int MaximumCheckpointTurns = 32;
+    public const int MaximumCheckpointBytes = 32_768;
+    public const int MaximumCheckpointTextBytes = 16_384;
 
     private sealed class MutableTool
     {
@@ -84,6 +97,11 @@ public sealed class PiAgentConversationState
     private static readonly Regex TurnIdPattern = new(
         @"\A[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\z",
         RegexOptions.CultureInvariant);
+    private static readonly JsonSerializerOptions
+        CheckpointSerializerOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        };
 
     private readonly object gate = new();
     private readonly PiAgentSidecarController controller;
@@ -99,11 +117,36 @@ public sealed class PiAgentConversationState
 
     public PiAgentConversationState(
         PiAgentSidecarController controller,
-        SynchronizationContext? notificationContext = null)
+        SynchronizationContext? notificationContext = null,
+        PiAgentConversationCheckpoint? checkpoint = null)
     {
         this.controller = controller ??
             throw new ArgumentNullException(nameof(controller));
         this.notificationContext = notificationContext;
+        PiAgentConversationCheckpoint? admittedCheckpoint =
+            AdmitCheckpoint(checkpoint);
+        if (admittedCheckpoint is null)
+        {
+            return;
+        }
+
+        foreach (PiAgentConversationCheckpointTurn restored in
+                 admittedCheckpoint.Turns)
+        {
+            MutableTurn turn = new()
+            {
+                TurnId = restored.TurnId,
+                UserText = restored.UserText,
+                Status = PiAgentConversationTurnStatus.Completed,
+            };
+            turn.AssistantText.Append(restored.AssistantText);
+            turns.Add(turn);
+            RestoreGeneratedTurnSequence(restored.TurnId);
+        }
+        if (turns.Count != 0)
+        {
+            revision = 1;
+        }
     }
 
     public event EventHandler<
@@ -118,6 +161,108 @@ public sealed class PiAgentConversationState
                 return BuildSnapshotLocked();
             }
         }
+    }
+
+    public PiAgentConversationCheckpoint ExportCheckpoint()
+    {
+        lock (gate)
+        {
+            PiAgentConversationCheckpointTurn[] completed = turns
+                .Where(turn =>
+                    turn.Status ==
+                        PiAgentConversationTurnStatus.Completed)
+                .Select(turn =>
+                    new PiAgentConversationCheckpointTurn(
+                        turn.TurnId,
+                        turn.UserText,
+                        turn.AssistantText.ToString()))
+                .ToArray();
+            List<PiAgentConversationCheckpointTurn> selected = [];
+            for (
+                int index = completed.Length - 1;
+                index >= 0 &&
+                    selected.Count < MaximumCheckpointTurns;
+                index--)
+            {
+                PiAgentConversationCheckpointTurn candidate =
+                    completed[index];
+                if (
+                    !IsValidCheckpointText(candidate.UserText) ||
+                    !IsValidCheckpointText(candidate.AssistantText))
+                {
+                    break;
+                }
+                selected.Insert(0, candidate);
+                PiAgentConversationCheckpoint draft = new(
+                    1,
+                    selected);
+                if (
+                    GetCheckpointByteCount(draft) >
+                        MaximumCheckpointBytes)
+                {
+                    selected.RemoveAt(0);
+                    break;
+                }
+            }
+            return new PiAgentConversationCheckpoint(
+                1,
+                selected.ToArray());
+        }
+    }
+
+    internal static PiAgentConversationCheckpoint? AdmitCheckpoint(
+        PiAgentConversationCheckpoint? checkpoint)
+    {
+        if (checkpoint is null)
+        {
+            return null;
+        }
+        if (
+            checkpoint.SchemaVersion != 1 ||
+            checkpoint.Turns is null ||
+            checkpoint.Turns.Count > MaximumCheckpointTurns)
+        {
+            throw new ArgumentException(
+                "Conversation checkpoint schema or turn count is invalid.",
+                nameof(checkpoint));
+        }
+
+        HashSet<string> turnIds = new(StringComparer.Ordinal);
+        List<PiAgentConversationCheckpointTurn> admitted =
+            new(checkpoint.Turns.Count);
+        foreach (PiAgentConversationCheckpointTurn? turn in
+                 checkpoint.Turns)
+        {
+            if (
+                turn is null ||
+                !TurnIdPattern.IsMatch(turn.TurnId) ||
+                !turnIds.Add(turn.TurnId) ||
+                !IsValidCheckpointText(turn.UserText) ||
+                !IsValidCheckpointText(turn.AssistantText))
+            {
+                throw new ArgumentException(
+                    "Conversation checkpoint contains an invalid text turn.",
+                    nameof(checkpoint));
+            }
+            admitted.Add(
+                new PiAgentConversationCheckpointTurn(
+                    turn.TurnId,
+                    turn.UserText,
+                    turn.AssistantText));
+        }
+
+        PiAgentConversationCheckpoint normalized = new(
+            1,
+            admitted.ToArray());
+        if (
+            GetCheckpointByteCount(normalized) >
+                MaximumCheckpointBytes)
+        {
+            throw new ArgumentException(
+                "Conversation checkpoint exceeds its UTF-8 byte limit.",
+                nameof(checkpoint));
+        }
+        return normalized;
     }
 
     public async Task<PiAgentConversationTurn> SubmitAsync(
@@ -562,7 +707,8 @@ public sealed class PiAgentConversationState
     {
         if (
             string.IsNullOrWhiteSpace(text) ||
-            Encoding.UTF8.GetByteCount(text) > 16_384)
+            Encoding.UTF8.GetByteCount(text) >
+                MaximumCheckpointTextBytes)
         {
             throw new ArgumentException(
                 "Conversation text must be 1-16384 UTF-8 bytes.",
@@ -578,6 +724,32 @@ public sealed class PiAgentConversationState
                 "Conversation turn ids must use the admitted 1-128 " +
                 "character identifier grammar.",
                 nameof(turnId));
+        }
+    }
+
+    private static bool IsValidCheckpointText(string? text) =>
+        !string.IsNullOrWhiteSpace(text) &&
+        Encoding.UTF8.GetByteCount(text) <=
+            MaximumCheckpointTextBytes;
+
+    private static int GetCheckpointByteCount(
+        PiAgentConversationCheckpoint checkpoint) =>
+        JsonSerializer.SerializeToUtf8Bytes(
+            checkpoint,
+            CheckpointSerializerOptions).Length;
+
+    private void RestoreGeneratedTurnSequence(string turnId)
+    {
+        const string prefix = "desktop-turn-";
+        if (
+            turnId.StartsWith(prefix, StringComparison.Ordinal) &&
+            int.TryParse(
+                turnId.AsSpan(prefix.Length),
+                out int sequence))
+        {
+            generatedTurnSequence = Math.Max(
+                generatedTurnSequence,
+                sequence);
         }
     }
 }

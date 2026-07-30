@@ -132,6 +132,13 @@ export async function handleRequest(
             sessionCreationEnabled: true,
             promptingEnabled: state.modelBrokerPipe !== null,
             sessionPersistence: "in-memory",
+            conversationCheckpoint:
+              "bounded-completed-text-context-restore",
+            conversationCheckpointMaxTurns: 32,
+            conversationCheckpointMaxBytes: 32_768,
+            conversationCheckpointMaxTextBytes: 16_384,
+            conversationCheckpointPersistence:
+              "desktop-owned-external",
             workspaceBinding: "single-explicit-root",
             resourceDiscoveryEnabled: false,
             modelNetworkAllowed: false,
@@ -157,6 +164,8 @@ export async function handleRequest(
           request.workspaceRoot,
           {
             modelBrokerPipe: state.modelBrokerPipe,
+            conversationCheckpoint:
+              request.conversationCheckpoint,
           },
         );
         return {
@@ -177,6 +186,11 @@ export async function handleRequest(
               modelProvider:
                 state.sessionHandle.modelProvider,
               modelId: state.sessionHandle.modelId,
+              restoredTurnCount:
+                state.sessionHandle.restoredTurnCount,
+              restoredContextMessageCount:
+                state.sessionHandle
+                  .restoredContextMessageCount,
               resourceDiscoveryEnabled: false,
               modelNetworkAllowed: false,
             },

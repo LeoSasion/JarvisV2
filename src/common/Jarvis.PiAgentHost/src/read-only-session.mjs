@@ -33,6 +33,11 @@ import {
 const maximumSearchFiles = 10_000;
 const maximumFileBytes = 1_048_576;
 const maximumOutputBytes = 65_536;
+const maximumCheckpointTurns = 32;
+const maximumCheckpointBytes = 32_768;
+const maximumCheckpointTextBytes = 16_384;
+const checkpointTurnIdPattern =
+  /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 
 function textResult(text) {
   return {
@@ -45,6 +50,131 @@ function throwIfAborted(signal) {
   if (signal?.aborted) {
     throw new Error("Operation aborted");
   }
+}
+
+function hasExactKeys(value, expectedKeys) {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return false;
+  }
+  const actualKeys = Object.keys(value).sort();
+  return (
+    actualKeys.length === expectedKeys.length &&
+    expectedKeys.every((key, index) => key === actualKeys[index])
+  );
+}
+
+function validCheckpointText(value) {
+  return (
+    typeof value === "string" &&
+    value.trim().length > 0 &&
+    Buffer.byteLength(value, "utf8") <= maximumCheckpointTextBytes
+  );
+}
+
+function admitConversationCheckpoint(checkpoint) {
+  if (checkpoint === undefined || checkpoint === null) {
+    return [];
+  }
+  if (
+    !hasExactKeys(checkpoint, ["schemaVersion", "turns"]) ||
+    checkpoint.schemaVersion !== 1 ||
+    !Array.isArray(checkpoint.turns) ||
+    checkpoint.turns.length > maximumCheckpointTurns ||
+    Buffer.byteLength(
+      JSON.stringify(checkpoint),
+      "utf8",
+    ) > maximumCheckpointBytes
+  ) {
+    throw new WorkspacePolicyError(
+      "invalid-conversation-checkpoint",
+      "The desktop conversation checkpoint failed its schema or size boundary.",
+    );
+  }
+
+  const turnIds = new Set();
+  for (const turn of checkpoint.turns) {
+    if (
+      !hasExactKeys(
+        turn,
+        ["assistantText", "turnId", "userText"],
+      ) ||
+      typeof turn.turnId !== "string" ||
+      !checkpointTurnIdPattern.test(turn.turnId) ||
+      turnIds.has(turn.turnId) ||
+      !validCheckpointText(turn.userText) ||
+      !validCheckpointText(turn.assistantText)
+    ) {
+      throw new WorkspacePolicyError(
+        "invalid-conversation-checkpoint",
+        "The desktop conversation checkpoint contains an invalid text turn.",
+      );
+    }
+    turnIds.add(turn.turnId);
+  }
+  return checkpoint.turns.map((turn) => ({ ...turn }));
+}
+
+function emptyCheckpointUsage() {
+  return {
+    input: 0,
+    output: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+    totalTokens: 0,
+    cost: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      total: 0,
+    },
+  };
+}
+
+function seedConversationCheckpoint(
+  sessionManager,
+  checkpointTurns,
+  model,
+) {
+  if (checkpointTurns.length === 0) {
+    return;
+  }
+  if (!model) {
+    throw new WorkspacePolicyError(
+      "checkpoint-requires-model-broker",
+      "Conversation checkpoint restore requires the desktop model broker.",
+    );
+  }
+
+  const firstTimestamp = Math.max(
+    0,
+    Date.now() - checkpointTurns.length * 2,
+  );
+  checkpointTurns.forEach((turn, index) => {
+    const timestamp = firstTimestamp + index * 2;
+    sessionManager.appendMessage({
+      role: "user",
+      content: turn.userText,
+      timestamp,
+    });
+    sessionManager.appendMessage({
+      role: "assistant",
+      content: [{
+        type: "text",
+        text: turn.assistantText,
+      }],
+      api: model.api,
+      provider: model.provider,
+      model: model.id,
+      usage: emptyCheckpointUsage(),
+      stopReason: "stop",
+      timestamp: timestamp + 1,
+    });
+  });
 }
 
 function createInertResourceLoader() {
@@ -421,6 +551,9 @@ export async function createReadOnlyAgentSession(
   workspaceRoot,
   options = {},
 ) {
+  const checkpointTurns = admitConversationCheckpoint(
+    options.conversationCheckpoint,
+  );
   const admission = await admitWorkspaceRoot(workspaceRoot);
   const modelRuntime = await ModelRuntime.create({
     credentials: createCredentialDenyStore(),
@@ -448,6 +581,11 @@ export async function createReadOnlyAgentSession(
   const sessionManager = SessionManager.inMemory(
     admission.canonicalRoot,
   );
+  seedConversationCheckpoint(
+    sessionManager,
+    checkpointTurns,
+    model,
+  );
   const tools = [
     createReadTool(admission),
     createGrepTool(admission),
@@ -469,6 +607,8 @@ export async function createReadOnlyAgentSession(
   const activeTools = result.session.getActiveToolNames();
   const persisted = result.session.sessionManager.isPersisted();
   const promptingEnabled = model !== undefined;
+  const restoredContextMessageCount =
+    checkpointTurns.length * 2;
   const modelBoundaryPreserved = !promptingEnabled || (
     result.session.model?.provider === brokerProviderId &&
     result.session.model?.id === brokerModelId
@@ -476,6 +616,8 @@ export async function createReadOnlyAgentSession(
   if (
     activeTools.join("|") !== "read|grep|find|ls" ||
     persisted ||
+    result.session.messages.length !==
+      restoredContextMessageCount ||
     !modelBoundaryPreserved
   ) {
     result.session.dispose();
@@ -493,5 +635,13 @@ export async function createReadOnlyAgentSession(
     promptingEnabled,
     modelProvider: result.session.model?.provider ?? null,
     modelId: result.session.model?.id ?? null,
+    restoredTurnCount: checkpointTurns.length,
+    restoredContextMessageCount,
   };
 }
+
+export {
+  maximumCheckpointBytes,
+  maximumCheckpointTextBytes,
+  maximumCheckpointTurns,
+};

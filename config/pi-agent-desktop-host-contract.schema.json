@@ -149,6 +149,11 @@
         "desktopConversationRetainedTurns",
         "desktopConversationMaxAssistantCharacters",
         "desktopConversationNotificationDispatch",
+        "desktopConversationCheckpoint",
+        "desktopConversationCheckpointMaxTurns",
+        "desktopConversationCheckpointMaxBytes",
+        "desktopConversationCheckpointMaxTextBytes",
+        "desktopConversationCheckpointPersistence",
         "desktopRuntimeOwnership",
         "desktopRuntimeShutdown",
         "credentialTransport",
@@ -202,6 +207,21 @@
         },
         "desktopConversationNotificationDispatch": {
           "const": "captured-synchronization-context"
+        },
+        "desktopConversationCheckpoint": {
+          "const": "bounded-completed-text-context-restore"
+        },
+        "desktopConversationCheckpointMaxTurns": {
+          "const": 32
+        },
+        "desktopConversationCheckpointMaxBytes": {
+          "const": 32768
+        },
+        "desktopConversationCheckpointMaxTextBytes": {
+          "const": 16384
+        },
+        "desktopConversationCheckpointPersistence": {
+          "const": "desktop-owned-external"
         },
         "desktopRuntimeOwnership": {
           "const": "desktop-owned-broker-sidecar-session-conversation"

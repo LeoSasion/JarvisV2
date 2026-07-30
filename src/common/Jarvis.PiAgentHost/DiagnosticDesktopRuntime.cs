@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 namespace Jarvis.PiAgentHost;
 
@@ -11,13 +12,19 @@ public sealed record PiAgentDesktopRuntimeProbeReceipt(
     bool RuntimeCompositionPassed,
     bool MultiTurnPassed,
     bool ToolRoundTripPassed,
+    bool CheckpointExportPassed,
+    bool CheckpointContextRestorePassed,
+    bool CheckpointAdmissionPassed,
     bool QuiesceClosedSubmission,
     bool ShutdownCancelledActiveTurn,
     bool OrderlyShutdownPassed,
     bool StartupRollbackPassed,
     bool CredentialEnvironmentClean,
     int NormalBrokerRequestCount,
+    int ResumeBrokerRequestCount,
     int AbortBrokerRequestCount,
+    int ExportedCheckpointTurnCount,
+    int RestoredCheckpointTurnCount,
     int BrokerFaultCount,
     bool CredentialTransportAllowed,
     bool PiSidecarModelNetworkAllowed,
@@ -37,9 +44,11 @@ public static class PiAgentDesktopRuntimeProbe
         bool runtimeCompositionPassed;
         bool multiTurnPassed;
         bool toolRoundTripPassed;
+        bool checkpointExportPassed;
         bool normalQuiesceClosedSubmission;
         bool normalShutdownPassed;
         bool normalCredentialEnvironmentClean;
+        PiAgentConversationCheckpoint checkpoint;
 
         DiagnosticDesktopModelProvider normalProvider = new(
             holdResponse: false);
@@ -97,6 +106,20 @@ public static class PiAgentDesktopRuntimeProbe
                 toolFinal.Tools[0].ToolName == "read" &&
                 toolFinal.Tools[0].Status ==
                     PiAgentConversationToolStatus.Completed;
+            checkpoint = runtime.Conversation.ExportCheckpoint();
+            checkpointExportPassed =
+                checkpoint.SchemaVersion == 1 &&
+                checkpoint.Turns.Count == 3 &&
+                checkpoint.Turns.Select(turn => turn.TurnId)
+                    .SequenceEqual([
+                        "runtime-turn-1",
+                        "runtime-turn-2",
+                        "runtime-tool-turn",
+                    ]) &&
+                checkpoint.Turns.All(turn =>
+                    !string.IsNullOrWhiteSpace(turn.UserText) &&
+                    !string.IsNullOrWhiteSpace(
+                        turn.AssistantText));
 
             await runtime.ShutdownAsync(cancellationToken);
             normalShutdownPassed =
@@ -113,6 +136,56 @@ public static class PiAgentDesktopRuntimeProbe
                 runtime.CredentialEnvironmentClean;
             normalBrokerRequestCount = runtime.BrokerRequestCount;
             normalBrokerFaultCount = runtime.BrokerFaultCount;
+        }
+
+        int resumeBrokerRequestCount;
+        int resumeBrokerFaultCount;
+        int restoredCheckpointTurnCount;
+        bool checkpointContextRestorePassed;
+        DiagnosticDesktopModelProvider resumeProvider = new(
+            holdResponse: false);
+        await using (
+            PiAgentDesktopRuntime runtime =
+                await PiAgentDesktopRuntime.StartAsync(
+                    new PiAgentDesktopRuntimeOptions(
+                        sidecarOptions,
+                        workspaceRoot,
+                        checkpoint),
+                    resumeProvider,
+                    cancellationToken: cancellationToken))
+        {
+            PiAgentConversationSnapshot restoredSnapshot =
+                runtime.Conversation.Snapshot;
+            restoredCheckpointTurnCount =
+                restoredSnapshot.Turns.Count;
+            PiAgentConversationTurn resumed =
+                await runtime.Conversation.SubmitAsync(
+                    "Continue after checkpoint restore.",
+                    "runtime-resumed-turn",
+                    cancellationToken);
+            PiAgentConversationTurnSnapshot resumedFinal =
+                await resumed.Completion.WaitAsync(
+                    cancellationToken);
+            checkpointContextRestorePassed =
+                restoredSnapshot.Revision == 1 &&
+                restoredSnapshot.ActiveTurnId is null &&
+                restoredSnapshot.CanSubmit &&
+                !restoredSnapshot.CanCancel &&
+                restoredSnapshot.Turns.Count ==
+                    checkpoint.Turns.Count &&
+                restoredSnapshot.Turns.All(turn =>
+                    turn.Status ==
+                        PiAgentConversationTurnStatus.Completed) &&
+                resumedFinal.Status ==
+                    PiAgentConversationTurnStatus.Completed &&
+                resumeProvider.RequestContexts.Count == 1 &&
+                ContextContainsCheckpoint(
+                    resumeProvider.RequestContexts[0],
+                    checkpoint,
+                    "Continue after checkpoint restore.");
+            await runtime.ShutdownAsync(cancellationToken);
+            resumeBrokerRequestCount = runtime.BrokerRequestCount;
+            resumeBrokerFaultCount = runtime.BrokerFaultCount;
         }
 
         int abortBrokerRequestCount;
@@ -165,15 +238,22 @@ public static class PiAgentDesktopRuntimeProbe
         }
 
         int brokerFaultCount =
-            normalBrokerFaultCount + abortBrokerFaultCount;
+            normalBrokerFaultCount +
+            resumeBrokerFaultCount +
+            abortBrokerFaultCount;
         bool startupRollbackPassed =
             await ProbeStartupRollbackAsync(
                 sidecarOptions,
                 cancellationToken);
+        bool checkpointAdmissionPassed =
+            ProbeCheckpointAdmission();
         bool passed =
             runtimeCompositionPassed &&
             multiTurnPassed &&
             toolRoundTripPassed &&
+            checkpointExportPassed &&
+            checkpointContextRestorePassed &&
+            checkpointAdmissionPassed &&
             normalQuiesceClosedSubmission &&
             shutdownCancelledActiveTurn &&
             abortQuiesceClosedSubmission &&
@@ -183,7 +263,10 @@ public static class PiAgentDesktopRuntimeProbe
             normalCredentialEnvironmentClean &&
             abortCredentialEnvironmentClean &&
             normalBrokerRequestCount == 4 &&
+            resumeBrokerRequestCount == 1 &&
             abortBrokerRequestCount == 1 &&
+            checkpoint.Turns.Count == 3 &&
+            restoredCheckpointTurnCount == 3 &&
             brokerFaultCount == 0;
 
         return new PiAgentDesktopRuntimeProbeReceipt(
@@ -195,6 +278,9 @@ public static class PiAgentDesktopRuntimeProbe
             runtimeCompositionPassed,
             multiTurnPassed,
             toolRoundTripPassed,
+            checkpointExportPassed,
+            checkpointContextRestorePassed,
+            checkpointAdmissionPassed,
             normalQuiesceClosedSubmission &&
                 abortQuiesceClosedSubmission,
             shutdownCancelledActiveTurn,
@@ -203,13 +289,132 @@ public static class PiAgentDesktopRuntimeProbe
             normalCredentialEnvironmentClean &&
                 abortCredentialEnvironmentClean,
             normalBrokerRequestCount,
+            resumeBrokerRequestCount,
             abortBrokerRequestCount,
+            checkpoint.Turns.Count,
+            restoredCheckpointTurnCount,
             brokerFaultCount,
             false,
             false,
             "diagnostic-only",
             "not-run",
             false);
+    }
+
+    private static bool ContextContainsCheckpoint(
+        JsonElement context,
+        PiAgentConversationCheckpoint checkpoint,
+        string currentPrompt)
+    {
+        if (
+            !context.TryGetProperty(
+                "messages",
+                out JsonElement messages) ||
+            messages.ValueKind != JsonValueKind.Array ||
+            messages.GetArrayLength() !=
+                checkpoint.Turns.Count * 2 + 1)
+        {
+            return false;
+        }
+
+        JsonElement[] contextMessages =
+            messages.EnumerateArray().ToArray();
+        for (
+            int index = 0;
+            index < checkpoint.Turns.Count;
+            index++)
+        {
+            PiAgentConversationCheckpointTurn expected =
+                checkpoint.Turns[index];
+            JsonElement user = contextMessages[index * 2];
+            JsonElement assistant =
+                contextMessages[index * 2 + 1];
+            if (
+                user.GetProperty("role").GetString() != "user" ||
+                !MessageTextEquals(
+                    user.GetProperty("content"),
+                    expected.UserText) ||
+                assistant.GetProperty("role").GetString() !=
+                    "assistant" ||
+                !MessageTextEquals(
+                    assistant.GetProperty("content"),
+                    expected.AssistantText))
+            {
+                return false;
+            }
+        }
+
+        JsonElement current = contextMessages[^1];
+        return
+            current.GetProperty("role").GetString() == "user" &&
+            MessageTextEquals(
+                current.GetProperty("content"),
+                currentPrompt);
+    }
+
+    private static bool MessageTextEquals(
+        JsonElement content,
+        string expected)
+    {
+        if (content.ValueKind == JsonValueKind.String)
+        {
+            return content.GetString() == expected;
+        }
+        if (
+            content.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+        string text = string.Concat(
+            content
+                .EnumerateArray()
+                .Where(block =>
+                    block.TryGetProperty(
+                        "type",
+                        out JsonElement type) &&
+                    type.GetString() == "text")
+                .Select(block =>
+                    block.GetProperty("text").GetString()));
+        return text == expected;
+    }
+
+    private static bool ProbeCheckpointAdmission()
+    {
+        PiAgentConversationCheckpointTurn duplicate = new(
+            "duplicate-checkpoint-turn",
+            "Prompt.",
+            "Response.");
+        bool duplicateRejected;
+        try
+        {
+            _ = PiAgentConversationState.AdmitCheckpoint(
+                new PiAgentConversationCheckpoint(
+                    1,
+                    [duplicate, duplicate]));
+            duplicateRejected = false;
+        }
+        catch (ArgumentException)
+        {
+            duplicateRejected = true;
+        }
+
+        bool oversizedRejected;
+        try
+        {
+            _ = PiAgentConversationState.AdmitCheckpoint(
+                new PiAgentConversationCheckpoint(
+                    1,
+                    [new PiAgentConversationCheckpointTurn(
+                        "oversized-checkpoint-turn",
+                        new string('u', 16_384),
+                        new string('a', 16_384))]));
+            oversizedRejected = false;
+        }
+        catch (ArgumentException)
+        {
+            oversizedRejected = true;
+        }
+        return duplicateRejected && oversizedRejected;
     }
 
     private static async Task<bool> ProbeStartupRollbackAsync(

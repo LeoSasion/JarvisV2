@@ -733,12 +733,16 @@ internal sealed class DiagnosticDesktopModelProvider :
     private readonly bool holdResponse;
     private readonly TaskCompletionSource<bool> requestObserved = new(
         TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly ConcurrentQueue<JsonElement> requestContexts = new();
     private int requestSequence;
 
     public DiagnosticDesktopModelProvider(bool holdResponse)
     {
         this.holdResponse = holdResponse;
     }
+
+    public IReadOnlyList<JsonElement> RequestContexts =>
+        requestContexts.ToArray();
 
     public async Task WaitForRequestAsync(
         CancellationToken cancellationToken)
@@ -752,6 +756,7 @@ internal sealed class DiagnosticDesktopModelProvider :
         CancellationToken cancellationToken)
     {
         requestObserved.TrySetResult(true);
+        requestContexts.Enqueue(request.Context.Clone());
         int sequence = Interlocked.Increment(
             ref requestSequence);
         if (holdResponse)

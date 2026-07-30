@@ -73,6 +73,13 @@ export async function inspectPiRuntime(contract) {
     sessionCreationEnabled: true,
     promptingEnabled: false,
     sessionPersistence: "in-memory",
+    conversationCheckpoint:
+      "bounded-completed-text-context-restore",
+    conversationCheckpointMaxTurns: 32,
+    conversationCheckpointMaxBytes: 32_768,
+    conversationCheckpointMaxTextBytes: 16_384,
+    conversationCheckpointPersistence:
+      "desktop-owned-external",
     modelNetworkAllowed: false,
     resourceDiscoveryEnabled: false,
     desktopLaunchImplemented: true,

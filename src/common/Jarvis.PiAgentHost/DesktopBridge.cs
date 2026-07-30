@@ -311,6 +311,19 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         string id,
         CancellationToken cancellationToken)
     {
+        return await StartReadOnlySessionAsync(
+            workspaceRoot,
+            id,
+            conversationCheckpoint: null,
+            cancellationToken);
+    }
+
+    public async Task<JsonDocument> StartReadOnlySessionAsync(
+        string workspaceRoot,
+        string id,
+        PiAgentConversationCheckpoint? conversationCheckpoint,
+        CancellationToken cancellationToken)
+    {
         if (!Path.IsPathFullyQualified(workspaceRoot) ||
             !Directory.Exists(workspaceRoot))
         {
@@ -318,12 +331,16 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 "workspaceRoot must name an existing absolute directory.",
                 nameof(workspaceRoot));
         }
+        PiAgentConversationCheckpoint? admittedCheckpoint =
+            PiAgentConversationState.AdmitCheckpoint(
+                conversationCheckpoint);
         return await SendRequestAsync(
             new
             {
                 type = "start_session",
                 id,
                 workspaceRoot,
+                conversationCheckpoint = admittedCheckpoint,
             },
             "start_session",
             id,
@@ -1115,6 +1132,22 @@ public static class PiAgentDesktopProbe
                 .GetProperty("sessionPersistence")
                 .GetString() == "in-memory" &&
             capabilityData
+                .GetProperty("conversationCheckpoint")
+                .GetString() ==
+                    "bounded-completed-text-context-restore" &&
+            capabilityData
+                .GetProperty("conversationCheckpointMaxTurns")
+                .GetInt32() == 32 &&
+            capabilityData
+                .GetProperty("conversationCheckpointMaxBytes")
+                .GetInt32() == 32_768 &&
+            capabilityData
+                .GetProperty("conversationCheckpointMaxTextBytes")
+                .GetInt32() == 16_384 &&
+            capabilityData
+                .GetProperty("conversationCheckpointPersistence")
+                .GetString() == "desktop-owned-external" &&
+            capabilityData
                 .GetProperty("workspaceBinding")
                 .GetString() == "single-explicit-root" &&
             !capabilityData
@@ -1161,6 +1194,12 @@ public static class PiAgentDesktopProbe
             !sessionData
                 .GetProperty("sessionPersisted")
                 .GetBoolean() &&
+            sessionData
+                .GetProperty("restoredTurnCount")
+                .GetInt32() == 0 &&
+            sessionData
+                .GetProperty("restoredContextMessageCount")
+                .GetInt32() == 0 &&
             !sessionData
                 .GetProperty("promptingEnabled")
                 .GetBoolean() &&

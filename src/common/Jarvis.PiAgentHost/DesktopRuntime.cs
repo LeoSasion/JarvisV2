@@ -4,7 +4,8 @@ namespace Jarvis.PiAgentHost;
 
 public sealed record PiAgentDesktopRuntimeOptions(
     PiAgentSidecarOptions Sidecar,
-    string WorkspaceRoot);
+    string WorkspaceRoot,
+    PiAgentConversationCheckpoint? ConversationCheckpoint = null);
 
 public sealed class PiAgentDesktopRuntime : IAsyncDisposable
 {
@@ -53,6 +54,9 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(options.Sidecar);
         ArgumentNullException.ThrowIfNull(provider);
         ValidateOptions(options);
+        PiAgentConversationCheckpoint? checkpoint =
+            PiAgentConversationState.AdmitCheckpoint(
+                options.ConversationCheckpoint);
 
         DesktopModelBrokerServer broker =
             DesktopModelBrokerServer.Start(provider);
@@ -71,12 +75,16 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
                 await controller.StartReadOnlySessionAsync(
                     options.WorkspaceRoot,
                     sessionRequestId,
+                    checkpoint,
                     cancellationToken);
             string canonicalWorkspaceRoot =
-                ValidateSessionReceipt(session.RootElement);
+                ValidateSessionReceipt(
+                    session.RootElement,
+                    checkpoint?.Turns.Count ?? 0);
             PiAgentConversationState conversation = new(
                 controller,
-                notificationContext);
+                notificationContext,
+                checkpoint);
             return new PiAgentDesktopRuntime(
                 broker,
                 controller,
@@ -188,7 +196,9 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
         }
     }
 
-    private static string ValidateSessionReceipt(JsonElement root)
+    private static string ValidateSessionReceipt(
+        JsonElement root,
+        int expectedRestoredTurnCount)
     {
         if (!root.GetProperty("success").GetBoolean())
         {
@@ -221,6 +231,11 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
                 DesktopModelBrokerServer.ProviderId &&
             data.GetProperty("modelId").GetString() ==
                 DesktopModelBrokerServer.ModelId &&
+            data.GetProperty("restoredTurnCount").GetInt32() ==
+                expectedRestoredTurnCount &&
+            data.GetProperty(
+                "restoredContextMessageCount").GetInt32() ==
+                expectedRestoredTurnCount * 2 &&
             !data.GetProperty("resourceDiscoveryEnabled").GetBoolean() &&
             !data.GetProperty("modelNetworkAllowed").GetBoolean();
         if (!valid)

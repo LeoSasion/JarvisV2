@@ -21,6 +21,15 @@ must prove the exact four read-only tools, the desktop broker model identity,
 in-memory session state, disabled resource discovery and disabled sidecar model
 network.
 
+The runtime may also receive one desktop-owned conversation checkpoint. Before
+the sidecar starts, managed code admits its schema, exact text limits, unique
+turn IDs and serialized UTF-8 size. The sidecar repeats those checks, appends
+the admitted user/assistant message pairs to Pi's in-memory `SessionManager`,
+and only then creates the Agent session. The session receipt reports both the
+restored turn count and restored context-message count. A future storage layer
+can therefore resume real model context instead of reconstructing only visible
+chat rows.
+
 If any startup stage fails, the owned Node process and broker are disposed
 before the failure is returned. Once broker startup succeeds, provider
 ownership transfers to the runtime and is released with the broker.
@@ -47,14 +56,19 @@ prevents a closing WPF window from racing a new prompt against sidecar disposal.
 The runtime accepts a provider-neutral `IDesktopModelProvider`; it does not
 select a production provider, read credentials or create a credential store.
 The Pi sidecar remains offline and has only `read`, `grep`, `find` and `ls`
-inside one admitted workspace. The runtime does not persist sessions, enable
-mutation tools, contact Explorer, modify the registry or control physical RGB
-devices.
+inside one admitted workspace. Pi session persistence remains disabled. This
+slice exposes a bounded checkpoint value but does not write, encrypt or load it
+from disk; that persistence policy belongs to a future desktop-owned storage
+layer. The runtime does not enable mutation tools, contact Explorer, modify the
+registry or control physical RGB devices.
 
 The deterministic `runtime-probe` command proves:
 
 - three turns through the composed runtime, including a real read-tool round
   trip;
+- export of three completed text turns, followed by a fresh sidecar restoring
+  all six context messages before a continuation prompt;
+- fail-closed rejection of duplicate and over-limit checkpoints;
 - exact broker/session admission;
 - rejection of submissions after quiesce;
 - active-turn cancellation during shutdown;

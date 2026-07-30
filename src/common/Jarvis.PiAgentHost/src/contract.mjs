@@ -72,6 +72,14 @@ export function validateContract(contract) {
     contract.session?.desktopConversationMaxAssistantCharacters !== 262_144 ||
     contract.session?.desktopConversationNotificationDispatch !==
       "captured-synchronization-context" ||
+    contract.session?.desktopConversationCheckpoint !==
+      "bounded-completed-text-context-restore" ||
+    contract.session?.desktopConversationCheckpointMaxTurns !== 32 ||
+    contract.session?.desktopConversationCheckpointMaxBytes !== 32_768 ||
+    contract.session?.desktopConversationCheckpointMaxTextBytes !==
+      16_384 ||
+    contract.session?.desktopConversationCheckpointPersistence !==
+      "desktop-owned-external" ||
     contract.session?.credentialTransport !== "forbidden" ||
     contract.session?.persistence !== "in-memory" ||
     contract.session?.workspaceBinding !==
