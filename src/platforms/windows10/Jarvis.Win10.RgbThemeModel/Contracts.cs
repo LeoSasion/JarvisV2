@@ -9,6 +9,47 @@ internal static class ThemeContract
         "approved-visual-intent-offline";
     public const string ApprovedDirection = "D-neural-void";
     public const string ApprovalBasis = "user-selected-2026-07-30";
+    public const string VectorGrammarId = "aperture-contour-v1";
+    public const string VectorGrammarSelection =
+        "user-selected-variant-4";
+    public const string VectorAccentBinding =
+        "shared-rgb-frame";
+    public const string VectorGlowPolicy =
+        "reserved-global-not-implemented";
+    public const string GlobalEffectsArchitecture =
+        "global-vfx-parameter-stack";
+    public const string GlobalEffectsRendererScope =
+        "desktop-global-compositor";
+    public const string GlobalEffectsInspiration =
+        "film-vfx-and-game-engine-particle-systems";
+
+    public static readonly IReadOnlySet<string>
+        RequiredVectorPrimitives =
+        new HashSet<string>(
+            ["point", "line", "arc", "plane"],
+            StringComparer.Ordinal);
+
+    public static readonly IReadOnlySet<string>
+        RequiredGlobalEffectsSystems =
+        new HashSet<string>(
+            ["particle-system", "post-processing"],
+            StringComparer.Ordinal);
+
+    public static readonly IReadOnlySet<string>
+        RequiredGlobalEffectsParameterDomains =
+        new HashSet<string>(
+            [
+                "spawn",
+                "motion",
+                "lifetime",
+                "appearance",
+                "color-over-life",
+                "size-over-life",
+                "material",
+                "render-order",
+                "post-process",
+            ],
+            StringComparer.Ordinal);
 
     public static readonly IReadOnlyDictionary<string, PresetContract>
         RequiredPresets =
@@ -64,6 +105,8 @@ internal sealed record ThemeDocument(
     string ApprovedDirection,
     string ApprovalBasis,
     ShellComposition ShellComposition,
+    VectorGrammar VectorGrammar,
+    GlobalEffectsIntent GlobalEffectsIntent,
     NeutralPalette NeutralPalette,
     AccentPreset[] RecommendedAccents,
     AccentModel AccentModel,
@@ -80,6 +123,27 @@ internal sealed record ShellComposition(
     bool DeviceControlsVisible,
     bool PeripheralIllustrationsVisible,
     bool RgbSyncPanelVisible);
+
+internal sealed record VectorGrammar(
+    string Id,
+    string Selection,
+    string FrameClosure,
+    string[] PrimitiveSet,
+    int FocusJunctionCount,
+    bool SingleAccentFamily,
+    string AccentBinding,
+    string GlowPolicy,
+    bool BitmapResourcesRequired);
+
+internal sealed record GlobalEffectsIntent(
+    string Architecture,
+    string RendererScope,
+    string Inspiration,
+    string[] PlannedSystems,
+    string[] ParameterDomains,
+    bool LocalGlowImplemented,
+    bool GlobalGlowReserved,
+    bool RuntimeImplemented);
 
 internal sealed record NeutralPalette(
     string Canvas,

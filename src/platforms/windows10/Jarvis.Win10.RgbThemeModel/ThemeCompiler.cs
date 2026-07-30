@@ -23,6 +23,10 @@ internal static partial class ThemeCompiler
         List<string> failures = [];
         ValidateIdentity(theme, failures);
         ValidateComposition(theme.ShellComposition, failures);
+        ValidateVectorGrammar(theme.VectorGrammar, failures);
+        ValidateGlobalEffectsIntent(
+            theme.GlobalEffectsIntent,
+            failures);
         ValidateNeutralPalette(theme.NeutralPalette, failures);
         List<CompiledPreset> presets =
             ValidatePresets(theme.RecommendedAccents, failures);
@@ -147,6 +151,77 @@ internal static partial class ThemeCompiler
                 failures.Add($"neutral-color-drift:{name}");
             }
         }
+    }
+
+    private static void ValidateVectorGrammar(
+        VectorGrammar grammar,
+        ICollection<string> failures)
+    {
+        Require(
+            grammar.Id == ThemeContract.VectorGrammarId &&
+            grammar.Selection ==
+                ThemeContract.VectorGrammarSelection &&
+            grammar.FrameClosure == "subtractive-open",
+            "vector-grammar-identity-invalid",
+            failures);
+        Require(
+            grammar.PrimitiveSet.Length ==
+                ThemeContract.RequiredVectorPrimitives.Count &&
+            grammar.PrimitiveSet
+                .ToHashSet(StringComparer.Ordinal)
+                .SetEquals(
+                    ThemeContract.RequiredVectorPrimitives),
+            "vector-grammar-primitive-set-not-exact",
+            failures);
+        Require(
+            grammar.FocusJunctionCount == 2 &&
+            grammar.SingleAccentFamily &&
+            grammar.AccentBinding ==
+                ThemeContract.VectorAccentBinding &&
+            grammar.GlowPolicy ==
+                ThemeContract.VectorGlowPolicy &&
+            !grammar.BitmapResourcesRequired,
+            "vector-grammar-render-contract-invalid",
+            failures);
+    }
+
+    private static void ValidateGlobalEffectsIntent(
+        GlobalEffectsIntent intent,
+        ICollection<string> failures)
+    {
+        Require(
+            intent.Architecture ==
+                ThemeContract.GlobalEffectsArchitecture &&
+            intent.RendererScope ==
+                ThemeContract.GlobalEffectsRendererScope &&
+            intent.Inspiration ==
+                ThemeContract.GlobalEffectsInspiration,
+            "global-effects-identity-invalid",
+            failures);
+        Require(
+            intent.PlannedSystems.Length ==
+                ThemeContract.RequiredGlobalEffectsSystems.Count &&
+            intent.PlannedSystems
+                .ToHashSet(StringComparer.Ordinal)
+                .SetEquals(
+                    ThemeContract.RequiredGlobalEffectsSystems),
+            "global-effects-system-set-not-exact",
+            failures);
+        Require(
+            intent.ParameterDomains.Length ==
+                ThemeContract.RequiredGlobalEffectsParameterDomains.Count &&
+            intent.ParameterDomains
+                .ToHashSet(StringComparer.Ordinal)
+                .SetEquals(
+                    ThemeContract.RequiredGlobalEffectsParameterDomains),
+            "global-effects-parameter-set-not-exact",
+            failures);
+        Require(
+            !intent.LocalGlowImplemented &&
+            intent.GlobalGlowReserved &&
+            !intent.RuntimeImplemented,
+            "global-effects-runtime-boundary-invalid",
+            failures);
     }
 
     private static List<CompiledPreset> ValidatePresets(

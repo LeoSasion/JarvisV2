@@ -4,9 +4,9 @@ using System.Windows.Media;
 namespace Jarvis.Win10.NeuralVoidPreview;
 
 /// <summary>
-/// Retained, vector-only decoration for the owned-process preview.
-/// Static point/line/plane geometry is recorded once into a DrawingVisual.
-/// Only the small signal visual is redrawn for each RGB frame.
+/// Retained, vector-only desktop decoration for the owned-process preview.
+/// Static graphite datums are recorded once; only the two small RGB focus
+/// junctions are redrawn for animated frames.
 /// </summary>
 public sealed class NeuralVectorLayer : FrameworkElement
 {
@@ -18,23 +18,23 @@ public sealed class NeuralVectorLayer : FrameworkElement
     private readonly VisualCollection _visuals;
     private readonly SolidColorBrush _accentBrush =
         new(Color.FromRgb(0x00, 0xFF, 0x9A));
-    private readonly SolidColorBrush _dimBrush =
-        new(Color.FromArgb(0x78, 0x00, 0xFF, 0x9A));
-    private readonly SolidColorBrush _faintBrush =
-        new(Color.FromArgb(0x2C, 0x00, 0xFF, 0x9A));
+    private readonly SolidColorBrush _structureBrush =
+        new(Color.FromArgb(0x78, 0x2D, 0x3A, 0x38));
+    private readonly SolidColorBrush _ghostBrush =
+        new(Color.FromArgb(0x34, 0x2D, 0x3A, 0x38));
     private readonly SolidColorBrush _planeBrush =
-        new(Color.FromArgb(0x0B, 0x00, 0xFF, 0x9A));
+        new(Color.FromArgb(0x0B, 0xD7, 0xF8, 0xEC));
     private readonly Pen _accentPen;
-    private readonly Pen _dimPen;
-    private readonly Pen _faintPen;
+    private readonly Pen _structurePen;
+    private readonly Pen _ghostPen;
     private double _phase;
     private string _effectId = "static";
 
     public NeuralVectorLayer()
     {
         _accentPen = CreatePen(_accentBrush, 1.0);
-        _dimPen = CreatePen(_dimBrush, 1.0);
-        _faintPen = CreatePen(_faintBrush, 1.0);
+        _structurePen = CreatePen(_structureBrush, 1.0);
+        _ghostPen = CreatePen(_ghostBrush, 1.0);
         _visuals = new VisualCollection(this)
         {
             _staticVisual,
@@ -61,12 +61,6 @@ public sealed class NeuralVectorLayer : FrameworkElement
         if (colorChanged)
         {
             _accentBrush.Color = accent;
-            _dimBrush.Color =
-                Color.FromArgb(0x78, accent.R, accent.G, accent.B);
-            _faintBrush.Color =
-                Color.FromArgb(0x2C, accent.R, accent.G, accent.B);
-            _planeBrush.Color =
-                Color.FromArgb(0x0B, accent.R, accent.G, accent.B);
         }
 
         bool signalChanged =
@@ -106,23 +100,26 @@ public sealed class NeuralVectorLayer : FrameworkElement
                 RenderSize.Height / DesignHeight));
         context.PushGuidelineSet(
             new GuidelineSet(
-                [72.5, 108.5, 186.5, 1477.5, 1527.5],
-                [64.5, 78.5, 813.5, 841.5]));
+                [
+                    40.5,
+                    63.5,
+                    82.5,
+                    186.5,
+                    952.5,
+                    1547.5,
+                    1567.5,
+                ],
+                [
+                    40.5,
+                    60.5,
+                    78.5,
+                    813.5,
+                    877.5,
+                ]));
 
-        DrawPlanes(context);
-        DrawStructuralRails(context);
-        DrawOpenFrame(
-            context,
-            new Rect(186.5, 78.5, 1291.0, 735.0),
-            28.0,
-            _dimPen);
-        DrawOpenFrame(
-            context,
-            new Rect(432.5, 313.5, 897.0, 132.0),
-            16.0,
-            _faintPen);
-        DrawRegistrationTicks(context);
-        DrawNodes(context);
+        DrawGhostPlanes(context);
+        DrawDesktopDatums(context);
+        DrawRegistrationMarks(context);
 
         context.Pop();
         context.Pop();
@@ -142,216 +139,209 @@ public sealed class NeuralVectorLayer : FrameworkElement
                 RenderSize.Height / DesignHeight));
 
         double cycle = _phase - Math.Floor(_phase);
-        double amplitude = _effectId switch
-        {
-            "signal-pulse" => 4.0,
-            "breathe" => 2.8,
-            "spectrum" => 2.4,
-            _ => 1.4,
-        };
-        StreamGeometry waveform =
-            CreateWaveform(
-                new Point(1384.5, 34.5),
-                180.0,
-                amplitude,
-                cycle);
-        context.DrawGeometry(null, _dimPen, waveform);
-
-        double routeX = 188.5 + (cycle * 1285.0);
-        context.DrawLine(
-            _accentPen,
-            new Point(routeX - 18.0, 813.5),
-            new Point(routeX + 18.0, 813.5));
-        context.DrawEllipse(
-            _accentBrush,
-            null,
-            new Point(routeX, 813.5),
-            2.8,
-            2.8);
-
-        double nodePulse =
+        double wave =
             _effectId == "static"
-                ? 0.0
+                ? 0.25
                 : (Math.Sin(cycle * Math.PI * 2.0) + 1.0) * 0.5;
-        context.PushOpacity(0.18 + (nodePulse * 0.22));
-        context.DrawEllipse(
-            null,
-            _accentPen,
-            new Point(1477.5, 78.5),
-            7.0 + (nodePulse * 4.0),
-            7.0 + (nodePulse * 4.0));
-        context.Pop();
+        DrawFocusJunction(
+            context,
+            new Point(186.5, 78.5),
+            wave);
+        DrawFocusJunction(
+            context,
+            new Point(663.5, 357.5),
+            wave * 0.72);
+
         context.Pop();
     }
 
-    private void DrawPlanes(DrawingContext context)
+    private void DrawGhostPlanes(DrawingContext context)
     {
         StreamGeometry upperPlane =
             CreatePolygon(
                 [
-                    new Point(186.5, 78.5),
-                    new Point(1477.5, 78.5),
-                    new Point(1451.5, 104.5),
-                    new Point(212.5, 104.5),
+                    new Point(952.5, 60.5),
+                    new Point(1547.5, 60.5),
+                    new Point(1547.5, 86.5),
+                    new Point(978.5, 86.5),
                 ]);
         context.DrawGeometry(_planeBrush, null, upperPlane);
 
         StreamGeometry lowerPlane =
             CreatePolygon(
                 [
-                    new Point(186.5, 785.5),
-                    new Point(1477.5, 785.5),
-                    new Point(1477.5, 813.5),
-                    new Point(214.5, 813.5),
+                    new Point(40.5, 851.5),
+                    new Point(936.5, 851.5),
+                    new Point(914.5, 877.5),
+                    new Point(40.5, 877.5),
                 ]);
         context.DrawGeometry(_planeBrush, null, lowerPlane);
     }
 
-    private void DrawStructuralRails(DrawingContext context)
+    private void DrawDesktopDatums(DrawingContext context)
     {
+        DrawSplitLine(
+            context,
+            _ghostPen,
+            new Point(63.5, 40.5),
+            new Point(1547.5, 40.5),
+            0.58,
+            18.0);
+        DrawSplitLine(
+            context,
+            _ghostPen,
+            new Point(40.5, 60.5),
+            new Point(40.5, 851.5),
+            0.64,
+            18.0);
+        DrawSplitLine(
+            context,
+            _ghostPen,
+            new Point(63.5, 877.5),
+            new Point(936.5, 877.5),
+            0.52,
+            18.0);
+        DrawSplitLine(
+            context,
+            _ghostPen,
+            new Point(952.5, 877.5),
+            new Point(1567.5, 877.5),
+            0.48,
+            18.0);
+
+        StreamGeometry lowerJoin =
+            CreatePolyline(
+                [
+                    new Point(40.5, 826.5),
+                    new Point(40.5, 851.5),
+                    new Point(63.5, 877.5),
+                    new Point(82.5, 877.5),
+                ]);
+        context.DrawGeometry(null, _structurePen, lowerJoin);
+
+        StreamGeometry upperJoin =
+            CreatePolyline(
+                [
+                    new Point(952.5, 60.5),
+                    new Point(978.5, 60.5),
+                    new Point(992.5, 78.5),
+                    new Point(1020.5, 78.5),
+                ]);
+        context.DrawGeometry(null, _ghostPen, upperJoin);
+
         context.DrawLine(
-            _faintPen,
-            new Point(72.5, 64.5),
-            new Point(1576.5, 64.5));
+            _ghostPen,
+            new Point(1567.5, 60.5),
+            new Point(1567.5, 548.5));
         context.DrawLine(
-            _faintPen,
-            new Point(72.5, 64.5),
-            new Point(72.5, 841.5));
-
-        StreamGeometry upperRoute =
-            CreatePolyline(
-                [
-                    new Point(108.5, 92.5),
-                    new Point(150.5, 92.5),
-                    new Point(172.5, 78.5),
-                    new Point(186.5, 78.5),
-                ]);
-        context.DrawGeometry(null, _dimPen, upperRoute);
-
-        StreamGeometry lowerRoute =
-            CreatePolyline(
-                [
-                    new Point(72.5, 782.5),
-                    new Point(96.5, 782.5),
-                    new Point(120.5, 813.5),
-                    new Point(186.5, 813.5),
-                ]);
-        context.DrawGeometry(null, _accentPen, lowerRoute);
-
-        StreamGeometry statusRoute =
-            CreatePolyline(
-                [
-                    new Point(1477.5, 78.5),
-                    new Point(1511.5, 78.5),
-                    new Point(1527.5, 94.5),
-                    new Point(1576.5, 94.5),
-                ]);
-        context.DrawGeometry(null, _dimPen, statusRoute);
-
-        StreamGeometry selectedRoute =
-            CreatePolyline(
-                [
-                    new Point(1329.5, 379.5),
-                    new Point(1361.5, 379.5),
-                    new Point(1381.5, 399.5),
-                    new Point(1437.5, 399.5),
-                ]);
-        context.DrawGeometry(null, _faintPen, selectedRoute);
+            _structurePen,
+            new Point(1555.5, 548.5),
+            new Point(1567.5, 548.5));
     }
 
-    private void DrawRegistrationTicks(DrawingContext context)
+    private void DrawRegistrationMarks(DrawingContext context)
     {
-        Point[] anchors =
-        [
-            new(186.5, 78.5),
-            new(1477.5, 78.5),
-            new(186.5, 813.5),
-            new(1477.5, 813.5),
-        ];
-        foreach (Point anchor in anchors)
-        {
-            context.DrawLine(
-                _faintPen,
-                new Point(anchor.X - 4.0, anchor.Y),
-                new Point(anchor.X + 4.0, anchor.Y));
-            context.DrawLine(
-                _faintPen,
-                new Point(anchor.X, anchor.Y - 4.0),
-                new Point(anchor.X, anchor.Y + 4.0));
-        }
+        DrawRegistrationSquare(
+            context,
+            _structurePen,
+            new Point(43.5, 40.5));
+        DrawRegistrationSquare(
+            context,
+            _ghostPen,
+            new Point(62.5, 40.5));
+        DrawRegistrationSquare(
+            context,
+            _ghostPen,
+            new Point(81.5, 40.5));
+        DrawRegistrationSquare(
+            context,
+            _structurePen,
+            new Point(952.5, 60.5));
+        DrawRegistrationSquare(
+            context,
+            _ghostPen,
+            new Point(1567.5, 548.5));
+        DrawRegistrationSquare(
+            context,
+            _structurePen,
+            new Point(43.5, 877.5));
+        DrawRegistrationSquare(
+            context,
+            _ghostPen,
+            new Point(1567.5, 877.5));
     }
 
-    private void DrawNodes(DrawingContext context)
-    {
-        DrawNode(context, new Point(72.5, 108.5), false);
-        DrawNode(context, new Point(72.5, 278.5), false);
-        DrawNode(context, new Point(72.5, 460.5), false);
-        DrawNode(context, new Point(72.5, 782.5), true);
-        DrawNode(context, new Point(186.5, 78.5), false);
-        DrawNode(context, new Point(186.5, 813.5), false);
-        DrawNode(context, new Point(1477.5, 78.5), true);
-        DrawNode(context, new Point(1477.5, 813.5), false);
-        DrawNode(context, new Point(1381.5, 399.5), false);
-        DrawNode(context, new Point(1527.5, 94.5), false);
-    }
-
-    private void DrawNode(
+    private void DrawFocusJunction(
         DrawingContext context,
-        Point center,
-        bool active)
+        Point focus,
+        double pulse)
     {
+        context.DrawLine(
+            _accentPen,
+            new Point(focus.X - 6.0, focus.Y),
+            new Point(focus.X + 6.0, focus.Y));
+        context.DrawLine(
+            _accentPen,
+            new Point(focus.X, focus.Y - 6.0),
+            new Point(focus.X, focus.Y + 6.0));
+
+        double ringRadius = 3.5 + (pulse * 2.5);
+        context.PushOpacity(0.24 + (pulse * 0.28));
         context.DrawEllipse(
-            active ? _accentBrush : null,
-            active ? _accentPen : _dimPen,
-            center,
-            active ? 3.2 : 2.2,
-            active ? 3.2 : 2.2);
+            null,
+            _accentPen,
+            focus,
+            ringRadius,
+            ringRadius);
+        context.Pop();
+        context.DrawEllipse(
+            _accentBrush,
+            null,
+            focus,
+            2.2,
+            2.2);
     }
 
-    private static void DrawOpenFrame(
+    private static void DrawSplitLine(
         DrawingContext context,
-        Rect rect,
-        double length,
-        Pen pen)
+        Pen pen,
+        Point start,
+        Point end,
+        double splitProgress,
+        double gapLength)
     {
-        StreamGeometry geometry = new();
-        using (StreamGeometryContext stream = geometry.Open())
+        Vector delta = end - start;
+        if (delta.Length <= gapLength)
         {
-            DrawCorner(
-                stream,
-                new Point(rect.Left, rect.Top + length),
-                new Point(rect.Left, rect.Top),
-                new Point(rect.Left + length, rect.Top));
-            DrawCorner(
-                stream,
-                new Point(rect.Right - length, rect.Top),
-                new Point(rect.Right, rect.Top),
-                new Point(rect.Right, rect.Top + length));
-            DrawCorner(
-                stream,
-                new Point(rect.Left, rect.Bottom - length),
-                new Point(rect.Left, rect.Bottom),
-                new Point(rect.Left + length, rect.Bottom));
-            DrawCorner(
-                stream,
-                new Point(rect.Right - length, rect.Bottom),
-                new Point(rect.Right, rect.Bottom),
-                new Point(rect.Right, rect.Bottom - length));
+            return;
         }
 
-        geometry.Freeze();
-        context.DrawGeometry(null, pen, geometry);
+        Vector unit = delta;
+        unit.Normalize();
+        Point center = start + (delta * splitProgress);
+        context.DrawLine(
+            pen,
+            start,
+            center - (unit * (gapLength / 2.0)));
+        context.DrawLine(
+            pen,
+            center + (unit * (gapLength / 2.0)),
+            end);
     }
 
-    private static void DrawCorner(
-        StreamGeometryContext context,
-        Point start,
-        Point corner,
-        Point end)
+    private static void DrawRegistrationSquare(
+        DrawingContext context,
+        Pen pen,
+        Point center)
     {
-        context.BeginFigure(start, false, false);
-        context.LineTo(corner, true, false);
-        context.LineTo(end, true, false);
+        context.DrawRectangle(
+            null,
+            pen,
+            new Rect(
+                center.X - 2.0,
+                center.Y - 2.0,
+                4.0,
+                4.0));
     }
 
     private static StreamGeometry CreatePolyline(
@@ -388,44 +378,6 @@ public sealed class NeuralVectorLayer : FrameworkElement
         return geometry;
     }
 
-    private static StreamGeometry CreateWaveform(
-        Point origin,
-        double width,
-        double amplitude,
-        double cycle)
-    {
-        const int SampleCount = 48;
-        StreamGeometry geometry = new();
-        using (StreamGeometryContext context = geometry.Open())
-        {
-            for (int index = 0; index <= SampleCount; index++)
-            {
-                double progress = index / (double)SampleCount;
-                double envelope =
-                    Math.Sin(progress * Math.PI);
-                double angle =
-                    (progress * Math.PI * 12.0) +
-                    (cycle * Math.PI * 2.0);
-                Point point =
-                    new(
-                        origin.X + (progress * width),
-                        origin.Y +
-                        (Math.Sin(angle) * amplitude * envelope));
-                if (index == 0)
-                {
-                    context.BeginFigure(point, false, false);
-                }
-                else
-                {
-                    context.LineTo(point, true, false);
-                }
-            }
-        }
-
-        geometry.Freeze();
-        return geometry;
-    }
-
     private static Pen CreatePen(
         Brush brush,
         double thickness) =>
@@ -433,6 +385,6 @@ public sealed class NeuralVectorLayer : FrameworkElement
         {
             StartLineCap = PenLineCap.Square,
             EndLineCap = PenLineCap.Square,
-            LineJoin = PenLineJoin.Miter,
+            LineJoin = PenLineJoin.Round,
         };
 }

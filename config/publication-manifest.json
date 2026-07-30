@@ -229,6 +229,7 @@
     "src/platforms/windows10/Jarvis.Win10.RgbThemeModel/Program.cs",
     "src/platforms/windows10/Jarvis.Win10.RgbThemeModel/RgbEffectEngine.cs",
     "src/platforms/windows10/Jarvis.Win10.RgbThemeModel/ThemeCompiler.cs",
+    "src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/ApertureFrame.cs",
     "src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/Jarvis.Win10.NeuralVoidPreview.csproj",
     "src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/MainWindow.xaml",
     "src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/MainWindow.xaml.cs",

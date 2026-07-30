@@ -14,6 +14,45 @@
     "peripheralIllustrationsVisible": false,
     "rgbSyncPanelVisible": false
   },
+  "vectorGrammar": {
+    "id": "aperture-contour-v1",
+    "selection": "user-selected-variant-4",
+    "frameClosure": "subtractive-open",
+    "primitiveSet": [
+      "point",
+      "line",
+      "arc",
+      "plane"
+    ],
+    "focusJunctionCount": 2,
+    "singleAccentFamily": true,
+    "accentBinding": "shared-rgb-frame",
+    "glowPolicy": "reserved-global-not-implemented",
+    "bitmapResourcesRequired": false
+  },
+  "globalEffectsIntent": {
+    "architecture": "global-vfx-parameter-stack",
+    "rendererScope": "desktop-global-compositor",
+    "inspiration": "film-vfx-and-game-engine-particle-systems",
+    "plannedSystems": [
+      "particle-system",
+      "post-processing"
+    ],
+    "parameterDomains": [
+      "spawn",
+      "motion",
+      "lifetime",
+      "appearance",
+      "color-over-life",
+      "size-over-life",
+      "material",
+      "render-order",
+      "post-process"
+    ],
+    "localGlowImplemented": false,
+    "globalGlowReserved": true,
+    "runtimeImplemented": false
+  },
   "neutralPalette": {
     "canvas": "#030809",
     "surface": "#071113",

@@ -12,13 +12,15 @@
     TextOptions.TextRenderingMode="ClearType">
 
     <UserControl.Resources>
-        <SolidColorBrush x:Key="CanvasBrush" Color="#030809" />
-        <SolidColorBrush x:Key="SurfaceBrush" Color="#050B0D" />
-        <SolidColorBrush x:Key="ElevatedBrush" Color="#071113" />
-        <SolidColorBrush x:Key="LineBrush" Color="#0F2C27" />
-        <SolidColorBrush x:Key="TextBrush" Color="#D7F8EC" />
-        <SolidColorBrush x:Key="MutedBrush" Color="#6E9187" />
-        <SolidColorBrush x:Key="FaintBrush" Color="#36564E" />
+        <SolidColorBrush x:Key="CanvasBrush" Color="#020506" />
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#030708" />
+        <SolidColorBrush x:Key="ElevatedBrush" Color="#050A0B" />
+        <SolidColorBrush x:Key="LineBrush" Color="#101B1A" />
+        <SolidColorBrush x:Key="ApertureLineBrush" Color="#34403E" />
+        <SolidColorBrush x:Key="GhostLineBrush" Color="#1B2524" />
+        <SolidColorBrush x:Key="TextBrush" Color="#D4E6E0" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#71807B" />
+        <SolidColorBrush x:Key="FaintBrush" Color="#384641" />
 
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
@@ -50,8 +52,8 @@
             <Setter Property="Width" Value="78" />
             <Setter Property="Height" Value="76" />
             <Setter Property="Margin" Value="0,0,8,0" />
-            <Setter Property="Background" Value="#02000000" />
-            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="Background" Value="#020607" />
+            <Setter Property="BorderBrush" Value="{StaticResource GhostLineBrush}" />
             <Setter Property="BorderThickness" Value="1" />
         </Style>
 
@@ -60,29 +62,32 @@
             <Setter Property="Height" Value="112" />
             <Setter Property="Margin" Value="0,0,18,18" />
             <Setter Property="Padding" Value="15" />
-            <Setter Property="Background" Value="#04090B" />
-            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="Background" Value="#030708" />
+            <Setter Property="BorderBrush" Value="{StaticResource GhostLineBrush}" />
             <Setter Property="BorderThickness" Value="1" />
         </Style>
     </UserControl.Resources>
 
-    <Grid x:Name="DesktopCanvas" ClipToBounds="True">
-        <Grid.Background>
-            <RadialGradientBrush
-                Center="0.68,0.44"
-                GradientOrigin="0.68,0.44"
-                RadiusX="0.78"
-                RadiusY="0.92">
-                <GradientStop Color="#071011" Offset="0" />
-                <GradientStop Color="#030809" Offset="0.52" />
-                <GradientStop Color="#010303" Offset="1" />
-            </RadialGradientBrush>
-        </Grid.Background>
+    <Grid
+        x:Name="DesktopCanvas"
+        Background="{StaticResource CanvasBrush}"
+        ClipToBounds="True">
+
+        <local:ApertureFrame
+            Panel.ZIndex="1"
+            Width="595"
+            Height="488"
+            Margin="0,60,52,0"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            CornerLength="38"
+            CornerRadius="24"
+            LineBrush="{StaticResource GhostLineBrush}" />
 
         <local:NeuralVectorLayer
             x:Name="VectorLayer"
             Panel.ZIndex="3"
-            Opacity="0.9" />
+            Opacity="0.82" />
 
         <Grid
             Panel.ZIndex="4"
@@ -94,16 +99,12 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <Border
+                <local:ApertureFrame
                     Width="28"
                     Height="28"
-                    BorderBrush="{Binding AccentBrush, ElementName=Root}"
-                    BorderThickness="2">
-                    <Ellipse
-                        Margin="6"
-                        Stroke="{Binding AccentBrush, ElementName=Root}"
-                        StrokeThickness="2" />
-                </Border>
+                    CornerLength="6"
+                    CornerRadius="4"
+                    LineBrush="{Binding AccentDimBrush, ElementName=Root}" />
                 <StackPanel Margin="13,0,0,0">
                     <TextBlock
                         Foreground="{Binding AccentBrush, ElementName=Root}"
@@ -170,15 +171,7 @@
                         Height="39"
                         Margin="0,1,0,5"
                         Stroke="{Binding AccentDimBrush, ElementName=Root}"
-                        StrokeThickness="2">
-                        <Ellipse.Effect>
-                            <DropShadowEffect
-                                BlurRadius="8"
-                                Color="{Binding AccentColor, ElementName=Root}"
-                                Opacity="0.35"
-                                ShadowDepth="0" />
-                        </Ellipse.Effect>
-                    </Ellipse>
+                        StrokeThickness="1" />
                     <TextBlock FontSize="11" Text="Network" />
                 </StackPanel>
             </Border>
@@ -218,16 +211,9 @@
         <Border
             Panel.ZIndex="2"
             Margin="186,78,122,86"
-            Background="#050B0D"
-            BorderBrush="{StaticResource LineBrush}"
-            BorderThickness="1">
-            <Border.Effect>
-                <DropShadowEffect
-                    BlurRadius="18"
-                    Color="{Binding AccentColor, ElementName=Root}"
-                    Opacity="0.18"
-                    ShadowDepth="0" />
-            </Border.Effect>
+            Background="#030708"
+            BorderBrush="#00000000"
+            BorderThickness="0">
 
             <Grid>
                 <Grid.RowDefinitions>
@@ -238,7 +224,16 @@
                     <RowDefinition Height="28" />
                 </Grid.RowDefinitions>
 
-                <Grid Background="#050B0D">
+                <local:ApertureFrame
+                    Grid.RowSpan="5"
+                    Panel.ZIndex="8"
+                    AccentBrush="{Binding AccentBrush, ElementName=Root}"
+                    CornerLength="42"
+                    CornerRadius="22"
+                    FocusCorner="TopLeft"
+                    LineBrush="{StaticResource ApertureLineBrush}" />
+
+                <Grid Background="#030708">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
@@ -574,18 +569,18 @@
                                 Height="112"
                                 Margin="0,0,18,18"
                                 Padding="15"
-                                Background="#050C0E"
-                                BorderBrush="{Binding AccentBrush, ElementName=Root}"
-                                BorderThickness="1">
-                                <Border.Effect>
-                                    <DropShadowEffect
-                                        BlurRadius="10"
-                                        Color="{Binding AccentColor, ElementName=Root}"
-                                        Opacity="0.18"
-                                        ShadowDepth="0" />
-                                </Border.Effect>
+                                Background="#030708"
+                                BorderBrush="#00000000"
+                                BorderThickness="0">
                                 <Grid>
-                                    <StackPanel>
+                                    <local:ApertureFrame
+                                        Panel.ZIndex="2"
+                                        AccentBrush="{Binding AccentBrush, ElementName=Root}"
+                                        CornerLength="18"
+                                        CornerRadius="12"
+                                        FocusCorner="TopLeft"
+                                        LineBrush="{StaticResource ApertureLineBrush}" />
+                                    <StackPanel Panel.ZIndex="1">
                                         <Border
                                             Width="42"
                                             Height="31"
@@ -607,14 +602,6 @@
                                             FontSize="9"
                                             Text="FOCUS LOCKED" />
                                     </StackPanel>
-                                    <Path
-                                        HorizontalAlignment="Right"
-                                        VerticalAlignment="Top"
-                                        Width="18"
-                                        Height="18"
-                                        Data="M 0,18 L 0,0 L 18,0"
-                                        Stroke="{Binding AccentBrush, ElementName=Root}"
-                                        StrokeThickness="2" />
                                 </Grid>
                             </Border>
                             <Border Style="{StaticResource FolderTile}">
@@ -828,17 +815,9 @@
                                 BorderBrush="{Binding AccentBrush, ElementName=Root}"
                                 BorderThickness="1" />
                             <Border
-                                Height="3"
+                                Height="2"
                                 VerticalAlignment="Bottom"
-                                Background="{Binding AccentBrush, ElementName=Root}">
-                                <Border.Effect>
-                                    <DropShadowEffect
-                                        BlurRadius="10"
-                                        Color="{Binding AccentColor, ElementName=Root}"
-                                        Opacity="0.8"
-                                        ShadowDepth="0" />
-                                </Border.Effect>
-                            </Border>
+                                Background="{Binding AccentBrush, ElementName=Root}" />
                         </Grid>
                     </Border>
                     <Border Width="60" Background="#050B0D">

@@ -38,10 +38,10 @@ function Add-Check {
 
 $theme =
     Get-Content -LiteralPath $themePath -Raw |
-        ConvertFrom-Json -Depth 50
+        ConvertFrom-Json
 $schema =
     Get-Content -LiteralPath $schemaPath -Raw |
-        ConvertFrom-Json -Depth 50
+        ConvertFrom-Json
 $sourceText = @(
     Get-ChildItem -LiteralPath $sourceRoot -File -Recurse |
         Where-Object Extension -In @('.cs', '.csproj') |
@@ -96,6 +96,75 @@ Add-Check `
     -Detail (
         'The approved theme must expose a continuous 0-360 degree accent ' +
         'that feeds all reviewed desktop, Explorer and taskbar roles.')
+
+$expectedVectorPrimitives =
+    @('arc', 'line', 'plane', 'point')
+$observedVectorPrimitives =
+    @($theme.vectorGrammar.primitiveSet | Sort-Object)
+Add-Check `
+    -Name 'theme.variant-four-vector-grammar' `
+    -Passed (
+        $theme.vectorGrammar.id -eq 'aperture-contour-v1' -and
+        $theme.vectorGrammar.selection -eq
+            'user-selected-variant-4' -and
+        $theme.vectorGrammar.frameClosure -eq
+            'subtractive-open' -and
+        ($observedVectorPrimitives -join '|') -eq
+            ($expectedVectorPrimitives -join '|') -and
+        $theme.vectorGrammar.focusJunctionCount -eq 2 -and
+        $theme.vectorGrammar.singleAccentFamily -and
+        $theme.vectorGrammar.accentBinding -eq
+            'shared-rgb-frame' -and
+        $theme.vectorGrammar.glowPolicy -eq
+            'reserved-global-not-implemented' -and
+        -not $theme.vectorGrammar.bitmapResourcesRequired -and
+        $schema.'$defs'.vectorGrammar.properties.id.const -eq
+            'aperture-contour-v1' -and
+        $schema.'$defs'.vectorGrammar.properties.glowPolicy.const -eq
+            'reserved-global-not-implemented') `
+    -Detail (
+        'Selected variant 4 must remain an open point-line-arc-plane ' +
+        'grammar with two shared-frame focus junctions, no local glow and ' +
+        'no bitmap dependency.')
+
+$expectedGlobalSystems =
+    @('particle-system', 'post-processing')
+$observedGlobalSystems =
+    @($theme.globalEffectsIntent.plannedSystems | Sort-Object)
+$expectedParameterDomains = @(
+    'appearance',
+    'color-over-life',
+    'lifetime',
+    'material',
+    'motion',
+    'post-process',
+    'render-order',
+    'size-over-life',
+    'spawn'
+)
+$observedParameterDomains =
+    @($theme.globalEffectsIntent.parameterDomains | Sort-Object)
+Add-Check `
+    -Name 'theme.future-global-vfx-boundary' `
+    -Passed (
+        $theme.globalEffectsIntent.architecture -eq
+            'global-vfx-parameter-stack' -and
+        $theme.globalEffectsIntent.rendererScope -eq
+            'desktop-global-compositor' -and
+        $theme.globalEffectsIntent.inspiration -eq
+            'film-vfx-and-game-engine-particle-systems' -and
+        ($observedGlobalSystems -join '|') -eq
+            (($expectedGlobalSystems | Sort-Object) -join '|') -and
+        ($observedParameterDomains -join '|') -eq
+            ($expectedParameterDomains -join '|') -and
+        -not $theme.globalEffectsIntent.localGlowImplemented -and
+        $theme.globalEffectsIntent.globalGlowReserved -and
+        -not $theme.globalEffectsIntent.runtimeImplemented -and
+        $schema.'$defs'.globalEffectsIntent.properties.architecture.const -eq
+            'global-vfx-parameter-stack') `
+    -Detail (
+        'Particles and post effects are reserved for one future global, ' +
+        'parameterized compositor; current components must stay geometry-only.')
 
 Add-Check `
     -Name 'theme.no-peripherals-inside-desktop' `
@@ -180,7 +249,7 @@ if ($buildExitCode -eq 0) {
     try {
         $receipt =
             ($modelOutput -join [Environment]::NewLine) |
-                ConvertFrom-Json -Depth 50
+                ConvertFrom-Json
     }
     catch {
         $receipt = $null

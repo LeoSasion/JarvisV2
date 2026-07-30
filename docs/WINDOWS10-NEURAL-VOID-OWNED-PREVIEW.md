@@ -4,21 +4,37 @@
 approved D / Neural Void direction. It draws a simulated desktop, Explorer
 window and classic Win10 taskbar entirely inside its own WPF process.
 
-The current visual pass treats the reviewed mockups as a style reference
-only. It does not copy their forensic workflow, panel layout or decorative
-patterns. The retained language is:
+The current visual pass implements the user-selected fourth aperture variant.
+The generated frame remains a style reference only: its blank composition,
+panel placement and decorative marks are not copied into the simulated Shell.
+The retained language is:
 
 - one monochrome accent over neutral black surfaces;
-- one-pixel open-corner contours and routed 45-degree joins;
-- sparse anchor nodes and low-opacity geometric planes;
-- mathematical signal curves instead of bitmap decoration.
+- subtractive one-pixel contours with deliberately missing edge segments;
+- tangent corner arcs, tiny registration squares and long quiet datums;
+- exactly two local RGB focus junctions drawn as points, crosses and rings;
+- mathematical point, line, arc and plane geometry with no bitmap decoration.
 
-`NeuralVectorLayer` records the static frame into one retained
-`DrawingVisual`. Its `StreamGeometry` paths are frozen after construction.
-RGB frame changes update shared brushes, while only the small signal visual
-is redrawn for animation. This keeps the point-line-plane system independent
-of the simulated Explorer content and ready to be reused by later Windows 10
-surfaces.
+`ApertureFrame` is the reusable window-contour primitive. It keeps its static
+graphite contour and dynamic RGB focus junction in separate
+`DrawingVisual` objects. `NeuralVectorLayer` separately retains the desktop
+datums and redraws only its two small signal junctions. `StreamGeometry`
+paths are frozen after construction. This keeps RGB animation bounded and
+makes the same contour grammar reusable by Explorer, Control Center and the
+future Pi conversation surface.
+
+No local glow shader, radial glow brush or particle emitter is implemented in
+these components. Every colored contour and junction binds to the same
+`RgbFrame`; neutral structure does not change hue. Glow, particles, trails,
+distortion and color grading are reserved for a future global VFX compositor
+so effects can be coordinated across the complete desktop instead of being
+duplicated by individual controls.
+
+That future compositor will use a film/game-engine-style parameter stack for
+spawn, motion, lifetime, appearance, color and size over life, material,
+render order and post processing. A Galaxy View-like parameter surface may
+control those values later, but the current preview contains neither the
+runtime nor its controls.
 
 ![Neural Void owned-process preview](screenshots/jarvis-win10-neural-void-owned-preview.png)
 
@@ -51,7 +67,8 @@ dotnet .\src\platforms\windows10\Jarvis.Win10.NeuralVoidPreview\bin\Release\net8
 
 The render command creates a 1600x900 PNG and a JSON receipt. The checked-in
 screenshot uses D neural emerald at the full-brightness point of the
-signal-pulse effect.
+signal-pulse effect. The latest source/implementation comparison is recorded
+in `design-qa.md` and passes for the approved style-only scope.
 
 ## Safety boundary
 

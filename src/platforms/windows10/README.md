@@ -22,10 +22,17 @@ contains no peripheral controls or illustrations; a future external device
 bridge may consume the same RGB frame without becoming a Shell dependency.
 
 The fifth slice, `Jarvis.Win10.NeuralVoidPreview`, renders that shared RGB
-frame as a runnable own-process WPF desktop, square Explorer and classic
-Win10 taskbar. Its A/C/D presets, continuous hue slider and four effects are
-preview controls only. Deterministic PNG rendering provides visual evidence
-without contacting or modifying the live Shell.
+frame as a runnable own-process WPF desktop, Explorer and classic Win10
+taskbar. The selected fourth visual variant is encoded as a reusable,
+bitmap-free `ApertureFrame` with subtractive open contours, tangent arcs and
+two bounded focus junctions; no reference layout or feature set is copied.
+All accent geometry consumes one shared RGB frame. Component-level glow is
+intentionally absent; particles, glow and post processing are reserved for a
+future desktop-global, film/game-engine-style VFX parameter stack. Its A/C/D
+presets, continuous hue slider and four color effects are preview controls
+only, not the future VFX editor. Deterministic 1600x900 renders and the latest
+source/implementation comparison pass for the approved style-only scope.
+Neither path contacts or modifies the live Shell.
 
 The owned `Jarvis.Win10.NativeStyleProbe` now consumes the same RGB frame for
 its client surface while retaining the single reviewed Win10 dark-caption

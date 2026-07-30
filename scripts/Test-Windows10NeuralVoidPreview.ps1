@@ -17,7 +17,11 @@ $surfacePath = Join-Path $sourceRoot (
     'NeuralVoidPreviewSurface.xaml')
 $vectorLayerPath = Join-Path $sourceRoot (
     'NeuralVectorLayer.cs')
+$apertureFramePath = Join-Path $sourceRoot (
+    'ApertureFrame.cs')
 $windowPath = Join-Path $sourceRoot 'MainWindow.xaml'
+$themePath = Join-Path $root (
+    'config\windows10-neural-void-rgb-theme.json')
 $renderRoot = Join-Path $root (
     'artifacts\win10-neural-void-preview-tests')
 
@@ -53,7 +57,9 @@ $sourceText = @(
 ) -join [Environment]::NewLine
 $surfaceText = [IO.File]::ReadAllText($surfacePath)
 $vectorLayerText = [IO.File]::ReadAllText($vectorLayerPath)
+$apertureFrameText = [IO.File]::ReadAllText($apertureFramePath)
 $windowText = [IO.File]::ReadAllText($windowPath)
+$themeText = [IO.File]::ReadAllText($themePath)
 
 $forbiddenMutationPattern = (
     '(?i)\b(?:DllImport|LibraryImport|GetProcessesByName|Process\.|' +
@@ -108,16 +114,23 @@ Add-Check `
     -Passed (
         $surfaceText.Contains(
             '<local:NeuralVectorLayer') -and
+        $surfaceText.Contains(
+            '<local:ApertureFrame') -and
         $vectorLayerText.Contains('DrawingVisual') -and
         $vectorLayerText.Contains('StreamGeometry') -and
         $vectorLayerText.Contains('CreatePolyline(') -and
         $vectorLayerText.Contains('CreatePolygon(') -and
-        $vectorLayerText.Contains('CreateWaveform(') -and
+        $apertureFrameText.Contains('DrawingVisual') -and
+        $apertureFrameText.Contains('StreamGeometry') -and
+        $apertureFrameText.Contains('DrawTangentCorner(') -and
+        $apertureFrameText.Contains('context.ArcTo(') -and
+        $apertureFrameText.Contains('DrawRegistrationSquare(') -and
         -not $surfaceText.Contains('<Image ') -and
-        -not $vectorLayerText.Contains('Bitmap')) `
+        -not $vectorLayerText.Contains('Bitmap') -and
+        -not $apertureFrameText.Contains('Bitmap')) `
     -Detail (
-        'The selected visual language must be drawn from mathematical ' +
-        'points, lines and planes without decorative bitmap resources.')
+        'Selected variant 4 must be drawn from mathematical points, lines, ' +
+        'arcs and planes without decorative bitmap resources.')
 
 Add-Check `
     -Name 'surface.retained-static-vector-layer' `
@@ -126,14 +139,58 @@ Add-Check `
             'private readonly DrawingVisual _staticVisual') -and
         $vectorLayerText.Contains(
             'private readonly DrawingVisual _signalVisual') -and
+        $apertureFrameText.Contains(
+            'private readonly DrawingVisual _staticVisual') -and
+        $apertureFrameText.Contains(
+            'private readonly DrawingVisual _focusVisual') -and
         $vectorLayerText.Contains('bool signalChanged') -and
         $vectorLayerText.Contains('OnRenderSizeChanged(') -and
         $vectorLayerText.Contains('RedrawStatic();') -and
         $vectorLayerText.Contains('RedrawSignal();') -and
+        $apertureFrameText.Contains('RedrawStatic();') -and
+        $apertureFrameText.Contains('RedrawFocus();') -and
         $vectorLayerText.Contains('geometry.Freeze();')) `
     -Detail (
-        'Static vector geometry must remain retained and frozen while ' +
-        'per-frame work is isolated to the small signal visual.')
+        'Static vector geometry must remain retained while RGB work stays ' +
+        'isolated to small signal and focus visuals.')
+
+$apertureFrameCount =
+    [regex]::Matches(
+        $surfaceText,
+        '<local:ApertureFrame\b').Count
+Add-Check `
+    -Name 'surface.variant-four-aperture-grammar' `
+    -Passed (
+        $apertureFrameCount -ge 4 -and
+        $surfaceText.Contains('FocusCorner="TopLeft"') -and
+        $surfaceText.Contains(
+            'LineBrush="{StaticResource ApertureLineBrush}"') -and
+        $surfaceText.Contains(
+            'AccentBrush="{Binding AccentBrush, ElementName=Root}"') -and
+        -not $surfaceText.Contains('<DropShadowEffect') -and
+        $apertureFrameText.Contains('DrawSplitEdge(') -and
+        $apertureFrameText.Contains('DrawEllipse(') -and
+        -not $apertureFrameText.Contains('CreateGlowBrush(') -and
+        -not $sourceText.Contains('RadialGradientBrush') -and
+        -not $sourceText.Contains('DropShadowEffect') -and
+        $themeText.Contains('"id": "aperture-contour-v1"') -and
+        $themeText.Contains(
+            '"selection": "user-selected-variant-4"') -and
+        $themeText.Contains('"frameClosure": "subtractive-open"') -and
+        $themeText.Contains('"focusJunctionCount": 2') -and
+        $themeText.Contains('"accentBinding": "shared-rgb-frame"') -and
+        $themeText.Contains(
+            '"glowPolicy": "reserved-global-not-implemented"') -and
+        $themeText.Contains(
+            '"architecture": "global-vfx-parameter-stack"') -and
+        $themeText.Contains('"localGlowImplemented": false') -and
+        $themeText.Contains('"globalGlowReserved": true') -and
+        $themeText.Contains('"runtimeImplemented": false') -and
+        $themeText.Contains('"bitmapResourcesRequired": false')) `
+    -Detail (
+        'The selected fourth variant requires subtractive open contours, ' +
+        'tangent arcs, shared-frame color binding, two local point/ring ' +
+        'junctions, no component glow and a reserved global VFX boundary.')
 
 $forbiddenDesktopContentPattern =
     '(?i)\b(?:keyboard|mouse|linked devices|rgb sync|peripheral)\b'

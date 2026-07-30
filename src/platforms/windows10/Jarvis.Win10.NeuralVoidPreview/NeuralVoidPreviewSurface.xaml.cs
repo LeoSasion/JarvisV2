@@ -16,8 +16,6 @@ public partial class NeuralVoidPreviewSurface :
         CreateBrush(Color.FromArgb(0x98, 0x00, 0xFF, 0x9A));
     private SolidColorBrush _accentFaintBrush =
         CreateBrush(Color.FromArgb(0x28, 0x00, 0xFF, 0x9A));
-    private Color _accentColor =
-        Color.FromRgb(0x00, 0xFF, 0x9A);
     private string _accentHex = "#00FF9A";
 
     public NeuralVoidPreviewSurface()
@@ -45,12 +43,6 @@ public partial class NeuralVoidPreviewSurface :
         private set => SetField(ref _accentFaintBrush, value);
     }
 
-    public Color AccentColor
-    {
-        get => _accentColor;
-        private set => SetField(ref _accentColor, value);
-    }
-
     public string AccentHex
     {
         get => _accentHex;
@@ -61,7 +53,6 @@ public partial class NeuralVoidPreviewSurface :
     {
         Color accent =
             Color.FromRgb(frame.Red, frame.Green, frame.Blue);
-        AccentColor = accent;
         AccentBrush = CreateBrush(accent);
         AccentDimBrush =
             CreateBrush(

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jarvisv2.local/schemas/windows10-neural-void-rgb-theme.schema.json",
-  "title": "JarvisV2 Windows 10 Neural Void RGB theme intent",
+  "title": "JarvisV2 Windows 10 Neural Void RGB and aperture theme intent",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -13,6 +13,8 @@
     "approvedDirection",
     "approvalBasis",
     "shellComposition",
+    "vectorGrammar",
+    "globalEffectsIntent",
     "neutralPalette",
     "recommendedAccents",
     "accentModel",
@@ -50,6 +52,12 @@
     },
     "shellComposition": {
       "$ref": "#/$defs/shellComposition"
+    },
+    "vectorGrammar": {
+      "$ref": "#/$defs/vectorGrammar"
+    },
+    "globalEffectsIntent": {
+      "$ref": "#/$defs/globalEffectsIntent"
     },
     "neutralPalette": {
       "$ref": "#/$defs/neutralPalette"
@@ -109,6 +117,126 @@
           "const": false
         },
         "rgbSyncPanelVisible": {
+          "const": false
+        }
+      }
+    },
+    "vectorGrammar": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "selection",
+        "frameClosure",
+        "primitiveSet",
+        "focusJunctionCount",
+        "singleAccentFamily",
+        "accentBinding",
+        "glowPolicy",
+        "bitmapResourcesRequired"
+      ],
+      "properties": {
+        "id": {
+          "const": "aperture-contour-v1"
+        },
+        "selection": {
+          "const": "user-selected-variant-4"
+        },
+        "frameClosure": {
+          "const": "subtractive-open"
+        },
+        "primitiveSet": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "point",
+              "line",
+              "arc",
+              "plane"
+            ]
+          }
+        },
+        "focusJunctionCount": {
+          "const": 2
+        },
+        "singleAccentFamily": {
+          "const": true
+        },
+        "accentBinding": {
+          "const": "shared-rgb-frame"
+        },
+        "glowPolicy": {
+          "const": "reserved-global-not-implemented"
+        },
+        "bitmapResourcesRequired": {
+          "const": false
+        }
+      }
+    },
+    "globalEffectsIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "architecture",
+        "rendererScope",
+        "inspiration",
+        "plannedSystems",
+        "parameterDomains",
+        "localGlowImplemented",
+        "globalGlowReserved",
+        "runtimeImplemented"
+      ],
+      "properties": {
+        "architecture": {
+          "const": "global-vfx-parameter-stack"
+        },
+        "rendererScope": {
+          "const": "desktop-global-compositor"
+        },
+        "inspiration": {
+          "const": "film-vfx-and-game-engine-particle-systems"
+        },
+        "plannedSystems": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "particle-system",
+              "post-processing"
+            ]
+          }
+        },
+        "parameterDomains": {
+          "type": "array",
+          "minItems": 9,
+          "maxItems": 9,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "spawn",
+              "motion",
+              "lifetime",
+              "appearance",
+              "color-over-life",
+              "size-over-life",
+              "material",
+              "render-order",
+              "post-process"
+            ]
+          }
+        },
+        "localGlowImplemented": {
+          "const": false
+        },
+        "globalGlowReserved": {
+          "const": true
+        },
+        "runtimeImplemented": {
           "const": false
         }
       }

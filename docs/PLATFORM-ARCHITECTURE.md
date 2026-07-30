@@ -117,8 +117,22 @@ composition. See `docs/WINDOWS10-NEURAL-VOID-RGB-INTENT.md`.
 `Jarvis.Win10.NeuralVoidPreview` is the first renderer of that intent. It is a
 standalone WPF process whose desktop, Explorer and classic taskbar are all
 simulated controls. It consumes the shared RGB frame engine, exposes A/C/D
-shortcuts plus continuous hue and effects, and can emit deterministic PNG
-evidence. It has no Shell mutation transport or physical-device integration.
+shortcuts plus continuous hue and effects, and implements the selected fourth
+visual variant as a reusable `ApertureFrame`: subtractive open contours,
+tangent arcs and two local RGB focus junctions. Local components draw only
+point/line/arc/plane geometry; every colored primitive consumes the same RGB
+frame and no local glow is implemented. The static graphite geometry and
+animated focus geometry remain in separate retained visuals.
+
+Particles, glow and post processing are reserved for a future desktop-global
+VFX compositor with a film/game-engine-style parameter stack. This boundary
+prevents windows from creating competing local emitters or effect pipelines
+and leaves room for a Galaxy View-like authoring surface. The compositor,
+particle runtime and parameter UI are intent only in this slice.
+
+Deterministic 1600x900 WPF evidence and the source/implementation comparison
+now pass for the approved style-only scope. The renderer still has no Shell
+mutation transport or physical-device integration.
 See `docs/WINDOWS10-NEURAL-VOID-OWNED-PREVIEW.md`.
 
 ## Compatibility profiles

@@ -13,6 +13,30 @@ effect phase. The neutral black-ceramic surface system remains stable while
 the accent drives desktop traces, icon focus, Explorer borders and selection,
 taskbar running indicators and status highlights.
 
+The selected frame grammar is `aperture-contour-v1`, based on the fourth
+reviewed visual variant. It preserves style only, not the mockup layout,
+functions or motifs. Its reusable primitives are point, line, tangent arc and
+plane; frames are subtractive and open, exactly two local focus junctions may
+carry the current shared `RgbFrame` accent, and no bitmap resource is
+required. Local controls do not render glow.
+
+## Future global effects
+
+Glow is reserved for one future desktop-global VFX compositor together with
+particles and post processing. The intended authoring model follows
+parameterized 3D film and game-engine systems, with domains for spawn, motion,
+lifetime, appearance, color and size over life, material, render order and
+post processing. A Galaxy View-like control surface can later expose these
+parameters without making individual windows own independent effect engines.
+
+The current contract records this direction only:
+
+- component geometry remains point/line/arc/plane and consumes the shared RGB
+  frame;
+- the global compositor may consume the same frame and add synchronized
+  particle and post-effect layers;
+- local glow, the compositor runtime and its parameter UI are not implemented.
+
 ## Desktop boundary
 
 The desktop composition contains no keyboard, mouse, peripheral illustration
