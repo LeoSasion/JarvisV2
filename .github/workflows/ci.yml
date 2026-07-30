@@ -130,6 +130,15 @@ jobs:
           pwsh -NoLogo -NoProfile -File
           .\scripts\Test-Windows10NeuralVoidPreview.ps1
 
+      - name: Upload Windows 10 Neural Void visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: win10-neural-void-preview
+          path: artifacts/win10-neural-void-preview-tests/*.png
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Audit desktop host probe without live inspection
         shell: pwsh
         run: >-

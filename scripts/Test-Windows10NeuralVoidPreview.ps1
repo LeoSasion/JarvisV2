@@ -15,6 +15,8 @@ $projectPath = Join-Path $sourceRoot (
     'Jarvis.Win10.NeuralVoidPreview.csproj')
 $surfacePath = Join-Path $sourceRoot (
     'NeuralVoidPreviewSurface.xaml')
+$vectorLayerPath = Join-Path $sourceRoot (
+    'NeuralVectorLayer.cs')
 $windowPath = Join-Path $sourceRoot 'MainWindow.xaml'
 $renderRoot = Join-Path $root (
     'artifacts\win10-neural-void-preview-tests')
@@ -50,6 +52,7 @@ $sourceText = @(
     }
 ) -join [Environment]::NewLine
 $surfaceText = [IO.File]::ReadAllText($surfacePath)
+$vectorLayerText = [IO.File]::ReadAllText($vectorLayerPath)
 $windowText = [IO.File]::ReadAllText($windowPath)
 
 $forbiddenMutationPattern = (
@@ -99,6 +102,38 @@ Add-Check `
     -Detail (
         'The simulated desktop must visibly cover every reviewed selector ' +
         'role before any real adapter is considered.')
+
+Add-Check `
+    -Name 'surface.vector-only-visual-grammar' `
+    -Passed (
+        $surfaceText.Contains(
+            '<local:NeuralVectorLayer') -and
+        $vectorLayerText.Contains('DrawingVisual') -and
+        $vectorLayerText.Contains('StreamGeometry') -and
+        $vectorLayerText.Contains('CreatePolyline(') -and
+        $vectorLayerText.Contains('CreatePolygon(') -and
+        $vectorLayerText.Contains('CreateWaveform(') -and
+        -not $surfaceText.Contains('<Image ') -and
+        -not $vectorLayerText.Contains('Bitmap')) `
+    -Detail (
+        'The selected visual language must be drawn from mathematical ' +
+        'points, lines and planes without decorative bitmap resources.')
+
+Add-Check `
+    -Name 'surface.retained-static-vector-layer' `
+    -Passed (
+        $vectorLayerText.Contains(
+            'private readonly DrawingVisual _staticVisual') -and
+        $vectorLayerText.Contains(
+            'private readonly DrawingVisual _signalVisual') -and
+        $vectorLayerText.Contains('bool signalChanged') -and
+        $vectorLayerText.Contains('OnRenderSizeChanged(') -and
+        $vectorLayerText.Contains('RedrawStatic();') -and
+        $vectorLayerText.Contains('RedrawSignal();') -and
+        $vectorLayerText.Contains('geometry.Freeze();')) `
+    -Detail (
+        'Static vector geometry must remain retained and frozen while ' +
+        'per-frame work is isolated to the small signal visual.')
 
 $forbiddenDesktopContentPattern =
     '(?i)\b(?:keyboard|mouse|linked devices|rgb sync|peripheral)\b'
@@ -211,7 +246,7 @@ if ($buildExitCode -eq 0) {
         try {
             $receipt =
                 ($renderOutput -join [Environment]::NewLine) |
-                    ConvertFrom-Json -Depth 20
+                    ConvertFrom-Json
         }
         catch {
             $receipt = $null

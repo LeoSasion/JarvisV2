@@ -4,6 +4,22 @@
 approved D / Neural Void direction. It draws a simulated desktop, Explorer
 window and classic Win10 taskbar entirely inside its own WPF process.
 
+The current visual pass treats the reviewed mockups as a style reference
+only. It does not copy their forensic workflow, panel layout or decorative
+patterns. The retained language is:
+
+- one monochrome accent over neutral black surfaces;
+- one-pixel open-corner contours and routed 45-degree joins;
+- sparse anchor nodes and low-opacity geometric planes;
+- mathematical signal curves instead of bitmap decoration.
+
+`NeuralVectorLayer` records the static frame into one retained
+`DrawingVisual`. Its `StreamGeometry` paths are frozen after construction.
+RGB frame changes update shared brushes, while only the small signal visual
+is redrawn for animation. This keeps the point-line-plane system independent
+of the simulated Explorer content and ready to be reused by later Windows 10
+surfaces.
+
 ![Neural Void owned-process preview](screenshots/jarvis-win10-neural-void-owned-preview.png)
 
 The preview covers the eight reviewed roles:

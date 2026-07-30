@@ -78,6 +78,10 @@ public partial class NeuralVoidPreviewSurface :
                     frame.Green,
                     frame.Blue));
         AccentHex = frame.Hex;
+        VectorLayer.ApplyFrame(
+            accent,
+            frame.Phase,
+            frame.EffectId);
     }
 
     private static SolidColorBrush CreateBrush(Color color)
