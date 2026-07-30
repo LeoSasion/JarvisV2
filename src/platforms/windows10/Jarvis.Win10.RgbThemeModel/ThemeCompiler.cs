@@ -217,6 +217,9 @@ internal static partial class ThemeCompiler
             "global-effects-parameter-set-not-exact",
             failures);
         Require(
+            intent.ParameterContractId ==
+                ThemeContract.GlobalEffectsParameterContractId &&
+            intent.ParameterContractImplemented &&
             !intent.LocalGlowImplemented &&
             intent.GlobalGlowReserved &&
             !intent.RuntimeImplemented,

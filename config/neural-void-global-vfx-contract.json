@@ -1,0 +1,489 @@
+{
+  "$schema": "./neural-void-global-vfx-contract.schema.json",
+  "schemaVersion": 1,
+  "contractId": "neural-void-global-vfx-v1",
+  "platformScope": [
+    "windows10",
+    "windows11"
+  ],
+  "architecture": "module-graph-plus-ordered-post-stack",
+  "rendererScope": "desktop-global-compositor",
+  "authoringModel": "film-vfx-and-game-engine-parameters",
+  "lifecycleState": "parameter-contract-only",
+  "runtimeEnabled": false,
+  "editorImplemented": false,
+  "colorBinding": "shared-rgb-frame",
+  "clock": {
+    "mode": "fixed-step-monotonic",
+    "fixedStepHz": 60,
+    "deterministicSeedRequired": true
+  },
+  "renderStages": [
+    {
+      "id": "background-particles",
+      "order": 100
+    },
+    {
+      "id": "vector-content",
+      "order": 200
+    },
+    {
+      "id": "foreground-particles",
+      "order": 300
+    },
+    {
+      "id": "post-processing",
+      "order": 400
+    }
+  ],
+  "qualityProfiles": [
+    {
+      "id": "low-power",
+      "maxParticles": 512,
+      "maxTrailPoints": 4096,
+      "maxPostPasses": 2
+    },
+    {
+      "id": "balanced",
+      "maxParticles": 2048,
+      "maxTrailPoints": 16384,
+      "maxPostPasses": 4
+    },
+    {
+      "id": "cinematic-preview",
+      "maxParticles": 8192,
+      "maxTrailPoints": 65536,
+      "maxPostPasses": 8
+    }
+  ],
+  "particleModules": [
+    {
+      "id": "emission",
+      "stage": "spawn",
+      "order": 10,
+      "enabledByDefault": false,
+      "parameters": [
+        {
+          "id": "spawn-rate",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 5000,
+          "defaultValue": 0,
+          "unit": "particles-per-second",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "burst-count",
+          "valueType": "integer",
+          "minimumValue": 0,
+          "maximumValue": 4096,
+          "defaultValue": 0,
+          "unit": "particles",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "max-particles",
+          "valueType": "integer",
+          "minimumValue": 1,
+          "maximumValue": 8192,
+          "defaultValue": 512,
+          "unit": "particles",
+          "options": [],
+          "colorBinding": "none"
+        }
+      ]
+    },
+    {
+      "id": "motion",
+      "stage": "update",
+      "order": 20,
+      "enabledByDefault": false,
+      "parameters": [
+        {
+          "id": "initial-speed",
+          "valueType": "range",
+          "minimumValue": 0,
+          "maximumValue": 2,
+          "defaultValue": [
+            0.05,
+            0.2
+          ],
+          "unit": "desktop-heights-per-second",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "heading",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 360,
+          "defaultValue": 270,
+          "unit": "degrees",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "spread",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 360,
+          "defaultValue": 24,
+          "unit": "degrees",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "drag",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 1,
+          "defaultValue": 0.08,
+          "unit": "normalized",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "turbulence-strength",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 1,
+          "defaultValue": 0,
+          "unit": "normalized",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "turbulence-scale",
+          "valueType": "scalar",
+          "minimumValue": 0.01,
+          "maximumValue": 16,
+          "defaultValue": 1,
+          "unit": "cycles-per-desktop",
+          "options": [],
+          "colorBinding": "none"
+        }
+      ]
+    },
+    {
+      "id": "lifetime",
+      "stage": "update",
+      "order": 30,
+      "enabledByDefault": false,
+      "parameters": [
+        {
+          "id": "duration",
+          "valueType": "range",
+          "minimumValue": 0.05,
+          "maximumValue": 30,
+          "defaultValue": [
+            0.8,
+            2.4
+          ],
+          "unit": "seconds",
+          "options": [],
+          "colorBinding": "none"
+        }
+      ]
+    },
+    {
+      "id": "appearance",
+      "stage": "render",
+      "order": 40,
+      "enabledByDefault": false,
+      "parameters": [
+        {
+          "id": "shape",
+          "valueType": "enum",
+          "minimumValue": null,
+          "maximumValue": null,
+          "defaultValue": "point",
+          "unit": "none",
+          "options": [
+            "point",
+            "line",
+            "ring",
+            "triangle",
+            "quad"
+          ],
+          "colorBinding": "none"
+        },
+        {
+          "id": "blend-mode",
+          "valueType": "enum",
+          "minimumValue": null,
+          "maximumValue": null,
+          "defaultValue": "alpha",
+          "unit": "none",
+          "options": [
+            "alpha",
+            "additive",
+            "screen"
+          ],
+          "colorBinding": "none"
+        },
+        {
+          "id": "start-size",
+          "valueType": "range",
+          "minimumValue": 0.25,
+          "maximumValue": 64,
+          "defaultValue": [
+            1,
+            3
+          ],
+          "unit": "device-independent-pixels",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "size-over-life",
+          "valueType": "curve",
+          "minimumValue": 0,
+          "maximumValue": 1,
+          "defaultValue": [
+            0,
+            0,
+            0.2,
+            1,
+            1,
+            0
+          ],
+          "unit": "normalized",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "alpha-over-life",
+          "valueType": "curve",
+          "minimumValue": 0,
+          "maximumValue": 1,
+          "defaultValue": [
+            0,
+            0,
+            0.15,
+            1,
+            0.8,
+            1,
+            1,
+            0
+          ],
+          "unit": "normalized",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "color-source",
+          "valueType": "enum",
+          "minimumValue": null,
+          "maximumValue": null,
+          "defaultValue": "shared-rgb-frame",
+          "unit": "none",
+          "options": [
+            "shared-rgb-frame",
+            "shared-rgb-hue-offset",
+            "neutral"
+          ],
+          "colorBinding": "shared-rgb-frame"
+        }
+      ]
+    },
+    {
+      "id": "trail",
+      "stage": "render",
+      "order": 50,
+      "enabledByDefault": false,
+      "parameters": [
+        {
+          "id": "duration",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 10,
+          "defaultValue": 0,
+          "unit": "seconds",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "width",
+          "valueType": "scalar",
+          "minimumValue": 0.25,
+          "maximumValue": 32,
+          "defaultValue": 1,
+          "unit": "device-independent-pixels",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "decay",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 1,
+          "defaultValue": 0.9,
+          "unit": "normalized",
+          "options": [],
+          "colorBinding": "none"
+        }
+      ]
+    }
+  ],
+  "postEffects": [
+    {
+      "id": "bloom",
+      "stage": "post-process",
+      "order": 10,
+      "enabledByDefault": false,
+      "parameters": [
+        {
+          "id": "threshold",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 1,
+          "defaultValue": 1,
+          "unit": "normalized",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "intensity",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 4,
+          "defaultValue": 0,
+          "unit": "multiplier",
+          "options": [],
+          "colorBinding": "shared-rgb-frame"
+        },
+        {
+          "id": "radius",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 64,
+          "defaultValue": 0,
+          "unit": "device-independent-pixels",
+          "options": [],
+          "colorBinding": "none"
+        }
+      ]
+    },
+    {
+      "id": "feedback-trails",
+      "stage": "post-process",
+      "order": 20,
+      "enabledByDefault": false,
+      "parameters": [
+        {
+          "id": "feedback",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 0.99,
+          "defaultValue": 0,
+          "unit": "normalized",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "decay",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 1,
+          "defaultValue": 1,
+          "unit": "normalized",
+          "options": [],
+          "colorBinding": "none"
+        }
+      ]
+    },
+    {
+      "id": "chromatic-aberration",
+      "stage": "post-process",
+      "order": 30,
+      "enabledByDefault": false,
+      "parameters": [
+        {
+          "id": "amount",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 16,
+          "defaultValue": 0,
+          "unit": "device-independent-pixels",
+          "options": [],
+          "colorBinding": "none"
+        }
+      ]
+    },
+    {
+      "id": "displacement",
+      "stage": "post-process",
+      "order": 40,
+      "enabledByDefault": false,
+      "parameters": [
+        {
+          "id": "amplitude",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 32,
+          "defaultValue": 0,
+          "unit": "device-independent-pixels",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "frequency",
+          "valueType": "scalar",
+          "minimumValue": 0.01,
+          "maximumValue": 16,
+          "defaultValue": 1,
+          "unit": "cycles-per-desktop",
+          "options": [],
+          "colorBinding": "none"
+        }
+      ]
+    },
+    {
+      "id": "color-grade",
+      "stage": "post-process",
+      "order": 50,
+      "enabledByDefault": false,
+      "parameters": [
+        {
+          "id": "exposure",
+          "valueType": "scalar",
+          "minimumValue": -4,
+          "maximumValue": 4,
+          "defaultValue": 0,
+          "unit": "stops",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "contrast",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 2,
+          "defaultValue": 1,
+          "unit": "multiplier",
+          "options": [],
+          "colorBinding": "none"
+        },
+        {
+          "id": "saturation",
+          "valueType": "scalar",
+          "minimumValue": 0,
+          "maximumValue": 2,
+          "defaultValue": 1,
+          "unit": "multiplier",
+          "options": [],
+          "colorBinding": "none"
+        }
+      ]
+    }
+  ],
+  "capabilities": {
+    "gpuBackend": "unselected",
+    "softwareReference": "deterministic-cpu-required",
+    "componentLocalEffects": false,
+    "liveShellIntegration": false,
+    "physicalDeviceIo": false
+  }
+}

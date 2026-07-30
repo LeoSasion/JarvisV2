@@ -29,13 +29,21 @@ lifetime, appearance, color and size over life, material, render order and
 post processing. A Galaxy View-like control surface can later expose these
 parameters without making individual windows own independent effect engines.
 
-The current contract records this direction only:
+The theme intent records the direction, while the separate
+`neural-void-global-vfx-v1` contract now provides a validated, platform-neutral
+parameter vocabulary:
 
 - component geometry remains point/line/arc/plane and consumes the shared RGB
   frame;
 - the global compositor may consume the same frame and add synchronized
   particle and post-effect layers;
+- 30 scalar, integer, range, enum and curve parameters are organized into five
+  particle modules and five ordered post effects;
+- all effect nodes are disabled by default;
 - local glow, the compositor runtime and its parameter UI are not implemented.
+
+See `NEURAL-VOID-GLOBAL-VFX-CONTRACT.md` for render stages, quality budgets and
+the fail-closed parameter rules.
 
 ## Desktop boundary
 
@@ -61,7 +69,9 @@ frame. No device SDK, HID transport or provider is implemented in this slice.
 
 `Jarvis.Win10.RgbThemeModel` embeds and validates
 `config/windows10-neural-void-rgb-theme.json`. It also produces deterministic
-RGB frames for `static`, `breathe`, `spectrum` and `signal-pulse` effects.
+RGB frames for `static`, `breathe`, `spectrum` and `signal-pulse` effects. The
+same model now embeds and compiles the shared global VFX parameter contract;
+that operation validates data only and does not render an effect.
 
 ```powershell
 pwsh -NoLogo -NoProfile -File `

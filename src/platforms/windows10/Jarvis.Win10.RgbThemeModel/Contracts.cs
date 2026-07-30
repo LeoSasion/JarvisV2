@@ -22,6 +22,8 @@ internal static class ThemeContract
         "desktop-global-compositor";
     public const string GlobalEffectsInspiration =
         "film-vfx-and-game-engine-particle-systems";
+    public const string GlobalEffectsParameterContractId =
+        "neural-void-global-vfx-v1";
 
     public static readonly IReadOnlySet<string>
         RequiredVectorPrimitives =
@@ -141,6 +143,8 @@ internal sealed record GlobalEffectsIntent(
     string Inspiration,
     string[] PlannedSystems,
     string[] ParameterDomains,
+    string ParameterContractId,
+    bool ParameterContractImplemented,
     bool LocalGlowImplemented,
     bool GlobalGlowReserved,
     bool RuntimeImplemented);

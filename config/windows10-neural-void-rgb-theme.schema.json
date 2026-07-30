@@ -185,6 +185,8 @@
         "inspiration",
         "plannedSystems",
         "parameterDomains",
+        "parameterContractId",
+        "parameterContractImplemented",
         "localGlowImplemented",
         "globalGlowReserved",
         "runtimeImplemented"
@@ -229,6 +231,12 @@
               "post-process"
             ]
           }
+        },
+        "parameterContractId": {
+          "const": "neural-void-global-vfx-v1"
+        },
+        "parameterContractImplemented": {
+          "const": true
         },
         "localGlowImplemented": {
           "const": false

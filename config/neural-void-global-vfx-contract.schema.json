@@ -1,0 +1,324 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvisv2.local/schemas/neural-void-global-vfx-contract.schema.json",
+  "title": "JarvisV2 Neural Void global VFX parameter contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "contractId",
+    "platformScope",
+    "architecture",
+    "rendererScope",
+    "authoringModel",
+    "lifecycleState",
+    "runtimeEnabled",
+    "editorImplemented",
+    "colorBinding",
+    "clock",
+    "renderStages",
+    "qualityProfiles",
+    "particleModules",
+    "postEffects",
+    "capabilities"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "contractId": {
+      "const": "neural-void-global-vfx-v1"
+    },
+    "platformScope": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "const": "windows10"
+        },
+        {
+          "const": "windows11"
+        }
+      ],
+      "items": false
+    },
+    "architecture": {
+      "const": "module-graph-plus-ordered-post-stack"
+    },
+    "rendererScope": {
+      "const": "desktop-global-compositor"
+    },
+    "authoringModel": {
+      "const": "film-vfx-and-game-engine-parameters"
+    },
+    "lifecycleState": {
+      "const": "parameter-contract-only"
+    },
+    "runtimeEnabled": {
+      "const": false
+    },
+    "editorImplemented": {
+      "const": false
+    },
+    "colorBinding": {
+      "const": "shared-rgb-frame"
+    },
+    "clock": {
+      "$ref": "#/$defs/clock"
+    },
+    "renderStages": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/orderedEntry"
+      }
+    },
+    "qualityProfiles": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/qualityProfile"
+      }
+    },
+    "particleModules": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/module"
+      }
+    },
+    "postEffects": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/module"
+      }
+    },
+    "capabilities": {
+      "$ref": "#/$defs/capabilities"
+    }
+  },
+  "$defs": {
+    "clock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "fixedStepHz",
+        "deterministicSeedRequired"
+      ],
+      "properties": {
+        "mode": {
+          "const": "fixed-step-monotonic"
+        },
+        "fixedStepHz": {
+          "const": 60
+        },
+        "deterministicSeedRequired": {
+          "const": true
+        }
+      }
+    },
+    "orderedEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "order"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "qualityProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "maxParticles",
+        "maxTrailPoints",
+        "maxPostPasses"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "low-power",
+            "balanced",
+            "cinematic-preview"
+          ]
+        },
+        "maxParticles": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "maxTrailPoints": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65536
+        },
+        "maxPostPasses": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        }
+      }
+    },
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "stage",
+        "order",
+        "enabledByDefault",
+        "parameters"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stage": {
+          "enum": [
+            "spawn",
+            "update",
+            "render",
+            "post-process"
+          ]
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "enabledByDefault": {
+          "const": false
+        },
+        "parameters": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/parameter"
+          }
+        }
+      }
+    },
+    "parameter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "valueType",
+        "minimumValue",
+        "maximumValue",
+        "defaultValue",
+        "unit",
+        "options",
+        "colorBinding"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "valueType": {
+          "enum": [
+            "scalar",
+            "integer",
+            "range",
+            "enum",
+            "curve"
+          ]
+        },
+        "minimumValue": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "maximumValue": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "defaultValue": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "number"
+              }
+            }
+          ]
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "options": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "colorBinding": {
+          "enum": [
+            "none",
+            "shared-rgb-frame"
+          ]
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gpuBackend",
+        "softwareReference",
+        "componentLocalEffects",
+        "liveShellIntegration",
+        "physicalDeviceIo"
+      ],
+      "properties": {
+        "gpuBackend": {
+          "const": "unselected"
+        },
+        "softwareReference": {
+          "const": "deterministic-cpu-required"
+        },
+        "componentLocalEffects": {
+          "const": false
+        },
+        "liveShellIntegration": {
+          "const": false
+        },
+        "physicalDeviceIo": {
+          "const": false
+        }
+      }
+    }
+  }
+}

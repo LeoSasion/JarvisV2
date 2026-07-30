@@ -15,5 +15,9 @@
       Include="..\..\..\..\config\windows10-neural-void-rgb-theme.json"
       Link="windows10-neural-void-rgb-theme.json"
       LogicalName="Jarvis.Win10.RgbThemeModel.neural-void-theme.json" />
+    <EmbeddedResource
+      Include="..\..\..\..\config\neural-void-global-vfx-contract.json"
+      Link="neural-void-global-vfx-contract.json"
+      LogicalName="Jarvis.Win10.RgbThemeModel.global-vfx-contract.json" />
   </ItemGroup>
 </Project>

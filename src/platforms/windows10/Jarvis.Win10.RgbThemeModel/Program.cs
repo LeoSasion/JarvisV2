@@ -35,6 +35,31 @@ internal static class Program
             return receipt.Result == "passed" ? 0 : 12;
         }
 
+        if (args.Length == 1 && args[0] == "compile-vfx")
+        {
+            EmbeddedVfxContract vfx =
+                EmbeddedVfxContractReader.Read();
+            VfxCompilationReceipt receipt =
+                VfxContractCompiler.Compile(
+                    vfx.Document,
+                    vfx.Sha256);
+            Write(receipt);
+            return receipt.Result ==
+                    "compiled-parameter-contract"
+                ? 0
+                : 12;
+        }
+
+        if (args.Length == 1 && args[0] == "test-vfx")
+        {
+            EmbeddedVfxContract vfx =
+                EmbeddedVfxContractReader.Read();
+            VfxModelTestReceipt receipt =
+                VfxContractScenarios.Run(vfx.Document);
+            Write(receipt);
+            return receipt.Result == "passed" ? 0 : 12;
+        }
+
         if (args.Length == 6 && args[0] == "sample")
         {
             if (!TryDouble(args[1], out double hue) ||
@@ -66,7 +91,8 @@ internal static class Program
         }
 
         Console.Error.WriteLine(
-            "Usage: jarvis-win10-rgb-theme-model <compile|test> " +
+            "Usage: jarvis-win10-rgb-theme-model " +
+            "<compile|test|compile-vfx|test-vfx> " +
             "or sample <hue> <saturation> <value> <effect> <phase>");
         return 2;
     }

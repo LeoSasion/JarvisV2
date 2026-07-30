@@ -55,6 +55,14 @@ and desktop conversation surface will consume these admitted boundaries; the
 agent runtime will never be loaded into Explorer. See
 `docs/PI-AGENT-DESKTOP-HOST.md`.
 
+Neural Void visual effects use one platform-neutral
+`neural-void-global-vfx-v1` parameter contract for Win10 and Win11. It defines
+the shared particle-module vocabulary, render order, post stack, quality
+budgets and RGB binding while leaving every effect disabled. Platform backends
+may later implement separate renderers against that common contract; the
+contract does not authorize Shell integration. See
+`docs/NEURAL-VOID-GLOBAL-VFX-CONTRACT.md`.
+
 The current Supervisor remains under `src/platforms/windows11` because its
 compatibility inspector, module allowlist, recovery lease and command text are
 bound to the reviewed Win11 modules. A future Win10 supervisor may extract

@@ -15,6 +15,10 @@ $themePath = Join-Path $root (
     'config\windows10-neural-void-rgb-theme.json')
 $schemaPath = Join-Path $root (
     'config\windows10-neural-void-rgb-theme.schema.json')
+$vfxPath = Join-Path $root (
+    'config\neural-void-global-vfx-contract.json')
+$vfxSchemaPath = Join-Path $root (
+    'config\neural-void-global-vfx-contract.schema.json')
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()
@@ -41,6 +45,12 @@ $theme =
         ConvertFrom-Json
 $schema =
     Get-Content -LiteralPath $schemaPath -Raw |
+        ConvertFrom-Json
+$vfx =
+    Get-Content -LiteralPath $vfxPath -Raw |
+        ConvertFrom-Json
+$vfxSchema =
+    Get-Content -LiteralPath $vfxSchemaPath -Raw |
         ConvertFrom-Json
 $sourceText = @(
     Get-ChildItem -LiteralPath $sourceRoot -File -Recurse |
@@ -157,6 +167,9 @@ Add-Check `
             (($expectedGlobalSystems | Sort-Object) -join '|') -and
         ($observedParameterDomains -join '|') -eq
             ($expectedParameterDomains -join '|') -and
+        $theme.globalEffectsIntent.parameterContractId -eq
+            'neural-void-global-vfx-v1' -and
+        $theme.globalEffectsIntent.parameterContractImplemented -and
         -not $theme.globalEffectsIntent.localGlowImplemented -and
         $theme.globalEffectsIntent.globalGlowReserved -and
         -not $theme.globalEffectsIntent.runtimeImplemented -and
@@ -165,6 +178,78 @@ Add-Check `
     -Detail (
         'Particles and post effects are reserved for one future global, ' +
         'parameterized compositor; current components must stay geometry-only.')
+
+$expectedVfxModules = @(
+    'appearance',
+    'emission',
+    'lifetime',
+    'motion',
+    'trail'
+)
+$observedVfxModules =
+    @($vfx.particleModules.id | Sort-Object)
+$expectedPostEffects = @(
+    'bloom',
+    'chromatic-aberration',
+    'color-grade',
+    'displacement',
+    'feedback-trails'
+)
+$observedPostEffects =
+    @($vfx.postEffects.id | Sort-Object)
+$allVfxModules =
+    @($vfx.particleModules) + @($vfx.postEffects)
+Add-Check `
+    -Name 'vfx.cross-version-parameter-contract' `
+    -Passed (
+        $vfx.schemaVersion -eq 1 -and
+        $vfx.contractId -eq 'neural-void-global-vfx-v1' -and
+        (@($vfx.platformScope) -join '|') -eq
+            'windows10|windows11' -and
+        $vfx.architecture -eq
+            'module-graph-plus-ordered-post-stack' -and
+        $vfx.rendererScope -eq 'desktop-global-compositor' -and
+        $vfx.colorBinding -eq 'shared-rgb-frame' -and
+        $vfx.clock.fixedStepHz -eq 60 -and
+        $vfx.clock.deterministicSeedRequired -and
+        ($observedVfxModules -join '|') -eq
+            (($expectedVfxModules | Sort-Object) -join '|') -and
+        ($observedPostEffects -join '|') -eq
+            (($expectedPostEffects | Sort-Object) -join '|')) `
+    -Detail (
+        'One platform-neutral contract must describe the particle module ' +
+        'graph, ordered post stack, fixed clock and shared RGB binding.')
+
+$vfxParameterCount =
+    @(
+        $allVfxModules |
+            ForEach-Object { @($_.parameters).Count } |
+            Measure-Object -Sum
+    )[0].Sum
+Add-Check `
+    -Name 'vfx.disabled-parameter-catalog' `
+    -Passed (
+        -not $vfx.runtimeEnabled -and
+        -not $vfx.editorImplemented -and
+        @($allVfxModules | Where-Object enabledByDefault).Count -eq 0 -and
+        $vfxParameterCount -eq 30 -and
+        @($vfx.qualityProfiles).Count -eq 3 -and
+        $vfx.capabilities.gpuBackend -eq 'unselected' -and
+        $vfx.capabilities.softwareReference -eq
+            'deterministic-cpu-required' -and
+        -not $vfx.capabilities.componentLocalEffects -and
+        -not $vfx.capabilities.liveShellIntegration -and
+        -not $vfx.capabilities.physicalDeviceIo -and
+        $vfxSchema.properties.runtimeEnabled.const -eq $false -and
+        $vfxSchema.properties.editorImplemented.const -eq $false -and
+        $vfxSchema.'$defs'.module.properties.enabledByDefault.const -eq
+            $false -and
+        $vfxSchema.'$defs'.capabilities.properties.liveShellIntegration.const `
+            -eq $false) `
+    -Detail (
+        'The Galaxy View-like parameter vocabulary may be compiled now, ' +
+        'while its renderer, editor, local effects, Shell and device paths ' +
+        'remain disabled.')
 
 Add-Check `
     -Name 'theme.no-peripherals-inside-desktop' `
@@ -275,6 +360,76 @@ if ($buildExitCode -eq 0) {
         -Detail (
             "Model exit $modelExitCode; scenarios " +
             "$($receipt.passedCount)/$($receipt.scenarioCount).")
+
+    $vfxCompileOutput = @(
+        & $DotnetPath $assemblyPath compile-vfx 2>&1
+    )
+    $vfxCompileExitCode = $LASTEXITCODE
+    $vfxCompileReceipt = $null
+    try {
+        $vfxCompileReceipt =
+            ($vfxCompileOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $vfxCompileReceipt = $null
+    }
+    Add-Check `
+        -Name 'vfx.parameter-contract-compilation' `
+        -Passed (
+            $vfxCompileExitCode -eq 0 -and
+            $null -ne $vfxCompileReceipt -and
+            $vfxCompileReceipt.result -eq
+                'compiled-parameter-contract' -and
+            $vfxCompileReceipt.renderStageCount -eq 4 -and
+            $vfxCompileReceipt.qualityProfileCount -eq 3 -and
+            $vfxCompileReceipt.particleModuleCount -eq 5 -and
+            $vfxCompileReceipt.postEffectCount -eq 5 -and
+            $vfxCompileReceipt.parameterCount -eq 30 -and
+            $vfxCompileReceipt.allModulesDisabledByDefault -and
+            $vfxCompileReceipt.sharedRgbBindingValidated -and
+            -not $vfxCompileReceipt.runtimeEnabled -and
+            -not $vfxCompileReceipt.editorImplemented -and
+            -not $vfxCompileReceipt.readyForShellMutation -and
+            -not $vfxCompileReceipt.activationPermitted -and
+            $vfxCompileReceipt.liveExplorer -eq 'not-run' -and
+            -not $vfxCompileReceipt.mutationPerformed) `
+        -Detail (
+            "VFX compile exit $vfxCompileExitCode; parameters " +
+            "$($vfxCompileReceipt.parameterCount).")
+
+    $vfxTestOutput = @(
+        & $DotnetPath $assemblyPath test-vfx 2>&1
+    )
+    $vfxTestExitCode = $LASTEXITCODE
+    $vfxTestReceipt = $null
+    try {
+        $vfxTestReceipt =
+            ($vfxTestOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $vfxTestReceipt = $null
+    }
+    Add-Check `
+        -Name 'vfx.fail-closed-parameter-scenarios' `
+        -Passed (
+            $vfxTestExitCode -eq 0 -and
+            $null -ne $vfxTestReceipt -and
+            $vfxTestReceipt.result -eq 'passed' -and
+            $vfxTestReceipt.scenarioCount -ge 15 -and
+            $vfxTestReceipt.passedCount -eq
+                $vfxTestReceipt.scenarioCount -and
+            -not $vfxTestReceipt.runtimeEnabled -and
+            -not $vfxTestReceipt.editorImplemented -and
+            -not $vfxTestReceipt.readyForShellMutation -and
+            -not $vfxTestReceipt.activationPermitted -and
+            $vfxTestReceipt.liveExplorer -eq 'not-run' -and
+            -not $vfxTestReceipt.mutationPerformed) `
+        -Detail (
+            "VFX test exit $vfxTestExitCode; scenarios " +
+            "$($vfxTestReceipt.passedCount)/" +
+            "$($vfxTestReceipt.scenarioCount).")
 }
 
 $passed = $failures.Count -eq 0
@@ -286,6 +441,9 @@ $passed = $failures.Count -eq 0
     passedCount = @($checks | Where-Object passed).Count
     desktopContainsDeviceUi = $false
     readyForOwnedProcessPreview = $passed
+    globalVfxParameterContractCompiled = $passed
+    globalVfxRuntimeEnabled = $false
+    globalVfxEditorImplemented = $false
     readyForShellMutation = $false
     readyForDeviceIntegration = $false
     executionSupported = $false

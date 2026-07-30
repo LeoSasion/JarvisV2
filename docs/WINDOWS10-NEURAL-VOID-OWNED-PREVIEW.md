@@ -33,8 +33,9 @@ duplicated by individual controls.
 That future compositor will use a film/game-engine-style parameter stack for
 spawn, motion, lifetime, appearance, color and size over life, material,
 render order and post processing. A Galaxy View-like parameter surface may
-control those values later, but the current preview contains neither the
-runtime nor its controls.
+control those values later. The platform-neutral parameter catalog is now
+compiled and tested, but the current preview contains neither the runtime nor
+its controls. See `NEURAL-VOID-GLOBAL-VFX-CONTRACT.md`.
 
 ![Neural Void owned-process preview](screenshots/jarvis-win10-neural-void-owned-preview.png)
 

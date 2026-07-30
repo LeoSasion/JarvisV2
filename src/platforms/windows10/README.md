@@ -34,6 +34,13 @@ only, not the future VFX editor. Deterministic 1600x900 renders and the latest
 source/implementation comparison pass for the approved style-only scope.
 Neither path contacts or modifies the live Shell.
 
+The platform-neutral `neural-void-global-vfx-v1` contract now defines 30 typed
+parameters across five particle modules and five ordered post effects, plus
+three bounded quality profiles. The Win10 RGB model compiles and fail-closed
+tests that vocabulary. Every node remains disabled, the GPU backend is
+unselected, and no renderer or parameter editor is implemented. See
+`docs/NEURAL-VOID-GLOBAL-VFX-CONTRACT.md`.
+
 The owned `Jarvis.Win10.NativeStyleProbe` now consumes the same RGB frame for
 its client surface while retaining the single reviewed Win10 dark-caption
 attribute. Arbitrary caption color is not claimed. The shared

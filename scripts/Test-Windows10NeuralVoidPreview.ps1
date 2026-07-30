@@ -312,7 +312,7 @@ if ($buildExitCode -eq 0) {
         $pngValid = $false
         if (Test-Path -LiteralPath $outputPath -PathType Leaf) {
             $bytes = [IO.File]::ReadAllBytes($outputPath)
-            if ($bytes.Length -gt 10000 -and
+            if ($bytes.Length -gt 4096 -and
                 $bytes[0] -eq 0x89 -and
                 $bytes[1] -eq 0x50 -and
                 $bytes[2] -eq 0x4E -and

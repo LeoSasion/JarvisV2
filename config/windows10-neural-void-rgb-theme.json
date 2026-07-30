@@ -49,6 +49,8 @@
       "render-order",
       "post-process"
     ],
+    "parameterContractId": "neural-void-global-vfx-v1",
+    "parameterContractImplemented": true,
     "localGlowImplemented": false,
     "globalGlowReserved": true,
     "runtimeImplemented": false
