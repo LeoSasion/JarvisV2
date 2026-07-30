@@ -40,9 +40,10 @@ attribute. Arbitrary caption color is not claimed. The shared
 `Jarvis.PiAgentHost` now creates a root-confined, in-memory SDK session and
 uses a desktop-owned, provider-neutral model broker across multiple turns. The
 offline provider proves two ordinary responses, one real `read` tool round trip
-and active generation cancellation. The default sidecar remains non-prompting
-unless that reviewed current-user named pipe is present; no authenticated
-production provider or credential is connected yet.
+and active generation cancellation. Each turn also exposes a bounded, ordered
+stream of text, tool and terminal events for future WPF binding. The default
+sidecar remains non-prompting unless that reviewed current-user named pipe is
+present; no authenticated production provider or credential is connected yet.
 
 See `WINDOWS10-HANDOFF.md`,
 `docs/WINDOWS10-NATIVE-STYLE-PROBE.md` and

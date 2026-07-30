@@ -105,6 +105,11 @@ Add-Check `
             'desktop-owned-multi-request' -and
         $contract.session.modelBrokerMaxFrameBytes -eq 1048576 -and
         $contract.session.modelBrokerMaxConcurrentConnections -eq 4 -and
+        $contract.session.desktopTurnEventStream -eq
+            'bounded-ordered-single-consumer' -and
+        $contract.session.desktopTurnEventBufferCapacity -eq 512 -and
+        $contract.session.desktopTurnEventBackpressurePolicy -eq
+            'fail-closed-at-request-timeout' -and
         $contract.session.credentialTransport -eq 'forbidden' -and
         $contract.session.persistence -eq 'in-memory' -and
         $contract.session.workspaceBinding -eq
@@ -171,6 +176,12 @@ Add-Check `
             -eq 1048576 -and
         $schema.properties.session.properties.modelBrokerMaxConcurrentConnections.const `
             -eq 4 -and
+        $schema.properties.session.properties.desktopTurnEventStream.const `
+            -eq 'bounded-ordered-single-consumer' -and
+        $schema.properties.session.properties.desktopTurnEventBufferCapacity.const `
+            -eq 512 -and
+        $schema.properties.session.properties.desktopTurnEventBackpressurePolicy.const `
+            -eq 'fail-closed-at-request-timeout' -and
         $schema.properties.session.properties.modelNetworkAllowed.const `
             -eq $false -and
         $schema.properties.transport.properties.credentialFieldsAllowed.const `
@@ -272,6 +283,12 @@ Add-Check `
         $bridgeSourceText.Contains('StartTurnAsync') -and
         $bridgeSourceText.Contains('AbortTurnAsync') -and
         $bridgeSourceText.Contains('PumpOutputAsync') -and
+        $bridgeSourceText.Contains('ReadEventsAsync') -and
+        $bridgeSourceText.Contains('Channel.CreateBounded') -and
+        $bridgeSourceText.Contains(
+            'TurnEventBufferCapacity = 512') -and
+        $bridgeSourceText.Contains(
+            'backpressure deadline') -and
         $bridgeSourceText.Contains('DesktopModelBrokerServer') -and
         $bridgeSourceText.Contains('IDesktopModelProvider') -and
         $bridgeSourceText.Contains(
@@ -609,10 +626,15 @@ if (-not $StaticOnly) {
             $brokerBridgeReceipt.promptPassed -and
             $brokerBridgeReceipt.multiTurnPassed -and
             $brokerBridgeReceipt.toolRoundTripPassed -and
+            $brokerBridgeReceipt.eventStreamPassed -and
+            $brokerBridgeReceipt.orderedEventSequence -and
+            $brokerBridgeReceipt.singleEventConsumerEnforced -and
+            $brokerBridgeReceipt.toolTurnStreamEventCount -eq 4 -and
             $brokerBridgeReceipt.toolExecutionCount -eq 1 -and
             $brokerBridgeReceipt.completedTurnCount -eq 3 -and
             $brokerBridgeReceipt.abortPassed -and
             $brokerBridgeReceipt.abortStatus -eq 'aborted' -and
+            $brokerBridgeReceipt.abortStreamPassed -and
             $brokerBridgeReceipt.invalidToolRejected -and
             $brokerBridgeReceipt.providerFaultCount -eq 1 -and
             $brokerBridgeReceipt.concurrentResponsePump -and
@@ -699,6 +721,8 @@ $passed = $failures.Count -eq 0
     multiTurnPromptingImplemented = $true
     toolRoundTripImplemented = $true
     providerToolAllowlistEnforced = $true
+    orderedTurnEventStreamingImplemented = $true
+    turnEventBufferCapacity = 512
     asynchronousTurnsImplemented = $true
     activeTurnCancellationImplemented = $true
     sessionPersistence = 'in-memory'

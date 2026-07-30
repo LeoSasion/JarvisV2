@@ -42,6 +42,10 @@ state outside the Windows Shell process.
   responses;
 - runs one managed output pump that demultiplexes concurrent responses and turn
   events, allowing the desktop to cancel generation while a prompt is active;
+- exposes every accepted text delta, tool start, tool completion and terminal
+  result through a 512-event bounded, ordered, single-consumer stream suitable
+  for a future WPF conversation surface; if that consumer stops draining the
+  buffer beyond the request deadline, the bridge fails the sidecar closed;
 - replaces the SDK file tools with root-confined `read`, `grep`, `find` and
   `ls` definitions; `bash`, `edit` and `write` stay unavailable;
 - rejects drive roots, protected OS/profile roots, relative paths, canonical
@@ -77,6 +81,8 @@ The broker server and provider interface are production-facing boundaries; the
 provider used by the audit is still deterministic and offline. Connecting an
 authenticated production model provider, choosing its credential store and
 building the product conversation surface remain separate reviewed steps.
+The future UI can consume `PiAgentTurnHandle.ReadEventsAsync()` once per turn;
+the aggregate completion task remains available for non-streaming callers.
 
 ## Prompting admission
 
@@ -134,6 +140,8 @@ single-root binding, executes inside/outside path and junction rejection tests,
 and completes three turns through the desktop-owned broker. The third turn
 executes the real root-confined `read` tool and requires a second model request.
 A separate held request proves cancellation through the concurrent desktop
-response pump. The valid path observes five model requests and zero broker
-faults; an isolated negative provider records exactly one rejected `bash`
-fault. No path contacts an online model or transports a provider credential.
+response pump. The tool turn proves four ordered desktop events and the abort
+turn proves one terminal event. The valid path observes five model requests and
+zero broker faults; an isolated negative provider records exactly one rejected
+`bash` fault. No path contacts an online model or transports a provider
+credential.

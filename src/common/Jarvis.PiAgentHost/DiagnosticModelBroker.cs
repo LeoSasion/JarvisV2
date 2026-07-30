@@ -14,10 +14,15 @@ public sealed record PiAgentDesktopBrokerProbeReceipt(
     bool PromptPassed,
     bool MultiTurnPassed,
     bool ToolRoundTripPassed,
+    bool EventStreamPassed,
+    bool OrderedEventSequence,
+    bool SingleEventConsumerEnforced,
+    int ToolTurnStreamEventCount,
     int ToolExecutionCount,
     int CompletedTurnCount,
     bool AbortPassed,
     string AbortStatus,
+    bool AbortStreamPassed,
     bool InvalidToolRejected,
     int ProviderFaultCount,
     bool ConcurrentResponsePump,
@@ -141,14 +146,56 @@ public static class PiAgentDesktopBrokerProbe
             broker.RequestCount == 2 &&
             broker.FaultCount == 0;
 
-        PiAgentPromptResult toolPrompt = await controller.PromptAsync(
+        PiAgentTurnHandle toolHandle =
+            await controller.StartTurnAsync(
             "Read the admitted package manifest and confirm the tool path.",
             "broker-tool-turn",
             cancellationToken);
+        IReadOnlyList<PiAgentTurnStreamEvent> toolEvents =
+            await CollectTurnEventsAsync(
+                toolHandle,
+                cancellationToken);
+        PiAgentTurnResult toolResult =
+            await controller.WaitForTurnAsync(
+                toolHandle,
+                cancellationToken);
+        bool orderedEventSequence =
+            toolEvents
+                .Select((streamEvent, index) =>
+                    streamEvent.Sequence == index + 1 &&
+                    streamEvent.TurnId == toolHandle.TurnId)
+                .All(value => value);
+        bool eventStreamPassed =
+            toolEvents.Count == 4 &&
+            toolEvents[0] is PiAgentToolExecutionStarted
+            {
+                ToolName: "read",
+            } &&
+            toolEvents[1] is PiAgentToolExecutionCompleted
+            {
+                ToolName: "read",
+                IsError: false,
+            } &&
+            toolEvents[2] is PiAgentAssistantTextDelta
+            {
+                Delta: "JARVIS workspace tool online.",
+            } &&
+            toolEvents[3] is PiAgentTurnCompleted completed &&
+            completed.Result == toolResult;
+        bool singleEventConsumerEnforced = false;
+        try
+        {
+            _ = toolHandle.ReadEventsAsync(cancellationToken);
+        }
+        catch (InvalidOperationException)
+        {
+            singleEventConsumerEnforced = true;
+        }
         bool toolRoundTripPassed =
-            toolPrompt.Response == "JARVIS workspace tool online." &&
-            toolPrompt.DeltaCount == 1 &&
-            toolPrompt.ToolExecutionCount == 1 &&
+            toolResult.Success &&
+            toolResult.Response == "JARVIS workspace tool online." &&
+            toolResult.DeltaCount == 1 &&
+            toolResult.ToolExecutionCount == 1 &&
             broker.RequestCount == 4 &&
             broker.FaultCount == 0;
 
@@ -180,6 +227,10 @@ public static class PiAgentDesktopBrokerProbe
                 "Wait until the desktop cancels this turn.",
                 "abort-target",
                 cancellationToken);
+        Task<IReadOnlyList<PiAgentTurnStreamEvent>> abortEventsTask =
+            CollectTurnEventsAsync(
+                abortHandle,
+                cancellationToken);
         await abortBroker.WaitForRequestAsync(cancellationToken);
         await abortController.AbortTurnAsync(
             abortHandle.TurnId,
@@ -189,6 +240,13 @@ public static class PiAgentDesktopBrokerProbe
             await abortController.WaitForTurnAsync(
                 abortHandle,
                 cancellationToken);
+        IReadOnlyList<PiAgentTurnStreamEvent> abortEvents =
+            await abortEventsTask;
+        bool abortStreamPassed =
+            abortEvents.Count == 1 &&
+            abortEvents[0].Sequence == 1 &&
+            abortEvents[0] is PiAgentTurnCompleted abortCompleted &&
+            abortCompleted.Result == abortResult;
         bool abortPassed =
             !abortResult.Success &&
             abortResult.Status == "aborted" &&
@@ -245,7 +303,11 @@ public static class PiAgentDesktopBrokerProbe
             promptPassed &&
             multiTurnPassed &&
             toolRoundTripPassed &&
+            eventStreamPassed &&
+            orderedEventSequence &&
+            singleEventConsumerEnforced &&
             abortPassed &&
+            abortStreamPassed &&
             invalidToolRejected &&
             brokerRequestCount == 5 &&
             brokerFaultCount == 0;
@@ -260,10 +322,15 @@ public static class PiAgentDesktopBrokerProbe
             promptPassed,
             multiTurnPassed,
             toolRoundTripPassed,
-            toolPrompt.ToolExecutionCount,
+            eventStreamPassed,
+            orderedEventSequence,
+            singleEventConsumerEnforced,
+            toolEvents.Count,
+            toolResult.ToolExecutionCount,
             3,
             abortPassed,
             abortResult.Status,
+            abortStreamPassed,
             invalidToolRejected,
             invalidToolBroker.FaultCount,
             true,
@@ -277,6 +344,21 @@ public static class PiAgentDesktopBrokerProbe
             "diagnostic-only",
             "not-run",
             false);
+    }
+
+    private static async Task<IReadOnlyList<PiAgentTurnStreamEvent>>
+        CollectTurnEventsAsync(
+            PiAgentTurnHandle handle,
+            CancellationToken cancellationToken)
+    {
+        List<PiAgentTurnStreamEvent> events = [];
+        await foreach (
+            PiAgentTurnStreamEvent streamEvent in
+                handle.ReadEventsAsync(cancellationToken))
+        {
+            events.Add(streamEvent);
+        }
+        return events;
     }
 }
 

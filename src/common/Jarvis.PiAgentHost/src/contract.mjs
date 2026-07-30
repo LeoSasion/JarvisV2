@@ -61,6 +61,11 @@ export function validateContract(contract) {
       "desktop-owned-multi-request" ||
     contract.session?.modelBrokerMaxFrameBytes !== 1_048_576 ||
     contract.session?.modelBrokerMaxConcurrentConnections !== 4 ||
+    contract.session?.desktopTurnEventStream !==
+      "bounded-ordered-single-consumer" ||
+    contract.session?.desktopTurnEventBufferCapacity !== 512 ||
+    contract.session?.desktopTurnEventBackpressurePolicy !==
+      "fail-closed-at-request-timeout" ||
     contract.session?.credentialTransport !== "forbidden" ||
     contract.session?.persistence !== "in-memory" ||
     contract.session?.workspaceBinding !==

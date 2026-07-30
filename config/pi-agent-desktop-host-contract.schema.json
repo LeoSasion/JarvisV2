@@ -142,6 +142,9 @@
         "modelBrokerLifetime",
         "modelBrokerMaxFrameBytes",
         "modelBrokerMaxConcurrentConnections",
+        "desktopTurnEventStream",
+        "desktopTurnEventBufferCapacity",
+        "desktopTurnEventBackpressurePolicy",
         "credentialTransport",
         "persistence",
         "workspaceBinding",
@@ -172,6 +175,15 @@
         },
         "modelBrokerMaxConcurrentConnections": {
           "const": 4
+        },
+        "desktopTurnEventStream": {
+          "const": "bounded-ordered-single-consumer"
+        },
+        "desktopTurnEventBufferCapacity": {
+          "const": 512
+        },
+        "desktopTurnEventBackpressurePolicy": {
+          "const": "fail-closed-at-request-timeout"
         },
         "credentialTransport": {
           "const": "forbidden"

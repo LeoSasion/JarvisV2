@@ -47,11 +47,12 @@ points. Prompting is admitted only when the desktop owns a current-user local
 model-broker pipe; resource discovery, sidecar provider network access,
 credential transport and mutation tools remain disabled. The desktop now owns
 a provider-neutral, multi-request model broker with bounded current-user pipes,
-validated read-only tool events and a managed response pump. Its offline
-provider proves multi-turn Pi streaming, a real `read` tool round trip and
-active-turn cancellation. A future authenticated provider and desktop
-conversation surface will consume these admitted boundaries; the agent runtime
-will never be loaded into Explorer. See
+validated read-only tool events and a managed response pump. The pump now
+publishes a bounded, ordered, single-consumer turn stream for future WPF
+binding. Its offline provider proves multi-turn Pi streaming, a real `read`
+tool round trip and active-turn cancellation. A future authenticated provider
+and desktop conversation surface will consume these admitted boundaries; the
+agent runtime will never be loaded into Explorer. See
 `docs/PI-AGENT-DESKTOP-HOST.md`.
 
 The current Supervisor remains under `src/platforms/windows11` because its

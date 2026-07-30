@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading.Channels;
 
 namespace Jarvis.PiAgentHost;
 
@@ -28,9 +29,62 @@ public sealed record PiAgentTurnResult(
     int ToolExecutionCount,
     string? ErrorCode);
 
-public sealed record PiAgentTurnHandle(
+public abstract record PiAgentTurnStreamEvent(
     string TurnId,
-    Task<PiAgentTurnResult> Completion);
+    int Sequence);
+
+public sealed record PiAgentAssistantTextDelta(
+    string TurnId,
+    int Sequence,
+    string Delta) : PiAgentTurnStreamEvent(TurnId, Sequence);
+
+public sealed record PiAgentToolExecutionStarted(
+    string TurnId,
+    int Sequence,
+    string ToolCallId,
+    string ToolName) : PiAgentTurnStreamEvent(TurnId, Sequence);
+
+public sealed record PiAgentToolExecutionCompleted(
+    string TurnId,
+    int Sequence,
+    string ToolCallId,
+    string ToolName,
+    bool IsError) : PiAgentTurnStreamEvent(TurnId, Sequence);
+
+public sealed record PiAgentTurnCompleted(
+    string TurnId,
+    int Sequence,
+    PiAgentTurnResult Result) : PiAgentTurnStreamEvent(TurnId, Sequence);
+
+public sealed class PiAgentTurnHandle
+{
+    private readonly ChannelReader<PiAgentTurnStreamEvent> events;
+    private int readerClaimed;
+
+    internal PiAgentTurnHandle(
+        string turnId,
+        Task<PiAgentTurnResult> completion,
+        ChannelReader<PiAgentTurnStreamEvent> events)
+    {
+        TurnId = turnId;
+        Completion = completion;
+        this.events = events;
+    }
+
+    public string TurnId { get; }
+    public Task<PiAgentTurnResult> Completion { get; }
+
+    public IAsyncEnumerable<PiAgentTurnStreamEvent> ReadEventsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (Interlocked.Exchange(ref readerClaimed, 1) != 0)
+        {
+            throw new InvalidOperationException(
+                "A Pi Agent turn event stream has one desktop consumer.");
+        }
+        return events.ReadAllAsync(cancellationToken);
+    }
+}
 
 public sealed record PiAgentDesktopProbeReceipt(
     int SchemaVersion,
@@ -84,10 +138,24 @@ public sealed record PiAgentBridgeFaultReceipt(
 
 public sealed class PiAgentSidecarController : IAsyncDisposable
 {
+    public const int TurnEventBufferCapacity = 512;
+
     private sealed class PendingTurn
     {
+        public Channel<PiAgentTurnStreamEvent> Events { get; } =
+            Channel.CreateBounded<PiAgentTurnStreamEvent>(
+                new BoundedChannelOptions(TurnEventBufferCapacity)
+                {
+                    FullMode = BoundedChannelFullMode.Wait,
+                    SingleReader = true,
+                    SingleWriter = true,
+                    AllowSynchronousContinuations = false,
+                });
+        public Dictionary<string, string> ActiveTools { get; } =
+            new(StringComparer.Ordinal);
         public StringBuilder Response { get; } = new();
         public int DeltaCount { get; set; }
+        public int EventSequence { get; set; }
         public int ToolExecutionCount { get; set; }
         public TaskCompletionSource<PiAgentTurnResult> Completion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -96,6 +164,11 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
     public const string ContractId = "jarvisv2-pi-agent-desktop-host-v1";
     public const string PackageName = "@earendil-works/pi-coding-agent";
     public const string ExpectedVersion = "0.82.1";
+
+    private static readonly IReadOnlySet<string> AllowedTurnToolNames =
+        new HashSet<string>(
+            ["read", "grep", "find", "ls"],
+            StringComparer.Ordinal);
 
     private static readonly string[] RequiredChildEnvironmentVariables =
     [
@@ -266,9 +339,25 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             text,
             id,
             cancellationToken);
-        PiAgentTurnResult result = await WaitForTurnAsync(
-            handle,
-            cancellationToken);
+        Task drainTask = DrainTurnEventsAsync(handle);
+        PiAgentTurnResult result;
+        try
+        {
+            result = await WaitForTurnAsync(
+                handle,
+                cancellationToken);
+        }
+        catch
+        {
+            _ = drainTask.ContinueWith(
+                static completed => _ = completed.Exception,
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted |
+                    TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+            throw;
+        }
+        await drainTask;
         if (!result.Success)
         {
             throw new InvalidOperationException(
@@ -336,11 +425,13 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             }
             return new PiAgentTurnHandle(
                 id,
-                pendingTurn.Completion.Task);
+                pendingTurn.Completion.Task,
+                pendingTurn.Events.Reader);
         }
-        catch
+        catch (Exception exception)
         {
             pendingTurns.TryRemove(id, out _);
+            pendingTurn.Events.Writer.TryComplete(exception);
             throw;
         }
     }
@@ -349,13 +440,15 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         PiAgentTurnHandle handle,
         CancellationToken cancellationToken)
     {
-        try
+        return await handle.Completion.WaitAsync(cancellationToken);
+    }
+
+    private static async Task DrainTurnEventsAsync(
+        PiAgentTurnHandle handle)
+    {
+        await foreach (
+            PiAgentTurnStreamEvent _ in handle.ReadEventsAsync())
         {
-            return await handle.Completion.WaitAsync(cancellationToken);
-        }
-        finally
-        {
-            pendingTurns.TryRemove(handle.TurnId, out _);
         }
     }
 
@@ -524,7 +617,9 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                     }
                     else if (type == "event")
                     {
-                        RouteTurnEvent(root);
+                        await RouteTurnEventAsync(
+                            root,
+                            cancellationToken);
                     }
                     else
                     {
@@ -559,7 +654,9 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         }
     }
 
-    private void RouteTurnEvent(JsonElement root)
+    private async Task RouteTurnEventAsync(
+        JsonElement root,
+        CancellationToken cancellationToken)
     {
         string turnId =
             root.GetProperty("requestId").GetString()
@@ -582,27 +679,74 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                     "The Pi Agent emitted an invalid text delta.");
             pending.Response.Append(delta);
             pending.DeltaCount++;
+            await WriteTurnEventAsync(
+                pending,
+                new PiAgentAssistantTextDelta(
+                    turnId,
+                    NextEventSequence(pending),
+                    delta),
+                cancellationToken);
             return;
         }
         if (eventName == "tool_execution_start")
         {
-            _ = root.GetProperty("toolCallId").GetString()
+            string toolCallId =
+                root.GetProperty("toolCallId").GetString()
                 ?? throw new InvalidOperationException(
                     "The Pi Agent tool call id was missing.");
-            _ = root.GetProperty("toolName").GetString()
+            string toolName =
+                root.GetProperty("toolName").GetString()
                 ?? throw new InvalidOperationException(
                     "The Pi Agent tool name was missing.");
+            if (
+                string.IsNullOrWhiteSpace(toolCallId) ||
+                string.IsNullOrWhiteSpace(toolName) ||
+                !AllowedTurnToolNames.Contains(toolName) ||
+                !pending.ActiveTools.TryAdd(toolCallId, toolName))
+            {
+                throw new InvalidOperationException(
+                    "The Pi Agent emitted an invalid tool start.");
+            }
             pending.ToolExecutionCount++;
+            await WriteTurnEventAsync(
+                pending,
+                new PiAgentToolExecutionStarted(
+                    turnId,
+                    NextEventSequence(pending),
+                    toolCallId,
+                    toolName),
+                cancellationToken);
             return;
         }
         if (eventName == "tool_execution_end")
         {
-            _ = root.GetProperty("toolCallId").GetString()
+            string toolCallId =
+                root.GetProperty("toolCallId").GetString()
                 ?? throw new InvalidOperationException(
                     "The Pi Agent tool call id was missing.");
-            _ = root.GetProperty("toolName").GetString()
+            string toolName =
+                root.GetProperty("toolName").GetString()
                 ?? throw new InvalidOperationException(
                     "The Pi Agent tool name was missing.");
+            bool isError = root.GetProperty("isError").GetBoolean();
+            if (
+                !pending.ActiveTools.Remove(
+                    toolCallId,
+                    out string? activeToolName) ||
+                activeToolName != toolName)
+            {
+                throw new InvalidOperationException(
+                    "The Pi Agent ended an inactive tool call.");
+            }
+            await WriteTurnEventAsync(
+                pending,
+                new PiAgentToolExecutionCompleted(
+                    turnId,
+                    NextEventSequence(pending),
+                    toolCallId,
+                    toolName,
+                    isError),
+                cancellationToken);
             return;
         }
         if (eventName != "turn_completed")
@@ -622,6 +766,7 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         if (
             deltaCount != pending.DeltaCount ||
             toolExecutionCount != pending.ToolExecutionCount ||
+            pending.ActiveTools.Count != 0 ||
             (success && status != "completed") ||
             (!success && status is not ("aborted" or "failed")))
         {
@@ -642,10 +787,48 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             deltaCount,
             toolExecutionCount,
             errorCode);
+        await WriteTurnEventAsync(
+            pending,
+            new PiAgentTurnCompleted(
+                turnId,
+                NextEventSequence(pending),
+                result),
+            cancellationToken);
+        pending.Events.Writer.TryComplete();
+        pendingTurns.TryRemove(turnId, out _);
         if (!pending.Completion.TrySetResult(result))
         {
             throw new InvalidOperationException(
                 "The Pi Agent turn completed more than once.");
+        }
+    }
+
+    private static int NextEventSequence(PendingTurn pending)
+    {
+        return ++pending.EventSequence;
+    }
+
+    private async ValueTask WriteTurnEventAsync(
+        PendingTurn pending,
+        PiAgentTurnStreamEvent streamEvent,
+        CancellationToken cancellationToken)
+    {
+        using CancellationTokenSource timeout =
+            CreateTimeout(
+                cancellationToken,
+                options.RequestTimeoutMilliseconds);
+        try
+        {
+            await pending.Events.Writer.WriteAsync(
+                streamEvent,
+                timeout.Token);
+        }
+        catch (OperationCanceledException)
+            when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new InvalidOperationException(
+                "The desktop turn event consumer exceeded its " +
+                "backpressure deadline.");
         }
     }
 
@@ -663,7 +846,13 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         }
         foreach (KeyValuePair<string, PendingTurn> entry in pendingTurns)
         {
-            entry.Value.Completion.TrySetException(exception);
+            if (pendingTurns.TryRemove(
+                entry.Key,
+                out PendingTurn? pending))
+            {
+                pending.Events.Writer.TryComplete(exception);
+                pending.Completion.TrySetException(exception);
+            }
         }
     }
 
