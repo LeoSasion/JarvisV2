@@ -87,8 +87,9 @@ Shell process.
 - executes direct inside/outside file-tool probes and forces `PI_OFFLINE=1`
   before importing Pi.
 
-This is now a real desktop-owned Pi conversation transport, but it is not yet a
-product chat surface. With no broker pipe, readiness and capabilities continue
+This is now a real desktop-owned Pi conversation transport with a first native
+product conversation surface in `Jarvis.ControlCenter`. With no broker pipe,
+readiness and capabilities continue
 to report `promptingEnabled: false`. With the reviewed pipe present, the bridge
 can bind one read-only workspace, run a real Pi prompt and receive incremental
 assistant text across multiple turns. A turn runs in the background, so the
@@ -97,15 +98,16 @@ provider credential is inherited or transported, no resource is discovered
 from the workspace and no session file is created.
 
 The broker server and provider interface are production-facing boundaries; the
-provider used by the audit is still deterministic and offline. Connecting an
-authenticated production model provider, choosing its credential store and
-building the product conversation surface remain separate reviewed steps.
-The future UI can consume `PiAgentTurnHandle.ReadEventsAsync()` once per turn;
+provider used by the product slice and audit is still deterministic and
+offline. Connecting an authenticated production model provider and choosing
+its credential store remain separate reviewed steps. The UI consumes the
+conversation snapshots derived from `PiAgentTurnHandle.ReadEventsAsync()`;
 the aggregate completion task remains available for non-streaming callers.
-`PiAgentConversationState` now owns that single event consumer for product UI
-use, and `Jarvis.ControlCenter` contains a non-visual
-`INotifyPropertyChanged` binding adapter. See
-`PI-AGENT-DESKTOP-CONVERSATION-STATE.md`. The lifecycle composition root is
+`PiAgentConversationState` owns that single event consumer for product UI use,
+and `Jarvis.ControlCenter` presents it through an `INotifyPropertyChanged`
+binding adapter and a visible handoff-rail surface. See
+`PI-AGENT-DESKTOP-CONVERSATION-STATE.md` and
+`PI-AGENT-DESKTOP-CONVERSATION-SURFACE.md`. The lifecycle composition root is
 documented in `PI-AGENT-DESKTOP-RUNTIME.md`; encrypted persistence is documented
 in `PI-AGENT-DESKTOP-CHECKPOINT-STORE.md`.
 
@@ -138,9 +140,10 @@ WPF desktop
                                             +-- encrypted checkpoint persistence
                                                 (implemented)
                                             |
-                                            +-- authenticated production provider
+                                            +-- product conversation surface
+                                                (local diagnostic provider implemented)
                                                     |
-                                                    +-- product conversation surface
+                                                    +-- authenticated production provider
                                                             |
                                                             +-- per-session mutation capability
                                                                     |

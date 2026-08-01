@@ -1,0 +1,411 @@
+using System.ComponentModel;
+using System.IO;
+using System.Runtime.CompilerServices;
+using Jarvis.PiAgentHost;
+
+namespace Jarvis.ControlCenter;
+
+public enum ConversationRuntimePhase
+{
+    NotStarted,
+    Preview,
+    Starting,
+    Ready,
+    Stopping,
+    Stopped,
+    Faulted,
+}
+
+public sealed class ConversationSurfaceViewModel :
+    INotifyPropertyChanged,
+    IAsyncDisposable
+{
+    private static readonly PiAgentConversationSnapshot EmptySnapshot =
+        new(0, null, false, false, []);
+
+    private readonly ConversationLaunchOptions? launchOptions;
+    private readonly bool preview;
+    private PiAgentDesktopRuntime? runtime;
+    private PiAgentConversationBinding? binding;
+    private PiAgentConversationSnapshot snapshot = EmptySnapshot;
+    private ConversationRuntimePhase phase;
+    private string statusDetail;
+    private string? uiError;
+    private int disposeStarted;
+
+    private ConversationSurfaceViewModel(
+        ConversationLaunchOptions? launchOptions,
+        bool preview)
+    {
+        this.launchOptions = launchOptions;
+        this.preview = preview;
+        phase = preview
+            ? ConversationRuntimePhase.Preview
+            : ConversationRuntimePhase.NotStarted;
+        statusDetail = preview
+            ? "Illustrative conversation data; no runtime was started."
+            : "Launch with an admitted workspace and the packaged Pi runtime.";
+        if (preview)
+        {
+            snapshot = CreatePreviewSnapshot();
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public static ConversationSurfaceViewModel CreateIdle() =>
+        new(null, preview: false);
+
+    public static ConversationSurfaceViewModel CreatePreview() =>
+        new(null, preview: true);
+
+    public static ConversationSurfaceViewModel Create(
+        ConversationLaunchOptions options) =>
+        new(
+            options ?? throw new ArgumentNullException(nameof(options)),
+            preview: false);
+
+    public ConversationRuntimePhase Phase => phase;
+    public string PhaseLabel => phase switch
+    {
+        ConversationRuntimePhase.NotStarted => "NOT STARTED",
+        ConversationRuntimePhase.Preview => "DESIGN PREVIEW",
+        ConversationRuntimePhase.Starting => "STARTING",
+        ConversationRuntimePhase.Ready => "READY",
+        ConversationRuntimePhase.Stopping => "STOPPING",
+        ConversationRuntimePhase.Stopped => "STOPPED",
+        ConversationRuntimePhase.Faulted => "FAULTED",
+        _ => "UNKNOWN",
+    };
+    public string StatusDetail => uiError ?? statusDetail;
+    public string ProviderLabel => preview
+        ? "ILLUSTRATIVE // NO RUNTIME"
+        : LocalDiagnosticModelProvider.DisplayName;
+    public string AccessLabel => "READ ONLY";
+    public string WorkspaceLabel => launchOptions?.WorkspaceRoot ??
+        (preview
+            ? "ILLUSTRATIVE // NOT ADMITTED"
+            : "NO WORKSPACE ADMITTED");
+    public string CheckpointLabel => runtime is null
+        ? preview ? "ILLUSTRATIVE // NOT SAVED" : "NOT LOADED"
+        : runtime.CheckpointPersistenceFaulted
+            ? "FAULTED / SUBMISSIONS CLOSED"
+            : $"{runtime.CheckpointSaveCount} SAVED / " +
+                $"{runtime.RestoredCheckpointTurnCount} RESTORED";
+    public string CredentialLabel => runtime?.CredentialEnvironmentClean == true
+        ? "SIDECAR CLEAN // PROD AUTH NOT CONFIGURED"
+        : preview
+            ? "NOT CONFIGURED / NOT EVALUATED"
+            : "NOT READY";
+    public string BrokerLabel => runtime is null
+        ? preview ? "ILLUSTRATIVE // NOT STARTED" : "NO BROKER"
+        : $"{runtime.BrokerRequestCount} REQUESTS / " +
+            $"{runtime.BrokerFaultCount} FAULTS";
+    public string ShutdownLabel => phase switch
+    {
+        ConversationRuntimePhase.Stopping => "QUIESCING ACTIVE TURN",
+        ConversationRuntimePhase.Stopped => "OWNED RUNTIME RELEASED",
+        ConversationRuntimePhase.Ready => "ORDERLY SHUTDOWN ARMED",
+        _ => preview
+            ? "ILLUSTRATIVE // NO OWNED RUNTIME"
+            : "NO OWNED RUNTIME",
+    };
+    public IReadOnlyList<PiAgentConversationTurnSnapshot> Turns =>
+        snapshot.Turns;
+    public IReadOnlyList<PiAgentConversationToolSnapshot> ActiveTools =>
+        ActiveTurn?.Tools ?? [];
+    public bool HasTurns => snapshot.Turns.Count != 0;
+    public bool HandoffComplete =>
+        snapshot.ActiveTurnId is null && snapshot.Turns.Count != 0;
+    public bool CanSubmit =>
+        phase == ConversationRuntimePhase.Ready && snapshot.CanSubmit;
+    public bool CanCancel =>
+        phase == ConversationRuntimePhase.Ready && snapshot.CanCancel;
+    public bool HasOwnedRuntime => runtime is not null && !runtime.IsShutdown;
+    public double HandoffProgress => DetermineHandoffProgress();
+    public string HandoffLabel => HandoffProgress switch
+    {
+        <= 0 => "USER HOLDS THE NEXT TURN",
+        < 2 => "PI RUNTIME OWNS THE ACTIVE TURN",
+        < 3 => "READ TOOL OWNS THE ACTIVE TURN",
+        _ => snapshot.ActiveTurnId is null
+            ? "TURN COMPLETE / CONTROL RETURNED"
+            : "JARVIS IS STREAMING A RESPONSE",
+    };
+
+    private PiAgentConversationTurnSnapshot? ActiveTurn =>
+        snapshot.ActiveTurnId is null
+            ? null
+            : snapshot.Turns.LastOrDefault(turn =>
+                string.Equals(
+                    turn.TurnId,
+                    snapshot.ActiveTurnId,
+                    StringComparison.Ordinal));
+
+    public async Task InitializeAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (preview || launchOptions is null || phase != ConversationRuntimePhase.NotStarted)
+        {
+            return;
+        }
+
+        SetPhase(
+            ConversationRuntimePhase.Starting,
+            "Admitting workspace, broker, sidecar and Pi session.");
+        try
+        {
+            PiAgentSidecarOptions sidecar = new(
+                Path.GetFullPath(launchOptions.NodeExecutablePath),
+                Path.GetFullPath(launchOptions.SidecarHostPath));
+            runtime = await PiAgentDesktopRuntime.StartAsync(
+                new PiAgentDesktopRuntimeOptions(
+                    sidecar,
+                    Path.GetFullPath(launchOptions.WorkspaceRoot),
+                    ConversationCheckpointStore:
+                        new PiAgentConversationCheckpointStore()),
+                new LocalDiagnosticModelProvider(),
+                SynchronizationContext.Current,
+                cancellationToken);
+            binding = new PiAgentConversationBinding(runtime.Conversation);
+            binding.PropertyChanged += OnBindingPropertyChanged;
+            snapshot = binding.Snapshot;
+            SetPhase(
+                ConversationRuntimePhase.Ready,
+                "Pi session admitted. Submit a request to exercise the " +
+                "root-confined read-only tool path.");
+            RaiseConversationProperties();
+        }
+        catch (Exception exception)
+        {
+            SetPhase(
+                ConversationRuntimePhase.Faulted,
+                $"Runtime admission failed: {exception.Message}");
+            if (runtime is not null)
+            {
+                await runtime.DisposeAsync();
+                runtime = null;
+            }
+        }
+    }
+
+    public async Task SubmitAsync(
+        string text,
+        CancellationToken cancellationToken = default)
+    {
+        uiError = null;
+        if (!CanSubmit || binding is null)
+        {
+            throw new InvalidOperationException(
+                "The Pi conversation is not ready for a new turn.");
+        }
+
+        PiAgentConversationTurn turn = await binding.SubmitAsync(
+            text,
+            cancellationToken);
+        statusDetail = "Turn admitted. Ownership is moving through Pi.";
+        RaisePropertyChanged(nameof(StatusDetail));
+        _ = ObserveCompletionAsync(turn);
+    }
+
+    public async Task CancelAsync(
+        CancellationToken cancellationToken = default)
+    {
+        uiError = null;
+        if (binding is null || !CanCancel)
+        {
+            return;
+        }
+
+        bool accepted = await binding.CancelAsync(cancellationToken);
+        statusDetail = accepted
+            ? "Cancellation requested; waiting for the terminal turn event."
+            : "The active turn had already reached a terminal state.";
+        RaisePropertyChanged(nameof(StatusDetail));
+    }
+
+    public void ReportUiError(string message)
+    {
+        uiError = message;
+        RaisePropertyChanged(nameof(StatusDetail));
+    }
+
+    public async Task ShutdownAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (runtime is null)
+        {
+            return;
+        }
+
+        SetPhase(
+            ConversationRuntimePhase.Stopping,
+            "Quiescing submissions, cancelling any active turn and " +
+            "flushing the encrypted checkpoint.");
+        try
+        {
+            await runtime.ShutdownAsync(cancellationToken);
+            SetPhase(
+                ConversationRuntimePhase.Stopped,
+                "The owned Pi sidecar and broker completed orderly shutdown.");
+        }
+        catch (Exception exception)
+        {
+            SetPhase(
+                ConversationRuntimePhase.Faulted,
+                $"Orderly shutdown reported: {exception.Message}");
+        }
+        finally
+        {
+            if (binding is not null)
+            {
+                binding.PropertyChanged -= OnBindingPropertyChanged;
+                binding.Dispose();
+                binding = null;
+            }
+            await runtime.DisposeAsync();
+            runtime = null;
+            RaiseConversationProperties();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Interlocked.Exchange(ref disposeStarted, 1) != 0)
+        {
+            return;
+        }
+        await ShutdownAsync();
+    }
+
+    private async Task ObserveCompletionAsync(PiAgentConversationTurn turn)
+    {
+        try
+        {
+            PiAgentConversationTurnSnapshot terminal = await turn.Completion;
+            statusDetail = terminal.Status switch
+            {
+                PiAgentConversationTurnStatus.Completed =>
+                    "Turn completed and queued for encrypted checkpointing.",
+                PiAgentConversationTurnStatus.Aborted =>
+                    "Turn aborted; no mutation capability was available.",
+                _ =>
+                    $"Turn ended as {terminal.Status}: " +
+                    $"{terminal.ErrorCode ?? "no error code"}.",
+            };
+        }
+        catch (Exception exception)
+        {
+            statusDetail = $"Turn completion failed closed: {exception.Message}";
+        }
+        RaisePropertyChanged(nameof(StatusDetail));
+        RaiseRuntimeProperties();
+    }
+
+    private void OnBindingPropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs eventArgs)
+    {
+        if (binding is null)
+        {
+            return;
+        }
+        snapshot = binding.Snapshot;
+        RaiseConversationProperties();
+        RaiseRuntimeProperties();
+    }
+
+    private void SetPhase(
+        ConversationRuntimePhase next,
+        string detail)
+    {
+        phase = next;
+        statusDetail = detail;
+        uiError = null;
+        RaiseRuntimeProperties();
+        RaiseConversationProperties();
+    }
+
+    private double DetermineHandoffProgress()
+    {
+        PiAgentConversationTurnSnapshot? active = ActiveTurn;
+        if (active is null)
+        {
+            return snapshot.Turns.Count == 0 ? 0 : 3;
+        }
+        if (active.Tools.Any(tool =>
+                tool.Status == PiAgentConversationToolStatus.Running))
+        {
+            return 2;
+        }
+        if (active.AssistantText.Length != 0)
+        {
+            return 3;
+        }
+        if (active.Tools.Count != 0)
+        {
+            return 2.5;
+        }
+        return active.Status == PiAgentConversationTurnStatus.Starting
+            ? 0.6
+            : 1;
+    }
+
+    private void RaiseConversationProperties()
+    {
+        RaisePropertyChanged(nameof(Turns));
+        RaisePropertyChanged(nameof(ActiveTools));
+        RaisePropertyChanged(nameof(HasTurns));
+        RaisePropertyChanged(nameof(HandoffComplete));
+        RaisePropertyChanged(nameof(CanSubmit));
+        RaisePropertyChanged(nameof(CanCancel));
+        RaisePropertyChanged(nameof(HandoffProgress));
+        RaisePropertyChanged(nameof(HandoffLabel));
+    }
+
+    private void RaiseRuntimeProperties()
+    {
+        RaisePropertyChanged(nameof(Phase));
+        RaisePropertyChanged(nameof(PhaseLabel));
+        RaisePropertyChanged(nameof(StatusDetail));
+        RaisePropertyChanged(nameof(WorkspaceLabel));
+        RaisePropertyChanged(nameof(CheckpointLabel));
+        RaisePropertyChanged(nameof(CredentialLabel));
+        RaisePropertyChanged(nameof(BrokerLabel));
+        RaisePropertyChanged(nameof(ShutdownLabel));
+        RaisePropertyChanged(nameof(HasOwnedRuntime));
+    }
+
+    private static PiAgentConversationSnapshot CreatePreviewSnapshot()
+    {
+        PiAgentConversationTurnSnapshot completed = new(
+            "preview-turn-1",
+            "[ILLUSTRATIVE] Inspect the workspace boundary.",
+            "Illustrative handoff complete. No workspace, broker, sidecar, " +
+                "or Pi tool was started in preview mode.",
+            PiAgentConversationTurnStatus.Completed,
+            4,
+            false,
+            [
+                new PiAgentConversationToolSnapshot(
+                    "preview-tool-1",
+                    "ls // illustrative",
+                    PiAgentConversationToolStatus.Completed,
+                    1,
+                    3),
+            ],
+            null);
+        return new PiAgentConversationSnapshot(
+            1,
+            null,
+            false,
+            false,
+            [completed]);
+    }
+
+    private void RaisePropertyChanged(
+        [CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(
+            this,
+            new PropertyChangedEventArgs(propertyName));
+}

@@ -500,7 +500,7 @@ $controlCenterProjectText =
 $controlCenterBindingText =
     [IO.File]::ReadAllText($controlCenterBindingPath)
 Add-Check `
-    -Name 'desktop-conversation.nonvisual-wpf-binding' `
+    -Name 'desktop-conversation.wpf-binding-boundary' `
     -Passed (
         $controlCenterProjectText.Contains(
             '..\Jarvis.PiAgentHost\Jarvis.PiAgentHost.csproj') -and
@@ -516,8 +516,8 @@ Add-Check `
         -not $controlCenterBindingText.Contains('Process.') -and
         -not $controlCenterBindingText.Contains('Registry')) `
     -Detail (
-        'Control Center may reference the reviewed Pi host and compile a ' +
-        'property-change adapter without changing XAML or owning transport.')
+        'Control Center may reference the reviewed Pi host and bind its ' +
+        'property-change adapter into a product surface without owning transport.')
 
 $bridgeBuildOutput = @(
     & $DotnetPath build `

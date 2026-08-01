@@ -72,6 +72,9 @@ logic and explicit fail-closed platform adapters for native shell work.
 
 - Current owned WPF surface:
   `src/common/Jarvis.ControlCenter/MainWindow.xaml`
+- Reviewed Pi conversation layout proposals under
+  `docs/design/jarvis-conversation-*.png`; the selected handoff rail is now the
+  native Control Center conversation surface.
 - Cross-version product boundary:
   `config/platform-matrix.json`
 - Windows 10 owned-window visual proof:

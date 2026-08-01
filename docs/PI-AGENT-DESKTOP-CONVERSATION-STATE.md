@@ -1,7 +1,7 @@
 # Pi Agent desktop conversation state
 
 `PiAgentConversationState` is the non-visual desktop adapter between the
-ordered Pi Agent turn stream and a future conversation surface. It lives in
+ordered Pi Agent turn stream and the Control Center conversation surface. It lives in
 `Jarvis.PiAgentHost`; `Jarvis.ControlCenter` references that assembly and
 exposes an `INotifyPropertyChanged` binding wrapper without changing its XAML.
 
@@ -46,8 +46,9 @@ process or event channel.
 
 `PiAgentConversationBinding` converts snapshots into
 `INotifyPropertyChanged` updates for `Snapshot`, `ActiveTurnId`, `CanSubmit`,
-`CanCancel` and `Turns`. It is compiled into `Jarvis.ControlCenter`, but no
-conversation panel is visible yet.
+`CanCancel` and `Turns`. `ConversationSurfaceViewModel` now composes that
+binding into the visible transcript, tool chips, ownership rail and command
+state while the binding remains transport-agnostic.
 
 ## Bounded retention
 
@@ -90,6 +91,8 @@ rejection, single-active-turn rejection and a separately aborted turn. It uses
 the deterministic offline desktop broker: credentials are not transported, the
 Pi sidecar has no model network, and Explorer is not touched.
 
-This milestone changes no visible layout. Before a WPF conversation panel or
-effect-bearing interaction is implemented, four image proposals must be
-reviewed with the user.
+The first visible WPF panel now uses the same diagnostic boundary. Three layout
+proposals were reviewed, and the chosen handoff rail makes the single-active-
+turn invariant explicit. Production model authentication and mutation
+capabilities remain absent. See
+`PI-AGENT-DESKTOP-CONVERSATION-SURFACE.md`.

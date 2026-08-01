@@ -1,9 +1,9 @@
 # Pi Agent desktop runtime ownership
 
 `PiAgentDesktopRuntime` is the non-visual composition root for an owned JARVIS
-desktop conversation. It is the boundary a future WPF application will start
-after it has selected an admitted workspace and constructed a reviewed
-`IDesktopModelProvider`.
+desktop conversation. `Jarvis.ControlCenter` now starts this boundary after it
+receives explicit Node, sidecar and admitted-workspace paths and constructs the
+reviewed local diagnostic `IDesktopModelProvider`.
 
 ## Owned resources
 
@@ -71,6 +71,12 @@ Each terminal turn is saved in order. A persistence failure closes further
 submissions and is surfaced during shutdown while sidecar cleanup still runs.
 The runtime does not enable mutation tools, contact Explorer, modify the
 registry or control physical RGB devices.
+
+The current Control Center surface gives this shutdown path a 12-second
+window-close budget and keeps the user-visible phase in `STOPPING` while the
+runtime quiesces. It displays checkpoint and broker state but does not own or
+inspect the sidecar process directly. See
+`PI-AGENT-DESKTOP-CONVERSATION-SURFACE.md`.
 
 The deterministic `runtime-probe` command proves:
 

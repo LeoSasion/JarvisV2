@@ -1450,10 +1450,13 @@ $phase7ControlCenterStaticContract =
         'must never be described as a live modified taskbar or Explorer surface') -and
     $controlCenterSource.Contains('<OutputType>WinExe</OutputType>') -and
     $controlCenterSource.Contains('<UseWPF>true</UseWPF>') -and
-    $controlCenterSource.Contains('LOCKED') -and
-    $controlCenterSource.Contains('/ FAIL-CLOSED') -and
-    $controlCenterSource.Contains('QUARANTINED') -and
-    $controlCenterSource.Contains('READ-ONLY CONTROL SURFACE') -and
+    $controlCenterSource.Contains('SHELL // LOCKED') -and
+    $controlCenterSource.Contains('Text="Conversation"') -and
+    $controlCenterSource.Contains('Text="PI RUNTIME"') -and
+    $controlCenterSource.Contains('Mutation tools: unavailable') -and
+    $controlCenterSource.Contains('PiAgentDesktopRuntime.StartAsync') -and
+    $controlCenterSource.Contains('SAFE SHUTDOWN') -and
+    $controlCenterSource.Contains('impeccable:surface-seed:32fb29e4') -and
     -not [regex]::IsMatch(
         $controlCenterSource,
         '(?i)\b(?:DllImport|LibraryImport|OpenProcess|CreateRemoteThread|' +
@@ -1467,7 +1470,7 @@ $phase7ControlCenterStaticContract =
 Add-Check `
     'phase7.control-center-static-readonly' `
     $phase7ControlCenterStaticContract `
-    'The visible Control Center must remain an ordinary read-only WPF window with explicit locked state and no shell mutation API.'
+    'The visible Control Center must remain an ordinary read-only Pi conversation window with explicit shell lock, orderly shutdown and no shell mutation API.'
 
 $controlCenterAuditOutput = @(
     & pwsh `
@@ -1490,8 +1493,10 @@ $phase7ControlCenterAuditPassed =
     $controlCenterAuditExitCode -eq 0 -and
     $null -ne $controlCenterAudit -and
     $controlCenterAudit.result -eq 'passed' -and
-    $controlCenterAudit.checkCount -eq 6 -and
-    $controlCenterAudit.passedCount -eq 6 -and
+    $controlCenterAudit.checkCount -eq 10 -and
+    $controlCenterAudit.passedCount -eq 10 -and
+    $controlCenterAudit.conversationSupported -and
+    -not $controlCenterAudit.productionAuthenticationConfigured -and
     -not $controlCenterAudit.executionSupported -and
     -not $controlCenterAudit.activationPermitted -and
     $controlCenterAudit.liveExplorer -eq 'not-run' -and
@@ -1499,7 +1504,7 @@ $phase7ControlCenterAuditPassed =
 Add-Check `
     'phase7.control-center-executable-audit' `
     $phase7ControlCenterAuditPassed `
-    'The Control Center safety/build audit must pass all six checks without enabling live execution.'
+    'The Control Center safety/build audit must pass all ten checks, including the local streamed-provider probe, without enabling shell execution.'
 
 $phase7BridgeStaticContract =
     $explorerBridgeSource.Contains(
