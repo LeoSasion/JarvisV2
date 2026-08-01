@@ -74,6 +74,7 @@ $commonProjects =
 $expectedCommonProjects =
     @(
         'Jarvis.ControlCenter',
+        'Jarvis.ControlCenter.Diagnostics',
         'Jarvis.DesktopStyleProbe',
         'Jarvis.DesktopStyleSession',
         'Jarvis.PiAgentHost',
@@ -82,7 +83,7 @@ $expectedCommonProjects =
 Add-Check `
     'common.reviewed-project-set' `
     (($commonProjects -join '|') -eq ($expectedCommonProjects -join '|')) `
-    'Common contains only the five reviewed cross-version candidates.'
+    'Common contains only the six reviewed cross-version candidates.'
 
 $windows10Projects =
     @(Get-ChildItem -LiteralPath (
