@@ -5,7 +5,7 @@
   "profiles": [
     {
       "profileId": "win10-22h2-19045.6466-x64",
-      "status": "observed-own-process-probe-only",
+      "status": "observed-caption-write-disabled-owned-overlay-visually-verified",
       "displayVersion": "22H2",
       "build": 19045,
       "ubr": 6466,
@@ -20,10 +20,26 @@
       "allowedCapabilities": [
         "read-system-dwm-state",
         "read-shell-window-topology",
-        "set-owned-window-dark-caption"
+        "read-single-explorer-caption-state",
+        "run-bounded-owned-explorer-caption-overlay-preview",
+        "set-owned-window-dark-caption",
+        "run-bounded-desktop-text-color-preview"
       ],
       "activationPermitted": false,
-      "liveExplorer": "not-run"
+      "liveExplorer": "not-run",
+      "boundedCaptionObservation": {
+        "runId": "20260731T084924086Z-608182a4",
+        "result": "api-readback-and-refresh-passed-rollback-verified-visual-diff-failed-light-app-theme",
+        "observedAtUtc": "2026-07-31T08:49:54.1064511+00:00",
+        "visualVerificationPassed": false,
+        "titleBarDifferentPixels": 0,
+        "titleBarPixelCount": 36448,
+        "targetRetiredBeforeRollback": false,
+        "rollbackVerified": true,
+        "explorerProcessStable": true,
+        "appsUseLightTheme": 1,
+        "executionCapabilityEnabled": false
+      }
     }
   ]
 }

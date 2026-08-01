@@ -52,9 +52,11 @@ Admission requires an exact match for:
 - architecture and installation type;
 - Explorer product version, file version, size and SHA-256.
 
-The first profile is `win10-22h2-19045.6466-x64`. It grants only two
-capabilities: read system DWM state and set the dark-caption attribute on an
-owned HWND. It does not authorize an Explorer module or live activation.
+The first profile is `win10-22h2-19045.6466-x64`. It grants four bounded
+capabilities: read system DWM state, read Shell window topology, set the
+dark-caption attribute on an owned HWND, and run the separately confirmed
+10–60 second desktop text-color preview. It does not authorize an Explorer
+module or live activation.
 
 ## Visual sharing boundary
 

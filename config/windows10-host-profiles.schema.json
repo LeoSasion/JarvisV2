@@ -39,7 +39,8 @@
         "explorer",
         "allowedCapabilities",
         "activationPermitted",
-        "liveExplorer"
+        "liveExplorer",
+        "boundedCaptionObservation"
       ],
       "properties": {
         "profileId": {
@@ -47,7 +48,7 @@
           "pattern": "^win10-[a-z0-9.-]+-x64$"
         },
         "status": {
-          "const": "observed-own-process-probe-only"
+          "const": "observed-caption-write-disabled-owned-overlay-visually-verified"
         },
         "displayVersion": {
           "type": "string",
@@ -77,7 +78,11 @@
             "enum": [
               "read-system-dwm-state",
               "read-shell-window-topology",
-              "set-owned-window-dark-caption"
+              "read-single-explorer-caption-state",
+              "run-bounded-owned-explorer-caption-overlay-preview",
+              "run-bounded-single-explorer-dark-caption-preview",
+              "set-owned-window-dark-caption",
+              "run-bounded-desktop-text-color-preview"
             ]
           },
           "uniqueItems": true
@@ -87,6 +92,62 @@
         },
         "liveExplorer": {
           "const": "not-run"
+        },
+        "boundedCaptionObservation": {
+          "$ref": "#/$defs/boundedCaptionObservation"
+        }
+      }
+    },
+    "boundedCaptionObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "result",
+        "observedAtUtc",
+        "visualVerificationPassed",
+        "titleBarDifferentPixels",
+        "titleBarPixelCount",
+        "targetRetiredBeforeRollback",
+        "explorerProcessStable",
+        "rollbackVerified",
+        "appsUseLightTheme",
+        "executionCapabilityEnabled"
+      ],
+      "properties": {
+        "runId": {
+          "const": "20260731T084924086Z-608182a4"
+        },
+        "result": {
+          "const": "api-readback-and-refresh-passed-rollback-verified-visual-diff-failed-light-app-theme"
+        },
+        "observedAtUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "visualVerificationPassed": {
+          "const": false
+        },
+        "titleBarDifferentPixels": {
+          "const": 0
+        },
+        "titleBarPixelCount": {
+          "const": 36448
+        },
+        "targetRetiredBeforeRollback": {
+          "const": false
+        },
+        "explorerProcessStable": {
+          "const": true
+        },
+        "rollbackVerified": {
+          "const": true
+        },
+        "appsUseLightTheme": {
+          "const": 1
+        },
+        "executionCapabilityEnabled": {
+          "const": false
         }
       }
     },

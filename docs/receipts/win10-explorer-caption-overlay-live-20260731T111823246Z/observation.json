@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "receiptType": "jarvisv2-win10-owned-explorer-caption-overlay-visual-observation",
+  "result": "passed-visible-overlay-and-exact-post-ttl-restoration",
+  "targetWindowHandle": "0x7800EA",
+  "targetProcessId": 4360,
+  "targetThreadId": 10324,
+  "imageWidth": 1117,
+  "imageHeight": 818,
+  "captionHeight": 32,
+  "beforeSha256": "A2B3F05B44B14FB63825D4851BEAFACBDD66E2D40EAA066631BBBFE0975CE4F1",
+  "duringSha256": "8101B6D57576441CC7BE822574B67588B38F822ED142E005E2A6A282062D3AC4",
+  "afterSha256": "A2B3F05B44B14FB63825D4851BEAFACBDD66E2D40EAA066631BBBFE0975CE4F1",
+  "beforeDuringChangedPixels": 35744,
+  "duringAfterChangedPixels": 35744,
+  "beforeAfterChangedPixels": 0,
+  "captionBeforeDuringChangedPixels": 35744,
+  "explorerMutationPerformed": false,
+  "injectionRequested": false,
+  "explorerRestartRequested": false,
+  "registryMutationRequested": false,
+  "moduleActivationPermitted": false
+}

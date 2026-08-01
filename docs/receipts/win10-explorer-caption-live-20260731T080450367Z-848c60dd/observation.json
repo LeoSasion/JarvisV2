@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "receiptType": "jarvisv2-win10-explorer-caption-live-observation",
+  "result": "api-readback-passed-visual-diff-failed-target-retired",
+  "runId": "20260731T080450367Z-848c60dd",
+  "hostProfileId": "win10-22h2-19045.6466-x64",
+  "approvedCommand": {
+    "windowHandle": "0x402EA",
+    "ttlSeconds": 30,
+    "confirmation": "--confirm-live-single-explorer-dark-caption"
+  },
+  "target": {
+    "windowHandle": "0x402EA",
+    "processId": 1244,
+    "threadId": 13172,
+    "rootClass": "CabinetWClass",
+    "topologySha256": "9F4C01EADCBC0BF7A59C1911405FC7597C37B2DCD075E937E4ACEC17B4383A47"
+  },
+  "session": {
+    "preparedAtUtc": "2026-07-31T08:04:50.3856305+00:00",
+    "expiresAtUtc": "2026-07-31T08:05:20.3856305+00:00",
+    "originalValue": 0,
+    "previewValue": 1,
+    "applyVerified": true,
+    "rollbackAttempted": true,
+    "rollbackVerified": false,
+    "terminalState": "target-retired",
+    "terminalDetail": "The recorded Explorer HWND no longer exists. No rollback call was sent."
+  },
+  "visual": {
+    "verificationPassed": false,
+    "sampleRectangle": {
+      "left": 0,
+      "top": 0,
+      "width": 1139,
+      "height": 32
+    },
+    "pixelCount": 36448,
+    "differentPixels": 0,
+    "differentPercent": 0,
+    "totalRgbDelta": 0,
+    "maximumPixelRgbDelta": 0
+  },
+  "recovery": {
+    "recordedTargetRetired": true,
+    "writeSentToReplacementHandle": false,
+    "explorerProcessIdBefore": 1244,
+    "explorerProcessIdAfter": 1244,
+    "explorerProcessStable": true,
+    "remainingExplorerWindow": "0x9703A0",
+    "remainingExplorerCaptionValue": 0,
+    "noResidualLiveTarget": true
+  },
+  "build": {
+    "sourceAggregateSha256": "ACA45FB88D7E73396AC843E3348FD9F828BC1A697DE62ECF2DE908CE9444876C",
+    "sessionBinarySha256": "0450C32F584C880D9BD508C0F92C47469E519A11D10C3164931001B590993EA8"
+  },
+  "evidence": [
+    {
+      "relativePath": "before.png",
+      "sha256": "CCD129C560BF043EFB58F2B8F0B27F7C7CE6B6ECC1B18987819736618EA6F62E"
+    },
+    {
+      "relativePath": "during.png",
+      "sha256": "C8604D35E2708ED0AE83DE6C5D7C1EB6DA08E9D8DEB0BF3513B63D70E463915F"
+    },
+    {
+      "relativePath": "session.json",
+      "sha256": "E16B1C9104FD66EBC938448BB1F91EA940CF5637C4246469730E576DEC0682D3"
+    },
+    {
+      "relativePath": "session.stdout.json",
+      "sha256": "B19236D321A2ABB6EA3BA6F136B42B97FA221F5D56F7EDBFE2105A5A26EE0454"
+    },
+    {
+      "relativePath": "session.stderr.txt",
+      "sha256": "F56ADCAB070482D9C9E814711415C88546D78394D6AEFB93EDC1EE240A8F2F48"
+    }
+  ],
+  "killSwitchArmed": true,
+  "activeModulePresent": false,
+  "injectionRequested": false,
+  "explorerRestartRequested": false,
+  "processTerminationRequested": false,
+  "registryMutationRequested": false,
+  "moduleActivationPermitted": false,
+  "visualSuccessClaimed": false
+}

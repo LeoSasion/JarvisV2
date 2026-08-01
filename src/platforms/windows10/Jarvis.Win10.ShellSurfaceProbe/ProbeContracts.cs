@@ -2,12 +2,12 @@ using Jarvis.Win10.HostAdmission;
 
 namespace Jarvis.Win10.ShellSurfaceProbe;
 
-internal sealed record ExplorerProcessObservation(
+public sealed record ExplorerProcessObservation(
     uint ProcessId,
     DateTime StartTimeUtc,
     bool DesktopShell);
 
-internal sealed record WindowRectangle(
+public sealed record WindowRectangle(
     int Left,
     int Top,
     int Right,
@@ -18,7 +18,7 @@ internal sealed record WindowRectangle(
     public int Height => Math.Max(0, Bottom - Top);
 }
 
-internal sealed record WindowNodeObservation(
+public sealed record WindowNodeObservation(
     string NodeKey,
     string? ParentKey,
     int Depth,
@@ -30,7 +30,7 @@ internal sealed record WindowNodeObservation(
     uint ThreadId,
     WindowRectangle Rectangle);
 
-internal sealed record SurfaceTreeObservation(
+public sealed record SurfaceTreeObservation(
     string SurfaceKind,
     string RootClass,
     string RootWindow,
@@ -43,7 +43,7 @@ internal sealed record SurfaceTreeObservation(
     IReadOnlyDictionary<string, int> ClassHistogram,
     IReadOnlyList<WindowNodeObservation> Nodes);
 
-internal sealed record ShellSurfaceInventory(
+public sealed record ShellSurfaceInventory(
     uint DesktopShellProcessId,
     IReadOnlyList<ExplorerProcessObservation> ExplorerProcesses,
     IReadOnlyList<SurfaceTreeObservation> DesktopSurfaces,
@@ -55,7 +55,7 @@ internal sealed record ShellSurfaceInventory(
     bool ExplorerWindowObserved,
     bool CompleteSurfaceSetObserved);
 
-internal sealed record ShellSurfaceProbeReceipt(
+public sealed record ShellSurfaceProbeReceipt(
     int SchemaVersion,
     string ReceiptType,
     string Result,

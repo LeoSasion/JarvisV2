@@ -21,11 +21,11 @@
       "modRoot": "mods/windows10",
       "nativeTestRoot": "tests/native/windows10",
       "entryDocument": "WINDOWS10-HANDOFF.md",
-      "status": "owned-rgb-window-and-pi-transport-probe",
+      "status": "owned-rgb-window-pi-transport-desktop-preview-caption-write-disabled-and-owned-caption-overlay-visually-verified",
       "compatibilityProfile": "win10-22h2-19045.6466-x64",
       "activationPermitted": false,
       "liveExplorer": "not-run",
-      "nextVisibleSlice": "connect the disabled Pi JSONL sidecar to an owned desktop conversation panel with read-only session admission"
+      "nextVisibleSlice": "refine the visually verified own-process Explorer overlay while the current Explorer caption write capability remains disabled"
     },
     {
       "id": "windows11",

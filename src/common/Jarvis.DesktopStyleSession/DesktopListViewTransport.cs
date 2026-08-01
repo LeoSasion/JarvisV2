@@ -11,11 +11,20 @@ internal static class DesktopListViewTransport
     private const uint SendMessageTimeoutBlock = 0x0001;
     private const uint SendMessageTimeoutAbortIfHung = 0x0002;
     private const uint SendMessageTimeoutErrorOnExit = 0x0020;
+    private const uint RedrawInvalidate = 0x0001;
+    private const uint RedrawErase = 0x0004;
+    private const uint RedrawAllChildren = 0x0080;
+    private const uint RedrawUpdateNow = 0x0100;
     private const uint MessageTimeoutMilliseconds = 250;
     private const uint MessageTimeoutFlags =
         SendMessageTimeoutBlock |
         SendMessageTimeoutAbortIfHung |
         SendMessageTimeoutErrorOnExit;
+    private const uint RedrawFlags =
+        RedrawInvalidate |
+        RedrawErase |
+        RedrawAllChildren |
+        RedrawUpdateNow;
 
     public static uint GetTextColor(nint folderViewWindow)
     {
@@ -38,6 +47,20 @@ internal static class DesktopListViewTransport
         {
             throw new InvalidOperationException(
                 "The desktop ListView rejected LVM_SETTEXTCOLOR.");
+        }
+    }
+
+    public static void RedrawExactFolderView(nint folderViewWindow)
+    {
+        if (!RedrawWindow(
+                folderViewWindow,
+                nint.Zero,
+                nint.Zero,
+                RedrawFlags))
+        {
+            throw new Win32Exception(
+                Marshal.GetLastWin32Error(),
+                "RedrawWindow failed for the exact desktop FolderView.");
         }
     }
 
@@ -79,4 +102,16 @@ internal static class DesktopListViewTransport
         uint flags,
         uint timeoutMilliseconds,
         out nuint messageResult);
+
+    [DllImport(
+        "user32.dll",
+        EntryPoint = "RedrawWindow",
+        ExactSpelling = true,
+        SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RedrawWindow(
+        nint windowHandle,
+        nint updateRectangle,
+        nint updateRegion,
+        uint flags);
 }

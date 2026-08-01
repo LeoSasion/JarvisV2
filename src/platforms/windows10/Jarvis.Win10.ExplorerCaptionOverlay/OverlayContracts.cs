@@ -1,0 +1,29 @@
+using Jarvis.Win10.ExplorerCaptionPlan;
+
+namespace Jarvis.Win10.ExplorerCaptionOverlay;
+
+internal sealed record OverlaySessionReceipt(
+    int SchemaVersion,
+    string ReceiptType,
+    string Result,
+    DateTimeOffset StartedAtUtc,
+    DateTimeOffset CompletedAtUtc,
+    string HostProfileId,
+    ExplorerCaptionTargetIdentity Target,
+    int OverlayProcessId,
+    string OverlayWindowHandle,
+    int TtlSeconds,
+    int ForegroundSamples,
+    int HiddenSamples,
+    int RepositionCount,
+    bool TargetRetired,
+    bool SeparateExplorerProcessAccepted,
+    IReadOnlyList<string> AcceptedCaptionGateFailures,
+    bool OwnedWindowOnly,
+    bool MouseTransparent,
+    bool NoActivate,
+    bool ExplorerMutationPerformed,
+    bool InjectionRequested,
+    bool ExplorerRestartRequested,
+    bool RegistryMutationRequested,
+    bool ModuleActivationPermitted);

@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "receiptType": "jarvisv2-win10-explorer-caption-redraw-live-observation",
+  "result": "api-readback-and-refresh-passed-rollback-verified-visual-diff-failed-light-app-theme",
+  "runId": "20260731T084924086Z-608182a4",
+  "hostProfileId": "win10-22h2-19045.6466-x64",
+  "approvedCommand": {
+    "windowHandle": "0x9C03B2",
+    "ttlSeconds": 30,
+    "confirmation": "--confirm-live-single-explorer-dark-caption"
+  },
+  "target": {
+    "windowHandle": "0x9C03B2",
+    "processId": 1244,
+    "threadId": 7208,
+    "rootClass": "CabinetWClass",
+    "topologySha256": "EAFF21FEB55B9C37B1D85D277F877107952A36B592CE773252A3FA506A26029F"
+  },
+  "session": {
+    "preparedAtUtc": "2026-07-31T08:49:24.1064511+00:00",
+    "expiresAtUtc": "2026-07-31T08:49:54.1064511+00:00",
+    "originalValue": 0,
+    "previewValue": 1,
+    "applyVerified": true,
+    "applyNonClientRefreshRequested": true,
+    "rollbackAttempted": true,
+    "rollbackVerified": true,
+    "rollbackNonClientRefreshRequested": true,
+    "terminalState": "recovered",
+    "terminalResult": "passed-preview-completed-and-rolled-back"
+  },
+  "visual": {
+    "verificationPassed": false,
+    "captureMethod": "PrintWindow(PW_RENDERFULLCONTENT)",
+    "sampleRectangle": {
+      "left": 0,
+      "top": 0,
+      "width": 1139,
+      "height": 32
+    },
+    "pixelCount": 36448,
+    "beforeToDuringDifferentPixels": 0,
+    "beforeToAfterDifferentPixels": 0,
+    "differentPercent": 0,
+    "totalRgbDelta": 0,
+    "maximumPixelRgbDelta": 0,
+    "fullImageHashesIdentical": true,
+    "screenDcCaptureExcluded": true,
+    "screenDcCaptureExclusionReason": "CopyFromScreen failed because the automation process had no valid screen device context."
+  },
+  "theme": {
+    "registryPath": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+    "appsUseLightTheme": 1,
+    "systemUsesLightTheme": 0,
+    "colorPrevalence": 0,
+    "mutationPerformed": false
+  },
+  "recovery": {
+    "targetStillExactAtRollback": true,
+    "originalValueRestored": true,
+    "explorerProcessIdBefore": 1244,
+    "explorerProcessIdAfter": 1244,
+    "explorerProcessStable": true,
+    "noResidualLiveTarget": true
+  },
+  "build": {
+    "sourceAggregateSha256": "0AFE55070AFDB9E993059BA276E876E9B7B053B047E36C86E8DE33FFAC78C48A",
+    "sessionBinarySha256": "B11CCE2A050846AE7E478553211248B97190C9C0658AE034C1B4924677175D06"
+  },
+  "evidence": [
+    {
+      "relativePath": "before.png",
+      "sha256": "AAEA6452B2316025814619484FD21639F3DD3F53C15FF6D13920EF3D92D60384"
+    },
+    {
+      "relativePath": "during.png",
+      "sha256": "AAEA6452B2316025814619484FD21639F3DD3F53C15FF6D13920EF3D92D60384"
+    },
+    {
+      "relativePath": "after.png",
+      "sha256": "AAEA6452B2316025814619484FD21639F3DD3F53C15FF6D13920EF3D92D60384"
+    },
+    {
+      "relativePath": "session.json",
+      "sha256": "35DFF5A1E7395CF254DCD9F9A00B88102C1E3DDC7954CB6533D98EDB8B1FF7DA"
+    },
+    {
+      "relativePath": "session.stdout.json",
+      "sha256": "FECFD8D622E8D003D8F64F06F48D4F57067FD1BA73BB71DAFEC0E40CC62A3260"
+    },
+    {
+      "relativePath": "session.stderr.txt",
+      "sha256": "E21BE32E34F532CB51486ECD81DEABD2D09EDEC11370F7E770DB4853FDA88AD4"
+    }
+  ],
+  "killSwitchArmed": true,
+  "activeModulePresent": false,
+  "injectionRequested": false,
+  "explorerRestartRequested": false,
+  "processTerminationRequested": false,
+  "registryMutationRequested": false,
+  "moduleActivationPermitted": false,
+  "visualSuccessClaimed": false
+}

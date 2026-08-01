@@ -4,7 +4,7 @@ using Jarvis.Win10.HostAdmission;
 
 namespace Jarvis.Win10.ShellSurfaceProbe;
 
-internal static class ShellSurfaceInspector
+public static class ShellSurfaceInspector
 {
     private static readonly HashSet<string> DesktopRootClasses =
         new(StringComparer.Ordinal)

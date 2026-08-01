@@ -112,6 +112,32 @@ jobs:
           .\scripts\Test-Windows10ShellSurfaceProbe.ps1
           -StaticOnly
 
+      - name: Audit and build Windows 10 bounded desktop style session
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-Windows10DesktopStyleSession.ps1
+          -StaticOnly
+
+      - name: Audit and build Windows 10 Explorer caption plan
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-Windows10ExplorerCaptionPlan.ps1
+          -StaticOnly
+
+      - name: Audit and build Windows 10 Explorer caption session
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-Windows10ExplorerCaptionSession.ps1
+
+      - name: Audit and build Windows 10 owned Explorer caption overlay
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-Windows10ExplorerCaptionOverlay.ps1
+
       - name: Audit Windows 10 offline Shell surface selector model
         shell: pwsh
         run: >-

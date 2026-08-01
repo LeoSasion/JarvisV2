@@ -64,10 +64,10 @@ $stylerText = [IO.File]::ReadAllText($stylerPath)
 $dwmText = [IO.File]::ReadAllText($dwmPath)
 $profiles =
     Get-Content -LiteralPath $profilePath -Raw |
-        ConvertFrom-Json -Depth 30
+        ConvertFrom-Json
 $schema =
     Get-Content -LiteralPath $schemaPath -Raw |
-        ConvertFrom-Json -Depth 30
+        ConvertFrom-Json
 
 $forbiddenExternalMutationPattern = (
     '(?i)\b(?:EnumWindows|FindWindow|GetShellWindow|SendMessage|' +
@@ -196,16 +196,23 @@ Add-Check `
     -Passed (
         -not $profile[0].activationPermitted -and
         $profile[0].liveExplorer -eq 'not-run' -and
-        @($profile[0].allowedCapabilities).Count -eq 3 -and
+        @($profile[0].allowedCapabilities).Count -eq 6 -and
         @($profile[0].allowedCapabilities) -contains
             'read-system-dwm-state' -and
         @($profile[0].allowedCapabilities) -contains
             'read-shell-window-topology' -and
         @($profile[0].allowedCapabilities) -contains
-            'set-owned-window-dark-caption') `
+            'read-single-explorer-caption-state' -and
+        @($profile[0].allowedCapabilities) -contains
+            'run-bounded-owned-explorer-caption-overlay-preview' -and
+        @($profile[0].allowedCapabilities) -contains
+            'set-owned-window-dark-caption' -and
+        @($profile[0].allowedCapabilities) -contains
+            'run-bounded-desktop-text-color-preview') `
     -Detail (
-        'The profile grants only system-DWM reads and owned-caption writes; ' +
-        'Explorer activation remains denied.')
+        'The profile grants system-DWM reads, owned-caption writes, read-only ' +
+        'Shell topology, a bounded owned caption overlay and a bounded ' +
+        'desktop text preview; module activation remains denied.')
 
 Add-Check `
     -Name 'profile.schema-identity' `
@@ -250,7 +257,7 @@ if ($buildExitCode -eq 0 -and -not $StaticOnly) {
     try {
         $inspectReceipt =
             ($inspectOutput -join [Environment]::NewLine) |
-                ConvertFrom-Json -Depth 30
+                ConvertFrom-Json
     }
     catch {
         $inspectReceipt = $null
@@ -283,7 +290,7 @@ if ($buildExitCode -eq 0 -and -not $StaticOnly) {
     try {
         $verifyReceipt =
             ($verifyOutput -join [Environment]::NewLine) |
-                ConvertFrom-Json -Depth 30
+                ConvertFrom-Json
     }
     catch {
         $verifyReceipt = $null

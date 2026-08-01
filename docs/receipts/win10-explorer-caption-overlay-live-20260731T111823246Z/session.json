@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "receiptType": "jarvisv2-win10-owned-explorer-caption-overlay-session",
+  "result": "passed-owned-overlay-session-completed",
+  "startedAtUtc": "2026-07-31T11:18:23.246935+00:00",
+  "completedAtUtc": "2026-07-31T11:18:53.3667591+00:00",
+  "hostProfileId": "win10-22h2-19045.6466-x64",
+  "target": {
+    "rootClass": "CabinetWClass",
+    "windowHandle": "0x7800EA",
+    "processId": 4360,
+    "threadId": 10324,
+    "rectangle": {
+      "left": 382,
+      "top": 128,
+      "right": 1499,
+      "bottom": 946,
+      "width": 1117,
+      "height": 818
+    },
+    "topologySha256": "5DBE73B79A1410C406BD27F54C8F71351B457B3BDF80F13B60C53C835FC060D2"
+  },
+  "overlayProcessId": 11192,
+  "overlayWindowHandle": "0x2A0352",
+  "ttlSeconds": 30,
+  "foregroundSamples": 273,
+  "hiddenSamples": 0,
+  "repositionCount": 1,
+  "targetRetired": false,
+  "separateExplorerProcessAccepted": true,
+  "acceptedCaptionGateFailures": [
+    "explorer-root-pid-not-desktop-shell"
+  ],
+  "ownedWindowOnly": true,
+  "mouseTransparent": true,
+  "noActivate": true,
+  "explorerMutationPerformed": false,
+  "injectionRequested": false,
+  "explorerRestartRequested": false,
+  "registryMutationRequested": false,
+  "moduleActivationPermitted": false
+}

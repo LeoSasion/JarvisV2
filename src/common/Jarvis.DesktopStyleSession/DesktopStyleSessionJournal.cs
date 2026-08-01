@@ -17,6 +17,8 @@ internal sealed class DesktopStyleSessionJournal
 
     public required string SessionPath { get; init; }
 
+    public string? HostProfileId { get; init; }
+
     public required DesktopHostIdentity Target { get; init; }
 
     public required string Preset { get; init; }
@@ -37,9 +39,17 @@ internal sealed class DesktopStyleSessionJournal
 
     public bool MutationPerformed { get; set; }
 
+    public bool ApplyRedrawAttempted { get; set; }
+
+    public bool ApplyRedrawAccepted { get; set; }
+
     public bool RollbackAttempted { get; set; }
 
     public bool RollbackVerified { get; set; }
+
+    public bool RollbackRedrawAttempted { get; set; }
+
+    public bool RollbackRedrawAccepted { get; set; }
 
     public uint? LastObservedColorRef { get; set; }
 
@@ -85,26 +95,30 @@ internal sealed class DesktopStyleSessionStore
     public void Prepare(DesktopStyleSessionJournal journal)
     {
         EnsureStorage();
-        if (File.Exists(ActiveSessionPath))
+        string sessionPath = ResolveJournalSessionPath(journal);
+        string activePath = ResolveSessionPath(ActiveSessionPath);
+        if (File.Exists(activePath))
         {
-            DesktopStyleSessionJournal active = Load(ActiveSessionPath);
+            DesktopStyleSessionJournal active = Load(activePath);
             if (active.State is "prepared" or "active" or "rollback-failed")
             {
                 throw new InvalidOperationException(
                     "A non-terminal desktop style session already exists at " +
-                    $"{ActiveSessionPath}.");
+                    $"{activePath}.");
             }
         }
 
-        WriteAtomic(journal.SessionPath, journal);
-        WriteAtomic(ActiveSessionPath, journal);
+        WriteAtomic(sessionPath, journal);
+        WriteAtomic(activePath, journal);
     }
 
     public void Update(DesktopStyleSessionJournal journal)
     {
         EnsureStorage();
-        WriteAtomic(journal.SessionPath, journal);
-        WriteAtomic(ActiveSessionPath, journal);
+        string sessionPath = ResolveJournalSessionPath(journal);
+        string activePath = ResolveSessionPath(ActiveSessionPath);
+        WriteAtomic(sessionPath, journal);
+        WriteAtomic(activePath, journal);
     }
 
     public DesktopStyleSessionJournal Load(string path)
@@ -115,9 +129,56 @@ internal sealed class DesktopStyleSessionStore
             JsonSerializer.Deserialize<DesktopStyleSessionJournal>(
                 json,
                 SerializerOptions);
-        return journal ??
+        if (journal is null)
+        {
             throw new InvalidDataException(
                 "The desktop style session journal is empty.");
+        }
+        string journalSessionPath = ResolveJournalSessionPath(journal);
+        string activePath = ResolveSessionPath(ActiveSessionPath);
+        if (!string.Equals(
+                safePath,
+                activePath,
+                StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(
+                safePath,
+                journalSessionPath,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException(
+                "The desktop style journal path does not match its " +
+                "canonical session identity.");
+        }
+
+        return journal;
+    }
+
+    private string ResolveJournalSessionPath(
+        DesktopStyleSessionJournal journal)
+    {
+        if (string.IsNullOrWhiteSpace(journal.RunId) ||
+            journal.RunId.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
+            journal.RunId.Contains(Path.DirectorySeparatorChar) ||
+            journal.RunId.Contains(Path.AltDirectorySeparatorChar))
+        {
+            throw new InvalidDataException(
+                "The desktop style journal run ID is not a file name.");
+        }
+
+        string declaredPath = ResolveSessionPath(journal.SessionPath);
+        string expectedPath = ResolveSessionPath(
+            Path.Combine(sessionsDirectory, $"{journal.RunId}.json"));
+        if (!string.Equals(
+                declaredPath,
+                expectedPath,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException(
+                "The desktop style journal session path is not bound to " +
+                "its run ID.");
+        }
+
+        return expectedPath;
     }
 
     public string ResolveSessionPath(string path)

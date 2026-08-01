@@ -1,11 +1,11 @@
 namespace Jarvis.DesktopStyleSession;
 
-internal sealed record DesktopTextColorPreset(
+public sealed record DesktopTextColorPreset(
     string Id,
     string HexColor,
     uint ColorRef);
 
-internal static class DesktopStylePolicy
+public static class DesktopStylePolicy
 {
     public const int MinimumTtlSeconds = 10;
     public const int MaximumTtlSeconds = 60;
@@ -28,6 +28,18 @@ internal static class DesktopStylePolicy
                 "amber",
                 "#F0C77B",
                 ToColorRef(0xF0, 0xC7, 0x7B)),
+            ["orbital-cyan"] = new(
+                "orbital-cyan",
+                "#00E5FF",
+                ToColorRef(0x00, 0xE5, 0xFF)),
+            ["reactor-amber"] = new(
+                "reactor-amber",
+                "#FF6A00",
+                ToColorRef(0xFF, 0x6A, 0x00)),
+            ["neural-emerald"] = new(
+                "neural-emerald",
+                "#00FF9A",
+                ToColorRef(0x00, 0xFF, 0x9A)),
         };
 
     public static DesktopTextColorPreset GetPreset(string presetId)
@@ -35,7 +47,8 @@ internal static class DesktopStylePolicy
         if (!Presets.TryGetValue(presetId, out DesktopTextColorPreset? preset))
         {
             throw new ArgumentException(
-                $"Unsupported preset '{presetId}'. Expected graphite or amber.",
+                $"Unsupported preset '{presetId}'. Expected graphite, amber, " +
+                "orbital-cyan, reactor-amber or neural-emerald.",
                 nameof(presetId));
         }
 

@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [switch]$StaticOnly
+    [switch]$StaticOnly,
+    [string]$DotnetPath = 'dotnet'
 )
 
 Set-StrictMode -Version Latest
@@ -107,7 +108,8 @@ $allowedImports = @(
     'GetClassNameW',
     'GetWindowThreadProcessId',
     'IsWindowVisible',
-    'SendMessageTimeoutW'
+    'SendMessageTimeoutW',
+    'RedrawWindow'
 )
 $importMatches = @(
     [regex]::Matches(
@@ -135,13 +137,14 @@ Add-Check `
     -Name 'source.exact-user32-allowlist' `
     -Passed (
         $unexpectedImports.Count -eq 0 -and
-        $actualImports.Count -eq 6 -and
+        $actualImports.Count -eq 7 -and
         @($allowedImports | Where-Object { $_ -notin $actualImports }).Count `
             -eq 0
     ) `
     -Detail (
         'Imports must be exactly the five host-discovery APIs plus ' +
-        "SendMessageTimeoutW. Actual: $($actualImports -join ', ')."
+        'SendMessageTimeoutW and exact-target RedrawWindow. Actual: ' +
+        "$($actualImports -join ', ')."
     )
 
 Add-Check `
@@ -161,6 +164,22 @@ Add-Check `
     -Detail (
         'Cross-process ListView messages carry scalar values only and use a ' +
         '250 ms BLOCK + ABORTIFHUNG + ERRORONEXIT timeout.'
+    )
+
+Add-Check `
+    -Name 'transport.exact-target-redraw-only' `
+    -Passed (
+        $transportText.Contains('RedrawExactFolderView(') -and
+        $transportText.Contains('RedrawInvalidate |') -and
+        $transportText.Contains('RedrawErase |') -and
+        $transportText.Contains('RedrawAllChildren |') -and
+        $transportText.Contains('RedrawUpdateNow;') -and
+        -not $transportText.Contains('HWND_BROADCAST') -and
+        -not $transportText.Contains('InvalidateRect')
+    ) `
+    -Detail (
+        'A visual refresh may target only the already-admitted FolderView ' +
+        'HWND and must synchronously invalidate and redraw that exact tree.'
     )
 
 Add-Check `
@@ -209,20 +228,26 @@ Add-Check `
     )
 
 Add-Check `
-    -Name 'receipt.denies-broad-activation' `
+    -Name 'receipt.path-confined-and-denies-broad-activation' `
     -Passed (
+        $sourceText.Contains('ResolveJournalSessionPath(') -and
+        $sourceText.Contains(
+            'string sessionPath = ResolveJournalSessionPath(journal);') -and
+        $sourceText.Contains(
+            'string activePath = ResolveSessionPath(ActiveSessionPath);') -and
         $sourceText.Contains('ActivationPermitted = false') -and
         $sourceText.Contains('ExplorerRestartRequested = false') -and
         $sourceText.Contains('ProcessTerminationRequested = false') -and
         $sourceText.Contains('RegistryMutationRequested = false')
     ) `
     -Detail (
-        'Every live session journal denies module activation, Explorer ' +
-        'restart, process termination and registry mutation.'
+        'Every journal write is rebound to its canonical run path, and every ' +
+        'live session denies module activation, Explorer restart, process ' +
+        'termination and registry mutation.'
     )
 
 $buildOutput = @(
-    & dotnet build $projectPath --configuration Release --nologo --warnaserror `
+    & $DotnetPath build $projectPath --configuration Release --nologo --warnaserror `
         2>&1
 )
 $buildExitCode = $LASTEXITCODE
@@ -233,7 +258,7 @@ Add-Check `
 
 if ($buildExitCode -eq 0) {
     $modelOutput = @(
-        & dotnet run `
+        & $DotnetPath run `
             --project $projectPath `
             --configuration Release `
             --no-build `
@@ -244,7 +269,7 @@ if ($buildExitCode -eq 0) {
     try {
         $modelReceipt = (
             $modelOutput -join [Environment]::NewLine) |
-            ConvertFrom-Json -Depth 20
+            ConvertFrom-Json
     }
     catch {
         $modelReceipt = $null
@@ -255,8 +280,8 @@ if ($buildExitCode -eq 0) {
             $modelExitCode -eq 0 -and
             $null -ne $modelReceipt -and
             $modelReceipt.result -eq 'passed' -and
-            $modelReceipt.scenarioCount -eq 9 -and
-            $modelReceipt.passedCount -eq 9 -and
+            $modelReceipt.scenarioCount -eq 12 -and
+            $modelReceipt.passedCount -eq 12 -and
             -not $modelReceipt.activationPermitted -and
             -not $modelReceipt.mutationPerformed -and
             $modelReceipt.liveExplorer -eq 'not-run'
@@ -283,7 +308,7 @@ if ($buildExitCode -eq 0 -and -not $StaticOnly) {
     }
     else {
         $inspectOutput = @(
-            & dotnet run `
+            & $DotnetPath run `
                 --project $projectPath `
                 --configuration Release `
                 --no-build `
@@ -295,7 +320,7 @@ if ($buildExitCode -eq 0 -and -not $StaticOnly) {
         try {
             $inspectReceipt = (
                 $inspectOutput -join [Environment]::NewLine) |
-                ConvertFrom-Json -Depth 20
+                ConvertFrom-Json
         }
         catch {
             $inspectReceipt = $null

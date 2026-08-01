@@ -1,0 +1,1 @@
+Single-Explorer dark-caption preview active for at most 30s. Session: %LOCALAPPDATA%\JARVIS2\ExplorerCaption\sessions\20260731T080450367Z-848c60dd.json

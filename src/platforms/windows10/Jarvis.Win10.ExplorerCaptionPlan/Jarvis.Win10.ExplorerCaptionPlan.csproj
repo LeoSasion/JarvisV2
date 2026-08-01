@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <AssemblyName>jarvis-win10-explorer-caption-plan</AssemblyName>
+    <RootNamespace>Jarvis.Win10.ExplorerCaptionPlan</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference
+      Include="..\Jarvis.Win10.HostAdmission\Jarvis.Win10.HostAdmission.csproj" />
+    <ProjectReference
+      Include="..\Jarvis.Win10.ShellSurfaceProbe\Jarvis.Win10.ShellSurfaceProbe.csproj" />
+  </ItemGroup>
+</Project>

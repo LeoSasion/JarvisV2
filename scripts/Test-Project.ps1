@@ -1691,7 +1691,10 @@ $phase8DesktopSessionStaticContract =
         'RollBackExactTarget(') -and
     [regex]::Matches(
         $desktopStyleSessionSource,
-        '\[DllImport\(').Count -eq 6 -and
+        '\[DllImport\(').Count -eq 7 -and
+    $desktopStyleSessionSource.Contains(
+        'RedrawExactFolderView(') -and
+    -not $desktopStyleSessionSource.Contains('HWND_BROADCAST') -and
     -not [regex]::IsMatch(
         $desktopStyleSessionSource,
         '(?i)\b(?:PostMessage|SetWindowLong|SetWindowPos|MoveWindow|' +
@@ -1728,8 +1731,8 @@ $phase8DesktopSessionAuditPassed =
     $null -ne $desktopSessionAudit -and
     $desktopSessionAudit.result -eq 'passed' -and
     $desktopSessionAudit.staticOnly -and
-    $desktopSessionAudit.checkCount -eq 10 -and
-    $desktopSessionAudit.passedCount -eq 10 -and
+    $desktopSessionAudit.checkCount -eq 11 -and
+    $desktopSessionAudit.passedCount -eq 11 -and
     -not $desktopSessionAudit.liveMutationRun -and
     -not $desktopSessionAudit.activationPermitted -and
     -not $desktopSessionAudit.mutationPerformed -and
@@ -7777,17 +7780,27 @@ $piAgentSidecarOnly =
     $piAgentPackage.name -eq '@jarvisv2/pi-agent-host' -and
     $piAgentPackage.private -eq $true -and
     $piAgentPackage.type -eq 'module' -and
-    $piAgentDependencies.Count -eq 1 -and
-    $piAgentDependencies[0].Name -eq
-        '@earendil-works/pi-coding-agent' -and
-    $piAgentDependencies[0].Value -eq '0.82.1' -and
+    $piAgentDependencies.Count -eq 2 -and
+    $piAgentPackage.dependencies.'@earendil-works/pi-ai' -eq '0.82.1' -and
+    $piAgentPackage.dependencies.'@earendil-works/pi-coding-agent' -eq
+        '0.82.1' -and
+    [regex]::Matches(
+        $piAgentRuntimeSource,
+        'from\s+"node:net"').Count -eq 1 -and
+    $piAgentRuntimeSource.Contains('createConnection(pipePath)') -and
+    $piAgentRuntimeSource.Contains('validateDesktopBrokerPipe(pipePath)') -and
+    $piAgentRuntimeSource.Contains(
+        'jarvis2-pi-model-[0-9a-f]{32}') -and
     -not [regex]::IsMatch(
         $piAgentRuntimeSource,
-        '(?i)\b(?:electron|webview2?|browserwindow|node:(?:http|https|net|dgram)|createServer|listen)\b')
+        '(?i)\b(?:electron|webview2?|browserwindow|' +
+        'node:(?:http|https|dgram)|createServer|listen)\b')
 Add-Check `
     'architecture.pi-agent-isolated-nonweb-sidecar' `
     $piAgentSidecarOnly `
-    'The reviewed private Pi package may host only the bounded Node JSONL sidecar; browser, server and WebView runtimes remain forbidden.'
+    'The reviewed private Pi package may host only the bounded Node JSONL ' +
+    'sidecar and its exact local named-pipe client; browser, server, TCP/UDP ' +
+    'and WebView runtimes remain forbidden.'
 
 $forbiddenFiles = @(
     Get-ChildItem -LiteralPath $root -Recurse -File -ErrorAction Stop |

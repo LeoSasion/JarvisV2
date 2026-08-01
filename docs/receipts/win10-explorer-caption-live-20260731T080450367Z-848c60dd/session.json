@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "receiptType": "jarvisv2-win10-explorer-caption-session",
+  "runId": "20260731T080450367Z-848c60dd",
+  "result": "passed-preview-ended-target-retired-no-send",
+  "state": "target-retired",
+  "sessionPath": "%LOCALAPPDATA%\\JARVIS2\\ExplorerCaption\\sessions\\20260731T080450367Z-848c60dd.json",
+  "hostProfileId": "win10-22h2-19045.6466-x64",
+  "target": {
+    "rootClass": "CabinetWClass",
+    "windowHandle": "0x402EA",
+    "processId": 1244,
+    "threadId": 13172,
+    "rectangle": {
+      "left": 364,
+      "top": 542,
+      "right": 1503,
+      "bottom": 1179,
+      "width": 1139,
+      "height": 637
+    },
+    "topologySha256": "9F4C01EADCBC0BF7A59C1911405FC7597C37B2DCD075E937E4ACEC17B4383A47"
+  },
+  "originalValue": 0,
+  "previewValue": 1,
+  "ttlSeconds": 30,
+  "preparedAtUtc": "2026-07-31T08:04:50.3856305+00:00",
+  "expiresAtUtc": "2026-07-31T08:05:20.3856305+00:00",
+  "applyAttempted": true,
+  "mutationMayHaveOccurred": true,
+  "mutationPerformed": true,
+  "applyVerified": true,
+  "rollbackAttempted": true,
+  "rollbackVerified": false,
+  "lastObservedValue": 1,
+  "detail": "The recorded Explorer HWND no longer exists. No rollback call was sent.",
+  "injectionRequested": false,
+  "explorerRestartRequested": false,
+  "processTerminationRequested": false,
+  "registryMutationRequested": false,
+  "moduleActivationPermitted": false,
+  "liveExplorer": "controlled-single-window-session"
+}

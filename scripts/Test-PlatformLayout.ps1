@@ -84,6 +84,30 @@ Add-Check `
     (($commonProjects -join '|') -eq ($expectedCommonProjects -join '|')) `
     'Common contains only the five reviewed cross-version candidates.'
 
+$windows10Projects =
+    @(Get-ChildItem -LiteralPath (
+        Join-Path $root 'src\platforms\windows10') -Directory |
+        Select-Object -ExpandProperty Name |
+        Sort-Object)
+$expectedWindows10Projects =
+    @(
+        'Jarvis.Win10.DesktopStyleSession',
+        'Jarvis.Win10.ExplorerCaptionOverlay',
+        'Jarvis.Win10.ExplorerCaptionPlan',
+        'Jarvis.Win10.ExplorerCaptionSession',
+        'Jarvis.Win10.HostAdmission',
+        'Jarvis.Win10.NativeStyleProbe',
+        'Jarvis.Win10.NeuralVoidPreview',
+        'Jarvis.Win10.RgbThemeModel',
+        'Jarvis.Win10.ShellSurfaceProbe',
+        'Jarvis.Win10.SurfaceSelectorModel'
+    )
+Add-Check `
+    'windows10.reviewed-project-set' `
+    (($windows10Projects -join '|') -eq
+        ($expectedWindows10Projects -join '|')) `
+    'Windows 10 contains only the ten reviewed platform projects.'
+
 $windows10 = @($matrix.platforms | Where-Object id -eq 'windows10')
 $windows11 = @($matrix.platforms | Where-Object id -eq 'windows11')
 Add-Check `

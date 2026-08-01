@@ -205,10 +205,12 @@ internal static class Program
             "  jarvis-desktop-style-session inspect " +
             "--expected-explorer-pid <pid>\n" +
             "  jarvis-desktop-style-session plan-preview " +
-            "--expected-explorer-pid <pid> --preset graphite|amber " +
+            "--expected-explorer-pid <pid> --preset " +
+            "graphite|amber|orbital-cyan|reactor-amber|neural-emerald " +
             "--ttl-seconds 10..60\n" +
             "  jarvis-desktop-style-session apply-preview " +
-            "--expected-explorer-pid <pid> --preset graphite|amber " +
+            "--expected-explorer-pid <pid> --preset " +
+            "graphite|amber|orbital-cyan|reactor-amber|neural-emerald " +
             "--ttl-seconds 10..60 " +
             DesktopStylePolicy.ApplyConfirmation + "\n" +
             "  jarvis-desktop-style-session rollback " +

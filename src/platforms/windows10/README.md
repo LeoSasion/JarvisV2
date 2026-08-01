@@ -35,6 +35,50 @@ only, not the future VFX editor. Deterministic 1600x900 renders and the latest
 source/implementation comparison pass for the approved style-only scope.
 Neither path contacts or modifies the live Shell.
 
+The sixth slice, `Jarvis.Win10.DesktopStyleSession`, binds the exact Win10 host
+profile and the read-only desktop/taskbar topology to the common bounded
+desktop text-color session. It exposes read-only inspect and plan commands plus
+an explicitly confirmed 10–60 second preview using the A/C/D Neural Void
+colors. The original scalar value and exact HWND/PID/TID identity are persisted
+before SET. Apply and rollback each synchronously redraw only that admitted
+FolderView, and timeout, Ctrl+C and exceptions converge on read-back-verified
+rollback. This path does not inject a module, start Windhawk, change the
+registry, restart Explorer, move icons, or style Explorer/taskbar internals.
+
+The seventh slice, `Jarvis.Win10.ExplorerCaptionPlan`, starts the separate
+Explorer backend with a read-only, single-window DWM caption inspection. It
+requires exactly one visible `CabinetWClass` tied to the desktop Shell PID and
+records HWND/PID/TID, rectangle, topology hash and the current
+`DWMWA_USE_IMMERSIVE_DARK_MODE` value. Its 10–60 second plan is deliberately
+non-executable: the project imports `DwmGetWindowAttribute` but contains no
+window write API.
+
+The eighth slice, `Jarvis.Win10.ExplorerCaptionSession`, implements the
+journaled 10–60 second dark-caption transaction for one explicitly selected
+Explorer HWND. The original boolean and HWND/PID/TID/class identity are durable
+before SET, and TTL, Ctrl+C and exceptions converge on an independent,
+readback-verified rollback. This non-module session is built and audited but
+its first approved write produced a `0 → 1` API readback with zero changed
+pixels across the 36,448-pixel title-bar sample. The target HWND then retired
+while Explorer PID 1244 remained stable. A separately approved redraw build
+proved the same exact HWND, `0 → 1 → 0`, apply/rollback repaint requests and
+verified rollback, but the full before/during/after PNG hashes were identical.
+With `AppsUseLightTheme=1`, the exact profile now revokes the caption-write
+capability and retains only read-only planning until a different documented
+Win10 design is reviewed.
+
+The ninth slice, `Jarvis.Win10.ExplorerCaptionOverlay`, is that safe alternate
+design. It owns a separate transparent WPF window and positions a 32-pixel
+Neural Void band over one exactly admitted Explorer caption only while that
+Explorer window is foreground. The overlay is mouse-transparent,
+non-activating, absent from the taskbar, bounded to 10-60 seconds and closes if
+the target HWND/PID/TID/class retires. It never writes an Explorer window
+attribute, sends Explorer a message, loads code into Explorer, restarts the
+Shell or changes the registry. The disabled DWM caption writer remains
+disabled. A live own-process run on the separate Explorer PID mode changed
+35,744 pixels only inside the 32-pixel caption band; the before and post-TTL
+images were byte-for-byte identical.
+
 The platform-neutral `Jarvis.VisualEffects` library and
 `neural-void-global-vfx-v1` contract now define 30 typed
 parameters across five particle modules and five ordered post effects, plus
@@ -51,6 +95,14 @@ primitive kind in tests and fails closed on invalid input.
 Four exact PNG hashes on Windows 10 build 19045 prove the migration does not
 change the current WPF pixels. See
 `docs/NEURAL-VOID-GLOBAL-VFX-CONTRACT.md`.
+See `docs/WINDOWS10-DESKTOP-STYLE-SESSION.md` for the exact-host-bound,
+non-module desktop preview.
+See `docs/WINDOWS10-EXPLORER-CAPTION-PLAN.md` for the read-only first Explorer
+backend plan.
+See `docs/WINDOWS10-EXPLORER-CAPTION-SESSION.md` for the bounded
+single-window transaction and its two failed visual observations.
+See `docs/WINDOWS10-EXPLORER-CAPTION-OVERLAY.md` for the owned, click-through
+fallback and its visual verification procedure.
 
 The owned `Jarvis.Win10.NativeStyleProbe` now consumes the same RGB frame for
 its client surface while retaining the single reviewed Win10 dark-caption

@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace Jarvis.DesktopStyleSession;
 
-internal sealed class DesktopStyleSessionController
+public sealed class DesktopStyleSessionController
 {
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
@@ -12,8 +12,12 @@ internal sealed class DesktopStyleSessionController
 
     private readonly DesktopStyleSessionStore store = new();
 
-    public int Inspect(uint expectedExplorerProcessId)
+    public int Inspect(
+        uint expectedExplorerProcessId,
+        DesktopStyleSessionContext? sessionContext = null)
     {
+        DesktopStyleSessionContext context =
+            sessionContext ?? DesktopStyleSessionContext.Shared;
         DesktopHostTarget target =
             NativeDesktopHost.LocateExact(expectedExplorerProcessId);
         uint textColor =
@@ -25,6 +29,7 @@ internal sealed class DesktopStyleSessionController
                 receiptType = "jarvisv2-desktop-text-color-inspection",
                 result = "passed-read-only",
                 observedAtUtc = DateTimeOffset.UtcNow,
+                hostProfileId = context.HostProfileId,
                 target = target.Identity,
                 textColorRef = textColor,
                 textColorHex = FormatColorRef(textColor),
@@ -45,8 +50,11 @@ internal sealed class DesktopStyleSessionController
     public int Plan(
         uint expectedExplorerProcessId,
         string presetId,
-        int ttlSeconds)
+        int ttlSeconds,
+        DesktopStyleSessionContext? sessionContext = null)
     {
+        DesktopStyleSessionContext context =
+            sessionContext ?? DesktopStyleSessionContext.Shared;
         DesktopStylePolicy.ValidateTtl(ttlSeconds);
         DesktopTextColorPreset preset =
             DesktopStylePolicy.GetPreset(presetId);
@@ -61,6 +69,7 @@ internal sealed class DesktopStyleSessionController
                 receiptType = "jarvisv2-desktop-style-preview-plan",
                 result = "passed-read-only-plan",
                 observedAtUtc = DateTimeOffset.UtcNow,
+                hostProfileId = context.HostProfileId,
                 target = target.Identity,
                 originalColorRef = originalColor,
                 originalColorHex = FormatColorRef(originalColor),
@@ -70,14 +79,14 @@ internal sealed class DesktopStyleSessionController
                 ttlSeconds,
                 exactApplyCommand =
                     "dotnet run --project " +
-                    @".\src\common\Jarvis.DesktopStyleSession " +
+                    $"{context.CommandProjectPath} " +
                     "--configuration Release --no-build -- apply-preview " +
-                    $"--expected-explorer-pid {expectedExplorerProcessId} " +
+                    ExpectedProcessArgument(context, expectedExplorerProcessId) +
                     $"--preset {preset.Id} --ttl-seconds {ttlSeconds} " +
                     DesktopStylePolicy.ApplyConfirmation,
                 exactEmergencyRollbackCommand =
                     "dotnet run --project " +
-                    @".\src\common\Jarvis.DesktopStyleSession " +
+                    $"{DesktopStyleSessionContext.Shared.CommandProjectPath} " +
                     "--configuration Release --no-build -- rollback " +
                     $"--session \"{store.ActiveSessionPath}\" " +
                     "--expected-explorer-pid " +
@@ -98,6 +107,7 @@ internal sealed class DesktopStyleSessionController
                     changesWallpaper = false,
                     changesRegistry = false,
                     restartsExplorer = false,
+                    exactFolderViewRedraw = true,
                 },
                 activationPermitted = false,
                 mutationPerformed = false,
@@ -110,8 +120,11 @@ internal sealed class DesktopStyleSessionController
         uint expectedExplorerProcessId,
         string presetId,
         int ttlSeconds,
-        bool confirmed)
+        bool confirmed,
+        DesktopStyleSessionContext? sessionContext = null)
     {
+        DesktopStyleSessionContext context =
+            sessionContext ?? DesktopStyleSessionContext.Shared;
         DesktopStylePolicy.RequireApplyConfirmation(confirmed);
         DesktopStylePolicy.ValidateTtl(ttlSeconds);
         DesktopTextColorPreset preset =
@@ -132,6 +145,7 @@ internal sealed class DesktopStyleSessionController
             Result = "prepared",
             State = "prepared",
             SessionPath = sessionPath,
+            HostProfileId = context.HostProfileId,
             Target = target.Identity,
             Preset = preset.Id,
             PreviewColorHex = preset.HexColor,
@@ -178,6 +192,11 @@ internal sealed class DesktopStyleSessionController
                 preApply.FolderViewWindow,
                 preset.ColorRef);
             journal.MutationPerformed = true;
+            journal.ApplyRedrawAttempted = true;
+            store.Update(journal);
+            DesktopListViewTransport.RedrawExactFolderView(
+                preApply.FolderViewWindow);
+            journal.ApplyRedrawAccepted = true;
             uint appliedColor =
                 DesktopListViewTransport.GetTextColor(
                     preApply.FolderViewWindow);
@@ -269,10 +288,24 @@ internal sealed class DesktopStyleSessionController
     public int Rollback(
         uint expectedExplorerProcessId,
         string sessionPath,
-        bool confirmed)
+        bool confirmed,
+        DesktopStyleSessionContext? sessionContext = null)
     {
+        DesktopStyleSessionContext context =
+            sessionContext ?? DesktopStyleSessionContext.Shared;
         DesktopStylePolicy.RequireRollbackConfirmation(confirmed);
         DesktopStyleSessionJournal journal = store.Load(sessionPath);
+        if (context.HostProfileId is not null &&
+            !string.Equals(
+                context.HostProfileId,
+                journal.HostProfileId,
+                StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "The desktop style journal host profile does not match the " +
+                "current platform adapter.");
+        }
+
         if (journal.State is "recovered" or "target-retired")
         {
             WriteJson(journal);
@@ -297,6 +330,21 @@ internal sealed class DesktopStyleSessionController
             "amber-colorref",
             () => DesktopStylePolicy.GetPreset("amber").ColorRef ==
                 0x007BC7F0);
+        RunScenario(
+            scenarios,
+            "orbital-cyan-colorref",
+            () => DesktopStylePolicy.GetPreset("orbital-cyan").ColorRef ==
+                0x00FFE500);
+        RunScenario(
+            scenarios,
+            "reactor-amber-colorref",
+            () => DesktopStylePolicy.GetPreset("reactor-amber").ColorRef ==
+                0x00006AFF);
+        RunScenario(
+            scenarios,
+            "neural-emerald-colorref",
+            () => DesktopStylePolicy.GetPreset("neural-emerald").ColorRef ==
+                0x009AFF00);
         RunScenario(
             scenarios,
             "ttl-minimum",
@@ -395,6 +443,11 @@ internal sealed class DesktopStyleSessionController
         DesktopListViewTransport.SetTextColor(
             current.FolderViewWindow,
             journal.OriginalColorRef);
+        journal.RollbackRedrawAttempted = true;
+        store.Update(journal);
+        DesktopListViewTransport.RedrawExactFolderView(
+            current.FolderViewWindow);
+        journal.RollbackRedrawAccepted = true;
         uint restoredColor =
             DesktopListViewTransport.GetTextColor(
                 current.FolderViewWindow);
@@ -410,7 +463,8 @@ internal sealed class DesktopStyleSessionController
 
         journal.State = "recovered";
         journal.Result = "passed-rollback-verified";
-        journal.Detail = "Original desktop text color restored and verified.";
+        journal.Detail =
+            "Original desktop text color restored, redrawn and verified.";
         store.Update(journal);
     }
 
@@ -462,6 +516,13 @@ internal sealed class DesktopStyleSessionController
         byte blue = unchecked((byte)((colorRef >> 16) & 0xFF));
         return $"#{red:X2}{green:X2}{blue:X2}";
     }
+
+    private static string ExpectedProcessArgument(
+        DesktopStyleSessionContext context,
+        uint expectedExplorerProcessId) =>
+        context.CommandRequiresExpectedExplorerProcessId
+            ? $"--expected-explorer-pid {expectedExplorerProcessId} "
+            : string.Empty;
 
     private static void WriteJson(object value) =>
         Console.WriteLine(JsonSerializer.Serialize(value, SerializerOptions));
