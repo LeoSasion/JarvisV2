@@ -220,6 +220,12 @@ jobs:
           pwsh -NoLogo -NoProfile -File
           .\scripts\Test-ExplorerBridgeCore.ps1
 
+      - name: Build and fault-test exact-thread Explorer transport
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-ExplorerExactThreadTransport.ps1
+
       - name: Audit offline Explorer frame transaction model
         shell: pwsh
         run: >-

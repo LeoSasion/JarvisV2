@@ -33,11 +33,11 @@
       "modRoot": "mods/windows11",
       "nativeTestRoot": "tests/native/windows11",
       "entryDocument": "docs/PLATFORM-ARCHITECTURE.md",
-      "status": "preserved-offline-foundation",
+      "status": "standalone-bridge-and-exact-thread-transport-offline-built",
       "compatibilityProfile": "win11-25h2-26200.8875-x64",
       "activationPermitted": false,
       "liveExplorer": "not-run",
-      "nextVisibleSlice": "single-window read-only XAML discovery before any separately approved write"
+      "nextVisibleSlice": "disk-only exact-thread callback module before any collector or live Explorer connection"
     }
   ],
   "invariants": {

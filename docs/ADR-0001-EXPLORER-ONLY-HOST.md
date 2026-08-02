@@ -101,6 +101,12 @@ No ABI is implemented in this phase. The review target is:
 5. physical unload is optional and forbidden when callback ownership is not
    proven quiescent.
 
+Implementation note (2026-08-03): Phase 18 now implements this standalone ABI
+and its callback ownership core. Phase 19 adds the separately reviewable
+exact-thread transport lifecycle plus a Win32 adapter that CI compiles only to
+an unlinked object. Neither phase adds a collector, loader, exported Hook
+procedure or live connection, so the decision below remains unchanged.
+
 ## Live gate remains closed
 
 This ADR does not authorize a collector, launcher, Hook, injection, module
