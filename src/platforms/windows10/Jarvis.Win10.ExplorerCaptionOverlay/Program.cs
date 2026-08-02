@@ -105,6 +105,12 @@ internal static class Program
                 true,
                 true,
                 true,
+                "neural-void-explorer-caption-canary-v2",
+                OverlayWindow.NativeCaptionControlReserveDips,
+                true,
+                true,
+                true,
+                false,
                 false,
                 false,
                 false,
@@ -160,6 +166,12 @@ internal static class Program
             OwnedOverlayGate.Evaluate(
                 new OwnedOverlayGateInputs(
                     false, false, true, true, true)).Count != 0);
+        RunScenario(scenarios, "native-controls-reserved-at-100-percent", () =>
+            OverlayWindow.CalculateOverlayWidthDips(900, 96) == 762);
+        RunScenario(scenarios, "native-controls-reserved-at-150-percent", () =>
+            OverlayWindow.CalculateOverlayWidthDips(1350, 144) == 762);
+        RunScenario(scenarios, "narrow-target-never-produces-negative-width", () =>
+            OverlayWindow.CalculateOverlayWidthDips(100, 96) == 0);
 
         int passedCount = scenarios.Count(scenario =>
             (bool)(scenario.GetType().GetProperty("Passed")?.GetValue(

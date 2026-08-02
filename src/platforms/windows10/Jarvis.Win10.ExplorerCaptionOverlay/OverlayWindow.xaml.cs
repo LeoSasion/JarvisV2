@@ -15,6 +15,7 @@ public partial class OverlayWindow : Window
     private const int NonClientHitTestMessage = 0x0084;
     private const int TransparentHitTest = -1;
     private const double CaptionHeightPixels = 32;
+    internal const double NativeCaptionControlReserveDips = 138;
 
     private readonly nint targetWindowHandle;
     private readonly ExplorerCaptionTargetIdentity target;
@@ -22,6 +23,7 @@ public partial class OverlayWindow : Window
     private readonly DateTimeOffset expiresAtUtc;
     private NativeRectangle lastRectangle;
     private uint lastDpi;
+    private int lastDisplayedSeconds = -1;
 
     public OverlayWindow(
         nint targetWindowHandle,
@@ -125,11 +127,14 @@ public partial class OverlayWindow : Window
 
     private void OnMonitorTick(object? sender, EventArgs eventArgs)
     {
-        if (DateTimeOffset.UtcNow >= expiresAtUtc)
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        if (now >= expiresAtUtc)
         {
             Close();
             return;
         }
+
+        UpdateRemainingTime(now);
 
         if (!NativeOverlayTarget.TryReadExact(
                 targetWindowHandle,
@@ -172,11 +177,38 @@ public partial class OverlayWindow : Window
         double scale = snapshot.Dpi / 96.0;
         Left = rectangle.Left / scale;
         Top = rectangle.Top / scale;
-        Width = (rectangle.Right - rectangle.Left) / scale;
+        Width = CalculateOverlayWidthDips(
+            rectangle.Right - rectangle.Left,
+            snapshot.Dpi);
         Height = CaptionHeightPixels / scale;
         lastRectangle = rectangle;
         lastDpi = snapshot.Dpi;
         RepositionCount++;
+    }
+
+    internal static double CalculateOverlayWidthDips(
+        int targetWidthPixels,
+        uint dpi)
+    {
+        double scale = dpi / 96.0;
+        return Math.Max(
+            0,
+            targetWidthPixels / scale - NativeCaptionControlReserveDips);
+    }
+
+    private void UpdateRemainingTime(DateTimeOffset now)
+    {
+        int remainingSeconds = Math.Max(
+            0,
+            (int)Math.Ceiling((expiresAtUtc - now).TotalSeconds));
+        if (remainingSeconds == lastDisplayedSeconds)
+        {
+            return;
+        }
+
+        RemainingTimeText.Text =
+            $"CANARY {remainingSeconds / 60:00}:{remainingSeconds % 60:00}";
+        lastDisplayedSeconds = remainingSeconds;
     }
 
     [DllImport(

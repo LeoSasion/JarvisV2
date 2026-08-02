@@ -164,6 +164,27 @@ Add-Check `
         'taskbar, and return HTTRANSPARENT while styling only source.Handle.')
 
 Add-Check `
+    -Name 'visual.neural-void-vector-glow-native-controls-preserved' `
+    -Passed (
+        $xamlText.Contains('BlurEffect Radius="4"') -and
+        @([regex]::Matches($xamlText, '<Path')).Count -ge 3 -and
+        -not $xamlText.Contains('LinearGradientBrush') -and
+        -not $xamlText.Contains('Segoe MDL2 Assets') -and
+        -not [regex]::IsMatch(
+            $xamlText,
+            '(?i)<Image|ImageBrush|\.png|\.jpg|\.jpeg|\.webp|\.gif') -and
+        $windowText.Contains(
+            'NativeCaptionControlReserveDips = 138') -and
+        $windowText.Contains('CalculateOverlayWidthDips(') -and
+        $windowText.Contains('RemainingTimeText.Text') -and
+        $programText.Contains(
+            '"neural-void-explorer-caption-canary-v2"')) `
+    -Detail (
+        'The canary must use authored vector geometry plus a bounded blur ' +
+        'pass, no bitmap or Unicode icon assets, expose remaining TTL, and ' +
+        'leave the native 138-DIP caption-control cluster uncovered.')
+
+Add-Check `
     -Name 'session.foreground-tracked-ttl-bounded' `
     -Passed (
         $sourceText.Contains('MinimumTtlSeconds = 10') -and
@@ -173,7 +194,8 @@ Add-Check `
         $windowText.Contains('snapshot.IsForeground') -and
         $windowText.Contains('Visibility = Visibility.Hidden') -and
         $windowText.Contains('TargetRetired = true') -and
-        $windowText.Contains('DateTimeOffset.UtcNow >= expiresAtUtc')) `
+        $windowText.Contains('DateTimeOffset now = DateTimeOffset.UtcNow') -and
+        $windowText.Contains('now >= expiresAtUtc')) `
     -Detail (
         'The overlay must require explicit confirmation, hide when the exact ' +
         'Explorer is not foreground, close on retirement, and expire in ' +
@@ -185,6 +207,11 @@ Add-Check `
         $sourceText.Contains('OwnedWindowOnly') -and
         $sourceText.Contains('MouseTransparent') -and
         $sourceText.Contains('NoActivate') -and
+        $sourceText.Contains('VisualContractId') -and
+        $sourceText.Contains('NativeCaptionControlsUnobscured') -and
+        $sourceText.Contains('VectorCorePreserved') -and
+        $sourceText.Contains('BoundedGlowPostProcess') -and
+        $sourceText.Contains('BitmapAssetsUsed') -and
         $sourceText.Contains('ExplorerMutationPerformed') -and
         $sourceText.Contains('InjectionRequested') -and
         $sourceText.Contains('ExplorerRestartRequested') -and
@@ -245,8 +272,8 @@ if ($buildExitCode -eq 0) {
             $modelExitCode -eq 0 -and
             $null -ne $modelReceipt -and
             $modelReceipt.result -eq 'passed' -and
-            $modelReceipt.scenarioCount -eq 10 -and
-            $modelReceipt.passedCount -eq 10 -and
+            $modelReceipt.scenarioCount -eq 13 -and
+            $modelReceipt.passedCount -eq 13 -and
             -not $modelReceipt.explorerMutationPerformed -and
             -not $modelReceipt.moduleActivationPermitted) `
         -Detail (
