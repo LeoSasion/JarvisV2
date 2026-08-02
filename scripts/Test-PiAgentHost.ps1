@@ -2,7 +2,8 @@
 param(
     [switch]$StaticOnly,
     [string]$NodePath = 'node',
-    [string]$DotnetPath = 'dotnet'
+    [string]$DotnetPath = 'dotnet',
+    [string]$GitPath = 'git.exe'
 )
 
 Set-StrictMode -Version Latest
@@ -40,6 +41,16 @@ $conversationProbeSourcePath = Join-Path $sourceRoot (
 $desktopRuntimeSourcePath = Join-Path $sourceRoot 'DesktopRuntime.cs'
 $desktopRuntimeProbeSourcePath = Join-Path $sourceRoot (
     'DiagnosticDesktopRuntime.cs')
+$reviewedIterationStatePath = Join-Path $sourceRoot (
+    'ReviewedIterationState.cs')
+$reviewedIterationStorePath = Join-Path $sourceRoot (
+    'ReviewedIterationStore.cs')
+$reviewedIterationGatePath = Join-Path $sourceRoot (
+    'ReviewedIterationRepositoryGate.cs')
+$reviewedIterationCoordinatorPath = Join-Path $sourceRoot (
+    'ReviewedIterationCoordinator.cs')
+$reviewedIterationProbePath = Join-Path $sourceRoot (
+    'DiagnosticReviewedIteration.cs')
 $openAiProviderSourcePath = Join-Path $sourceRoot (
     'OpenAiResponsesModelProvider.cs')
 $openAiCredentialSourcePath = Join-Path $sourceRoot (
@@ -209,6 +220,23 @@ Add-Check `
             5000 -and
         $contract.session.desktopConversationCheckpointFailure -eq
             'close-submissions-and-surface-on-shutdown' -and
+        $contract.session.reviewedIterationEnabled -and
+        $contract.session.reviewedIterationPolicy -eq
+            'desktop-owner-fixed-four-edits-six-hours' -and
+        $contract.session.reviewedIterationContinuation -eq
+            'automatic-after-owner-approval-and-passed-repository-gate' -and
+        $contract.session.reviewedIterationStore -eq
+            'current-user-dpapi-atomic-workspace-bound-durable-receipts' -and
+        $contract.session.reviewedIterationStoreRoot -eq
+            'local-appdata-jarvis2-pi-agent-reviewed-iterations' -and
+        $contract.session.reviewedIterationEnvelopeMaxBytes -eq 262144 -and
+        $contract.session.reviewedIterationValidationProfile -eq
+            'git-head-pathset-diffcheck-structured-parse-v1' -and
+        $contract.session.reviewedIterationRepositoryBaseline -eq
+            'clean-git-head-required' -and
+        $contract.session.reviewedIterationRestart -eq
+            'interrupted-explicit-rearm-no-proposal-restore' -and
+        -not $contract.session.reviewedIterationWorkspaceCodeExecution -and
         $contract.session.desktopRuntimeOwnership -eq
             'desktop-owned-broker-sidecar-session-conversation' -and
         $contract.session.desktopRuntimeShutdown -eq
@@ -239,6 +267,10 @@ Add-Check `
         -not $contract.tools.deleteSupported -and
         $contract.tools.mutationGrant -eq
             'desktop-owner-one-shot-existing-text-edit' -and
+        $contract.tools.reviewedSelfIteration -and
+        $contract.tools.automaticReasoningContinuation -and
+        -not $contract.tools.unattendedApproval -and
+        -not $contract.tools.selfAuthoredPolicy -and
         -not $contract.tools.unattendedSelfIteration) `
     -Detail (
         'The managed desktop may create one real in-memory Pi session for ' +
@@ -360,6 +392,20 @@ Add-Check `
             -eq 5000 -and
         $schema.properties.session.properties.desktopConversationCheckpointFailure.const `
             -eq 'close-submissions-and-surface-on-shutdown' -and
+        $schema.properties.session.properties.reviewedIterationEnabled.const `
+            -eq $true -and
+        $schema.properties.session.properties.reviewedIterationPolicy.const `
+            -eq 'desktop-owner-fixed-four-edits-six-hours' -and
+        $schema.properties.session.properties.reviewedIterationContinuation.const `
+            -eq 'automatic-after-owner-approval-and-passed-repository-gate' -and
+        $schema.properties.session.properties.reviewedIterationStore.const `
+            -eq 'current-user-dpapi-atomic-workspace-bound-durable-receipts' -and
+        $schema.properties.session.properties.reviewedIterationEnvelopeMaxBytes.const `
+            -eq 262144 -and
+        $schema.properties.session.properties.reviewedIterationValidationProfile.const `
+            -eq 'git-head-pathset-diffcheck-structured-parse-v1' -and
+        $schema.properties.session.properties.reviewedIterationWorkspaceCodeExecution.const `
+            -eq $false -and
         $schema.properties.session.properties.desktopRuntimeOwnership.const `
             -eq 'desktop-owned-broker-sidecar-session-conversation' -and
         $schema.properties.session.properties.desktopRuntimeShutdown.const `
@@ -399,6 +445,14 @@ Add-Check `
         $schema.properties.tools.properties.newFileSupported.const -eq
             $false -and
         $schema.properties.tools.properties.deleteSupported.const -eq
+            $false -and
+        $schema.properties.tools.properties.reviewedSelfIteration.const -eq
+            $true -and
+        $schema.properties.tools.properties.automaticReasoningContinuation.const -eq
+            $true -and
+        $schema.properties.tools.properties.unattendedApproval.const -eq
+            $false -and
+        $schema.properties.tools.properties.selfAuthoredPolicy.const -eq
             $false -and
         $schema.properties.tools.properties.unattendedSelfIteration.const -eq
             $false -and
@@ -502,6 +556,14 @@ $bridgeSourceText =
 $openAiProviderText = [IO.File]::ReadAllText($openAiProviderSourcePath)
 $openAiCredentialText = [IO.File]::ReadAllText($openAiCredentialSourcePath)
 $openAiProbeText = [IO.File]::ReadAllText($openAiProbeSourcePath)
+$reviewedIterationProductionText = @(
+    [IO.File]::ReadAllText($reviewedIterationStatePath),
+    [IO.File]::ReadAllText($reviewedIterationStorePath),
+    [IO.File]::ReadAllText($reviewedIterationGatePath),
+    [IO.File]::ReadAllText($reviewedIterationCoordinatorPath)
+) -join [Environment]::NewLine
+$reviewedIterationProbeText =
+    [IO.File]::ReadAllText($reviewedIterationProbePath)
 $bridgeProjectText = [IO.File]::ReadAllText($bridgeProjectPath)
 $forbiddenBridgePattern = (
     '(?i)\b(?:DllImport|LibraryImport|OpenProcess|CreateRemoteThread|' +
@@ -670,6 +732,69 @@ Add-Check `
         'bounded SSE and the exact reviewed read/proposal tools; authentication must come from ' +
         'an atomic CurrentUser DPAPI envelope, never the environment.')
 
+$forbiddenIterationPattern = (
+    '(?i)\b(?:cmd\.exe|powershell(?:\.exe)?|pwsh(?:\.exe)?|bash|' +
+    'UseShellExecute\s*=\s*true|Microsoft\.Win32\.Registry|' +
+    'CreateRemoteThread|WriteProcessMemory|SetWindowsHookEx)\b'
+)
+Add-Check `
+    -Name 'reviewed-iteration.durable-owner-policy-and-fixed-gate' `
+    -Passed (
+        (Test-Path -LiteralPath $reviewedIterationStatePath -PathType Leaf) -and
+        (Test-Path -LiteralPath $reviewedIterationStorePath -PathType Leaf) -and
+        (Test-Path -LiteralPath $reviewedIterationGatePath -PathType Leaf) -and
+        (Test-Path -LiteralPath $reviewedIterationCoordinatorPath -PathType Leaf) -and
+        (Test-Path -LiteralPath $reviewedIterationProbePath -PathType Leaf) -and
+        -not [regex]::IsMatch(
+            $reviewedIterationProductionText,
+            $forbiddenIterationPattern) -and
+        $reviewedIterationProductionText.Contains(
+            'MaximumApprovedEdits = 4') -and
+        $reviewedIterationProductionText.Contains(
+            'PolicyLifetimeHours = 6') -and
+        $reviewedIterationProductionText.Contains(
+            'desktop-owner-one-shot-per-edit-no-model-decision-authority') -and
+        $reviewedIterationProductionText.Contains(
+            'current-user-dpapi-atomic-workspace-bound-durable-receipts') -and
+        $reviewedIterationProductionText.Contains(
+            'DataProtectionScope.CurrentUser') -and
+        $reviewedIterationProductionText.Contains(
+            'FileOptions.WriteThrough') -and
+        $reviewedIterationProductionText.Contains(
+            'File.Move(temporaryPath, receiptPath, overwrite: true)') -and
+        $reviewedIterationProductionText.Contains(
+            'git-head-pathset-diffcheck-structured-parse-v1') -and
+        $reviewedIterationProductionText.Contains(
+            '"--no-textconv"') -and
+        $reviewedIterationProductionText.Contains(
+            'UseShellExecute = false') -and
+        $reviewedIterationProductionText.Contains(
+            'GIT_OPTIONAL_LOCKS') -and
+        $reviewedIterationProductionText.Contains(
+            'core.fsmonitor=false') -and
+        $reviewedIterationProductionText.Contains(
+            'AppContext.BaseDirectory') -and
+        $reviewedIterationProductionText.Contains(
+            '"runtime"') -and
+        $reviewedIterationProductionText.Contains(
+            '"git"') -and
+        $reviewedIterationProductionText.Contains(
+            'process.Kill(entireProcessTree: true)') -and
+        $reviewedIterationProductionText.Contains(
+            'DtdProcessing = DtdProcessing.Prohibit') -and
+        $reviewedIterationProductionText.Contains(
+            'PiAgentReviewedIterationStatus.Interrupted') -and
+        $reviewedIterationProductionText.Contains(
+            'no pending edit capability was restored') -and
+        $reviewedIterationProbeText.Contains(
+            'RestartDidNotRestoreProposalCapability') -and
+        $reviewedIterationProbeText.Contains(
+            'UnattendedApprovalAllowed')) `
+    -Detail (
+        'Reviewed iteration must remain a desktop-owner policy with four ' +
+        'one-shot approvals, six-hour expiry, DPAPI receipts, fixed direct-Git ' +
+        'and non-executing structured-text validation, and explicit restart re-arm.')
+
 $controlCenterProjectText =
     [IO.File]::ReadAllText($controlCenterProjectPath)
 $controlCenterBindingText =
@@ -746,6 +871,12 @@ Add-Check `
         'hashes; lifecycle scripts are not required.')
 
 if (-not $StaticOnly) {
+    $resolvedGitPath = if ([IO.Path]::IsPathFullyQualified($GitPath)) {
+        [IO.Path]::GetFullPath($GitPath)
+    }
+    else {
+        (Get-Command $GitPath -ErrorAction Stop).Source
+    }
     $nodeVersionOutput = @(& $NodePath --version 2>&1)
     $nodeExitCode = $LASTEXITCODE
     $nodeVersion = $null
@@ -973,6 +1104,67 @@ if (-not $StaticOnly) {
         -Detail (
             "Workspace edit probe exit $workspaceEditExitCode; result " +
             "$workspaceEditResult.")
+
+    $reviewedIterationOutput = @(
+        & $DotnetPath run `
+            --project $bridgeProjectPath `
+            --configuration Release `
+            --no-build `
+            -- `
+            reviewed-iteration-probe `
+            --node $NodePath `
+            --sidecar $hostPath `
+            --git $resolvedGitPath 2>&1
+    )
+    $reviewedIterationExitCode = $LASTEXITCODE
+    $reviewedIterationReceipt = $null
+    try {
+        $reviewedIterationReceipt =
+            ($reviewedIterationOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $reviewedIterationReceipt = $null
+    }
+    $reviewedIterationResult = if (
+        $null -ne $reviewedIterationReceipt
+    ) {
+        $reviewedIterationReceipt.result
+    }
+    else {
+        'unparsed'
+    }
+    Add-Check `
+        -Name 'runtime.reviewed-iteration-probe' `
+        -Passed (
+            $reviewedIterationExitCode -eq 0 -and
+            $null -ne $reviewedIterationReceipt -and
+            $reviewedIterationReceipt.result -eq 'passed' -and
+            $reviewedIterationReceipt.cleanBaselineRequired -and
+            $reviewedIterationReceipt.durableReceiptRoundTripPassed -and
+            $reviewedIterationReceipt.durableReceiptCiphertextPassed -and
+            $reviewedIterationReceipt.ownerPolicyPassed -and
+            $reviewedIterationReceipt.firstProposalPausedForOwner -and
+            $reviewedIterationReceipt.approvedEditValidated -and
+            $reviewedIterationReceipt.automaticReasoningContinuationPassed -and
+            $reviewedIterationReceipt.secondProposalPausedForOwner -and
+            $reviewedIterationReceipt.rejectionStoppedLoop -and
+            $reviewedIterationReceipt.shutdownSuspensionPassed -and
+            $reviewedIterationReceipt.restartDidNotRestoreProposalCapability -and
+            $reviewedIterationReceipt.explicitRearmPassed -and
+            $reviewedIterationReceipt.repositoryDriftRejected -and
+            -not $reviewedIterationReceipt.shellAvailableToPi -and
+            -not $reviewedIterationReceipt.unattendedApprovalAllowed -and
+            $reviewedIterationReceipt.maximumApprovedEdits -eq 4 -and
+            $reviewedIterationReceipt.policyLifetimeHours -eq 6 -and
+            $reviewedIterationReceipt.durableReceiptFileCount -eq 2 -and
+            $reviewedIterationReceipt.brokerRequestCount -eq 8 -and
+            $reviewedIterationReceipt.brokerFaultCount -eq 0 -and
+            $reviewedIterationReceipt.liveExplorer -eq 'not-run' -and
+            -not $reviewedIterationReceipt.productionWorkspaceMutationPerformed) `
+        -Detail (
+            "Reviewed iteration probe exit $reviewedIterationExitCode; " +
+            "result $reviewedIterationResult.")
 
     $brokerTestOutput = @(
         & $NodePath $brokerTestPath 2>&1
@@ -1378,6 +1570,19 @@ $passed = $failures.Count -eq 0
     desktopConversationCheckpointSaveTimeoutMilliseconds = 5000
     desktopConversationCheckpointFailure =
         'close-submissions-and-surface-on-shutdown'
+    reviewedIterationImplemented = $true
+    reviewedIterationPolicy =
+        'desktop-owner-fixed-four-edits-six-hours'
+    reviewedIterationContinuation =
+        'automatic-after-owner-approval-and-passed-repository-gate'
+    reviewedIterationStore =
+        'current-user-dpapi-atomic-workspace-bound-durable-receipts'
+    reviewedIterationEnvelopeMaxBytes = 262144
+    reviewedIterationValidationProfile =
+        'git-head-pathset-diffcheck-structured-parse-v1'
+    reviewedIterationRestart =
+        'interrupted-explicit-rearm-no-proposal-restore'
+    reviewedIterationWorkspaceCodeExecution = $false
     desktopRuntimeImplemented = $true
     desktopRuntimeOwnership =
         'desktop-owned-broker-sidecar-session-conversation'
@@ -1396,6 +1601,10 @@ $passed = $failures.Count -eq 0
     workspaceEditApprovalMode = 'one-shot-exact-before-sha256'
     workspaceEditNewFileSupported = $false
     workspaceEditDeleteSupported = $false
+    reviewedSelfIteration = $true
+    automaticReasoningContinuation = $true
+    unattendedApproval = $false
+    selfAuthoredPolicy = $false
     unattendedSelfIteration = $false
     desktopLaunchImplemented = $true
     productionProvider = 'openai-responses-opt-in'

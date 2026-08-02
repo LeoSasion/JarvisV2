@@ -20,6 +20,8 @@ public static class DesktopRuntimeBootstrap
 {
     public const string PackagedNodeRelativePath =
         @"runtime\node\node.exe";
+    public const string PackagedGitRelativePath =
+        @"runtime\git\cmd\git.exe";
     public const string PackagedSidecarRelativePath =
         @"runtime\pi-agent\src\host.mjs";
     public const string PackagedContractRelativePath =
@@ -260,6 +262,10 @@ public static class DesktopRuntimeBootstrap
                 root.GetProperty("receiptType").GetString() !=
                     "jarvisv2-portable-control-center-package" ||
                 root.GetProperty("result").GetString() != "passed" ||
+                root.GetProperty("runtimeLayout").GetString() !=
+                    "self-contained-wpf-plus-bundled-node-pi-sidecar-and-fixed-git" ||
+                root.GetProperty("reviewedIterationGitRuntime").GetString() !=
+                    "bundled-runtime-git-cmd-direct-no-shell" ||
                 root.GetProperty("piSidecarNetworkAllowed").GetBoolean() ||
                 root.GetProperty("piSidecarCredentialTransportAllowed")
                     .GetBoolean() ||
@@ -290,6 +296,7 @@ public static class DesktopRuntimeBootstrap
                 "jarvis-control-center.dll",
                 "jarvis-pi-agent-desktop-bridge.dll",
                 "runtime/node/node.exe",
+                "runtime/git/cmd/git.exe",
                 "runtime/pi-agent/src/host.mjs",
                 "runtime/pi-agent/config/pi-agent-desktop-host-contract.json",
             })
@@ -305,6 +312,10 @@ public static class DesktopRuntimeBootstrap
                 {
                     return false;
                 }
+            }
+            if (!ValidateGitRuntimeClosure(baseDirectory, root, hashes))
+            {
+                return false;
             }
 
             Dictionary<string, string> packageHashes = new(
@@ -431,6 +442,93 @@ public static class DesktopRuntimeBootstrap
         JsonElement root = manifest.RootElement;
         return root.GetProperty("name").GetString() == packageName &&
             root.GetProperty("version").GetString() == expectedVersion;
+    }
+
+    private static bool ValidateGitRuntimeClosure(
+        string baseDirectory,
+        JsonElement receipt,
+        IReadOnlyDictionary<string, string> hashes)
+    {
+        int expectedFileCount = receipt
+            .GetProperty("gitRuntimeFileCount")
+            .GetInt32();
+        long expectedBytes = receipt
+            .GetProperty("gitRuntimeBytes")
+            .GetInt64();
+        if (
+            expectedFileCount is < 1 or > 2048 ||
+            expectedBytes is < 1 or > 536_870_912)
+        {
+            return false;
+        }
+        HashSet<string> expectedPaths = hashes.Keys
+            .Where(path => path.StartsWith(
+                "runtime/git/",
+                StringComparison.Ordinal))
+            .ToHashSet(StringComparer.Ordinal);
+        if (expectedPaths.Count != expectedFileCount)
+        {
+            return false;
+        }
+
+        string gitRoot = Path.GetFullPath(Path.Combine(
+            baseDirectory,
+            "runtime",
+            "git"));
+        if (!Directory.Exists(gitRoot) || HasReparsePoint(gitRoot))
+        {
+            return false;
+        }
+        Stack<string> pending = new();
+        pending.Push(gitRoot);
+        int directoryCount = 0;
+        int fileCount = 0;
+        long totalBytes = 0;
+        while (pending.Count != 0)
+        {
+            string directory = pending.Pop();
+            if (++directoryCount > 512)
+            {
+                return false;
+            }
+            foreach (string entry in Directory.EnumerateFileSystemEntries(
+                directory,
+                "*",
+                SearchOption.TopDirectoryOnly))
+            {
+                FileAttributes attributes = File.GetAttributes(entry);
+                if ((attributes & FileAttributes.ReparsePoint) != 0)
+                {
+                    return false;
+                }
+                if ((attributes & FileAttributes.Directory) != 0)
+                {
+                    pending.Push(entry);
+                    continue;
+                }
+                if (++fileCount > 2048)
+                {
+                    return false;
+                }
+                totalBytes += new FileInfo(entry).Length;
+                if (totalBytes > 536_870_912)
+                {
+                    return false;
+                }
+                string relativePath = Path.GetRelativePath(
+                        baseDirectory,
+                        entry)
+                    .Replace(Path.DirectorySeparatorChar, '/');
+                if (!expectedPaths.Remove(relativePath))
+                {
+                    return false;
+                }
+            }
+        }
+        return
+            fileCount == expectedFileCount &&
+            totalBytes == expectedBytes &&
+            expectedPaths.Count == 0;
     }
 
     private static bool IsSha256(string? value) =>

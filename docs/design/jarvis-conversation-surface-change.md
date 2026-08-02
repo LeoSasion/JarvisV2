@@ -9,7 +9,7 @@
 ## Decision
 
 Use the active-turn handoff rail with passed-baton staging. The four-stage
-`USER -> PI RUNTIME -> READ TOOL -> JARVIS` rail makes the one-active-turn
+`USER -> PI RUNTIME -> BOUNDED TOOL -> JARVIS` rail makes the one-active-turn
 invariant visible, while completed work recedes into a bounded transcript. A
 right inspector keeps provider, workspace, tools, checkpoint, credentials and
 shutdown posture visible without competing with the conversation.

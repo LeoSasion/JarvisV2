@@ -3,6 +3,9 @@ param(
     [Parameter(Mandatory)]
     [string]$NodePath,
 
+    [Parameter(Mandatory)]
+    [string]$GitPath,
+
     [string]$DotnetPath = 'dotnet',
 
     [string]$OutputPath
@@ -33,6 +36,21 @@ $node = [IO.Path]::GetFullPath($NodePath)
 if (-not (Test-Path -LiteralPath $node -PathType Leaf) -or
     [IO.Path]::GetFileName($node) -ne 'node.exe') {
     throw 'NodePath must identify an existing absolute node.exe.'
+}
+$git = [IO.Path]::GetFullPath($GitPath)
+if (-not (Test-Path -LiteralPath $git -PathType Leaf) -or
+    [IO.Path]::GetFileName($git) -ne 'git.exe' -or
+    (Split-Path -Leaf (Split-Path -Parent $git)) -ne 'cmd') {
+    throw 'GitPath must identify an existing absolute Git for Windows cmd\\git.exe.'
+}
+$gitRoot = Split-Path -Parent (Split-Path -Parent $git)
+foreach ($gitPrerequisite in @(
+        (Join-Path $gitRoot 'cmd\git.exe'),
+        (Join-Path $gitRoot 'mingw64\bin\git.exe'),
+        (Join-Path $gitRoot 'LICENSE.txt'))) {
+    if (-not (Test-Path -LiteralPath $gitPrerequisite -PathType Leaf)) {
+        throw "The portable Git prerequisite is missing: $gitPrerequisite"
+    }
 }
 
 $controlCenterProject = Join-Path $root (
@@ -91,6 +109,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $runtimeNodeRoot = Join-Path $target 'runtime\node'
+$runtimeGitRoot = Join-Path $target 'runtime\git'
 $runtimePiRoot = Join-Path $target 'runtime\pi-agent'
 $runtimePiConfigRoot = Join-Path $runtimePiRoot 'config'
 New-Item -ItemType Directory -Path $runtimeNodeRoot | Out-Null
@@ -98,6 +117,47 @@ New-Item -ItemType Directory -Path $runtimePiRoot | Out-Null
 New-Item -ItemType Directory -Path $runtimePiConfigRoot | Out-Null
 Copy-Item -LiteralPath $node -Destination (
     Join-Path $runtimeNodeRoot 'node.exe')
+$gitCopyOutput = @(
+    & robocopy.exe `
+        $gitRoot `
+        $runtimeGitRoot `
+        /E `
+        /COPY:DAT `
+        /DCOPY:DAT `
+        /R:1 `
+        /W:1 `
+        /NFL `
+        /NDL `
+        /NJH `
+        /NJS `
+        /NP 2>&1
+)
+$gitCopyExitCode = $LASTEXITCODE
+if ($gitCopyExitCode -gt 7) {
+    throw (
+        "The portable Git copy failed with robocopy exit $gitCopyExitCode`: " +
+        (($gitCopyOutput | Select-Object -Last 12) -join ' '))
+}
+$gitRuntimeEntries = @(
+    Get-ChildItem -LiteralPath $runtimeGitRoot -Force -Recurse)
+if (@($gitRuntimeEntries | Where-Object {
+            ($_.Attributes -band
+                [IO.FileAttributes]::ReparsePoint) -ne 0
+        }).Count -ne 0) {
+    throw 'The copied portable Git runtime contains a reparse point.'
+}
+$gitRuntimeFiles = @(
+    $gitRuntimeEntries |
+        Where-Object { -not $_.PSIsContainer } |
+        Sort-Object FullName)
+$gitRuntimeBytes = ($gitRuntimeFiles |
+    Measure-Object -Property Length -Sum).Sum
+if ($gitRuntimeFiles.Count -lt 3 -or
+    $gitRuntimeFiles.Count -gt 2048 -or
+    $gitRuntimeBytes -le 0 -or
+    $gitRuntimeBytes -gt 536870912) {
+    throw 'The copied portable Git runtime exceeded its file or byte boundary.'
+}
 Copy-Item -LiteralPath $piSource -Destination $runtimePiRoot -Recurse
 Copy-Item -LiteralPath (Join-Path $piRoot 'package.json') `
     -Destination $runtimePiRoot
@@ -216,6 +276,8 @@ JARVIS2 PORTABLE CONTROL CENTER
 
 This folder is a self-contained Windows x64 desktop build. It does not install,
 activate, inject, restart Explorer, or modify the registry.
+The fixed repository gate uses the bundled runtime\git\cmd\git.exe directly;
+it does not invoke cmd, PowerShell, or a workspace-authored script.
 
 Native session launcher (recommended):
   1. Open jarvis-control-center.exe.
@@ -235,7 +297,10 @@ limited to read, grep, find, ls, and non-mutating propose_edit. An edit can only
 replace one exact match in an existing UTF-8 workspace file after the desktop
 owner selects APPROVE ONCE. The current file SHA-256 is rechecked immediately
 before commit. Shell, new-file, delete, direct-write, and unattended approval
-remain unavailable.
+remain unavailable. The desktop can arm a clean-HEAD reviewed iteration for at
+most four owner-approved edits and six hours. Each approved write must pass the
+fixed Git and structured-text gate before another reasoning turn; restart never
+restores a proposal and requires explicit re-arm.
 '@
 [IO.File]::WriteAllText(
     (Join-Path $target 'README.txt'),
@@ -257,6 +322,11 @@ $criticalRelativePaths = @(
     'runtime\pi-agent\config\pi-agent-desktop-host-contract.json',
     'runtime\pi-agent\src\host.mjs',
     'README.txt'
+) + @(
+    $gitRuntimeFiles |
+        ForEach-Object {
+            [IO.Path]::GetRelativePath($target, $_.FullName)
+        }
 )
 $hashes = @(
     foreach ($relativePath in $criticalRelativePaths) {
@@ -275,7 +345,8 @@ $receipt = [ordered]@{
     result = 'passed'
     createdAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
     outputPath = $target
-    runtimeLayout = 'self-contained-wpf-plus-bundled-node-and-pi-sidecar'
+    runtimeLayout =
+        'self-contained-wpf-plus-bundled-node-pi-sidecar-and-fixed-git'
     providerDefault = 'local-diagnostic'
     productionProvider = 'openai-responses-opt-in'
     productionModel = 'gpt-5.6-sol'
@@ -288,6 +359,17 @@ $receipt = [ordered]@{
     desktopOwnerApprovedWorkspaceOperations = @(
         'existing-utf8-exact-replacement')
     workspaceEditApprovalMode = 'one-shot-exact-before-sha256'
+    reviewedSelfIteration = $true
+    reviewedIterationPolicy =
+        'desktop-owner-fixed-four-edits-six-hours'
+    reviewedIterationValidationProfile =
+        'git-head-pathset-diffcheck-structured-parse-v1'
+    reviewedIterationGitRuntime =
+        'bundled-runtime-git-cmd-direct-no-shell'
+    gitRuntimeFileCount = $gitRuntimeFiles.Count
+    gitRuntimeBytes = $gitRuntimeBytes
+    automaticReasoningContinuation = $true
+    unattendedApproval = $false
     unattendedSelfIteration = $false
     activationPermitted = $false
     liveExplorer = 'not-run'

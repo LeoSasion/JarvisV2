@@ -28,6 +28,8 @@ public sealed class ConversationSurfaceViewModel :
     private readonly bool preview;
     private PiAgentDesktopRuntime? runtime;
     private PiAgentConversationBinding? binding;
+    private PiAgentReviewedIterationCoordinator? reviewedIteration;
+    private PiAgentReviewedIterationSnapshot? reviewedIterationSnapshot;
     private PiAgentConversationSnapshot snapshot = EmptySnapshot;
     private ConversationRuntimePhase phase;
     private string statusDetail;
@@ -83,7 +85,7 @@ public sealed class ConversationSurfaceViewModel :
     public string ProviderLabel => preview
         ? "ILLUSTRATIVE // NO RUNTIME"
         : launchOptions?.ProviderDisplayName ?? "NO PROVIDER ADMITTED";
-    public string AccessLabel => "READ + REVIEWED EDIT";
+    public string AccessLabel => "READ + REVIEWED ITERATION";
     public string WorkspaceLabel => launchOptions?.WorkspaceRoot ??
         (preview
             ? "ILLUSTRATIVE // NOT ADMITTED"
@@ -133,6 +135,8 @@ public sealed class ConversationSurfaceViewModel :
     public bool CanSubmit =>
         phase == ConversationRuntimePhase.Ready &&
         snapshot.CanSubmit &&
+        (reviewedIterationSnapshot is null ||
+            reviewedIterationSnapshot.IsTerminal) &&
         (launchOptions?.Provider != ConversationProviderKind.OpenAiResponses ||
             providerCredentialReady);
     public bool CanCancel =>
@@ -140,13 +144,52 @@ public sealed class ConversationSurfaceViewModel :
     public bool CanReviewWorkspaceEdits =>
         phase == ConversationRuntimePhase.Ready &&
         snapshot.ActiveTurnId is null &&
-        PendingWorkspaceEdit?.CanDecide == true;
+        PendingWorkspaceEdit?.CanDecide == true &&
+        (
+            reviewedIterationSnapshot is null ||
+            reviewedIterationSnapshot.IsTerminal ||
+            reviewedIterationSnapshot.Status ==
+                PiAgentReviewedIterationStatus.AwaitingOwnerReview
+        );
     public bool CanLaunchSession =>
         !preview &&
         runtime is null &&
         phase is ConversationRuntimePhase.NotStarted or
             ConversationRuntimePhase.Faulted;
     public bool HasOwnedRuntime => runtime is not null && !runtime.IsShutdown;
+    public PiAgentReviewedIterationSnapshot? ReviewedIteration =>
+        reviewedIterationSnapshot;
+    public bool HasReviewedIteration => reviewedIterationSnapshot is not null;
+    public bool CanStartReviewedIteration =>
+        phase == ConversationRuntimePhase.Ready &&
+        snapshot.CanSubmit &&
+        (reviewedIterationSnapshot is null ||
+            reviewedIterationSnapshot.IsTerminal) &&
+        (launchOptions?.Provider != ConversationProviderKind.OpenAiResponses ||
+            providerCredentialReady);
+    public bool CanResumeReviewedIteration =>
+        phase == ConversationRuntimePhase.Ready &&
+        snapshot.CanSubmit &&
+        reviewedIterationSnapshot?.Status ==
+            PiAgentReviewedIterationStatus.Interrupted &&
+        (launchOptions?.Provider != ConversationProviderKind.OpenAiResponses ||
+            providerCredentialReady);
+    public bool CanStopReviewedIteration =>
+        phase == ConversationRuntimePhase.Ready &&
+        reviewedIterationSnapshot is { IsTerminal: false };
+    public string ReviewedIterationStatusLabel =>
+        reviewedIterationSnapshot?.StatusLabel ?? "NOT ARMED";
+    public string ReviewedIterationDetail =>
+        reviewedIterationSnapshot?.StatusDetail ??
+        "Type a mission in the composer, then arm a bounded reviewed loop.";
+    public string ReviewedIterationProgressLabel =>
+        reviewedIterationSnapshot?.ProgressLabel ?? "0 / 4 APPROVED EDITS";
+    public string ReviewedIterationReceiptLabel =>
+        reviewedIterationSnapshot?.ReceiptLabel ?? "NO DURABLE RECEIPT";
+    public string ReviewedIterationHeadLabel =>
+        reviewedIterationSnapshot?.HeadLabel ?? "CLEAN GIT HEAD REQUIRED";
+    public string ReviewedIterationExpiryLabel =>
+        reviewedIterationSnapshot?.ExpiryLabel ?? "6 HOUR OWNER POLICY";
     public bool IsOpenAiProvider =>
         launchOptions?.Provider == ConversationProviderKind.OpenAiResponses;
     public double HandoffProgress => DetermineHandoffProgress();
@@ -156,7 +199,7 @@ public sealed class ConversationSurfaceViewModel :
             "OWNER HOLDS A ONE-SHOT EDIT DECISION",
         <= 0 => "USER HOLDS THE NEXT TURN",
         < 2 => "PI RUNTIME OWNS THE ACTIVE TURN",
-        < 3 => "READ TOOL OWNS THE ACTIVE TURN",
+        < 3 => "BOUNDED TOOL OWNS THE ACTIVE TURN",
         _ => snapshot.ActiveTurnId is null
             ? "TURN COMPLETE / CONTROL RETURNED"
             : "JARVIS IS STREAMING A RESPONSE",
@@ -228,6 +271,7 @@ public sealed class ConversationSurfaceViewModel :
         }
         launchOptions = options;
         snapshot = EmptySnapshot;
+        reviewedIterationSnapshot = null;
         providerCredentialReady = false;
         phase = ConversationRuntimePhase.NotStarted;
         statusDetail = "Workspace selected. Starting the desktop-owned Pi runtime.";
@@ -277,6 +321,14 @@ public sealed class ConversationSurfaceViewModel :
             binding = new PiAgentConversationBinding(runtime.Conversation);
             binding.PropertyChanged += OnBindingPropertyChanged;
             snapshot = binding.Snapshot;
+            reviewedIteration =
+                await PiAgentReviewedIterationCoordinator.OpenAsync(
+                    runtime.Conversation,
+                    runtime.WorkspaceRoot,
+                    cancellationToken: cancellationToken);
+            reviewedIteration.SnapshotChanged +=
+                OnReviewedIterationSnapshotChanged;
+            reviewedIterationSnapshot = reviewedIteration.Snapshot;
             SetPhase(
                 ConversationRuntimePhase.Ready,
                 IsOpenAiProvider && !providerCredentialReady
@@ -284,17 +336,33 @@ public sealed class ConversationSurfaceViewModel :
                     : "Pi session admitted. Reads are root-confined and " +
                         "edit proposals require a one-shot owner decision.");
             RaiseConversationProperties();
+            RaiseReviewedIterationProperties();
         }
         catch (Exception exception)
         {
             SetPhase(
                 ConversationRuntimePhase.Faulted,
                 $"Runtime admission failed: {exception.Message}");
+            if (reviewedIteration is not null)
+            {
+                reviewedIteration.SnapshotChanged -=
+                    OnReviewedIterationSnapshotChanged;
+                reviewedIteration = null;
+            }
+            reviewedIterationSnapshot = null;
+            if (binding is not null)
+            {
+                binding.PropertyChanged -= OnBindingPropertyChanged;
+                binding.Dispose();
+                binding = null;
+            }
             if (runtime is not null)
             {
                 await runtime.DisposeAsync();
                 runtime = null;
             }
+            RaiseConversationProperties();
+            RaiseReviewedIterationProperties();
         }
     }
 
@@ -356,6 +424,60 @@ public sealed class ConversationSurfaceViewModel :
         RaisePropertyChanged(nameof(StatusDetail));
     }
 
+    public async Task StartReviewedIterationAsync(
+        string mission,
+        CancellationToken cancellationToken = default)
+    {
+        uiError = null;
+        if (reviewedIteration is null || !CanStartReviewedIteration)
+        {
+            throw new InvalidOperationException(
+                "The reviewed iteration policy cannot be armed in the current state.");
+        }
+        PiAgentConversationTurn turn =
+            await reviewedIteration.StartAsync(
+                mission,
+                cancellationToken);
+        statusDetail =
+            "Reviewed iteration armed from a clean Git HEAD. Pi may stage one edit for owner review.";
+        RaisePropertyChanged(nameof(StatusDetail));
+        RaiseReviewedIterationProperties();
+        _ = ObserveReviewedIterationCompletionAsync(turn);
+    }
+
+    public async Task ResumeReviewedIterationAsync(
+        CancellationToken cancellationToken = default)
+    {
+        uiError = null;
+        if (reviewedIteration is null || !CanResumeReviewedIteration)
+        {
+            throw new InvalidOperationException(
+                "The reviewed iteration is not ready for explicit re-arm.");
+        }
+        PiAgentConversationTurn turn =
+            await reviewedIteration.ResumeAsync(cancellationToken);
+        statusDetail =
+            "Durable receipts and repository state revalidated. One bounded continuation was re-armed.";
+        RaisePropertyChanged(nameof(StatusDetail));
+        RaiseReviewedIterationProperties();
+        _ = ObserveReviewedIterationCompletionAsync(turn);
+    }
+
+    public async Task StopReviewedIterationAsync(
+        CancellationToken cancellationToken = default)
+    {
+        uiError = null;
+        if (reviewedIteration is null || !CanStopReviewedIteration)
+        {
+            return;
+        }
+        await reviewedIteration.StopAsync(cancellationToken);
+        statusDetail =
+            "Reviewed iteration stopped by the owner. No continuation is admitted.";
+        RaisePropertyChanged(nameof(StatusDetail));
+        RaiseReviewedIterationProperties();
+    }
+
     public async Task ApplyWorkspaceEditAsync(
         string proposalId,
         CancellationToken cancellationToken = default)
@@ -366,10 +488,28 @@ public sealed class ConversationSurfaceViewModel :
             throw new InvalidOperationException(
                 "The workspace edit proposal is not ready for approval.");
         }
-        PiAgentWorkspaceEditSnapshot result =
-            await binding.ApplyWorkspaceEditAsync(
+        PiAgentWorkspaceEditSnapshot result;
+        if (
+            reviewedIteration is not null &&
+            reviewedIterationSnapshot?.CurrentProposalId == proposalId)
+        {
+            PiAgentReviewedIterationDecisionResult decision =
+                await reviewedIteration.ApproveAndContinueAsync(
+                    proposalId,
+                    cancellationToken);
+            result = decision.Edit;
+            if (decision.ContinuedTurn is not null)
+            {
+                _ = ObserveReviewedIterationCompletionAsync(
+                    decision.ContinuedTurn);
+            }
+        }
+        else
+        {
+            result = await binding.ApplyWorkspaceEditAsync(
                 proposalId,
                 cancellationToken);
+        }
         statusDetail = result.Status switch
         {
             PiAgentWorkspaceEditStatus.Applied =>
@@ -381,6 +521,7 @@ public sealed class ConversationSurfaceViewModel :
         };
         RaisePropertyChanged(nameof(StatusDetail));
         RaiseConversationProperties();
+        RaiseReviewedIterationProperties();
     }
 
     public async Task RejectWorkspaceEditAsync(
@@ -393,10 +534,23 @@ public sealed class ConversationSurfaceViewModel :
             throw new InvalidOperationException(
                 "The workspace edit proposal is not ready for rejection.");
         }
-        PiAgentWorkspaceEditSnapshot result =
-            await binding.RejectWorkspaceEditAsync(
+        PiAgentWorkspaceEditSnapshot result;
+        if (
+            reviewedIteration is not null &&
+            reviewedIterationSnapshot?.CurrentProposalId == proposalId)
+        {
+            PiAgentReviewedIterationDecisionResult decision =
+                await reviewedIteration.RejectAsync(
+                    proposalId,
+                    cancellationToken);
+            result = decision.Edit;
+        }
+        else
+        {
+            result = await binding.RejectWorkspaceEditAsync(
                 proposalId,
                 cancellationToken);
+        }
         statusDetail = result.Status switch
         {
             PiAgentWorkspaceEditStatus.Rejected =>
@@ -406,6 +560,7 @@ public sealed class ConversationSurfaceViewModel :
         };
         RaisePropertyChanged(nameof(StatusDetail));
         RaiseConversationProperties();
+        RaiseReviewedIterationProperties();
     }
 
     public void ReportUiError(string message)
@@ -425,9 +580,24 @@ public sealed class ConversationSurfaceViewModel :
         SetPhase(
             ConversationRuntimePhase.Stopping,
             "Quiescing submissions, cancelling any active turn and " +
-            "flushing the encrypted checkpoint.");
+            "suspending reviewed policy receipts before the encrypted checkpoint flush.");
         try
         {
+            if (reviewedIteration is not null)
+            {
+                try
+                {
+                    await reviewedIteration.SuspendAsync(cancellationToken);
+                }
+                catch (Exception exception)
+                {
+                    statusDetail =
+                        "Reviewed policy receipt suspension failed closed: " +
+                        exception.Message +
+                        ". Continuing owned runtime shutdown.";
+                    RaisePropertyChanged(nameof(StatusDetail));
+                }
+            }
             await runtime.ShutdownAsync(cancellationToken);
             SetPhase(
                 ConversationRuntimePhase.Stopped,
@@ -447,9 +617,16 @@ public sealed class ConversationSurfaceViewModel :
                 binding.Dispose();
                 binding = null;
             }
+            if (reviewedIteration is not null)
+            {
+                reviewedIteration.SnapshotChanged -=
+                    OnReviewedIterationSnapshotChanged;
+                reviewedIteration = null;
+            }
             await runtime.DisposeAsync();
             runtime = null;
             RaiseConversationProperties();
+            RaiseReviewedIterationProperties();
         }
     }
 
@@ -490,6 +667,41 @@ public sealed class ConversationSurfaceViewModel :
         RaiseRuntimeProperties();
     }
 
+    private async Task ObserveReviewedIterationCompletionAsync(
+        PiAgentConversationTurn turn)
+    {
+        try
+        {
+            PiAgentConversationTurnSnapshot terminal = await turn.Completion;
+            if (reviewedIteration is not null)
+            {
+                await reviewedIteration.ObserveTurnCompletionAsync(terminal);
+            }
+            statusDetail = terminal.Status switch
+            {
+                PiAgentConversationTurnStatus.Completed when
+                    terminal.WorkspaceEdits.Any(edit =>
+                        edit.Status == PiAgentWorkspaceEditStatus.Pending) =>
+                    "Reviewed turn complete. The loop is paused at the owner's one-shot edit decision.",
+                PiAgentConversationTurnStatus.Completed =>
+                    "Reviewed turn completed without a mutation proposal; the loop ended without writing.",
+                PiAgentConversationTurnStatus.Aborted =>
+                    "Reviewed turn stopped; no continuation is admitted.",
+                _ =>
+                    $"Reviewed turn failed closed: {terminal.ErrorCode ?? "no error code"}.",
+            };
+        }
+        catch (Exception exception)
+        {
+            statusDetail =
+                $"Reviewed iteration completion failed closed: {exception.Message}";
+        }
+        RaisePropertyChanged(nameof(StatusDetail));
+        RaiseConversationProperties();
+        RaiseRuntimeProperties();
+        RaiseReviewedIterationProperties();
+    }
+
     private void OnBindingPropertyChanged(
         object? sender,
         PropertyChangedEventArgs eventArgs)
@@ -501,6 +713,15 @@ public sealed class ConversationSurfaceViewModel :
         snapshot = binding.Snapshot;
         RaiseConversationProperties();
         RaiseRuntimeProperties();
+    }
+
+    private void OnReviewedIterationSnapshotChanged(
+        object? sender,
+        PiAgentReviewedIterationSnapshotChangedEventArgs eventArgs)
+    {
+        reviewedIterationSnapshot = eventArgs.Snapshot;
+        RaiseReviewedIterationProperties();
+        RaiseConversationProperties();
     }
 
     private void SetPhase(
@@ -555,6 +776,24 @@ public sealed class ConversationSurfaceViewModel :
         RaisePropertyChanged(nameof(EmptyStateTitle));
         RaisePropertyChanged(nameof(EmptyStateDescription));
         RaisePropertyChanged(nameof(SessionLaunchActionLabel));
+        RaisePropertyChanged(nameof(CanStartReviewedIteration));
+        RaisePropertyChanged(nameof(CanResumeReviewedIteration));
+        RaisePropertyChanged(nameof(CanStopReviewedIteration));
+    }
+
+    private void RaiseReviewedIterationProperties()
+    {
+        RaisePropertyChanged(nameof(ReviewedIteration));
+        RaisePropertyChanged(nameof(HasReviewedIteration));
+        RaisePropertyChanged(nameof(CanStartReviewedIteration));
+        RaisePropertyChanged(nameof(CanResumeReviewedIteration));
+        RaisePropertyChanged(nameof(CanStopReviewedIteration));
+        RaisePropertyChanged(nameof(ReviewedIterationStatusLabel));
+        RaisePropertyChanged(nameof(ReviewedIterationDetail));
+        RaisePropertyChanged(nameof(ReviewedIterationProgressLabel));
+        RaisePropertyChanged(nameof(ReviewedIterationReceiptLabel));
+        RaisePropertyChanged(nameof(ReviewedIterationHeadLabel));
+        RaisePropertyChanged(nameof(ReviewedIterationExpiryLabel));
     }
 
     private void RaiseRuntimeProperties()
@@ -599,8 +838,8 @@ public sealed class ConversationSurfaceViewModel :
                     "workspace-edit-0123456789abcdef0123456789abcdef",
                     "src/common/Jarvis.ControlCenter/ConversationSurfaceViewModel.cs",
                     new string('a', 64),
-                    "public string AccessLabel => \"READ ONLY\";",
                     "public string AccessLabel => \"READ + REVIEWED EDIT\";",
+                    "public string AccessLabel => \"READ + REVIEWED ITERATION\";",
                     PiAgentWorkspaceEditStatus.Pending,
                     null,
                     null),

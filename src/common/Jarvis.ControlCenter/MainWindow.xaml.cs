@@ -222,6 +222,66 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void StartReviewedIterationButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        string mission = PromptInput.Text.Trim();
+        if (mission.Length == 0)
+        {
+            conversation.ReportUiError(
+                "Type the reviewed iteration mission in the composer before starting the reviewed loop.");
+            PromptInput.Focus();
+            return;
+        }
+        try
+        {
+            await conversation.StartReviewedIterationAsync(mission);
+            PromptInput.Clear();
+            TranscriptScroll.ScrollToEnd();
+        }
+        catch (Exception exception)
+        {
+            conversation.ReportUiError(
+                $"Reviewed iteration admission failed closed: {exception.Message}");
+        }
+    }
+
+    private async void ResumeReviewedIterationButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        try
+        {
+            await conversation.ResumeReviewedIterationAsync();
+            TranscriptScroll.ScrollToEnd();
+        }
+        catch (Exception exception)
+        {
+            conversation.ReportUiError(
+                $"Reviewed iteration re-arm failed closed: {exception.Message}");
+        }
+    }
+
+    private async void StopReviewedIterationButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        try
+        {
+            await conversation.StopReviewedIterationAsync();
+            if (conversation.CanSubmit)
+            {
+                PromptInput.Focus();
+            }
+        }
+        catch (Exception exception)
+        {
+            conversation.ReportUiError(
+                $"Reviewed iteration stop failed closed: {exception.Message}");
+        }
+    }
+
     private static string? ResolveInitialWorkspace()
     {
         string currentDirectory = Environment.CurrentDirectory;

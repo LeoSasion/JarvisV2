@@ -76,6 +76,17 @@ Shell process.
 - binds approval to the exact proposal id and full before SHA-256, rechecks the
   workspace, path, reparse, file identity, hash and unique match immediately
   before atomic replacement, then rejects replay and drift;
+- lets the desktop owner arm one reviewed iteration only from a clean Git HEAD,
+  with a fixed four-approved-edit limit and six-hour expiry;
+- writes every policy and step transition to a workspace-bound CurrentUser
+  DPAPI envelope, keeping completed workflow receipts under LocalAppData;
+- automatically starts the next bounded reasoning turn only after the owner
+  approved the prior exact edit and the fixed repository gate passed;
+- pins HEAD, admits exactly the accumulated modified path set and after hashes,
+  runs direct `git diff --check`, and non-executingly parses JSON plus
+  XML/XAML/project files without running workspace code;
+- suspends a live policy on shutdown, restores no proposal capability, and
+  requires explicit re-arm plus repository revalidation after restart;
 - rejects drive roots, protected OS/profile roots, relative paths, canonical
   aliases, junctions, symbolic links, workspace escapes and a second binding;
 - rejects credential-shaped fields and frames over 64 KiB while accepting
@@ -130,7 +141,10 @@ built-in operating-system permission sandbox. Jarvis therefore cannot treat
 an authenticated agent session as equivalent to a UI widget. Workspace
 admission remains independent from provider authentication. Prompting is
 enabled only by a desktop-owned named-pipe capability; mutation tools and
-unattended self-iteration still require separate supervisor capabilities.
+unattended approval still require separate supervisor capabilities. The
+reviewed-iteration coordinator can continue reasoning only inside its fixed
+desktop-owner policy and only after the preceding one-shot approval plus
+repository gate.
 
 The planned progression is:
 
@@ -161,10 +175,11 @@ WPF desktop
                                                                 (implemented)
                                                                     |
                                                                     +-- durable reviewed self-iteration workflow
+                                                                        (implemented)
 ```
 
-No stage grants Shell injection, Explorer mutation, registry writes or
-physical-device control.
+No stage grants unattended approval, Shell injection, Explorer mutation,
+registry writes or physical-device control.
 
 ## Validation
 

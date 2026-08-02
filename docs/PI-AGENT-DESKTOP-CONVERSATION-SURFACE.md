@@ -10,14 +10,16 @@ JARVIS2 kill switch.
 The surface makes one active Pi turn visible as a four-stage handoff:
 
 ```text
-USER -> PI RUNTIME -> READ TOOL -> JARVIS
+USER -> PI RUNTIME -> BOUNDED TOOL -> JARVIS
 ```
 
 The UI binds immutable `PiAgentConversationSnapshot` values through
 `PiAgentConversationBinding`. It shows retained turns, streamed assistant text,
 tool lifecycle, runtime phase, broker counts, checkpoint state, credential
 posture and the admitted workspace. `Ctrl+Enter` submits, `Esc` requests
-cancellation, and the buttons expose accessible automation names.
+cancellation, and the buttons expose accessible automation names. The composer
+labels this ordinary action `SEND ONCE`; `START REVIEWED LOOP` is a separate,
+secondary owner-policy action.
 
 When Pi stages an edit, the same turn expands an inline review plane showing
 the normalized path, before SHA-256, exact removed text, exact replacement text
@@ -117,6 +119,13 @@ The deterministic design-preview mode starts no Pi runtime:
 jarvis-control-center.exe --capture-preview C:\absolute\preview.png
 ```
 
+The runtime inspector also contains the reviewed-iteration owner policy. The
+operator types a mission in the existing composer, arms it from the inspector,
+and can stop or explicitly re-arm an interrupted policy without leaving the
+conversation. The same panel names the four-edit limit, six-hour expiry, pinned
+HEAD, durable receipt count and current gate state. It does not create a modal
+approval surface or displace the transcript.
+
 ## Design decision
 
 The chosen structure is an active-turn handoff rail with a passed-baton
@@ -141,6 +150,10 @@ The final 1440 x 900 WPF render is
 `docs/screenshots/jarvis-control-center-pi-conversation.png`. It shows the
 illustrative preview mode: every workspace, broker, checkpoint and credential
 field is explicitly marked as illustrative, not started or not configured.
+The reviewed-iteration extension is captured separately at
+`docs/screenshots/jarvis-control-center-reviewed-iteration.png`; its policy is
+visible in the incumbent inspector while the one-shot edit remains inside the
+producing turn.
 
 ## Validation
 

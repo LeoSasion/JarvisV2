@@ -60,6 +60,8 @@ $expectedCriticalPaths = @(
     'jarvis-pi-agent-desktop-bridge.deps.json',
     'jarvis-pi-agent-desktop-bridge.runtimeconfig.json',
     'runtime/node/node.exe',
+    'runtime/git/cmd/git.exe',
+    'runtime/git/LICENSE.txt',
     'runtime/pi-agent/package.json',
     'runtime/pi-agent/pnpm-lock.yaml',
     'runtime/pi-agent/config/pi-agent-desktop-host-contract.json',
@@ -76,6 +78,8 @@ $requiredFiles = @(
     'jarvis-pi-agent-desktop-bridge.deps.json',
     'jarvis-pi-agent-desktop-bridge.runtimeconfig.json',
     'runtime\node\node.exe',
+    'runtime\git\cmd\git.exe',
+    'runtime\git\LICENSE.txt',
     'runtime\pi-agent\package.json',
     'runtime\pi-agent\pnpm-lock.yaml',
     'runtime\pi-agent\config\pi-agent-desktop-host-contract.json',
@@ -133,12 +137,34 @@ $receipt = $null
 if (Test-Path -LiteralPath $receiptPath -PathType Leaf) {
     $receipt = Get-Content -LiteralPath $receiptPath -Raw | ConvertFrom-Json
 }
+$receiptCriticalPaths = @($receipt.criticalHashes | ForEach-Object path)
+$missingExpectedCriticalPaths = @(
+    $expectedCriticalPaths |
+        Where-Object { $receiptCriticalPaths -notcontains $_ })
+$duplicateCriticalPathCount = @(
+    $receiptCriticalPaths |
+        Group-Object |
+        Where-Object Count -ne 1).Count
+$actualGitFiles = @(
+    Get-ChildItem -LiteralPath (Join-Path $package 'runtime\git') `
+        -File -Recurse |
+        Sort-Object FullName)
+$actualGitPaths = @(
+    $actualGitFiles |
+        ForEach-Object {
+            [IO.Path]::GetRelativePath($package, $_.FullName).Replace('\', '/')
+        })
+$actualGitBytes = ($actualGitFiles |
+    Measure-Object -Property Length -Sum).Sum
+$receiptGitPaths = @(
+    $receiptCriticalPaths |
+        Where-Object { $_.StartsWith('runtime/git/', [StringComparison]::Ordinal) })
 if ($null -eq $receipt -or
     $receipt.schemaVersion -ne 1 -or
     $receipt.receiptType -ne 'jarvisv2-portable-control-center-package' -or
     $receipt.result -ne 'passed' -or
     $receipt.runtimeLayout -ne
-        'self-contained-wpf-plus-bundled-node-and-pi-sidecar' -or
+        'self-contained-wpf-plus-bundled-node-pi-sidecar-and-fixed-git' -or
     $receipt.productionProvider -ne 'openai-responses-opt-in' -or
     $receipt.productionModel -ne 'gpt-5.6-sol' -or
     $receipt.piSidecarNetworkAllowed -or
@@ -148,8 +174,11 @@ if ($null -eq $receipt -or
     $receipt.systemMutationPerformed -or
     $receipt.portableNodePackageCount -ne
         $expectedPortablePackages.Count -or
-    (@($receipt.criticalHashes | ForEach-Object path) -join '|') -ne
-        ($expectedCriticalPaths -join '|') -or
+    $missingExpectedCriticalPaths.Count -ne 0 -or
+    $duplicateCriticalPathCount -ne 0 -or
+    $receipt.gitRuntimeFileCount -ne $actualGitFiles.Count -or
+    $receipt.gitRuntimeBytes -ne $actualGitBytes -or
+    ($receiptGitPaths -join '|') -ne ($actualGitPaths -join '|') -or
     (@($receipt.portableNodePackages | ForEach-Object name) -join '|') -ne
         ($expectedPortablePackages -join '|') -or
     (@($receipt.initialTools) -join '|') -ne
@@ -159,6 +188,15 @@ if ($null -eq $receipt -or
         'existing-utf8-exact-replacement' -or
     $receipt.workspaceEditApprovalMode -ne
         'one-shot-exact-before-sha256' -or
+    -not $receipt.reviewedSelfIteration -or
+    $receipt.reviewedIterationPolicy -ne
+        'desktop-owner-fixed-four-edits-six-hours' -or
+    $receipt.reviewedIterationValidationProfile -ne
+        'git-head-pathset-diffcheck-structured-parse-v1' -or
+    $receipt.reviewedIterationGitRuntime -ne
+        'bundled-runtime-git-cmd-direct-no-shell' -or
+    -not $receipt.automaticReasoningContinuation -or
+    $receipt.unattendedApproval -or
     $receipt.unattendedSelfIteration) {
     $failures.Add('The portable package receipt failed its safety contract.')
 }

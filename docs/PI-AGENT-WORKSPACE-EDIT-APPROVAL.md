@@ -4,8 +4,9 @@ JarvisV2 can stage one exact workspace text edit and present it to the desktop
 owner inside the conversation that produced it. Pi cannot approve the proposal,
 and calling `propose_edit` never writes a file.
 
-This is the first bounded workspace mutation workflow. It is not general shell
-access, a generic file editor, or unattended self-iteration.
+This is the one-shot mutation primitive used by both ordinary conversation and
+the durable reviewed-iteration workflow. It is not general shell access, a
+generic file editor, or unattended approval.
 
 ## Authority split
 
@@ -158,6 +159,8 @@ This milestone does not grant:
 - self-authored approval policy;
 - Shell, Explorer, registry, service, device, or system mutation.
 
-Reviewed self-iteration remains a later workflow. It must add durable change
-receipts, repository-aware validation, test and review gates, and an explicit
-owner policy without weakening this one-shot decision boundary.
+The desktop-reviewed iteration layer is documented in
+`PI-AGENT-REVIEWED-ITERATION.md`. It adds durable receipts, a fixed repository
+test gate and an explicit owner policy without changing this one-shot decision
+boundary. It does not restore pending proposals after restart and does not let
+Pi operate either owner control.

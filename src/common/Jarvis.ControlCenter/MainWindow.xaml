@@ -22,8 +22,8 @@
     OWN-WORLD: Matte near-black planes, one-pixel blue-gray rules, cyan only for
     active state, amber for waiting, red for faults, Segoe UI plus measured mono.
     STORY: The operator admits a workspace, hands Pi one request, watches the
-    baton across the bounded tool boundary, reviews any staged edit, receives
-    Jarvis, then regains control.
+    baton across the bounded tool boundary, reviews each staged edit, validates
+    the repository, and lets a time-bounded owner policy continue the mission.
     FIRST VIEWPORT: Navigation left, four-stage handoff rail above a dominant
     transcript and composer, runtime inspector right, owned-runtime status below.
     FORM: Assigned structure five with passed-baton staging; seed 32fb29e4.
@@ -387,7 +387,7 @@
                         <RowDefinition Height="50" />
                         <RowDefinition Height="122" />
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="108" />
+                        <RowDefinition Height="126" />
                     </Grid.RowDefinitions>
 
                     <Grid>
@@ -414,7 +414,7 @@
                             Grid.Column="1"
                             VerticalAlignment="Center"
                             Style="{StaticResource MonoText}"
-                            Text="CTRL+ENTER / SEND    ESC / CANCEL" />
+                            Text="CTRL+ENTER / SEND ONCE    ESC / CANCEL" />
                     </Grid>
 
                     <Border Grid.Row="1" Style="{StaticResource PanelBorder}" Padding="14">
@@ -451,8 +451,8 @@
                                 <TextBlock Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource TextFaintBrush}" FontSize="18" Text="&#x203A;" />
                                 <Border x:Name="ToolStage" Grid.Column="4" Style="{StaticResource PanelBorder}" Background="{StaticResource PanelAltBrush}" Padding="10">
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock HorizontalAlignment="Center" FontSize="12" FontWeight="SemiBold" Text="READ TOOL" />
-                                        <TextBlock Margin="0,4,0,0" HorizontalAlignment="Center" Style="{StaticResource MonoText}" Text="READ / GREP / FIND / LS / PROPOSE_EDIT" />
+                                        <TextBlock HorizontalAlignment="Center" FontSize="12" FontWeight="SemiBold" Text="BOUNDED TOOL" />
+                                        <TextBlock Margin="0,4,0,0" HorizontalAlignment="Center" Style="{StaticResource MonoText}" Text="READ / FIND / PROPOSE" />
                                     </StackPanel>
                                 </Border>
                                 <TextBlock Grid.Column="5" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource TextFaintBrush}" FontSize="18" Text="&#x203A;" />
@@ -678,6 +678,7 @@
                                                                             <StackPanel>
                                                                                 <TextBlock Foreground="{StaticResource RedBrush}" FontFamily="Consolas" FontSize="9" Text="REMOVE / EXACT TEXT" />
                                                                                 <TextBox
+                                                                                    AutomationProperties.Name="Removed exact workspace text"
                                                                                     Margin="0,5,0,0"
                                                                                     MinHeight="54"
                                                                                     MaxHeight="130"
@@ -697,6 +698,7 @@
                                                                             <StackPanel Grid.Column="2">
                                                                                 <TextBlock Foreground="{StaticResource CyanBrush}" FontFamily="Consolas" FontSize="9" Text="ADD / REPLACEMENT TEXT" />
                                                                                 <TextBox
+                                                                                    AutomationProperties.Name="Replacement workspace text"
                                                                                     Margin="0,5,0,0"
                                                                                     MinHeight="54"
                                                                                     MaxHeight="130"
@@ -834,13 +836,26 @@
 
                     <Border Grid.Row="3" Style="{StaticResource PanelBorder}" Padding="12">
                         <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="6" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="106" />
+                                <ColumnDefinition Width="122" />
                             </Grid.ColumnDefinitions>
+                            <TextBlock
+                                Grid.ColumnSpan="2"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                FontFamily="Consolas"
+                                FontSize="9"
+                                Text="ONE-TURN COMPOSER / SEND ONCE HERE    REVIEWED MISSION / START LOOP IN OWNER POLICY" />
                             <TextBox
                                 x:Name="PromptInput"
                                 AutomationProperties.Name="Message Jarvis"
+                                AutomationProperties.HelpText="Choose Send Once for one turn, or Start Reviewed Loop in Owner Policy for a four-edit six-hour reviewed mission."
+                                Grid.Row="2"
                                 Margin="0,0,12,0"
                                 Padding="12,10"
                                 AcceptsReturn="True"
@@ -856,13 +871,13 @@
                                 Foreground="{StaticResource TextBrush}"
                                 PreviewKeyDown="PromptInput_OnPreviewKeyDown"
                                 TextWrapping="Wrap" />
-                            <StackPanel Grid.Column="1">
+                            <StackPanel Grid.Row="2" Grid.Column="1">
                                 <Button
-                                    AutomationProperties.Name="Send message"
+                                    AutomationProperties.Name="Send one conversation message"
                                     Style="{StaticResource PrimaryActionButton}"
                                     IsEnabled="{Binding CanSubmit}"
                                     Click="SubmitButton_OnClick"
-                                    Content="SEND" />
+                                    Content="SEND ONCE" />
                                 <Button
                                     AutomationProperties.Name="Cancel active turn"
                                     Margin="0,8,0,0"
@@ -889,7 +904,7 @@
                                 Foreground="{StaticResource TextMutedBrush}"
                                 FontSize="11"
                                 LineHeight="17"
-                                Text="One desktop-owned broker, sidecar, admitted workspace and encrypted checkpoint."
+                                Text="One desktop-owned broker, sidecar, admitted workspace, encrypted checkpoint and durable review receipts."
                                 TextWrapping="Wrap" />
 
                             <Border Margin="0,18,0,0" Style="{StaticResource PanelBorder}" Padding="12">
@@ -940,6 +955,134 @@
                             <Border Margin="0,20,0,0" Height="1" Background="{StaticResource LineBrush}" />
 
                             <StackPanel Margin="0,18,0,0">
+                                <TextBlock Style="{StaticResource SectionLabel}" Text="Reviewed iteration" />
+                                <Border
+                                    Margin="0,9,0,0"
+                                    Padding="12"
+                                    BorderThickness="1"
+                                    CornerRadius="2">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ReviewedIteration.Status}" Value="ActiveTurn">
+                                                    <Setter Property="Background" Value="{StaticResource CyanDimBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{StaticResource CyanBrush}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ReviewedIteration.Status}" Value="AwaitingOwnerReview">
+                                                    <Setter Property="Background" Value="{StaticResource AmberDimBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ReviewedIteration.Status}" Value="Interrupted">
+                                                    <Setter Property="Background" Value="{StaticResource AmberDimBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ReviewedIteration.Status}" Value="Faulted">
+                                                    <Setter Property="Background" Value="{StaticResource RedDimBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{StaticResource RedBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource MonoText}" Text="OWNER POLICY" />
+                                            <TextBlock
+                                                Grid.Column="1"
+                                                AutomationProperties.LiveSetting="Polite"
+                                                Margin="10,0,0,0"
+                                                FontFamily="Consolas"
+                                                FontSize="10"
+                                                FontWeight="SemiBold"
+                                                Text="{Binding ReviewedIterationStatusLabel}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding ReviewedIteration.Status}" Value="ActiveTurn">
+                                                                <Setter Property="Foreground" Value="{StaticResource CyanBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding ReviewedIteration.Status}" Value="AwaitingOwnerReview">
+                                                                <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding ReviewedIteration.Status}" Value="Interrupted">
+                                                                <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding ReviewedIteration.Status}" Value="Faulted">
+                                                                <Setter Property="Foreground" Value="{StaticResource RedBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
+                                        <TextBlock
+                                            AutomationProperties.LiveSetting="Polite"
+                                            Margin="0,8,0,0"
+                                            Foreground="{StaticResource TextBrush}"
+                                            FontSize="11"
+                                            LineHeight="17"
+                                            Text="{Binding ReviewedIterationDetail}"
+                                            TextWrapping="Wrap" />
+                                        <Grid
+                                            AutomationProperties.Name="Reviewed iteration progress and durable receipt"
+                                            AutomationProperties.LiveSetting="Polite"
+                                            Margin="0,10,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource MonoText}" Text="{Binding ReviewedIterationProgressLabel}" />
+                                            <TextBlock Grid.Column="1" Margin="10,0,0,0" Style="{StaticResource MonoText}" Text="{Binding ReviewedIterationReceiptLabel}" />
+                                        </Grid>
+                                        <TextBlock Margin="0,5,0,0" Style="{StaticResource MonoText}" Text="{Binding ReviewedIterationHeadLabel}" />
+                                        <TextBlock Margin="0,3,0,0" Style="{StaticResource MonoText}" Text="{Binding ReviewedIterationExpiryLabel}" />
+                                        <TextBlock
+                                            Margin="0,9,0,0"
+                                            Foreground="{StaticResource TextMutedBrush}"
+                                            FontSize="10"
+                                            LineHeight="15"
+                                            Text="Clean HEAD · four approvals maximum · six hours · fixed Git and structured-text gate · automatic reasoning only after each owner-approved write."
+                                            TextWrapping="Wrap" />
+                                        <Button
+                                            Margin="0,12,0,0"
+                                            AutomationProperties.Name="Start reviewed loop from composer mission"
+                                            Style="{StaticResource ActionButton}"
+                                            IsEnabled="{Binding CanStartReviewedIteration}"
+                                            Click="StartReviewedIterationButton_OnClick"
+                                            Content="START REVIEWED LOOP" />
+                                        <Grid Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="8" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Button
+                                                AutomationProperties.Name="Re-arm interrupted reviewed iteration"
+                                                Style="{StaticResource ActionButton}"
+                                                IsEnabled="{Binding CanResumeReviewedIteration}"
+                                                Click="ResumeReviewedIterationButton_OnClick"
+                                                Content="RE-ARM" />
+                                            <Button
+                                                Grid.Column="2"
+                                                AutomationProperties.Name="Stop reviewed iteration"
+                                                Style="{StaticResource ActionButton}"
+                                                IsEnabled="{Binding CanStopReviewedIteration}"
+                                                Click="StopReviewedIterationButton_OnClick"
+                                                Content="STOP LOOP" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <Border Margin="0,20,0,0" Height="1" Background="{StaticResource LineBrush}" />
+
+                            <StackPanel Margin="0,18,0,0">
                                 <TextBlock Style="{StaticResource SectionLabel}" Text="Active tools" />
                                 <ItemsControl Margin="0,9,0,0" ItemsSource="{Binding ActiveTools}">
                                     <ItemsControl.ItemTemplate>
@@ -958,6 +1101,7 @@
                                 <TextBlock Margin="0,9,0,0" Foreground="{StaticResource TextFaintBrush}" FontSize="10" Text="Permitted: read, grep, find, ls, propose_edit" TextWrapping="Wrap" />
                                 <TextBlock Margin="0,4,0,0" Foreground="{StaticResource AmberBrush}" FontSize="10" Text="Writes: desktop-owner approval only" />
                                 <TextBlock Margin="0,4,0,0" Foreground="{StaticResource RedBrush}" FontSize="10" Text="Shell / direct edit / unattended approval: locked" TextWrapping="Wrap" />
+                                <TextBlock Margin="0,4,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Text="Loop continuation: desktop policy + passed repository gate" TextWrapping="Wrap" />
                             </StackPanel>
 
                             <Border Margin="0,20,0,0" Height="1" Background="{StaticResource LineBrush}" />
@@ -993,7 +1137,7 @@
                                         Foreground="{StaticResource TextMutedBrush}"
                                         FontSize="10"
                                         LineHeight="15"
-                                        Text="Closing this window quiesces submissions, cancels an active turn, flushes the DPAPI checkpoint, then releases the owned sidecar and broker."
+                                        Text="Closing this window suspends any reviewed policy, quiesces submissions, cancels an active turn, flushes DPAPI state, then releases the owned sidecar and broker."
                                         TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>

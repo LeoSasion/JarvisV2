@@ -171,6 +171,16 @@
         "desktopConversationCheckpointSave",
         "desktopConversationCheckpointSaveTimeoutMilliseconds",
         "desktopConversationCheckpointFailure",
+        "reviewedIterationEnabled",
+        "reviewedIterationPolicy",
+        "reviewedIterationContinuation",
+        "reviewedIterationStore",
+        "reviewedIterationStoreRoot",
+        "reviewedIterationEnvelopeMaxBytes",
+        "reviewedIterationValidationProfile",
+        "reviewedIterationRepositoryBaseline",
+        "reviewedIterationRestart",
+        "reviewedIterationWorkspaceCodeExecution",
         "desktopRuntimeOwnership",
         "desktopRuntimeShutdown",
         "credentialTransport",
@@ -257,6 +267,36 @@
         },
         "desktopConversationCheckpointFailure": {
           "const": "close-submissions-and-surface-on-shutdown"
+        },
+        "reviewedIterationEnabled": {
+          "const": true
+        },
+        "reviewedIterationPolicy": {
+          "const": "desktop-owner-fixed-four-edits-six-hours"
+        },
+        "reviewedIterationContinuation": {
+          "const": "automatic-after-owner-approval-and-passed-repository-gate"
+        },
+        "reviewedIterationStore": {
+          "const": "current-user-dpapi-atomic-workspace-bound-durable-receipts"
+        },
+        "reviewedIterationStoreRoot": {
+          "const": "local-appdata-jarvis2-pi-agent-reviewed-iterations"
+        },
+        "reviewedIterationEnvelopeMaxBytes": {
+          "const": 262144
+        },
+        "reviewedIterationValidationProfile": {
+          "const": "git-head-pathset-diffcheck-structured-parse-v1"
+        },
+        "reviewedIterationRepositoryBaseline": {
+          "const": "clean-git-head-required"
+        },
+        "reviewedIterationRestart": {
+          "const": "interrupted-explicit-rearm-no-proposal-restore"
+        },
+        "reviewedIterationWorkspaceCodeExecution": {
+          "const": false
         },
         "desktopRuntimeOwnership": {
           "const": "desktop-owned-broker-sidecar-session-conversation"
@@ -354,6 +394,10 @@
         "newFileSupported",
         "deleteSupported",
         "mutationGrant",
+        "reviewedSelfIteration",
+        "automaticReasoningContinuation",
+        "unattendedApproval",
+        "selfAuthoredPolicy",
         "unattendedSelfIteration"
       ],
       "properties": {
@@ -405,6 +449,18 @@
         },
         "mutationGrant": {
           "const": "desktop-owner-one-shot-existing-text-edit"
+        },
+        "reviewedSelfIteration": {
+          "const": true
+        },
+        "automaticReasoningContinuation": {
+          "const": true
+        },
+        "unattendedApproval": {
+          "const": false
+        },
+        "selfAuthoredPolicy": {
+          "const": false
         },
         "unattendedSelfIteration": {
           "const": false

@@ -99,16 +99,21 @@ The interface earns its science-fiction character through precision and visible
 system truth rather than ornament.
 
 The signature relationship is one active request moving from operator to Pi,
-through an admitted read tool, and back as Jarvis. The design keeps ownership,
-capability limits, cancellation, persistence and shutdown in the same visual
-field as the conversation. Completed work recedes; the current owner receives
-the accent.
+through an admitted read-or-propose tool, into an exact owner decision, through
+a fixed repository and structured-text gate, and back to Pi for at most one next
+reasoning turn. The design keeps ownership, capability limits, cancellation,
+persistence and shutdown in the same visual field as the conversation.
+Completed work recedes; the current owner receives the accent. Automatic
+continuation advances reasoning only and never advances approval.
 
 The implemented visual world is evidenced by
-`src/common/Jarvis.ControlCenter/MainWindow.xaml` and the reviewed render at
-`docs/screenshots/jarvis-control-center-pi-conversation.png`. Its selected
+`src/common/Jarvis.ControlCenter/MainWindow.xaml` and the final reviewed render
+at `docs/screenshots/jarvis-control-center-reviewed-iteration.png`. Its selected
 surface concept is `docs/design/jarvis-conversation-handoff-rail.png`; the
-durable concept seed is `32fb29e4`.
+durable concept seed is `32fb29e4`. The bounded finish-review verdict is PASS:
+the accessibility, owner-action hierarchy and handoff-label clipping findings
+are resolved. This is not a claim of an independent accessibility study or live
+shell activation.
 
 **Key Characteristics:**
 
@@ -119,6 +124,10 @@ durable concept seed is `32fb29e4`.
 - Human-readable labels paired with compact monospaced operational metadata.
 - Safety posture presented as product information, never hidden in a settings
   afterthought.
+- Owner review is a visible one-shot decision inside the producing turn, while
+  bounded iteration policy remains visible in the runtime inspector.
+- Durable receipts and ephemeral proposal authority are visually distinct:
+  restart can offer RE-ARM, but it never restores a pending proposal.
 
 ## Colors
 
@@ -135,7 +144,9 @@ always means something.
 
 ### Secondary
 
-- **Waiting Amber:** Starting, stopping, waiting and aborted states.
+- **Waiting Amber:** Starting, stopping, waiting, aborted and owner-decision
+  required states. The exact-edit proposal plane uses amber until the owner
+  chooses Reject or Approve Once.
 - **Fault Coral:** Runtime faults, failed tool calls and explicit unavailable or
   blocked capabilities.
 
@@ -193,6 +204,14 @@ equal handoff stages, expanding transcript, then a 108-pixel composer. The hando
 stages use narrow 18-pixel separators so ownership reads left to right without a
 diagram legend. Primary panel padding is 12-16 pixels; major column and section
 gaps are 18-20 pixels; four- and eight-pixel increments handle local rhythm.
+
+Reviewed iteration remains inside this same frame. The proposal occupies a
+bounded plane within its producing transcript turn; the owner policy, 0-of-4
+counter, six-hour boundary, receipt state and START / RE-ARM / STOP controls live
+in the right inspector. The four-stage rail stays four stages wide: its compact
+`BOUNDED TOOL` label covers read, find and propose without clipping, while the
+owner decision is shown where the exact diff can be reviewed. Transcript and
+inspector scroll independently when vertical content grows.
 
 This is desktop density for pointer and keyboard use. Do not enlarge it into a
 touch layout by stretching the same grid; platform adaptations should preserve
@@ -271,10 +290,13 @@ one-pixel cyan leading rule; inactive destinations stay muted and unboxed.
 
 ### Active-Turn Handoff Rail
 
-Four equal stages—USER, PI RUNTIME, READ TOOL and JARVIS—form the signature
+Four equal stages—USER, PI RUNTIME, BOUNDED TOOL and JARVIS—form the signature
 component. Only one stage is active. Its border and plane become cyan; completed
 stages retain the brighter neutral rule; future stages recede to 72% opacity.
-The ownership progress line, stage label and status text must update together so
+The tool subtitle may name the admitted read/find/propose set, but must stay
+compact enough to remain unclipped at the minimum window width. While a proposal
+is paused, the rail states in text that the owner holds the one-shot decision.
+The ownership progress line, stage label and status text update together so
 color is never the sole carrier of progress.
 
 ### Transcript Turn
@@ -293,14 +315,45 @@ structure after rejection. Every state is named in text. Show the normalized
 path, full before SHA-256, exact removed and replacement text, and the explicit
 one-shot boundary. Reject precedes Approve Once in keyboard order. Pi cannot
 operate either control, and the composer remains disabled until the owner
-decides.
+decides. Approve Once never looks like permission for later proposals: each of
+the maximum four applied edits returns to a fresh, owner-operated decision.
+
+**The Owner Holds the Baton Rule.** A proposed edit is neither success nor
+execution. Amber, the `OWNER REVIEW REQUIRED` label and the adjacent exact diff
+must remain visible until the human chooses Reject or Approve Once.
+
+### Reviewed Iteration Policy
+
+The inspector presents reviewed iteration as a bounded owner policy, not an
+agent preference. Its durable summary shows armed/not-armed status, applied
+owner approvals out of four, expiry within six hours, pinned clean Git HEAD and
+CurrentUser-DPAPI receipt state. START REVIEWED LOOP is available only from an
+owner mission in the composer. STOP LOOP is always an owner action. RE-ARM may
+appear only for an interrupted, unexpired policy after the full fixed gate is
+rerun; restart never restores proposal authority.
+
+After Approve Once, keep the turn paused until the fixed validation evidence is
+terminal. The status must distinguish pinned HEAD, exact approved path set,
+current file hashes, `git diff --check`, strict JSON parsing and DTD-disabled
+XML/XAML/project parsing. A pass may submit one next Pi reasoning turn within the
+remaining count and time; a failure stops closed. Durable receipts record the
+decision and gate outcome, while proposal contents and capability remain
+session-memory-only.
+
+Repository validation directly launches the bundled
+`runtime\git\cmd\git.exe` with no shell. No UI label may imply that a workspace
+script, build, test target, PowerShell or command prompt was executed by this
+gate.
 
 ### Runtime Inspector and Status Dock
 
-The inspector exposes provider, access, workspace, active tools, broker,
-checkpoint, credential posture and orderly shutdown. The bottom dock repeats the
-runtime phase and the non-mutation boundary. These are persistent trust surfaces,
-not optional diagnostics.
+The inspector exposes provider, access, workspace, reviewed-iteration policy,
+active tools, broker, checkpoint, credential posture and orderly shutdown. The
+bottom dock repeats the runtime phase and the `NO UNREVIEWED WRITES` boundary.
+These are persistent trust surfaces, not optional diagnostics. Action hierarchy
+places one-turn Send separately from START REVIEWED LOOP, keeps Reject before
+Approve Once, and prevents disabled preview controls from masquerading as active
+primary actions.
 
 ## Do's and Don'ts
 
@@ -316,6 +369,17 @@ not optional diagnostics.
   owner-approved-write states explicit in plain language.
 - **Do** retain the `32fb29e4` seed in surface metadata when deriving variants of
   this handoff concept.
+- **Do** show the owner the exact path, before hash, removed text and replacement
+  text before every Approve Once decision.
+- **Do** show policy state as a maximum of four owner-approved edits within six
+  hours; every applied edit still requires its own Approve Once.
+- **Do** preserve CurrentUser-DPAPI durable receipts while making proposal
+  authority explicitly ephemeral across shutdown and restart.
+- **Do** expose the fixed pinned-HEAD, exact-path-set, hash, diff-check, strict
+  JSON and safe XML/XAML/project parse gate before automatic reasoning may
+  continue.
+- **Do** render RE-ARM as a fresh owner action after repository revalidation,
+  never as recovery of an earlier proposal.
 
 ### Don't:
 
@@ -331,3 +395,13 @@ not optional diagnostics.
   or running process that the runtime has not actually admitted.
 - **Don't** hide a proposed diff, turn approval into a generic confirmation, or
   allow assistant prose to stand in for the structured edit capability.
+- **Don't** let Pi press approval controls, approve unattended, author or extend
+  the policy, increase its four-edit/six-hour bounds, or describe another
+  reasoning turn as an approved write.
+- **Don't** restore, replay or imply a pending proposal after restart; only an
+  eligible interrupted policy may be re-armed for one fresh bounded turn.
+- **Don't** imply that the repository gate invokes a shell or repository-authored
+  code: it starts the bundled `runtime\git\cmd\git.exe` directly and validates
+  only the fixed Git/hash/diff/structured-text conditions.
+- **Don't** expand reviewed iteration into Explorer, registry, service, device,
+  Windows system mutation, Git commit/push/merge, or any other shell authority.

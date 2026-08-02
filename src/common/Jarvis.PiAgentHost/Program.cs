@@ -45,12 +45,22 @@ bool openAiProviderProbeCommand =
         args[0],
         "openai-provider-probe",
         StringComparison.Ordinal);
+bool reviewedIterationProbeCommand =
+    args.Length == 7 &&
+    string.Equals(
+        args[0],
+        "reviewed-iteration-probe",
+        StringComparison.Ordinal) &&
+    string.Equals(args[1], "--node", StringComparison.Ordinal) &&
+    string.Equals(args[3], "--sidecar", StringComparison.Ordinal) &&
+    string.Equals(args[5], "--git", StringComparison.Ordinal);
 if (
     !probeCommand &&
     !brokerProbeCommand &&
     !conversationProbeCommand &&
     !runtimeProbeCommand &&
     !openAiProviderProbeCommand &&
+    !reviewedIterationProbeCommand &&
     !faultCommand)
 {
     Console.Error.WriteLine(
@@ -62,6 +72,8 @@ if (
         "--sidecar <absolute-host.mjs> | " +
         "runtime-probe --node <absolute-node.exe> " +
         "--sidecar <absolute-host.mjs> | " +
+        "reviewed-iteration-probe --node <absolute-node.exe> " +
+        "--sidecar <absolute-host.mjs> --git <absolute-git.exe> | " +
         "openai-provider-probe | " +
         "fault-tests --node <absolute-node.exe> " +
         "--fixtures <absolute-fixture-root>>");
@@ -120,6 +132,19 @@ try
         PiAgentDesktopRuntimeProbeReceipt receipt =
             await PiAgentDesktopRuntimeProbe.RunAsync(
                 options,
+                timeout.Token);
+        Console.WriteLine(JsonSerializer.Serialize(receipt, serializerOptions));
+        return receipt.Result == "passed" ? 0 : 1;
+    }
+    if (reviewedIterationProbeCommand)
+    {
+        PiAgentSidecarOptions options = new(
+            Path.GetFullPath(args[2]),
+            Path.GetFullPath(args[4]));
+        PiAgentReviewedIterationProbeReceipt receipt =
+            await PiAgentReviewedIterationProbe.RunAsync(
+                options,
+                Path.GetFullPath(args[6]),
                 timeout.Token);
         Console.WriteLine(JsonSerializer.Serialize(receipt, serializerOptions));
         return receipt.Result == "passed" ? 0 : 1;

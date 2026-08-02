@@ -11,6 +11,8 @@ public sealed record DesktopRuntimeBootstrapProbeReceipt(
     bool PackagedLayoutPassed,
     bool DeveloperLayoutPassed,
     bool PackagedLayoutPrecedencePassed,
+    bool TamperedGitRuntimeRejected,
+    bool ExtraGitRuntimeFileRejected,
     bool TamperedPackageRejected,
     bool MissingRuntimeRejected,
     bool MutationPerformed,
@@ -97,6 +99,44 @@ public static class DesktopRuntimeBootstrapProbe
                 precedencePassed,
                 "The packaged runtime did not take precedence over ambient paths.");
 
+            string packagedGit = Path.Combine(
+                application,
+                DesktopRuntimeBootstrap.PackagedGitRelativePath);
+            File.AppendAllText(packagedGit, "-tampered");
+            DesktopRuntimeBootstrapReceipt tamperedGit =
+                DesktopRuntimeBootstrap.Resolve(
+                    workspace,
+                    application,
+                    nodeDirectory,
+                    developerNode);
+            bool tamperedGitRejected =
+                tamperedGit.Result == "failed" &&
+                tamperedGit.ResolutionSource == "packaged-layout";
+            AddFailure(
+                failures,
+                tamperedGitRejected,
+                "A hash-drifted bundled Git runtime was not rejected.");
+            File.WriteAllText(packagedGit, "synthetic-git");
+
+            string extraGit = Path.Combine(
+                application,
+                @"runtime\git\extra.dll");
+            File.WriteAllText(extraGit, "unexpected-git-runtime-file");
+            DesktopRuntimeBootstrapReceipt extraGitRuntime =
+                DesktopRuntimeBootstrap.Resolve(
+                    workspace,
+                    application,
+                    nodeDirectory,
+                    developerNode);
+            bool extraGitRejected =
+                extraGitRuntime.Result == "failed" &&
+                extraGitRuntime.ResolutionSource == "packaged-layout";
+            AddFailure(
+                failures,
+                extraGitRejected,
+                "An unreceipted bundled Git runtime file was not rejected.");
+            File.Delete(extraGit);
+
             File.AppendAllText(
                 Path.Combine(
                     application,
@@ -146,6 +186,8 @@ public static class DesktopRuntimeBootstrapProbe
                 packagedLayoutPassed,
                 developerLayoutPassed,
                 precedencePassed,
+                tamperedGitRejected,
+                extraGitRejected,
                 tamperedRejected,
                 missingRejected,
                 false,
@@ -182,8 +224,12 @@ public static class DesktopRuntimeBootstrapProbe
         string sidecar = Path.Combine(
             application,
             DesktopRuntimeBootstrap.PackagedSidecarRelativePath);
+        string git = Path.Combine(
+            application,
+            DesktopRuntimeBootstrap.PackagedGitRelativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(node)!);
         Directory.CreateDirectory(Path.GetDirectoryName(sidecar)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(git)!);
         File.WriteAllText(
             Path.Combine(application, "jarvis-control-center.dll"),
             "synthetic-control-center");
@@ -191,6 +237,7 @@ public static class DesktopRuntimeBootstrapProbe
             Path.Combine(application, "jarvis-pi-agent-desktop-bridge.dll"),
             "synthetic-pi-bridge");
         File.WriteAllText(node, "synthetic-node");
+        File.WriteAllText(git, "synthetic-git");
         File.WriteAllText(sidecar, "// synthetic-sidecar");
         string projectRoot = Directory.GetParent(sidecar)!.Parent!.FullName;
         CreatePiPackageFiles(projectRoot);
@@ -251,6 +298,7 @@ public static class DesktopRuntimeBootstrapProbe
             "jarvis-control-center.dll",
             "jarvis-pi-agent-desktop-bridge.dll",
             "runtime/node/node.exe",
+            "runtime/git/cmd/git.exe",
             "runtime/pi-agent/src/host.mjs",
             "runtime/pi-agent/config/pi-agent-desktop-host-contract.json",
         ];
@@ -286,6 +334,14 @@ public static class DesktopRuntimeBootstrapProbe
             schemaVersion = 1,
             receiptType = "jarvisv2-portable-control-center-package",
             result = "passed",
+            runtimeLayout =
+                "self-contained-wpf-plus-bundled-node-pi-sidecar-and-fixed-git",
+            reviewedIterationGitRuntime =
+                "bundled-runtime-git-cmd-direct-no-shell",
+            gitRuntimeFileCount = 1,
+            gitRuntimeBytes = new FileInfo(Path.Combine(
+                application,
+                DesktopRuntimeBootstrap.PackagedGitRelativePath)).Length,
             piSidecarNetworkAllowed = false,
             piSidecarCredentialTransportAllowed = false,
             activationPermitted = false,

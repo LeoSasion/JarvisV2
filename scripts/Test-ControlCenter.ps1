@@ -128,15 +128,20 @@ $requiredVisibleLabels = @(
     'Text="Conversation"',
     'Text="USER"',
     'Text="PI RUNTIME"',
-    'Text="READ TOOL"',
+    'Text="BOUNDED TOOL"',
     'Text="JARVIS"',
-    'Content="SEND"',
+    'Content="SEND ONCE"',
     'Content="CANCEL"',
     'Writes: desktop-owner approval only',
     'Shell / direct edit / unattended approval: locked',
     'WORKSPACE EDIT PROPOSAL',
     'Content="REJECT"',
     'Content="APPROVE ONCE"',
+    'Text="Reviewed iteration"',
+    'Content="START REVIEWED LOOP"',
+    'Content="RE-ARM"',
+    'Content="STOP LOOP"',
+    'four approvals maximum',
     'SHELL // LOCKED',
     'SAFE SHUTDOWN',
     'CONFIGURE OPENAI',
@@ -173,8 +178,15 @@ Add-Check `
         $mainWindowText.Contains('IsEnabled="{Binding CanSubmit}"') -and
         $mainWindowText.Contains('IsEnabled="{Binding CanCancel}"') -and
         $mainWindowText.Contains('PreviewKeyDown="PromptInput_OnPreviewKeyDown"') -and
-        $mainWindowText.Contains('AutomationProperties.Name="Send message"') -and
+        $mainWindowText.Contains(
+            'AutomationProperties.Name="Send one conversation message"') -and
         $mainWindowText.Contains('AutomationProperties.Name="Cancel active turn"') -and
+        $mainWindowText.Contains(
+            'AutomationProperties.Name="Removed exact workspace text"') -and
+        $mainWindowText.Contains(
+            'AutomationProperties.Name="Replacement workspace text"') -and
+        $mainWindowText.Contains(
+            'AutomationProperties.LiveSetting="Polite"') -and
         $mainWindowText.Contains('ItemsSource="{Binding WorkspaceEdits}"') -and
         $mainWindowText.Contains(
             'AutomationProperties.Name="Reject workspace edit without writing"') -and
@@ -219,10 +231,55 @@ Add-Check `
         'then protects the value without showing the previous key.')
 
 Add-Check `
+    -Name 'surface.reviewed-iteration-owner-policy' `
+    -Passed (
+        $mainWindowText.Contains(
+            'AutomationProperties.Name="Start reviewed loop from composer mission"') -and
+        $mainWindowText.Contains(
+            'AutomationProperties.Name="Re-arm interrupted reviewed iteration"') -and
+        $mainWindowText.Contains(
+            'AutomationProperties.Name="Stop reviewed iteration"') -and
+        $mainWindowText.Contains(
+            'IsEnabled="{Binding CanStartReviewedIteration}"') -and
+        $mainWindowText.Contains(
+            'IsEnabled="{Binding CanResumeReviewedIteration}"') -and
+        $mainWindowText.Contains(
+            'IsEnabled="{Binding CanStopReviewedIteration}"') -and
+        $mainWindowText.Contains('ReviewedIterationStatusLabel') -and
+        $mainWindowText.Contains('ReviewedIterationReceiptLabel') -and
+        $mainWindowText.Contains(
+            'fixed Git and structured-text gate') -and
+        $mainWindowCodeText.Contains(
+            'StartReviewedIterationButton_OnClick') -and
+        $mainWindowCodeText.Contains(
+            'ResumeReviewedIterationButton_OnClick') -and
+        $mainWindowCodeText.Contains(
+            'StopReviewedIterationButton_OnClick') -and
+        $mainWindowCodeText.Contains(
+            'Type the reviewed iteration mission in the composer') -and
+        $mainWindowText.Contains('ONE-TURN COMPOSER / SEND ONCE HERE') -and
+        $mainWindowText.Contains('Style="{StaticResource ActionButton}"') -and
+        $viewModelText.Contains(
+            'PiAgentReviewedIterationCoordinator.OpenAsync') -and
+        $viewModelText.Contains(
+            'StartReviewedIterationAsync') -and
+        $viewModelText.Contains(
+            'ApproveAndContinueAsync') -and
+        $viewModelText.Contains(
+            'ObserveReviewedIterationCompletionAsync') -and
+        $viewModelText.Contains(
+            'reviewedIteration.SuspendAsync')) `
+    -Detail (
+        'The incumbent conversation surface must expose a named, keyboard-' +
+        'reachable owner policy with durable status, start/re-arm/stop actions, ' +
+        'and the repository-gated coordinator lifecycle.')
+
+Add-Check `
     -Name 'runtime.owned-start-stream-cancel-checkpoint-shutdown' `
     -Passed (
         $viewModelText.Contains('PiAgentDesktopRuntime.StartAsync') -and
         $viewModelText.Contains('PiAgentConversationCheckpointStore') -and
+        $viewModelText.Contains('PiAgentReviewedIterationCoordinator') -and
         $viewModelText.Contains('PiAgentConversationBinding') -and
         $viewModelText.Contains('SubmitAsync') -and
         $viewModelText.Contains('CancelAsync') -and
@@ -284,6 +341,8 @@ Add-Check `
         $bootstrapText.Contains(
             'runtime\node\node.exe') -and
         $bootstrapText.Contains(
+            'runtime\git\cmd\git.exe') -and
+        $bootstrapText.Contains(
             'runtime\pi-agent\src\host.mjs') -and
         $bootstrapText.Contains('JARVIS2_NODE_PATH') -and
         $bootstrapText.Contains(
@@ -293,15 +352,19 @@ Add-Check `
         $bootstrapText.Contains(
             'pi-agent-desktop-host-contract.json') -and
         $bootstrapText.Contains('ValidatePackageManifest') -and
+        $bootstrapText.Contains('ValidateGitRuntimeClosure') -and
+        $bootstrapText.Contains('gitRuntimeFileCount') -and
         $bootstrapText.Contains('foreach ((string relativePath, string expected)') -and
         $bootstrapProbeText.Contains('packaged-layout') -and
         $bootstrapProbeText.Contains('developer-layout') -and
+        $bootstrapProbeText.Contains('TamperedGitRuntimeRejected') -and
+        $bootstrapProbeText.Contains('ExtraGitRuntimeFileRejected') -and
         $viewModelText.Contains('OpenAiResponsesModelProvider') -and
         $viewModelText.Contains('OpenAiApiKeyCredentialStore') -and
         $viewModelText.Contains('providerCredentialReady')) `
     -Detail (
         'The ordinary desktop process must resolve a complete packaged ' +
-        'Node/Pi layout before developer fallback and expose production ' +
+        'Node/Pi/fixed-Git layout before developer fallback and expose production ' +
         'Responses only through an explicit provider choice and protected key.')
 
 $forbiddenToolCallPattern =
@@ -391,6 +454,8 @@ $bootstrapProbePassed =
     $bootstrapProbe.PackagedLayoutPassed -and
     $bootstrapProbe.DeveloperLayoutPassed -and
     $bootstrapProbe.PackagedLayoutPrecedencePassed -and
+    $bootstrapProbe.TamperedGitRuntimeRejected -and
+    $bootstrapProbe.ExtraGitRuntimeFileRejected -and
     $bootstrapProbe.TamperedPackageRejected -and
     $bootstrapProbe.MissingRuntimeRejected -and
     -not $bootstrapProbe.MutationPerformed -and
@@ -400,8 +465,8 @@ Add-Check `
     -Passed $bootstrapProbePassed `
     -Detail (
         'The executable bootstrap receipt must prove packaged and developer ' +
-        'resolution, packaged precedence, incomplete-runtime rejection and ' +
-        'no mutation. Output: ' +
+        'resolution, packaged precedence, full Git-closure tamper rejection, ' +
+        'incomplete-runtime rejection and no mutation. Output: ' +
         (($bootstrapProbeOutput | Select-Object -Last 14) -join ' '))
 
 $piRuntimeDependency = Join-Path $root (
