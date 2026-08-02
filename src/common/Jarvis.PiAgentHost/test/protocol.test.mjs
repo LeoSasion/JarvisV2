@@ -133,6 +133,7 @@ try {
       "find",
       "ls",
       "propose_edit",
+      "propose_patch",
       "propose_create_file",
     ],
   );
@@ -154,6 +155,17 @@ try {
   assert.equal(
     records[2].data.workspaceEditExistingFilesOnly,
     false,
+  );
+  assert.equal(records[2].data.workspacePatchSupported, true);
+  assert.equal(records[2].data.workspacePatchMinimumHunks, 2);
+  assert.equal(records[2].data.workspacePatchMaximumHunks, 8);
+  assert.equal(
+    records[2].data.workspacePatchMaximumPreviewBytes,
+    16_384,
+  );
+  assert.equal(
+    records[2].data.workspacePatchCommitMode,
+    "single-file-atomic-replace-and-post-verify",
   );
   assert.equal(
     records[2].data.workspaceFileCreateSupported,
@@ -206,6 +218,7 @@ try {
       "find",
       "ls",
       "propose_edit",
+      "propose_patch",
       "propose_create_file",
     ],
   );
@@ -448,6 +461,12 @@ try {
       workspaceEditApprovalMode:
         "one-shot-explicit-operation-before-state-sha256",
       workspaceEditExistingFilesOnly: false,
+      workspacePatchSupported: true,
+      workspacePatchMinimumHunks: 2,
+      workspacePatchMaximumHunks: 8,
+      workspacePatchMaximumPreviewBytes: 16_384,
+      workspacePatchCommitMode:
+        "single-file-atomic-replace-and-post-verify",
       workspaceFileCreateSupported: true,
       workspaceFileCreateMode:
         "exclusive-existing-parent-owner-approved",

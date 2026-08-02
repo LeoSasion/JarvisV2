@@ -50,18 +50,21 @@ logic and explicit fail-closed platform adapters for native shell work.
   conversation or approval authority, and every resume reruns admission.
 - The sidecar remains offline and receives model work only through a
   desktop-owned current-user transport.
-- Pi can read the admitted workspace and stage either one exact replacement in
-  an existing UTF-8 text file or one missing UTF-8 file of at most 16 KiB whose
-  parent directory already exists. A proposal performs no write; only the
+- Pi can read the admitted workspace and stage one exact replacement, one
+  2–8-hunk exact patch in a single existing UTF-8 text file, or one missing
+  UTF-8 file of at most 16 KiB whose parent directory already exists. Patch
+  hunks must be distinct, uniquely matched and non-overlapping, with at most
+  16 KiB of combined review text. A proposal performs no write; only the
   desktop owner can select a one-shot approval bound to the explicit operation
-  and reviewed before state. Existing files use their SHA-256; creation uses a
-  fixed absent-state sentinel plus exclusive no-overwrite commit.
+  and reviewed before state. Existing-file operations use the complete file
+  SHA-256 and one atomic replacement; creation uses a fixed absent-state
+  sentinel plus exclusive no-overwrite commit.
 - The desktop can arm a reviewed iteration from a clean Git HEAD for at most
   four owner-approved edits and six hours. Each approved write must pass the
   fixed HEAD/path-set/hash/diff/structured-text gate before Pi is allowed to
   reason about the next proposal; receipts are workspace-bound and protected
   with Windows CurrentUser DPAPI.
-- Deletes, renames, directory creation, VCS metadata mutation, generic
+- Multi-file atomic transactions, deletes, renames, directory creation, VCS metadata mutation, generic
   `edit`/`write`, shell access, self-authored policy, unattended approval and
   ungated iteration remain outside the admitted capability set.
 - Native shell changes remain locked behind exact compatibility, build receipt,

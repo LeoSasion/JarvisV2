@@ -425,6 +425,7 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
                     "find",
                     "ls",
                     "propose_edit",
+                    "propose_patch",
                     "propose_create_file",
                 ]) &&
             !data.GetProperty("sessionPersisted").GetBoolean() &&

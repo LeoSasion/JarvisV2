@@ -293,11 +293,12 @@ Automation equivalent:
 
 The API key is protected under the current Windows user with DPAPI. It is not
 stored in this package and is never sent to the offline Pi sidecar. Pi tools are
-limited to read, grep, find, ls, and the non-mutating propose_edit and
-propose_create_file tools. Pi may stage either one exact replacement in an
-existing UTF-8 file or one missing UTF-8 file (16 KiB maximum) whose parent
-directory already exists. Only the desktop owner can approve it once. Existing
-files are hash-rechecked; new files use exclusive creation and never overwrite.
+limited to read, grep, find, ls, and the non-mutating propose_edit,
+propose_patch and propose_create_file tools. Pi may stage one exact replacement,
+one 2-8 hunk non-overlapping patch in a single existing UTF-8 file, or one
+missing UTF-8 file (16 KiB maximum) whose parent directory already exists. Only
+the desktop owner can approve it once. Existing files are hash-rechecked and
+committed by one atomic replacement; new files use exclusive creation and never overwrite.
 Shell, directory creation, delete, rename, direct-write, VCS metadata mutation,
 and unattended approval remain unavailable. The desktop can arm a clean-HEAD
 reviewed iteration for at most four owner-approved writes and six hours. Each
@@ -363,14 +364,20 @@ $receipt = [ordered]@{
         'find',
         'ls',
         'propose_edit',
+        'propose_patch',
         'propose_create_file')
     mutationTools = @()
     desktopOwnerApprovedWorkspaceOperations = @(
         'existing-utf8-exact-replacement',
+        'existing-utf8-2-to-8-hunk-atomic-patch',
         'missing-utf8-exclusive-create-existing-parent')
     workspaceEditApprovalMode =
         'one-shot-explicit-operation-before-state-sha256'
     workspaceCreateMaximumBytes = 16384
+    workspacePatchMaximumHunks = 8
+    workspacePatchMaximumPreviewBytes = 16384
+    workspacePatchCommitMode =
+        'single-file-atomic-replace-and-post-verify'
     workspaceVersionControlMetadataMutation = $false
     reviewedSelfIteration = $true
     reviewedIterationPolicy =

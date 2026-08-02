@@ -85,7 +85,7 @@ public sealed class ConversationSurfaceViewModel :
     public string ProviderLabel => preview
         ? "ILLUSTRATIVE // NO RUNTIME"
         : launchOptions?.ProviderDisplayName ?? "NO PROVIDER ADMITTED";
-    public string AccessLabel => "READ + REVIEWED ITERATION";
+    public string AccessLabel => "READ + OWNER-REVIEWED WRITES";
     public string WorkspaceLabel => launchOptions?.WorkspaceRoot ??
         (preview
             ? "ILLUSTRATIVE // NOT ADMITTED"
@@ -834,13 +834,23 @@ public sealed class ConversationSurfaceViewModel :
             ],
             [
                 new PiAgentWorkspaceEditSnapshot(
-                    2,
+                    3,
                     "workspace-edit-0123456789abcdef0123456789abcdef",
-                    "create",
-                    "docs/agent-notes/next-step.md",
-                    PiAgentSidecarController.WorkspaceFileAbsentSha256,
+                    "patch",
+                    "src/common/Jarvis.PiAgentHost/RuntimePolicy.cs",
+                    "38c7f12af806e7c5bb13bb7d557cc4210dd31e2d75461b208f07600da9d7f214",
                     "",
-                    "# Next reviewed step\n\nCreate one owner-approved UTF-8 file.\n",
+                    "",
+                    [
+                        new PiAgentWorkspacePatchHunk(
+                            1,
+                            "public const int MaximumSteps = 3;",
+                            "public const int MaximumSteps = 4;"),
+                        new PiAgentWorkspacePatchHunk(
+                            2,
+                            "\"One exact replacement per turn.\"",
+                            "\"One reviewed single-file patch per turn.\""),
+                    ],
                     PiAgentWorkspaceEditStatus.Pending,
                     null,
                     null),

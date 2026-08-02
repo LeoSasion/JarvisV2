@@ -29,6 +29,9 @@ import {
 export const maximumWorkspaceEditFileBytes = 1_048_576;
 export const maximumWorkspaceEditSegmentBytes = 4_096;
 export const maximumWorkspaceCreateFileBytes = 16_384;
+export const minimumWorkspacePatchHunks = 2;
+export const maximumWorkspacePatchHunks = 8;
+export const maximumWorkspacePatchPreviewBytes = 16_384;
 export const maximumWorkspaceEditRelativePathCharacters = 512;
 
 const proposalIdPattern =
@@ -88,13 +91,103 @@ function validateProposalText(oldText, newText) {
   }
 }
 
+function containsBinaryControlCharacters(value) {
+  return /[\u0001-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(
+    value,
+  );
+}
+
+function validatePatchHunks(replacements) {
+  if (
+    !Array.isArray(replacements) ||
+    replacements.length < minimumWorkspacePatchHunks ||
+    replacements.length > maximumWorkspacePatchHunks
+  ) {
+    throw new WorkspacePolicyError(
+      "invalid-workspace-patch",
+      "A workspace patch must contain 2-8 exact replacements in one file.",
+    );
+  }
+  let previewBytes = 0;
+  const oldTexts = new Set();
+  const patchHunks = replacements.map((replacement, index) => {
+    const oldText = replacement?.oldText;
+    const newText = replacement?.newText;
+    validateProposalText(oldText, newText);
+    if (
+      containsBinaryControlCharacters(oldText) ||
+      containsBinaryControlCharacters(newText)
+    ) {
+      throw new WorkspacePolicyError(
+        "invalid-workspace-patch",
+        "Workspace patch text cannot contain binary control characters.",
+      );
+    }
+    if (oldTexts.has(oldText)) {
+      throw new WorkspacePolicyError(
+        "invalid-workspace-patch",
+        "Every workspace patch oldText must be distinct.",
+      );
+    }
+    oldTexts.add(oldText);
+    previewBytes +=
+      Buffer.byteLength(oldText, "utf8") +
+      Buffer.byteLength(newText, "utf8");
+    return Object.freeze({
+      ordinal: index + 1,
+      oldText,
+      newText,
+    });
+  });
+  if (previewBytes > maximumWorkspacePatchPreviewBytes) {
+    throw new WorkspacePolicyError(
+      "invalid-workspace-patch",
+      "The combined workspace patch review text must not exceed 16384 UTF-8 bytes.",
+    );
+  }
+  return Object.freeze(patchHunks);
+}
+
+function applyPatchHunks(content, patchHunks) {
+  const positioned = patchHunks.map(hunk => {
+    if (countOccurrences(content, hunk.oldText) !== 1) {
+      throw new WorkspacePolicyError(
+        "workspace-patch-match-not-unique",
+        "Every patch oldText must occur exactly once in the current file.",
+      );
+    }
+    const start = content.indexOf(hunk.oldText);
+    return Object.freeze({
+      ...hunk,
+      start,
+      end: start + hunk.oldText.length,
+    });
+  }).sort((left, right) => left.start - right.start);
+  for (let index = 1; index < positioned.length; index += 1) {
+    if (positioned[index].start < positioned[index - 1].end) {
+      throw new WorkspacePolicyError(
+        "workspace-patch-overlap",
+        "Workspace patch replacements must not overlap in the current file.",
+      );
+    }
+  }
+  let cursor = 0;
+  let updated = "";
+  for (const hunk of positioned) {
+    updated += content.slice(cursor, hunk.start);
+    updated += hunk.newText;
+    cursor = hunk.end;
+  }
+  return updated + content.slice(cursor);
+}
+
 function validateCreateContent(content) {
   if (
     !isStrictUtf8Text(content) ||
     Buffer.byteLength(content, "utf8") === 0 ||
     Buffer.byteLength(content, "utf8") >
       maximumWorkspaceCreateFileBytes ||
-    /[\u0001-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(content)
+    containsBinaryControlCharacters(content)
   ) {
     throw new WorkspacePolicyError(
       "invalid-workspace-create",
@@ -298,15 +391,67 @@ export class WorkspaceEditProposalManager {
       safePath,
     );
     const proposal = Object.freeze({
-      schemaVersion: 2,
+      schemaVersion: 3,
       proposalId: `workspace-edit-${randomUUID().replaceAll("-", "")}`,
       operation: "replace",
       relativePath,
       beforeSha256: sha256(content),
       oldText,
       newText,
+      patchHunks: Object.freeze([]),
     });
-    this.#pending = Object.freeze({ proposal });
+    this.#pending = Object.freeze({
+      proposal,
+      expectedAfterSha256: sha256(updated),
+    });
+    return proposal;
+  }
+
+  async proposePatch(
+    { path, replacements },
+    signal,
+  ) {
+    throwIfAborted(signal);
+    if (this.#pending !== null) {
+      throw new WorkspacePolicyError(
+        "workspace-edit-review-pending",
+        "Review the pending workspace proposal before proposing another change.",
+      );
+    }
+    const patchHunks = validatePatchHunks(replacements);
+    const { safePath, content } = await readWorkspaceTextFile(
+      this.#admission,
+      path,
+    );
+    throwIfAborted(signal);
+    const updated = applyPatchHunks(content, patchHunks);
+    if (
+      Buffer.byteLength(updated, "utf8") >
+        maximumWorkspaceEditFileBytes
+    ) {
+      throw new WorkspacePolicyError(
+        "workspace-edit-result-too-large",
+        "The proposed patched file would exceed one MiB.",
+      );
+    }
+    const relativePath = reviewRelativePath(
+      this.#admission,
+      safePath,
+    );
+    const proposal = Object.freeze({
+      schemaVersion: 3,
+      proposalId: `workspace-edit-${randomUUID().replaceAll("-", "")}`,
+      operation: "patch",
+      relativePath,
+      beforeSha256: sha256(content),
+      oldText: "",
+      newText: "",
+      patchHunks,
+    });
+    this.#pending = Object.freeze({
+      proposal,
+      expectedAfterSha256: sha256(updated),
+    });
     return proposal;
   }
 
@@ -332,13 +477,14 @@ export class WorkspaceEditProposalManager {
       creation.safePath,
     );
     const proposal = Object.freeze({
-      schemaVersion: 2,
+      schemaVersion: 3,
       proposalId: `workspace-edit-${randomUUID().replaceAll("-", "")}`,
       operation: "create",
       relativePath,
       beforeSha256: workspaceFileAbsentSha256,
       oldText: "",
       newText: content,
+      patchHunks: Object.freeze([]),
     });
     this.#pending = Object.freeze({
       proposal,
@@ -362,10 +508,10 @@ export class WorkspaceEditProposalManager {
     if (proposal.operation === "create") {
       return this.#commitCreate(proposal, pending);
     }
-    return this.#commitReplace(proposal);
+    return this.#commitExisting(proposal, pending);
   }
 
-  async #commitReplace(proposal) {
+  async #commitExisting(proposal, pending) {
 
     let temporaryPath;
     try {
@@ -374,18 +520,33 @@ export class WorkspaceEditProposalManager {
         proposal.relativePath,
       );
       if (
-        sha256(first.content) !== proposal.beforeSha256 ||
-        countOccurrences(first.content, proposal.oldText) !== 1
+        sha256(first.content) !== proposal.beforeSha256
       ) {
         throw new WorkspacePolicyError(
           "workspace-edit-drifted",
           "The file changed after proposal review began; the one-shot approval was not applied.",
         );
       }
-      const updated = first.content.replace(
-        proposal.oldText,
-        proposal.newText,
-      );
+      let updated;
+      try {
+        updated = proposal.operation === "patch"
+          ? applyPatchHunks(first.content, proposal.patchHunks)
+          : first.content.replace(
+              proposal.oldText,
+              proposal.newText,
+            );
+      } catch (error) {
+        if (
+          error?.code === "workspace-patch-match-not-unique" ||
+          error?.code === "workspace-patch-overlap"
+        ) {
+          throw new WorkspacePolicyError(
+            "workspace-edit-drifted",
+            "The patch no longer matches the reviewed file; the one-shot approval was not applied.",
+          );
+        }
+        throw error;
+      }
       if (
         Buffer.byteLength(updated, "utf8") >
           maximumWorkspaceEditFileBytes
@@ -393,6 +554,12 @@ export class WorkspaceEditProposalManager {
         throw new WorkspacePolicyError(
           "workspace-edit-result-too-large",
           "The approved file would exceed one MiB.",
+        );
+      }
+      if (sha256(updated) !== pending.expectedAfterSha256) {
+        throw new WorkspacePolicyError(
+          "workspace-edit-commit-verification-failed",
+          "The approved replacement set did not reproduce the exact reviewed result.",
         );
       }
 
@@ -419,8 +586,7 @@ export class WorkspaceEditProposalManager {
       if (
         String(final.stats.dev) !== String(first.stats.dev) ||
         String(final.stats.ino) !== String(first.stats.ino) ||
-        sha256(final.content) !== proposal.beforeSha256 ||
-        countOccurrences(final.content, proposal.oldText) !== 1
+        sha256(final.content) !== proposal.beforeSha256
       ) {
         throw new WorkspacePolicyError(
           "workspace-edit-drifted",
@@ -445,7 +611,7 @@ export class WorkspaceEditProposalManager {
         );
       }
       return Object.freeze({
-        schemaVersion: 2,
+        schemaVersion: 3,
         proposalId: proposal.proposalId,
         operation: proposal.operation,
         relativePath: proposal.relativePath,
@@ -550,7 +716,7 @@ export class WorkspaceEditProposalManager {
       }
       committed = true;
       return Object.freeze({
-        schemaVersion: 2,
+        schemaVersion: 3,
         proposalId: proposal.proposalId,
         operation: proposal.operation,
         relativePath: proposal.relativePath,
@@ -599,7 +765,7 @@ export class WorkspaceEditProposalManager {
     const proposal = this.#pending.proposal;
     this.#pending = null;
     return Object.freeze({
-      schemaVersion: 2,
+      schemaVersion: 3,
       proposalId,
       operation: proposal.operation,
       relativePath: proposal.relativePath,
@@ -734,13 +900,88 @@ export function createWorkspaceFileProposalTool(
   };
 }
 
+export function createWorkspacePatchProposalTool(
+  admission,
+  proposalManager,
+) {
+  return {
+    name: "propose_patch",
+    label: "Propose patch",
+    description:
+      "Stage 2-8 exact, non-overlapping replacements in one existing UTF-8 workspace file for explicit desktop-owner review. This tool never writes the file.",
+    promptSnippet:
+      "propose_patch: stage one existing-file multi-hunk patch for owner review (no write)",
+    promptGuidelines: [
+      "Use propose_patch only after reading the target file and only when 2-8 coherent replacements in that one file are required.",
+      "Every oldText must be distinct, occur exactly once, and not overlap another replacement.",
+      "A proposal pauses new turns until the desktop owner approves or rejects it; approval is never available to the model.",
+    ],
+    parameters: Type.Object(
+      {
+        path: Type.String({
+          description:
+            "Existing UTF-8 file path inside the admitted workspace",
+          minLength: 1,
+          maxLength: maximumWorkspaceEditRelativePathCharacters,
+        }),
+        replacements: Type.Array(
+          Type.Object(
+            {
+              oldText: Type.String({
+                description:
+                  "Exact non-empty text occurring once in the current file",
+                minLength: 1,
+                maxLength: maximumWorkspaceEditSegmentBytes,
+              }),
+              newText: Type.String({
+                description:
+                  "Replacement text; may be empty and must differ from oldText",
+                maxLength: maximumWorkspaceEditSegmentBytes,
+              }),
+            },
+            { additionalProperties: false },
+          ),
+          {
+            minItems: minimumWorkspacePatchHunks,
+            maxItems: maximumWorkspacePatchHunks,
+          },
+        ),
+      },
+      { additionalProperties: false },
+    ),
+    executionMode: "sequential",
+    async execute(
+      _toolCallId,
+      args,
+      signal,
+    ) {
+      const proposal = await proposalManager.proposePatch(
+        args,
+        signal,
+      );
+      return {
+        content: [{
+          type: "text",
+          text:
+            `Workspace patch ${proposal.proposalId} with ${proposal.patchHunks.length} hunks is staged for desktop-owner review. No file was changed.`,
+        }],
+        details: {
+          workspaceEditProposal: proposal,
+        },
+      };
+    },
+  };
+}
+
 export function extractWorkspaceEditProposal(result) {
   const proposal = result?.details?.workspaceEditProposal;
   if (
-    proposal?.schemaVersion !== 2 ||
+    proposal?.schemaVersion !== 3 ||
     typeof proposal.proposalId !== "string" ||
     !proposalIdPattern.test(proposal.proposalId) ||
-    !["replace", "create"].includes(proposal.operation) ||
+    !["replace", "create", "patch"].includes(
+      proposal.operation,
+    ) ||
     typeof proposal.relativePath !== "string" ||
     proposal.relativePath.length === 0 ||
     proposal.relativePath.length >
@@ -754,6 +995,7 @@ export function extractWorkspaceEditProposal(result) {
     !sha256Pattern.test(proposal.beforeSha256) ||
     !isStrictUtf8Text(proposal.oldText) ||
     !isStrictUtf8Text(proposal.newText) ||
+    !Array.isArray(proposal.patchHunks) ||
     proposal.relativePath.split("/").some(segment =>
       segment === "." ||
       segment === ".." ||
@@ -769,7 +1011,8 @@ export function extractWorkspaceEditProposal(result) {
       maximumWorkspaceEditSegmentBytes &&
     Buffer.byteLength(proposal.newText, "utf8") <=
       maximumWorkspaceEditSegmentBytes &&
-    proposal.newText !== proposal.oldText;
+    proposal.newText !== proposal.oldText &&
+    proposal.patchHunks.length === 0;
   const createValid =
     proposal.operation === "create" &&
     proposal.beforeSha256 === workspaceFileAbsentSha256 &&
@@ -777,10 +1020,46 @@ export function extractWorkspaceEditProposal(result) {
     Buffer.byteLength(proposal.newText, "utf8") > 0 &&
     Buffer.byteLength(proposal.newText, "utf8") <=
       maximumWorkspaceCreateFileBytes &&
+    proposal.patchHunks.length === 0 &&
     !/[\u0001-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(
       proposal.newText,
     );
-  if (!replaceValid && !createValid) {
+  const patchOldTexts = new Set();
+  let patchPreviewBytes = 0;
+  const patchHunksValid = proposal.patchHunks.every(
+    (hunk, index) => {
+      if (
+        hunk?.ordinal !== index + 1 ||
+        !isStrictUtf8Text(hunk.oldText) ||
+        hunk.oldText.length === 0 ||
+        Buffer.byteLength(hunk.oldText, "utf8") >
+          maximumWorkspaceEditSegmentBytes ||
+        !isStrictUtf8Text(hunk.newText) ||
+        Buffer.byteLength(hunk.newText, "utf8") >
+          maximumWorkspaceEditSegmentBytes ||
+        containsBinaryControlCharacters(hunk.oldText) ||
+        containsBinaryControlCharacters(hunk.newText) ||
+        hunk.newText === hunk.oldText ||
+        patchOldTexts.has(hunk.oldText)
+      ) {
+        return false;
+      }
+      patchOldTexts.add(hunk.oldText);
+      patchPreviewBytes +=
+        Buffer.byteLength(hunk.oldText, "utf8") +
+        Buffer.byteLength(hunk.newText, "utf8");
+      return true;
+    },
+  );
+  const patchValid =
+    proposal.operation === "patch" &&
+    proposal.oldText.length === 0 &&
+    proposal.newText.length === 0 &&
+    proposal.patchHunks.length >= minimumWorkspacePatchHunks &&
+    proposal.patchHunks.length <= maximumWorkspacePatchHunks &&
+    patchHunksValid &&
+    patchPreviewBytes <= maximumWorkspacePatchPreviewBytes;
+  if (!replaceValid && !createValid && !patchValid) {
     return null;
   }
   return proposal;

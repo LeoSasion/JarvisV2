@@ -1470,8 +1470,13 @@ $phase7ControlCenterStaticContract =
         '"NEW UTF-8 FILE PROPOSAL"') -and
     $piAgentHostConversationStateSource.Contains(
         '"EXACT TEXT REPLACEMENT"') -and
+    $piAgentHostConversationStateSource.Contains(
+        '"MULTI-HUNK PATCH / {PatchHunks.Count} EXACT CHANGES"') -and
     $piAgentHostConversationStateSource.Contains('"CREATE ONCE"') -and
     $piAgentHostConversationStateSource.Contains('"APPROVE ONCE"') -and
+    $piAgentHostConversationStateSource.Contains('"APPLY PATCH ONCE"') -and
+    $piAgentHostConversationStateSource.Contains('ReviewSegments') -and
+    $controlCenterSource.Contains('ItemsSource="{Binding ReviewSegments}"') -and
     $controlCenterSource.Contains('Content="REJECT"') -and
     $controlCenterSource.Contains('PiAgentDesktopRuntime.StartAsync') -and
     $controlCenterSource.Contains('SAFE SHUTDOWN') -and
@@ -1489,7 +1494,7 @@ $phase7ControlCenterStaticContract =
 Add-Check `
     'phase7.control-center-static-review-gated' `
     $phase7ControlCenterStaticContract `
-    'The visible Control Center must remain an ordinary review-gated Pi conversation window with explicit owner-only replace/create decisions, shell lock, orderly shutdown and no shell mutation API.'
+    'The visible Control Center must remain an ordinary review-gated Pi conversation window with explicit owner-only replace/patch/create decisions, full multi-hunk review, shell lock, orderly shutdown and no shell mutation API.'
 
 $controlCenterAuditOutput = @(
     & pwsh `

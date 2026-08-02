@@ -34,6 +34,7 @@ public sealed class OpenAiResponsesModelProvider :
                 "find",
                 "ls",
                 "propose_edit",
+                "propose_patch",
                 "propose_create_file",
             ],
             StringComparer.Ordinal);

@@ -12,9 +12,10 @@ the default. An opt-in OpenAI Responses provider uses `gpt-5.6-sol`, SSE,
 sidecar. See [the conversation surface](docs/PI-AGENT-DESKTOP-CONVERSATION-SURFACE.md),
 [provider boundary](docs/PI-AGENT-OPENAI-RESPONSES-PROVIDER.md) and
 [portable runtime](docs/JARVIS-CONTROL-CENTER-PORTABLE-RUNTIME.md). Pi can now
-stage one exact existing-text edit for [inline owner approval](docs/PI-AGENT-WORKSPACE-EDIT-APPROVAL.md);
-the proposal itself never writes, and Approve Once is bound to the current
-file SHA-256.
+stage one exact existing-text replacement, one bounded multi-hunk patch, or one
+new UTF-8 file for [inline owner approval](docs/PI-AGENT-WORKSPACE-EDIT-APPROVAL.md).
+The proposal itself never writes, and every one-shot approval is bound to the
+current file or absent-state SHA-256.
 
 Returning users can select `VERIFY & RESUME` from the native launcher's
 [encrypted recent-work catalog](docs/PI-AGENT-DESKTOP-RECENT-SESSIONS.md).
@@ -26,12 +27,14 @@ Open `jarvis-control-center.exe`, choose `START PI SESSION`, select one local
 workspace and keep the default local diagnostic provider for the fastest
 deterministic first turn. The launcher validates both the workspace boundary and
 the fixed portable/developer runtime before the existing window becomes the Pi
-conversation surface. Reads are root-confined. `propose_edit` and
-`propose_create_file` can only stage a review card; the latter is limited to a
+conversation surface. Reads are root-confined. `propose_edit`, `propose_patch`
+and `propose_create_file` can only stage a review card. A patch applies 2–8
+distinct, unique and non-overlapping exact replacements to one existing UTF-8
+file, with at most 16 KiB of combined review text. Creation is limited to one
 missing UTF-8 file of at most 16 KiB beneath an existing canonical parent and
 uses exclusive creation after approval. Deletes, renames, directory creation,
-VCS metadata mutation, direct writes, shell access and unattended approval
-remain unavailable.
+multi-file transactions, VCS metadata mutation, direct writes, shell access and
+unattended approval remain unavailable.
 
 JarvisV2 是一个独立于旧版 JARVIS 的 Windows 原生桌面改造实验。它不铺设全屏画布，不用 Electron/WebView 假装桌面，也不替换任务栏的交互模型；模块进入明确的 Windows 宿主进程，修改现有原生组件，并且必须可以失败关闭和撤销。仓库与公开展示名称为 **JarvisV2**，内部运行时安全标识仍为 `JARVIS2`；状态目录、命名状态门、模块 ID 和既有收据不做破坏性改名。
 

@@ -248,13 +248,15 @@ Add-Check `
         $contract.session.resourceDiscovery -eq 'disabled' -and
         -not $contract.session.modelNetworkAllowed -and
         (@($contract.tools.initialAllowlist) -join '|') -eq
-            'read|grep|find|ls|propose_edit|propose_create_file' -and
+            'read|grep|find|ls|propose_edit|propose_patch|propose_create_file' -and
         (@($contract.tools.initiallyDenied) -join '|') -eq
             'bash|edit|write' -and
         $contract.tools.proposalTool -eq
-            'non-mutating-explicit-utf8-replace-or-create' -and
+            'non-mutating-explicit-utf8-replace-patch-or-create' -and
         $contract.tools.proposalMaxFileBytes -eq 1048576 -and
         $contract.tools.proposalMaxSegmentBytes -eq 4096 -and
+        $contract.tools.patchProposalMaxHunks -eq 8 -and
+        $contract.tools.patchProposalMaxPreviewBytes -eq 16384 -and
         $contract.tools.createProposalMaxBytes -eq 16384 -and
         $contract.tools.pendingProposalLimit -eq 1 -and
         $contract.tools.pendingProposalPolicy -eq
@@ -263,14 +265,14 @@ Add-Check `
         $contract.tools.approvalMode -eq
             'one-shot-explicit-operation-before-state-sha256' -and
         $contract.tools.commitMode -eq
-            'atomic-replace-or-exclusive-create-and-post-verify' -and
+            'atomic-existing-file-replace-or-patch-exclusive-create-and-post-verify' -and
         $contract.tools.newFileSupported -and
         $contract.tools.newFileParentPolicy -eq
             'existing-canonical-directory-no-auto-create' -and
         -not $contract.tools.versionControlMetadataMutation -and
         -not $contract.tools.deleteSupported -and
         $contract.tools.mutationGrant -eq
-            'desktop-owner-one-shot-reviewed-text-replace-or-create' -and
+            'desktop-owner-one-shot-reviewed-text-replace-patch-or-create' -and
         $contract.tools.reviewedSelfIteration -and
         $contract.tools.automaticReasoningContinuation -and
         -not $contract.tools.unattendedApproval -and
@@ -433,13 +435,17 @@ Add-Check `
         $schema.properties.transport.properties.credentialFieldsAllowed.const `
             -eq $false -and
         (@($schema.properties.tools.properties.initialAllowlist.const) -join '|') `
-            -eq 'read|grep|find|ls|propose_edit|propose_create_file' -and
+            -eq 'read|grep|find|ls|propose_edit|propose_patch|propose_create_file' -and
         $schema.properties.tools.properties.proposalTool.const -eq
-            'non-mutating-explicit-utf8-replace-or-create' -and
+            'non-mutating-explicit-utf8-replace-patch-or-create' -and
         $schema.properties.tools.properties.proposalMaxFileBytes.const -eq
             1048576 -and
         $schema.properties.tools.properties.proposalMaxSegmentBytes.const -eq
             4096 -and
+        $schema.properties.tools.properties.patchProposalMaxHunks.const -eq
+            8 -and
+        $schema.properties.tools.properties.patchProposalMaxPreviewBytes.const `
+            -eq 16384 -and
         $schema.properties.tools.properties.createProposalMaxBytes.const -eq
             16384 -and
         $schema.properties.tools.properties.pendingProposalLimit.const -eq
@@ -522,6 +528,7 @@ Add-Check `
         (Test-Path -LiteralPath $workspaceEditProposalPath -PathType Leaf) -and
         (Test-Path -LiteralPath $workspaceEditTestPath -PathType Leaf) -and
         $workspaceEditProposalText.Contains('propose_edit') -and
+        $workspaceEditProposalText.Contains('propose_patch') -and
         $workspaceEditProposalText.Contains('propose_create_file') -and
         $workspaceEditProposalText.Contains(
             'maximumWorkspaceEditSegmentBytes = 4_096') -and
@@ -529,6 +536,12 @@ Add-Check `
             'maximumWorkspaceEditFileBytes = 1_048_576') -and
         $workspaceEditProposalText.Contains(
             'maximumWorkspaceCreateFileBytes = 16_384') -and
+        $workspaceEditProposalText.Contains(
+            'maximumWorkspacePatchHunks = 8') -and
+        $workspaceEditProposalText.Contains(
+            'maximumWorkspacePatchPreviewBytes = 16_384') -and
+        $workspaceEditProposalText.Contains(
+            'workspace-patch-overlap') -and
         $workspaceEditProposalText.Contains('isUtf8') -and
         $workspaceEditProposalText.Contains('stats.nlink !== 1') -and
         $workspaceEditProposalText.Contains(
@@ -550,7 +563,7 @@ Add-Check `
         'Runtime source must create exactly one root-confined in-memory SDK ' +
         'session and one broker-gated prompt path without credential files, ' +
         'child processes or unreviewed writes; the isolated edit module must ' +
-        'bind one exact replacement or exclusive new UTF-8 file to an explicit operation, reviewed before-state hash and one-shot commit.')
+        'bind one exact replacement, one bounded single-file multi-hunk patch, or one exclusive new UTF-8 file to an explicit operation, reviewed before-state hash and one-shot commit.')
 
 $bridgeSourceText =
     [IO.File]::ReadAllText($bridgeSourcePath) +
@@ -733,6 +746,7 @@ Add-Check `
             'did not return an SSE stream') -and
         $openAiProviderText.Contains('AllowedToolNames.Contains') -and
         $openAiProviderText.Contains('"propose_edit"') -and
+        $openAiProviderText.Contains('"propose_patch"') -and
         $openAiProviderText.Contains('"propose_create_file"') -and
         $openAiCredentialText.Contains('ProtectedData.Protect') -and
         $openAiCredentialText.Contains('ProtectedData.Unprotect') -and
@@ -1075,13 +1089,19 @@ if (-not $StaticOnly) {
             -not $protocolReceipt.resourceDiscoveryEnabled -and
             -not $protocolReceipt.credentialTransportAllowed -and
             (@($protocolReceipt.initialTools) -join '|') -eq
-                'read|grep|find|ls|propose_edit|propose_create_file' -and
+                'read|grep|find|ls|propose_edit|propose_patch|propose_create_file' -and
             $protocolReceipt.workspaceEditProposalSupported -and
             $protocolReceipt.workspaceEditApprovalOwner -eq
                 'desktop-user-only' -and
             $protocolReceipt.workspaceEditApprovalMode -eq
                 'one-shot-explicit-operation-before-state-sha256' -and
             -not $protocolReceipt.workspaceEditExistingFilesOnly -and
+            $protocolReceipt.workspacePatchSupported -and
+            $protocolReceipt.workspacePatchMinimumHunks -eq 2 -and
+            $protocolReceipt.workspacePatchMaximumHunks -eq 8 -and
+            $protocolReceipt.workspacePatchMaximumPreviewBytes -eq 16384 -and
+            $protocolReceipt.workspacePatchCommitMode -eq
+                'single-file-atomic-replace-and-post-verify' -and
             $protocolReceipt.workspaceFileCreateSupported -and
             $protocolReceipt.workspaceFileCreateMode -eq
                 'exclusive-existing-parent-owner-approved' -and
@@ -1120,10 +1140,18 @@ if (-not $StaticOnly) {
             $null -ne $workspaceEditReceipt -and
             $workspaceEditReceipt.result -eq 'passed' -and
             (@($workspaceEditReceipt.activeTools) -join '|') -eq
-                'read|grep|find|ls|propose_edit|propose_create_file' -and
+                'read|grep|find|ls|propose_edit|propose_patch|propose_create_file' -and
             -not $workspaceEditReceipt.proposalToolMutates -and
             -not $workspaceEditReceipt.existingTextFilesOnly -and
             $workspaceEditReceipt.newUtf8FileSupported -and
+            $workspaceEditReceipt.multiHunkPatchSupported -and
+            $workspaceEditReceipt.patchMinimumHunks -eq 2 -and
+            $workspaceEditReceipt.patchMaximumHunks -eq 8 -and
+            $workspaceEditReceipt.patchMaximumPreviewBytes -eq 16384 -and
+            $workspaceEditReceipt.patchSingleFileOnly -and
+            $workspaceEditReceipt.patchAtomicReplace -and
+            $workspaceEditReceipt.patchOverlapRejected -and
+            $workspaceEditReceipt.patchBinaryControlsRejected -and
             $workspaceEditReceipt.newFileMaxBytes -eq 16384 -and
             $workspaceEditReceipt.existingParentRequired -and
             $workspaceEditReceipt.exclusiveCreate -and
@@ -1185,6 +1213,7 @@ if (-not $StaticOnly) {
             $reviewedIterationReceipt.firstProposalPausedForOwner -and
             $reviewedIterationReceipt.approvedEditValidated -and
             $reviewedIterationReceipt.approvedNewFileValidated -and
+            $reviewedIterationReceipt.approvedPatchValidated -and
             $reviewedIterationReceipt.untrackedWhitespaceRejected -and
             $reviewedIterationReceipt.automaticReasoningContinuationPassed -and
             $reviewedIterationReceipt.secondProposalPausedForOwner -and
@@ -1198,7 +1227,7 @@ if (-not $StaticOnly) {
             $reviewedIterationReceipt.maximumApprovedEdits -eq 4 -and
             $reviewedIterationReceipt.policyLifetimeHours -eq 6 -and
             $reviewedIterationReceipt.durableReceiptFileCount -eq 2 -and
-            $reviewedIterationReceipt.brokerRequestCount -eq 8 -and
+            $reviewedIterationReceipt.brokerRequestCount -eq 10 -and
             $reviewedIterationReceipt.brokerFaultCount -eq 0 -and
             $reviewedIterationReceipt.liveExplorer -eq 'not-run' -and
             -not $reviewedIterationReceipt.productionWorkspaceMutationPerformed) `
@@ -1301,13 +1330,17 @@ if (-not $StaticOnly) {
             $bridgeReceipt.piOffline -and
             $bridgeReceipt.credentialEnvironmentScrubbed -and
             (@($bridgeReceipt.initialTools) -join '|') -eq
-                'read|grep|find|ls|propose_edit|propose_create_file' -and
+                'read|grep|find|ls|propose_edit|propose_patch|propose_create_file' -and
             (@($bridgeReceipt.deniedTools) -join '|') -eq
                 'bash|edit|write' -and
             $bridgeReceipt.sessionCreationEnabled -and
             -not $bridgeReceipt.promptingEnabled -and
             -not $bridgeReceipt.sessionPersisted -and
             -not $bridgeReceipt.credentialTransportAllowed -and
+            $bridgeReceipt.workspacePatchSupported -and
+            $bridgeReceipt.workspacePatchMinimumHunks -eq 2 -and
+            $bridgeReceipt.workspacePatchMaximumHunks -eq 8 -and
+            $bridgeReceipt.workspacePatchMaximumPreviewBytes -eq 16384 -and
             -not $bridgeReceipt.shellMutationSupported -and
             -not $bridgeReceipt.explorerMutationSupported -and
             -not $bridgeReceipt.systemMutationSupported -and
@@ -1640,6 +1673,12 @@ $passed = $failures.Count -eq 0
     workspaceEditApprovalOwner = 'desktop-user-only'
     workspaceEditApprovalMode =
         'one-shot-explicit-operation-before-state-sha256'
+    workspacePatchSupported = $true
+    workspacePatchMinimumHunks = 2
+    workspacePatchMaximumHunks = 8
+    workspacePatchMaximumPreviewBytes = 16384
+    workspacePatchCommitMode =
+        'single-file-atomic-replace-and-post-verify'
     workspaceEditNewFileSupported = $true
     workspaceEditNewFileMaxBytes = 16384
     workspaceEditNewFileParentPolicy =

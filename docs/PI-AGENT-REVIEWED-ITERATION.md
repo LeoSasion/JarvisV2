@@ -2,8 +2,9 @@
 
 JarvisV2 now has a desktop-owned workflow that can carry one owner mission
 across several Pi reasoning turns without granting unattended writes. The
-workflow reuses the `propose_edit` / `propose_create_file` and one-shot owner
-boundary: Pi can stage one exact replacement or one missing UTF-8 file, but only
+workflow reuses the `propose_edit` / `propose_patch` / `propose_create_file`
+and one-shot owner boundary: Pi can stage one exact replacement, one 2–8-hunk
+exact patch in a single existing UTF-8 file, or one missing UTF-8 file, but only
 the human-operated WPF control can consume that proposal.
 
 This milestone is reviewed self-iteration, not autonomous shell execution. It
@@ -42,11 +43,11 @@ owner mission
                             |
                             +-- no proposal -> complete without write
                             |
-                            +-- one replace/create proposal -> pause
+                            +-- one replace/patch/create proposal -> pause
                                     |
                                     +-- REJECT -> no write, stop
                                     |
-                                    +-- APPROVE ONCE / CREATE ONCE
+                                    +-- APPROVE ONCE / APPLY PATCH ONCE / CREATE ONCE
                                             |
                                             +-- exact one-shot sidecar commit
                                             +-- fixed repository gate
@@ -140,16 +141,19 @@ proves:
   repository gate;
 - rejection of trailing whitespace in an untracked file;
 - automatic next reasoning turn but no automatic approval;
-- second proposal pause and explicit rejection;
+- second proposal pause, explicit approval of a two-hunk patch in the created
+  file and a passed repository gate;
+- automatic next reasoning turn followed by a third proposal and explicit
+  rejection;
 - shutdown suspension and absence of restored proposal authority;
 - explicit re-arm after repository revalidation;
 - repository drift rejection;
-- eight broker requests, zero broker faults, no live Explorer contact and no
+- ten broker requests, zero broker faults, no live Explorer contact and no
   production workspace mutation.
 
 The native surface evidence is
-`docs/screenshots/jarvis-control-center-reviewed-create-file.png`; it is an
-illustrative no-runtime preview of the explicit create operation and owner-only
+`docs/screenshots/jarvis-control-center-reviewed-multi-hunk-patch.png`; it is an
+illustrative no-runtime preview of the explicit two-hunk patch and owner-only
 decision state.
 
 ## Still unavailable

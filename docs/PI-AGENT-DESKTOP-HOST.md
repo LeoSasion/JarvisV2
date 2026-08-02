@@ -39,7 +39,7 @@ Shell process.
   across multiple requests, admits at most four current-user connections and
   caps every broker frame at 1 MiB;
 - validates provider event order and permits only the session's `read`, `grep`,
-  `find`, `ls`, `propose_edit` and `propose_create_file` identities before forwarding
+  `find`, `ls`, `propose_edit`, `propose_patch` and `propose_create_file` identities before forwarding
   tool calls to Pi;
 - rejects an offline provider attempt to emit `bash`, returns a closed failure
   to the Pi turn and proves the broker remains isolated from the Shell;
@@ -69,15 +69,18 @@ Shell process.
   saves and shuts down the owned sidecar before disposing the broker;
 - replaces the SDK file tools with root-confined `read`, `grep`, `find` and
   `ls` definitions plus `propose_edit` for exact existing-text replacement and
+  `propose_patch` for 2–8 distinct, unique, non-overlapping exact replacements
+  in one existing UTF-8 file, plus
   `propose_create_file` for a missing UTF-8 file beneath an existing parent;
-  both proposal tools are non-mutating, while `bash`, generic `edit` and
+  all proposal tools are non-mutating, while `bash`, generic `edit` and
   `write` stay unavailable;
 - emits the proposal as a structured turn event, blocks new turns while one is
   pending, and exposes desktop-only commit and discard requests;
 - binds approval to the exact proposal id, explicit operation and before-state
-  SHA-256; replacement rechecks file identity/hash/unique match before atomic
-  replacement, while creation rechecks parent identity and target absence
-  before exclusive no-overwrite creation; both reject replay and drift;
+  SHA-256; replacement and patch recheck file identity/hash and reconstruct the
+  exact reviewed result before one atomic replacement, while creation rechecks
+  parent identity and target absence before exclusive no-overwrite creation;
+  all reject replay and drift;
 - lets the desktop owner arm one reviewed iteration only from a clean Git HEAD,
   with a fixed four-approved-edit limit and six-hour expiry;
 - writes every policy and step transition to a workspace-bound CurrentUser
@@ -173,7 +176,7 @@ WPF desktop
                                                     |
                                                     +-- authenticated production provider
                                                             |
-                                                            +-- one-shot existing-text owner approval
+                                                            +-- one-shot replace/patch/create owner approval
                                                                 (implemented)
                                                                     |
                                                                     +-- durable reviewed self-iteration workflow
@@ -211,7 +214,10 @@ The third ordinary turn executes the real root-confined `read` tool and requires
 a second model request. A separate held request proves cancellation through the
 concurrent desktop response pump. A dedicated isolated workspace fixture proves
 proposal, approval, replay rejection, drift rejection and explicit rejection
-through six additional broker requests and zero broker faults. The Node probe
-also covers exact-capability mismatch, missing files and ambiguous matches. No
+through six additional broker requests and zero broker faults. A separate
+reviewed-iteration probe proves an approved two-hunk patch between approved
+creation and explicit rejection, through ten broker requests and zero broker
+faults. The Node probe also covers duplicate/overlapping patch hunks,
+exact-capability mismatch, missing files and ambiguous matches. No
 path contacts an online model, transports a provider credential, touches
 Explorer or writes a production workspace file.

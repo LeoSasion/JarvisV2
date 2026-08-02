@@ -62,8 +62,8 @@ WPF command
                   -> encrypted terminal checkpoint
 ```
 
-`read`, `grep`, `find`, `ls`, non-mutating `propose_edit` and non-mutating
-`propose_create_file` are the only Pi tools installed in the session and
+`read`, `grep`, `find`, `ls`, non-mutating `propose_edit`, non-mutating
+`propose_patch` and non-mutating `propose_create_file` are the only Pi tools installed in the session and
 admitted by the production provider. The
 diagnostic provider itself requests only `ls`. `bash`, generic `edit` and
 `write` are unavailable. No provider credential enters the sidecar and its
@@ -168,6 +168,10 @@ The explicit new-file review state is captured at
 `docs/screenshots/jarvis-control-center-reviewed-create-file.png`; it labels the
 target as absent and exposes `CREATE ONCE` without starting Pi or creating a
 file.
+The multi-hunk review state is captured at
+`docs/screenshots/jarvis-control-center-reviewed-multi-hunk-patch.png`; it keeps
+every full remove/add segment in the producing turn and exposes `APPLY PATCH
+ONCE` without starting Pi or changing a file.
 The returning-user launcher is captured at
 `docs/screenshots/jarvis-session-launcher-recent-work.png`; it shows available
 and unavailable recent-work states without starting a runtime.

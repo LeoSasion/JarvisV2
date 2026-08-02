@@ -386,6 +386,8 @@
         "proposalTool",
         "proposalMaxFileBytes",
         "proposalMaxSegmentBytes",
+        "patchProposalMaxHunks",
+        "patchProposalMaxPreviewBytes",
         "createProposalMaxBytes",
         "pendingProposalLimit",
         "pendingProposalPolicy",
@@ -411,6 +413,7 @@
             "find",
             "ls",
             "propose_edit",
+            "propose_patch",
             "propose_create_file"
           ]
         },
@@ -422,13 +425,19 @@
           ]
         },
         "proposalTool": {
-          "const": "non-mutating-explicit-utf8-replace-or-create"
+          "const": "non-mutating-explicit-utf8-replace-patch-or-create"
         },
         "proposalMaxFileBytes": {
           "const": 1048576
         },
         "proposalMaxSegmentBytes": {
           "const": 4096
+        },
+        "patchProposalMaxHunks": {
+          "const": 8
+        },
+        "patchProposalMaxPreviewBytes": {
+          "const": 16384
         },
         "createProposalMaxBytes": {
           "const": 16384
@@ -446,7 +455,7 @@
           "const": "one-shot-explicit-operation-before-state-sha256"
         },
         "commitMode": {
-          "const": "atomic-replace-or-exclusive-create-and-post-verify"
+          "const": "atomic-existing-file-replace-or-patch-exclusive-create-and-post-verify"
         },
         "newFileSupported": {
           "const": true
@@ -461,7 +470,7 @@
           "const": false
         },
         "mutationGrant": {
-          "const": "desktop-owner-one-shot-reviewed-text-replace-or-create"
+          "const": "desktop-owner-one-shot-reviewed-text-replace-patch-or-create"
         },
         "reviewedSelfIteration": {
           "const": true

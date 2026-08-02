@@ -60,7 +60,14 @@ public sealed record PiAgentWorkspaceEditProposed(
     string RelativePath,
     string BeforeSha256,
     string OldText,
-    string NewText) : PiAgentTurnStreamEvent(TurnId, Sequence);
+    string NewText,
+    IReadOnlyList<PiAgentWorkspacePatchHunk> PatchHunks) :
+    PiAgentTurnStreamEvent(TurnId, Sequence);
+
+public sealed record PiAgentWorkspacePatchHunk(
+    int Ordinal,
+    string OldText,
+    string NewText);
 
 public sealed record PiAgentTurnCompleted(
     string TurnId,
@@ -137,6 +144,10 @@ public sealed record PiAgentDesktopProbeReceipt(
     bool PromptingEnabled,
     bool SessionPersisted,
     bool CredentialTransportAllowed,
+    bool WorkspacePatchSupported,
+    int WorkspacePatchMinimumHunks,
+    int WorkspacePatchMaximumHunks,
+    int WorkspacePatchMaximumPreviewBytes,
     bool ShellMutationSupported,
     bool ExplorerMutationSupported,
     bool SystemMutationSupported,
@@ -202,6 +213,7 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 "find",
                 "ls",
                 "propose_edit",
+                "propose_patch",
                 "propose_create_file",
             ],
             StringComparer.Ordinal);
@@ -860,7 +872,10 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                     "The Pi Agent ended an inactive tool call.");
             }
             if (
-                (toolName is "propose_edit" or "propose_create_file") &&
+                (toolName is
+                    "propose_edit" or
+                    "propose_patch" or
+                    "propose_create_file") &&
                 !isError)
             {
                 pending.AwaitingWorkspaceEditProposalCount++;
@@ -904,17 +919,30 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 root.GetProperty("newText").GetString()
                 ?? throw new InvalidOperationException(
                     "The Pi Agent workspace edit new text was missing.");
+            PiAgentWorkspacePatchHunk[] patchHunks = root
+                .GetProperty("patchHunks")
+                .EnumerateArray()
+                .Select(hunk => new PiAgentWorkspacePatchHunk(
+                    hunk.GetProperty("ordinal").GetInt32(),
+                    hunk.GetProperty("oldText").GetString()
+                        ?? throw new InvalidOperationException(
+                            "A Pi Agent workspace patch old text was missing."),
+                    hunk.GetProperty("newText").GetString()
+                        ?? throw new InvalidOperationException(
+                            "A Pi Agent workspace patch new text was missing.")))
+                .ToArray();
             if (
-                schemaVersion != 2 ||
+                schemaVersion != 3 ||
                 !WorkspaceEditProposalIdPattern.IsMatch(proposalId) ||
-                operation is not ("replace" or "create") ||
+                operation is not ("replace" or "patch" or "create") ||
                 !IsValidWorkspaceRelativePath(relativePath) ||
                 !Sha256Pattern.IsMatch(beforeSha256) ||
                 !IsValidWorkspaceProposalText(
                     operation,
                     beforeSha256,
                     oldText,
-                    newText) ||
+                    newText,
+                    patchHunks) ||
                 pending.AwaitingWorkspaceEditProposalCount != 1)
             {
                 throw new InvalidOperationException(
@@ -932,7 +960,8 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                     relativePath,
                     beforeSha256,
                     oldText,
-                    newText),
+                    newText,
+                    patchHunks),
                 cancellationToken);
             return;
         }
@@ -1303,9 +1332,9 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         bool mutationPerformed =
             data.GetProperty("mutationPerformed").GetBoolean();
         bool valid =
-            schemaVersion == 2 &&
+            schemaVersion == 3 &&
             proposalId == expectedProposalId &&
-            operation is "replace" or "create" &&
+            operation is "replace" or "patch" or "create" &&
             beforeSha256 == expectedBeforeSha256 &&
             IsValidWorkspaceRelativePath(relativePath) &&
             status == expectedStatus &&
@@ -1366,7 +1395,8 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         string operation,
         string beforeSha256,
         string oldText,
-        string newText)
+        string newText,
+        IReadOnlyList<PiAgentWorkspacePatchHunk> patchHunks)
     {
         if (
             oldText.Contains('\0') ||
@@ -1379,22 +1409,63 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         if (operation == "replace")
         {
             return
+                patchHunks.Count == 0 &&
                 oldText.Length != 0 &&
                 Encoding.UTF8.GetByteCount(oldText) <= 4_096 &&
                 Encoding.UTF8.GetByteCount(newText) <= 4_096 &&
                 oldText != newText;
         }
-        return
-            beforeSha256 == WorkspaceFileAbsentSha256 &&
-            oldText.Length == 0 &&
-            Encoding.UTF8.GetByteCount(newText) is > 0 and <= 16_384 &&
-            !newText.Any(character =>
-                character is >= '\u0001' and <= '\u0008' or
-                    '\u000b' or
-                    '\u000c' or
-                    >= '\u000e' and <= '\u001f' or
-                    '\u007f');
+        if (operation == "create")
+        {
+            return
+                patchHunks.Count == 0 &&
+                beforeSha256 == WorkspaceFileAbsentSha256 &&
+                oldText.Length == 0 &&
+                Encoding.UTF8.GetByteCount(newText) is > 0 and <= 16_384 &&
+                !ContainsBinaryControlCharacters(newText);
+        }
+        if (
+            oldText.Length != 0 ||
+            newText.Length != 0 ||
+            patchHunks.Count is < 2 or > 8)
+        {
+            return false;
+        }
+        HashSet<string> oldTexts = new(StringComparer.Ordinal);
+        int previewBytes = 0;
+        for (int index = 0; index < patchHunks.Count; index++)
+        {
+            PiAgentWorkspacePatchHunk hunk = patchHunks[index];
+            if (
+                hunk.Ordinal != index + 1 ||
+                hunk.OldText.Length == 0 ||
+                !IsStrictUtf16(hunk.OldText) ||
+                !IsStrictUtf16(hunk.NewText) ||
+                hunk.OldText.Contains('\0') ||
+                hunk.NewText.Contains('\0') ||
+                ContainsBinaryControlCharacters(hunk.OldText) ||
+                ContainsBinaryControlCharacters(hunk.NewText) ||
+                Encoding.UTF8.GetByteCount(hunk.OldText) > 4_096 ||
+                Encoding.UTF8.GetByteCount(hunk.NewText) > 4_096 ||
+                hunk.OldText == hunk.NewText ||
+                !oldTexts.Add(hunk.OldText))
+            {
+                return false;
+            }
+            previewBytes +=
+                Encoding.UTF8.GetByteCount(hunk.OldText) +
+                Encoding.UTF8.GetByteCount(hunk.NewText);
+        }
+        return previewBytes <= 16_384;
     }
+
+    private static bool ContainsBinaryControlCharacters(string value) =>
+        value.Any(character =>
+            character is >= '\u0001' and <= '\u0008' or
+                '\u000b' or
+                '\u000c' or
+                >= '\u000e' and <= '\u001f' or
+                '\u007f');
 
     private static bool IsStrictUtf16(string value)
     {
@@ -1467,6 +1538,7 @@ public static class PiAgentDesktopProbe
                     "find",
                     "ls",
                     "propose_edit",
+                    "propose_patch",
                     "propose_create_file",
                 ]) &&
             deniedTools.SequenceEqual(["bash", "edit", "write"]) &&
@@ -1507,6 +1579,22 @@ public static class PiAgentDesktopProbe
             !capabilityData
                 .GetProperty("credentialTransportAllowed")
                 .GetBoolean() &&
+            capabilityData
+                .GetProperty("workspacePatchSupported")
+                .GetBoolean() &&
+            capabilityData
+                .GetProperty("workspacePatchMinimumHunks")
+                .GetInt32() == 2 &&
+            capabilityData
+                .GetProperty("workspacePatchMaximumHunks")
+                .GetInt32() == 8 &&
+            capabilityData
+                .GetProperty("workspacePatchMaximumPreviewBytes")
+                .GetInt32() == 16_384 &&
+            capabilityData
+                .GetProperty("workspacePatchCommitMode")
+                .GetString() ==
+                    "single-file-atomic-replace-and-post-verify" &&
             !capabilityData
                 .GetProperty("shellMutationSupported")
                 .GetBoolean() &&
@@ -1545,6 +1633,7 @@ public static class PiAgentDesktopProbe
                     "find",
                     "ls",
                     "propose_edit",
+                    "propose_patch",
                     "propose_create_file",
                 ]) &&
             !sessionData
@@ -1600,6 +1689,10 @@ public static class PiAgentDesktopProbe
             false,
             false,
             false,
+            true,
+            2,
+            8,
+            16_384,
             false,
             false,
             false,

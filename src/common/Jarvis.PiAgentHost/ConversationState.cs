@@ -39,6 +39,14 @@ public sealed record PiAgentConversationToolSnapshot(
     int StartedSequence,
     int? CompletedSequence);
 
+public sealed record PiAgentWorkspaceReviewSegment(
+    string OriginalLabel,
+    string ProposedLabel,
+    string OriginalText,
+    string ProposedText,
+    string OriginalAutomationName,
+    string ProposedAutomationName);
+
 public sealed record PiAgentWorkspaceEditSnapshot(
     int SchemaVersion,
     string ProposalId,
@@ -47,18 +55,29 @@ public sealed record PiAgentWorkspaceEditSnapshot(
     string BeforeSha256,
     string OldText,
     string NewText,
+    IReadOnlyList<PiAgentWorkspacePatchHunk> PatchHunks,
     PiAgentWorkspaceEditStatus Status,
     string? AfterSha256,
     string? ErrorCode)
 {
     public bool CanDecide => Status == PiAgentWorkspaceEditStatus.Pending;
     public bool IsCreate => Operation == "create";
-    public string ProposalLabel => IsCreate
-        ? "NEW UTF-8 FILE PROPOSAL"
-        : "EXACT TEXT REPLACEMENT";
-    public string ConstraintLabel => IsCreate
-        ? "TARGET ABSENT / EXISTING PARENT / EXCLUSIVE ONE-SHOT CREATE"
-        : "EXISTING UTF-8 FILE / EXACT UNIQUE MATCH / ONE-SHOT BEFORE HASH";
+    public bool IsPatch => Operation == "patch";
+    public string ProposalLabel => Operation switch
+    {
+        "create" => "NEW UTF-8 FILE PROPOSAL",
+        "patch" => $"MULTI-HUNK PATCH / {PatchHunks.Count} EXACT CHANGES",
+        _ => "EXACT TEXT REPLACEMENT",
+    };
+    public string ConstraintLabel => Operation switch
+    {
+        "create" =>
+            "TARGET ABSENT / EXISTING PARENT / EXCLUSIVE ONE-SHOT CREATE",
+        "patch" =>
+            "ONE EXISTING UTF-8 FILE / 2-8 UNIQUE NON-OVERLAPPING HUNKS / ATOMIC REPLACE",
+        _ =>
+            "EXISTING UTF-8 FILE / EXACT UNIQUE MATCH / ONE-SHOT BEFORE HASH",
+    };
     public string OriginalTextLabel => IsCreate
         ? "TARGET / CURRENT STATE"
         : "REMOVE / EXACT TEXT";
@@ -68,15 +87,52 @@ public sealed record PiAgentWorkspaceEditSnapshot(
     public string OriginalTextDisplay => IsCreate
         ? "FILE DOES NOT EXIST"
         : OldText;
-    public string ApproveActionLabel => IsCreate
-        ? "CREATE ONCE"
-        : "APPROVE ONCE";
-    public string ApprovalAutomationName => IsCreate
-        ? "Create proposed workspace file once"
-        : "Approve workspace text replacement once";
-    public string DecisionBoundaryText => IsCreate
-        ? "Pi cannot press these controls. Reject creates nothing; Create Once rechecks the parent identity and target absence, then uses an exclusive write."
-        : "Pi cannot press these controls. Reject performs no write; Approve Once rechecks the exact file hash immediately before commit.";
+    public string ApproveActionLabel => Operation switch
+    {
+        "create" => "CREATE ONCE",
+        "patch" => "APPLY PATCH ONCE",
+        _ => "APPROVE ONCE",
+    };
+    public string ApprovalAutomationName => Operation switch
+    {
+        "create" => "Create proposed workspace file once",
+        "patch" => "Apply proposed multi-hunk workspace patch once",
+        _ => "Approve workspace text replacement once",
+    };
+    public string DecisionBoundaryText => Operation switch
+    {
+        "create" =>
+            "Pi cannot press these controls. Reject creates nothing; Create Once rechecks the parent identity and target absence, then uses an exclusive write.",
+        "patch" =>
+            "Pi cannot press these controls. Reject performs no write; Apply Patch Once rechecks the exact file identity and hash, applies every reviewed hunk to one in-memory source, then commits one atomic replacement.",
+        _ =>
+            "Pi cannot press these controls. Reject performs no write; Approve Once rechecks the exact file hash immediately before commit.",
+    };
+    public IReadOnlyList<PiAgentWorkspaceReviewSegment> ReviewSegments =>
+        IsPatch
+            ? PatchHunks.Select(hunk =>
+                new PiAgentWorkspaceReviewSegment(
+                    $"HUNK {hunk.Ordinal:D2} / REMOVE",
+                    $"HUNK {hunk.Ordinal:D2} / ADD",
+                    hunk.OldText,
+                    hunk.NewText,
+                    $"Current text for workspace patch hunk {hunk.Ordinal}",
+                    $"Proposed text for workspace patch hunk {hunk.Ordinal}"))
+                .ToArray()
+            :
+            [
+                new PiAgentWorkspaceReviewSegment(
+                    OriginalTextLabel,
+                    ProposedTextLabel,
+                    OriginalTextDisplay,
+                    NewText,
+                    IsCreate
+                        ? "Current missing workspace file state"
+                        : "Current workspace target text",
+                    IsCreate
+                        ? "Complete proposed workspace file content"
+                        : "Proposed replacement workspace text"),
+            ];
     public string StatusLabel => Status switch
     {
         PiAgentWorkspaceEditStatus.Pending => "OWNER REVIEW REQUIRED",
@@ -186,6 +242,11 @@ public sealed class PiAgentConversationState
         public required string BeforeSha256 { get; init; }
         public required string OldText { get; init; }
         public required string NewText { get; init; }
+        public required IReadOnlyList<PiAgentWorkspacePatchHunk> PatchHunks
+        {
+            get;
+            init;
+        }
         public PiAgentWorkspaceEditStatus Status { get; set; } =
             PiAgentWorkspaceEditStatus.Pending;
         public string? AfterSha256 { get; set; }
@@ -861,10 +922,12 @@ public sealed class PiAgentConversationState
                             .Any(edit =>
                                 edit.ProposalId == proposed.ProposalId) ||
                         !turn.Tools.Any(tool =>
-                            tool.ToolName == (
-                                proposed.Operation == "create"
-                                    ? "propose_create_file"
-                                    : "propose_edit") &&
+                            tool.ToolName == (proposed.Operation switch
+                            {
+                                "create" => "propose_create_file",
+                                "patch" => "propose_patch",
+                                _ => "propose_edit",
+                            }) &&
                             tool.Status ==
                                 PiAgentConversationToolStatus.Completed))
                     {
@@ -880,6 +943,7 @@ public sealed class PiAgentConversationState
                         BeforeSha256 = proposed.BeforeSha256,
                         OldText = proposed.OldText,
                         NewText = proposed.NewText,
+                        PatchHunks = proposed.PatchHunks,
                     };
                     if (!acceptingSubmissions)
                     {
@@ -1029,6 +1093,7 @@ public sealed class PiAgentConversationState
             proposal.BeforeSha256,
             proposal.OldText,
             proposal.NewText,
+            proposal.PatchHunks,
             proposal.Status,
             proposal.AfterSha256,
             proposal.ErrorCode);

@@ -32,6 +32,7 @@ import {
 import {
   createWorkspaceEditProposalTool,
   createWorkspaceFileProposalTool,
+  createWorkspacePatchProposalTool,
   WorkspaceEditProposalManager,
 } from "./workspace-edit-proposal.mjs";
 
@@ -603,6 +604,10 @@ export async function createReadOnlyAgentSession(
       admission,
       workspaceEditProposalManager,
     ),
+    createWorkspacePatchProposalTool(
+      admission,
+      workspaceEditProposalManager,
+    ),
     createWorkspaceFileProposalTool(
       admission,
       workspaceEditProposalManager,
@@ -618,6 +623,7 @@ export async function createReadOnlyAgentSession(
       "find",
       "ls",
       "propose_edit",
+      "propose_patch",
       "propose_create_file",
     ],
     excludeTools: ["bash", "edit", "write"],
@@ -638,7 +644,7 @@ export async function createReadOnlyAgentSession(
   );
   if (
     activeTools.join("|") !==
-      "read|grep|find|ls|propose_edit|propose_create_file" ||
+      "read|grep|find|ls|propose_edit|propose_patch|propose_create_file" ||
     persisted ||
     result.session.messages.length !==
       restoredContextMessageCount ||

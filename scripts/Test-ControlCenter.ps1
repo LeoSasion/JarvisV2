@@ -147,9 +147,11 @@ $requiredVisibleLabels = @(
     'Shell / direct edit / unattended approval: locked',
     'NEW UTF-8 FILE PROPOSAL',
     'EXACT TEXT REPLACEMENT',
+    'MULTI-HUNK PATCH',
     'Content="REJECT"',
     'APPROVE ONCE',
     'CREATE ONCE',
+    'APPLY PATCH ONCE',
     'Text="Reviewed iteration"',
     'Content="START REVIEWED LOOP"',
     'Content="RE-ARM"',
@@ -196,9 +198,9 @@ Add-Check `
             'AutomationProperties.Name="Send one conversation message"') -and
         $mainWindowText.Contains('AutomationProperties.Name="Cancel active turn"') -and
         $mainWindowText.Contains(
-            'AutomationProperties.Name="Current workspace target state"') -and
+            'AutomationProperties.Name="{Binding OriginalAutomationName}"') -and
         $mainWindowText.Contains(
-            'AutomationProperties.Name="Replacement workspace text"') -and
+            'AutomationProperties.Name="{Binding ProposedAutomationName}"') -and
         $mainWindowText.Contains(
             'AutomationProperties.LiveSetting="Polite"') -and
         $mainWindowText.Contains('ItemsSource="{Binding WorkspaceEdits}"') -and
@@ -209,9 +211,15 @@ Add-Check `
         $mainWindowText.Contains(
             'Content="{Binding ApproveActionLabel}"') -and
         $mainWindowText.Contains('Text="{Binding ProposalLabel}"') -and
+        $mainWindowText.Contains('ItemsSource="{Binding ReviewSegments}"') -and
+        [regex]::Matches(
+            $mainWindowText,
+            'VerticalScrollBarVisibility="Disabled"').Count -ge 2 -and
         $conversationStateText.Contains('NEW UTF-8 FILE PROPOSAL') -and
         $conversationStateText.Contains('EXACT TEXT REPLACEMENT') -and
+        $conversationStateText.Contains('MULTI-HUNK PATCH') -and
         $conversationStateText.Contains('CREATE ONCE') -and
+        $conversationStateText.Contains('APPLY PATCH ONCE') -and
         $conversationStateText.Contains('APPROVE ONCE') -and
         $mainWindowCodeText.Contains(
             'ApproveWorkspaceEditButton_OnClick') -and

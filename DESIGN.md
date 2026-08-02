@@ -108,7 +108,7 @@ continuation advances reasoning only and never advances approval.
 
 The implemented visual world is evidenced by
 `src/common/Jarvis.ControlCenter/MainWindow.xaml` and the final reviewed render
-at `docs/screenshots/jarvis-control-center-reviewed-create-file.png`. Its selected
+at `docs/screenshots/jarvis-control-center-reviewed-multi-hunk-patch.png`. Its selected
 surface concept is `docs/design/jarvis-conversation-handoff-rail.png`; the
 durable concept seed is `32fb29e4`. The bounded finish-review verdict is PASS:
 the accessibility, owner-action hierarchy and handoff-label clipping findings
@@ -340,9 +340,12 @@ it; it is not promoted to a modal or separate approval application. The same
 review plane uses amber while waiting, cyan after an exact commit, coral for
 drift or failure, and neutral structure after rejection. Every state is named
 in text. A replacement shows the normalized path, full before SHA-256, removed
-text and replacement text. A creation instead names `NEW UTF-8 FILE PROPOSAL`,
+  text and replacement text. A multi-hunk patch names its exact hunk count and
+  shows every complete remove/add pair in proposal order inside the
+  producing turn; the transcript owns scrolling, so no segment is silently
+  truncated behind a nested review scroller. A creation instead names `NEW UTF-8 FILE PROPOSAL`,
 shows the fixed absent-state sentinel, `FILE DOES NOT EXIST`, and the complete
-proposed content. Reject precedes the dynamic `APPROVE ONCE` or `CREATE ONCE`
+  proposed content. Reject precedes the dynamic `APPROVE ONCE`, `APPLY PATCH ONCE` or `CREATE ONCE`
 action in keyboard order. Pi cannot operate either control, and the composer
 remains disabled until the owner decides. Every later proposal returns to a
 fresh owner-operated decision.
@@ -400,8 +403,8 @@ primary actions.
 - **Do** retain the `32fb29e4` seed in surface metadata when deriving variants of
   this handoff concept.
 - **Do** show the owner the exact operation, path and before state plus either
-  the removed/replacement text or the complete new-file content before every
-  one-shot decision.
+  the removed/replacement text, every ordered patch remove/add pair, or the
+  complete new-file content before every one-shot decision.
 - **Do** show policy state as a maximum of four owner-approved edits within six
   hours; every applied edit still requires its own Approve Once.
 - **Do** preserve CurrentUser-DPAPI durable receipts while making proposal

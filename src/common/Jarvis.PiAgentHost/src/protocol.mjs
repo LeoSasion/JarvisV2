@@ -151,6 +151,12 @@ export async function handleRequest(
             workspaceEditApprovalMode:
               "one-shot-explicit-operation-before-state-sha256",
             workspaceEditExistingFilesOnly: false,
+            workspacePatchSupported: true,
+            workspacePatchMinimumHunks: 2,
+            workspacePatchMaximumHunks: 8,
+            workspacePatchMaximumPreviewBytes: 16_384,
+            workspacePatchCommitMode:
+              "single-file-atomic-replace-and-post-verify",
             workspaceFileCreateSupported: true,
             workspaceFileCreateMode:
               "exclusive-existing-parent-owner-approved",
@@ -315,7 +321,11 @@ export async function handleRequest(
                 isError: event.isError === true,
               });
               const proposal =
-                ["propose_edit", "propose_create_file"].includes(
+                [
+                  "propose_edit",
+                  "propose_patch",
+                  "propose_create_file",
+                ].includes(
                   event.toolName,
                 ) &&
                 event.isError !== true

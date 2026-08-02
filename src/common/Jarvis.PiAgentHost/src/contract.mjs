@@ -143,13 +143,15 @@ export function validateContract(contract) {
   }
   if (
     contract.tools?.initialAllowlist?.join("|") !==
-      "read|grep|find|ls|propose_edit|propose_create_file" ||
+      "read|grep|find|ls|propose_edit|propose_patch|propose_create_file" ||
     contract.tools?.initiallyDenied?.join("|") !==
       "bash|edit|write" ||
     contract.tools?.proposalTool !==
-      "non-mutating-explicit-utf8-replace-or-create" ||
+      "non-mutating-explicit-utf8-replace-patch-or-create" ||
     contract.tools?.proposalMaxFileBytes !== 1_048_576 ||
     contract.tools?.proposalMaxSegmentBytes !== 4_096 ||
+    contract.tools?.patchProposalMaxHunks !== 8 ||
+    contract.tools?.patchProposalMaxPreviewBytes !== 16_384 ||
     contract.tools?.createProposalMaxBytes !== 16_384 ||
     contract.tools?.pendingProposalLimit !== 1 ||
     contract.tools?.pendingProposalPolicy !==
@@ -158,14 +160,14 @@ export function validateContract(contract) {
     contract.tools?.approvalMode !==
       "one-shot-explicit-operation-before-state-sha256" ||
     contract.tools?.commitMode !==
-      "atomic-replace-or-exclusive-create-and-post-verify" ||
+      "atomic-existing-file-replace-or-patch-exclusive-create-and-post-verify" ||
     contract.tools?.newFileSupported !== true ||
     contract.tools?.newFileParentPolicy !==
       "existing-canonical-directory-no-auto-create" ||
     contract.tools?.versionControlMetadataMutation !== false ||
     contract.tools?.deleteSupported !== false ||
     contract.tools?.mutationGrant !==
-      "desktop-owner-one-shot-reviewed-text-replace-or-create" ||
+      "desktop-owner-one-shot-reviewed-text-replace-patch-or-create" ||
     contract.tools?.unattendedSelfIteration !== false
   ) {
     failures.push("tools");

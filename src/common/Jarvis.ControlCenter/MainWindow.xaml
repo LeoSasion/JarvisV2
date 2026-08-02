@@ -669,55 +669,59 @@
                                                                         <TextBlock Margin="0,9,0,0" Foreground="{StaticResource TextMutedBrush}" FontFamily="Consolas" FontSize="9" Text="{Binding BeforeHashLabel}" TextTrimming="CharacterEllipsis" />
                                                                         <TextBlock Margin="0,3,0,0" Foreground="{StaticResource TextMutedBrush}" FontFamily="Consolas" FontSize="9" Text="{Binding AfterHashLabel}" TextTrimming="CharacterEllipsis" />
 
-                                                                        <Grid Margin="0,11,0,0">
-                                                                            <Grid.ColumnDefinitions>
-                                                                                <ColumnDefinition Width="*" />
-                                                                                <ColumnDefinition Width="12" />
-                                                                                <ColumnDefinition Width="*" />
-                                                                            </Grid.ColumnDefinitions>
-                                                                            <StackPanel>
-                                                                                <TextBlock Foreground="{StaticResource RedBrush}" FontFamily="Consolas" FontSize="9" Text="{Binding OriginalTextLabel}" />
-                                                                                <TextBox
-                                                                                    AutomationProperties.Name="Current workspace target state"
-                                                                                    Margin="0,5,0,0"
-                                                                                    MinHeight="54"
-                                                                                    MaxHeight="130"
-                                                                                    Padding="8,6"
-                                                                                    IsReadOnly="True"
-                                                                                    AcceptsReturn="True"
-                                                                                    VerticalScrollBarVisibility="Auto"
-                                                                                    HorizontalScrollBarVisibility="Auto"
-                                                                                    Background="#090D10"
-                                                                                    BorderBrush="{StaticResource LineBrush}"
-                                                                                    BorderThickness="1"
-                                                                                    Foreground="{StaticResource TextBrush}"
-                                                                                    FontFamily="Consolas"
-                                                                                    FontSize="10"
-                                                                                    Text="{Binding OriginalTextDisplay, Mode=OneWay}" />
-                                                                            </StackPanel>
-                                                                            <StackPanel Grid.Column="2">
-                                                                                <TextBlock Foreground="{StaticResource CyanBrush}" FontFamily="Consolas" FontSize="9" Text="{Binding ProposedTextLabel}" />
-                                                                                <TextBox
-                                                                                    AutomationProperties.Name="Replacement workspace text"
-                                                                                    Margin="0,5,0,0"
-                                                                                    MinHeight="54"
-                                                                                    MaxHeight="130"
-                                                                                    Padding="8,6"
-                                                                                    IsReadOnly="True"
-                                                                                    AcceptsReturn="True"
-                                                                                    VerticalScrollBarVisibility="Auto"
-                                                                                    HorizontalScrollBarVisibility="Auto"
-                                                                                    Background="#090D10"
-                                                                                    BorderBrush="{StaticResource LineBrush}"
-                                                                                    BorderThickness="1"
-                                                                                    Foreground="{StaticResource TextBrush}"
-                                                                                    FontFamily="Consolas"
-                                                                                    FontSize="10"
-                                                                                    Text="{Binding NewText, Mode=OneWay}" />
-                                                                            </StackPanel>
-                                                                        </Grid>
+                                                                        <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding ReviewSegments}">
+                                                                            <ItemsControl.ItemTemplate>
+                                                                                <DataTemplate>
+                                                                                    <Grid Margin="0,0,0,7">
+                                                                                        <Grid.ColumnDefinitions>
+                                                                                            <ColumnDefinition Width="*" />
+                                                                                            <ColumnDefinition Width="12" />
+                                                                                            <ColumnDefinition Width="*" />
+                                                                                        </Grid.ColumnDefinitions>
+                                                                                        <StackPanel>
+                                                                                            <TextBlock Foreground="{StaticResource RedBrush}" FontFamily="Consolas" FontSize="9" Text="{Binding OriginalLabel}" />
+                                                                                            <TextBox
+                                                                                                AutomationProperties.Name="{Binding OriginalAutomationName}"
+                                                                                                Margin="0,5,0,0"
+                                                                                                MinHeight="42"
+                                                                                                Padding="8,6"
+                                                                                                IsReadOnly="True"
+                                                                                                AcceptsReturn="True"
+                                                                                                VerticalScrollBarVisibility="Disabled"
+                                                                                                HorizontalScrollBarVisibility="Auto"
+                                                                                                Background="#090D10"
+                                                                                                BorderBrush="{StaticResource LineBrush}"
+                                                                                                BorderThickness="1"
+                                                                                                Foreground="{StaticResource TextBrush}"
+                                                                                                FontFamily="Consolas"
+                                                                                                FontSize="10"
+                                                                                                Text="{Binding OriginalText, Mode=OneWay}" />
+                                                                                        </StackPanel>
+                                                                                        <StackPanel Grid.Column="2">
+                                                                                            <TextBlock Foreground="{StaticResource CyanBrush}" FontFamily="Consolas" FontSize="9" Text="{Binding ProposedLabel}" />
+                                                                                            <TextBox
+                                                                                                AutomationProperties.Name="{Binding ProposedAutomationName}"
+                                                                                                Margin="0,5,0,0"
+                                                                                                MinHeight="42"
+                                                                                                Padding="8,6"
+                                                                                                IsReadOnly="True"
+                                                                                                AcceptsReturn="True"
+                                                                                                VerticalScrollBarVisibility="Disabled"
+                                                                                                HorizontalScrollBarVisibility="Auto"
+                                                                                                Background="#090D10"
+                                                                                                BorderBrush="{StaticResource LineBrush}"
+                                                                                                BorderThickness="1"
+                                                                                                Foreground="{StaticResource TextBrush}"
+                                                                                                FontFamily="Consolas"
+                                                                                                FontSize="10"
+                                                                                                Text="{Binding ProposedText, Mode=OneWay}" />
+                                                                                        </StackPanel>
+                                                                                    </Grid>
+                                                                                </DataTemplate>
+                                                                            </ItemsControl.ItemTemplate>
+                                                                        </ItemsControl>
 
-                                                                        <Grid Margin="0,12,0,0">
+                                                                        <Grid Margin="0,9,0,0">
                                                                             <Grid.ColumnDefinitions>
                                                                                 <ColumnDefinition Width="*" />
                                                                                 <ColumnDefinition Width="Auto" />
@@ -1098,7 +1102,7 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <TextBlock Margin="0,9,0,0" Foreground="{StaticResource TextFaintBrush}" FontSize="10" Text="Permitted: read, grep, find, ls, propose_edit, propose_create_file" TextWrapping="Wrap" />
+                                <TextBlock Margin="0,9,0,0" Foreground="{StaticResource TextFaintBrush}" FontSize="10" Text="Permitted: read, grep, find, ls, propose_edit, propose_patch, propose_create_file" TextWrapping="Wrap" />
                                 <TextBlock Margin="0,4,0,0" Foreground="{StaticResource AmberBrush}" FontSize="10" Text="Writes: desktop-owner approval only" />
                                 <TextBlock Margin="0,4,0,0" Foreground="{StaticResource RedBrush}" FontSize="10" Text="Shell / direct edit / unattended approval: locked" TextWrapping="Wrap" />
                                 <TextBlock Margin="0,4,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Text="Loop continuation: desktop policy + passed repository gate" TextWrapping="Wrap" />

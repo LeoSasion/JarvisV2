@@ -17,6 +17,7 @@ public sealed record PiAgentReviewedIterationProbeReceipt(
     bool FirstProposalPausedForOwner,
     bool ApprovedEditValidated,
     bool ApprovedNewFileValidated,
+    bool ApprovedPatchValidated,
     bool UntrackedWhitespaceRejected,
     bool AutomaticReasoningContinuationPassed,
     bool SecondProposalPausedForOwner,
@@ -132,6 +133,7 @@ public static class PiAgentReviewedIterationProbe
             bool firstProposalPaused;
             bool approvedValidated;
             bool approvedNewFileValidated;
+            bool approvedPatchValidated;
             bool automaticContinuation;
             bool secondProposalPaused;
             bool rejectionStopped;
@@ -221,19 +223,57 @@ public static class PiAgentReviewedIterationProbe
                         PiAgentReviewedIterationStatus.AwaitingOwnerReview &&
                     secondPending.CurrentProposalId ==
                         secondProposal.ProposalId &&
-                    secondProposal.Operation == "replace" &&
+                    secondProposal.Operation == "patch" &&
+                    secondProposal.PatchHunks.Count == 2 &&
                     secondProposal.RelativePath == "generated.txt";
-                PiAgentReviewedIterationDecisionResult rejected =
-                    await coordinator.RejectAsync(
+                PiAgentReviewedIterationDecisionResult patchApproved =
+                    await coordinator.ApproveAndContinueAsync(
                         secondProposal.ProposalId,
                         cancellationToken);
+                approvedPatchValidated =
+                    patchApproved.Edit.Status ==
+                        PiAgentWorkspaceEditStatus.Applied &&
+                    patchApproved.Edit.Operation == "patch" &&
+                    patchApproved.Edit.PatchHunks.Count == 2 &&
+                    patchApproved.Iteration.ApprovedEditCount == 2 &&
+                    patchApproved.Iteration.Steps.Count == 2 &&
+                    patchApproved.Iteration.Steps.Last().ValidationResult ==
+                        "passed" &&
+                    await File.ReadAllTextAsync(
+                        createdFixturePath,
+                        cancellationToken) ==
+                        "OWNER-patched\n";
+                automaticContinuation =
+                    automaticContinuation &&
+                    patchApproved.ContinuedTurn is not null &&
+                    patchApproved.Iteration.Status ==
+                        PiAgentReviewedIterationStatus.ActiveTurn;
+                if (patchApproved.ContinuedTurn is null)
+                {
+                    throw new InvalidOperationException(
+                        "The reviewed iteration did not continue after the approved patch.");
+                }
+                PiAgentConversationTurnSnapshot thirdFinal =
+                    await patchApproved.ContinuedTurn.Completion.WaitAsync(
+                        cancellationToken);
+                await coordinator.ObserveTurnCompletionAsync(
+                    thirdFinal,
+                    cancellationToken);
+                PiAgentWorkspaceEditSnapshot thirdProposal =
+                    thirdFinal.WorkspaceEdits.Single();
+                PiAgentReviewedIterationDecisionResult rejected =
+                    await coordinator.RejectAsync(
+                        thirdProposal.ProposalId,
+                        cancellationToken);
                 rejectionStopped =
+                    thirdProposal.Operation == "replace" &&
+                    thirdProposal.RelativePath == "generated.txt" &&
                     rejected.Edit.Status ==
                         PiAgentWorkspaceEditStatus.Rejected &&
                     rejected.Iteration.Status ==
                         PiAgentReviewedIterationStatus.Stopped &&
-                    rejected.Iteration.Steps.Count == 2 &&
-                    rejected.Iteration.ApprovedEditCount == 1;
+                    rejected.Iteration.Steps.Count == 3 &&
+                    rejected.Iteration.ApprovedEditCount == 2;
 
                 brokerRequests += runtime.BrokerRequestCount;
                 brokerFaults += runtime.BrokerFaultCount;
@@ -249,8 +289,8 @@ public static class PiAgentReviewedIterationProbe
             bool durableRoundTrip =
                 durableFirst.Status ==
                     PiAgentReviewedIterationStatus.Stopped &&
-                durableFirst.Steps.Count == 2 &&
-                durableFirst.ApprovedEditCount == 1;
+                durableFirst.Steps.Count == 3 &&
+                durableFirst.ApprovedEditCount == 2;
             bool ciphertext = Directory.EnumerateFiles(
                     storeRoot,
                     "*.j2iteration",
@@ -404,6 +444,7 @@ public static class PiAgentReviewedIterationProbe
                 firstProposalPaused &&
                 approvedValidated &&
                 approvedNewFileValidated &&
+                approvedPatchValidated &&
                 untrackedWhitespaceRejected &&
                 automaticContinuation &&
                 secondProposalPaused &&
@@ -425,6 +466,7 @@ public static class PiAgentReviewedIterationProbe
                 firstProposalPaused,
                 approvedValidated,
                 approvedNewFileValidated,
+                approvedPatchValidated,
                 untrackedWhitespaceRejected,
                 automaticContinuation,
                 secondProposalPaused,
@@ -590,6 +632,40 @@ public static class PiAgentReviewedIterationProbe
                 yield return new DesktopModelCompleted(
                     "toolUse",
                     new DesktopModelUsage(14, 10, 0, 0));
+                yield break;
+            }
+            if (createFirst && sequence == 3)
+            {
+                string patchToolCallId =
+                    $"reviewed-iteration-patch-{sequence}";
+                yield return new DesktopModelToolCallStarted(
+                    patchToolCallId,
+                    "propose_patch");
+                yield return new DesktopModelToolCallDelta(
+                    patchToolCallId,
+                    JsonSerializer.Serialize(new
+                    {
+                        path = "generated.txt",
+                        replacements = new[]
+                        {
+                            new
+                            {
+                                oldText = "owner-",
+                                newText = "OWNER-",
+                            },
+                            new
+                            {
+                                oldText = "created",
+                                newText = "patched",
+                            },
+                        },
+                    }));
+                yield return new DesktopModelToolCallCompleted(
+                    patchToolCallId);
+                currentText = "OWNER-patched";
+                yield return new DesktopModelCompleted(
+                    "toolUse",
+                    new DesktopModelUsage(16, 12, 0, 0));
                 yield break;
             }
             string replacement = currentText switch

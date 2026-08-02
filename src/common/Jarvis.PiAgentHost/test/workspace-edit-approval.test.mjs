@@ -55,16 +55,20 @@ try {
       "find",
       "ls",
       "propose_edit",
+      "propose_patch",
       "propose_create_file",
     ],
   );
   const proposeTool =
     sessionHandle.session.getToolDefinition("propose_edit");
+  const patchTool =
+    sessionHandle.session.getToolDefinition("propose_patch");
   const createTool =
     sessionHandle.session.getToolDefinition(
       "propose_create_file",
     );
   assert.ok(proposeTool);
+  assert.ok(patchTool);
   assert.ok(createTool);
 
   const firstResult = await proposeTool.execute(
@@ -80,7 +84,7 @@ try {
   );
   const first =
     firstResult.details.workspaceEditProposal;
-  assert.equal(first.schemaVersion, 2);
+  assert.equal(first.schemaVersion, 3);
   assert.equal(first.operation, "replace");
   assert.equal(first.relativePath, "notes.txt");
   assert.match(first.proposalId, /^workspace-edit-[0-9a-f]{32}$/u);
@@ -181,6 +185,106 @@ try {
     await readFile(workspaceFile, "utf8"),
     "alpha\nowner-updated-elsewhere\nomega\n",
   );
+
+  const patchResult = await patchTool.execute(
+    "proposal-tool-patch",
+    {
+      path: "notes.txt",
+      replacements: [
+        { oldText: "alpha", newText: "ALPHA" },
+        { oldText: "omega", newText: "OMEGA" },
+      ],
+    },
+    undefined,
+    undefined,
+    undefined,
+  );
+  const patchProposal =
+    patchResult.details.workspaceEditProposal;
+  assert.equal(patchProposal.schemaVersion, 3);
+  assert.equal(patchProposal.operation, "patch");
+  assert.equal(patchProposal.relativePath, "notes.txt");
+  assert.equal(patchProposal.patchHunks.length, 2);
+  assert.deepEqual(
+    patchProposal.patchHunks.map(hunk => hunk.ordinal),
+    [1, 2],
+  );
+  assert.equal(
+    await readFile(workspaceFile, "utf8"),
+    "alpha\nowner-updated-elsewhere\nomega\n",
+  );
+  const patched = await handleRequest(
+    {
+      type: "commit_workspace_edit",
+      id: "commit-patch",
+      proposalId: patchProposal.proposalId,
+      beforeSha256: patchProposal.beforeSha256,
+    },
+    {},
+    {},
+    state,
+  );
+  assert.equal(patched.response.success, true);
+  assert.equal(patched.response.data.operation, "patch");
+  assert.equal(patched.response.data.schemaVersion, 3);
+  assert.equal(patched.response.data.mutationPerformed, true);
+  assert.equal(
+    await readFile(workspaceFile, "utf8"),
+    "ALPHA\nowner-updated-elsewhere\nOMEGA\n",
+  );
+
+  const rejectedPatchResult = await patchTool.execute(
+    "proposal-tool-patch-reject",
+    {
+      path: "notes.txt",
+      replacements: [
+        { oldText: "ALPHA", newText: "alpha-again" },
+        { oldText: "OMEGA", newText: "omega-again" },
+      ],
+    },
+    undefined,
+    undefined,
+    undefined,
+  );
+  const rejectedPatchProposal =
+    rejectedPatchResult.details.workspaceEditProposal;
+  const rejectedPatch = await handleRequest(
+    {
+      type: "discard_workspace_edit",
+      id: "reject-patch",
+      proposalId: rejectedPatchProposal.proposalId,
+      beforeSha256: rejectedPatchProposal.beforeSha256,
+    },
+    {},
+    {},
+    state,
+  );
+  assert.equal(rejectedPatch.response.success, true);
+  assert.equal(rejectedPatch.response.data.operation, "patch");
+  assert.equal(
+    await readFile(workspaceFile, "utf8"),
+    "ALPHA\nowner-updated-elsewhere\nOMEGA\n",
+  );
+  await assert.rejects(
+    patchTool.execute(
+      "proposal-tool-patch-control-character",
+      {
+        path: "notes.txt",
+        replacements: [
+          { oldText: "ALPHA", newText: "ALPHA\u0001" },
+          { oldText: "OMEGA", newText: "omega-safe" },
+        ],
+      },
+      undefined,
+      undefined,
+      undefined,
+    ),
+    error => error?.code === "invalid-workspace-patch",
+  );
+  assert.equal(
+    await readFile(workspaceFile, "utf8"),
+    "ALPHA\nowner-updated-elsewhere\nOMEGA\n",
+  );
   const driftReplay = await handleRequest(
     {
       type: "commit_workspace_edit",
@@ -246,7 +350,7 @@ try {
   assert.equal(rejected.response.data.afterSha256, null);
   assert.equal(
     await readFile(workspaceFile, "utf8"),
-    "alpha\nowner-updated-elsewhere\nomega\n",
+    "ALPHA\nowner-updated-elsewhere\nOMEGA\n",
   );
 
   await assert.rejects(
@@ -268,8 +372,8 @@ try {
       "proposal-tool-ambiguous",
       {
         path: "notes.txt",
-        oldText: "a",
-        newText: "A",
+        oldText: "e",
+        newText: "E",
       },
       undefined,
       undefined,
@@ -291,7 +395,7 @@ try {
   );
   const createProposal =
     createResult.details.workspaceEditProposal;
-  assert.equal(createProposal.schemaVersion, 2);
+  assert.equal(createProposal.schemaVersion, 3);
   assert.equal(createProposal.operation, "create");
   assert.equal(
     createProposal.relativePath,
@@ -472,6 +576,39 @@ try {
     (error) => error.code ===
       "workspace-edit-match-not-unique",
   );
+  await writeFile(overlappingFile, "abcdef", "utf8");
+  await assert.rejects(
+    patchTool.execute(
+      "proposal-tool-patch-overlapping",
+      {
+        path: "overlapping.txt",
+        replacements: [
+          { oldText: "abc", newText: "ABC" },
+          { oldText: "bc", newText: "BC" },
+        ],
+      },
+      undefined,
+      undefined,
+      undefined,
+    ),
+    (error) => error.code === "workspace-patch-overlap",
+  );
+  await assert.rejects(
+    patchTool.execute(
+      "proposal-tool-patch-duplicate",
+      {
+        path: "overlapping.txt",
+        replacements: [
+          { oldText: "abc", newText: "ABC" },
+          { oldText: "abc", newText: "ABCD" },
+        ],
+      },
+      undefined,
+      undefined,
+      undefined,
+    ),
+    (error) => error.code === "invalid-workspace-patch",
+  );
 
   process.stdout.write(
     `${JSON.stringify({
@@ -483,6 +620,14 @@ try {
       proposalToolMutates: false,
       existingTextFilesOnly: false,
       newUtf8FileSupported: true,
+      multiHunkPatchSupported: true,
+      patchMinimumHunks: 2,
+      patchMaximumHunks: 8,
+      patchMaximumPreviewBytes: 16_384,
+      patchSingleFileOnly: true,
+      patchAtomicReplace: true,
+      patchOverlapRejected: true,
+      patchBinaryControlsRejected: true,
       newFileMaxBytes: 16_384,
       existingParentRequired: true,
       exclusiveCreate: true,
