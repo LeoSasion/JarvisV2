@@ -79,6 +79,18 @@ disabled. A live own-process run on the separate Explorer PID mode changed
 35,744 pixels only inside the 32-pixel caption band; the before and post-TTL
 images were byte-for-byte identical.
 
+The tenth slice, `Jarvis.Win10.TaskbarEdgeOverlay`, extends the same canary
+strategy to the classic Win10 taskbar without covering its controls. A
+separate transparent, mouse-through, non-activating WPF window binds one exact
+bottom-horizontal primary `Shell_TrayWnd` and draws only an eight-DIP
+shared-RGB vector signal along its top edge. It retreats behind fullscreen,
+closes on target or geometry drift and expires after a confirmed 10-60 second
+TTL. Start, task buttons, notification area, clock and Show Desktop remain
+native. No Explorer property is written and no code is loaded into the Shell.
+The implementation and deterministic safety model are offline-verified; the
+v1 rail has not yet been described as live visually verified. See
+`docs/WINDOWS10-TASKBAR-EDGE-OVERLAY.md`.
+
 The platform-neutral `Jarvis.VisualEffects` library and
 `neural-void-global-vfx-v1` contract now define 30 typed
 parameters across five particle modules and five ordered post effects, plus
@@ -129,7 +141,9 @@ runnable preview and reproducible screenshot.
 
 The Shell probe reads window structure but does not collect titles or modify
 Explorer. Neither probe uses Windhawk.
-The next visible slice may expand authenticated conversation and supervised
-self-iteration capabilities while real Explorer remains untouched.
+The next visible work continues from the desktop, Explorer and taskbar
+canaries toward one narrowly hosted, reversible native Shell theme path. Pi
+conversation and supervised self-iteration remain background runtime concerns,
+not the center of the desktop composition.
 Future projects continue to use `Jarvis.Win10.<Feature>` and must not reuse
 Win11 private symbols, selectors, DWM backdrops or module IDs.

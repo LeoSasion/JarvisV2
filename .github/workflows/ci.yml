@@ -138,6 +138,21 @@ jobs:
           pwsh -NoLogo -NoProfile -File
           .\scripts\Test-Windows10ExplorerCaptionOverlay.ps1
 
+      - name: Audit and build Windows 10 owned taskbar edge overlay
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-Windows10TaskbarEdgeOverlay.ps1
+
+      - name: Upload Windows 10 taskbar edge visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: win10-taskbar-edge-overlay
+          path: artifacts/win10-taskbar-edge-overlay-tests/*.png
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Audit Windows 10 offline Shell surface selector model
         shell: pwsh
         run: >-

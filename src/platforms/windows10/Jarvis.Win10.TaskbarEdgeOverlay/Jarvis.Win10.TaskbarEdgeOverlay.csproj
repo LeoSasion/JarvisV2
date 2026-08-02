@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <AssemblyName>jarvis-win10-taskbar-edge-overlay</AssemblyName>
+    <RootNamespace>Jarvis.Win10.TaskbarEdgeOverlay</RootNamespace>
+    <StartupObject>Jarvis.Win10.TaskbarEdgeOverlay.Program</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference
+      Include="..\..\..\common\Jarvis.VisualEffects\Jarvis.VisualEffects.csproj" />
+    <ProjectReference
+      Include="..\Jarvis.Win10.ShellSurfaceProbe\Jarvis.Win10.ShellSurfaceProbe.csproj" />
+  </ItemGroup>
+</Project>

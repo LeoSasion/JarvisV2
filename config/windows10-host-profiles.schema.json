@@ -80,6 +80,7 @@
               "read-shell-window-topology",
               "read-single-explorer-caption-state",
               "run-bounded-owned-explorer-caption-overlay-preview",
+              "run-bounded-owned-taskbar-edge-overlay-preview",
               "run-bounded-single-explorer-dark-caption-preview",
               "set-owned-window-dark-caption",
               "run-bounded-desktop-text-color-preview"

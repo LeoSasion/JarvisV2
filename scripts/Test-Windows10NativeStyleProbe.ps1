@@ -196,7 +196,7 @@ Add-Check `
     -Passed (
         -not $profile[0].activationPermitted -and
         $profile[0].liveExplorer -eq 'not-run' -and
-        @($profile[0].allowedCapabilities).Count -eq 6 -and
+        @($profile[0].allowedCapabilities).Count -eq 7 -and
         @($profile[0].allowedCapabilities) -contains
             'read-system-dwm-state' -and
         @($profile[0].allowedCapabilities) -contains
@@ -206,13 +206,15 @@ Add-Check `
         @($profile[0].allowedCapabilities) -contains
             'run-bounded-owned-explorer-caption-overlay-preview' -and
         @($profile[0].allowedCapabilities) -contains
+            'run-bounded-owned-taskbar-edge-overlay-preview' -and
+        @($profile[0].allowedCapabilities) -contains
             'set-owned-window-dark-caption' -and
         @($profile[0].allowedCapabilities) -contains
             'run-bounded-desktop-text-color-preview') `
     -Detail (
         'The profile grants system-DWM reads, owned-caption writes, read-only ' +
-        'Shell topology, a bounded owned caption overlay and a bounded ' +
-        'desktop text preview; module activation remains denied.')
+        'Shell topology, bounded owned caption/taskbar edge overlays and a ' +
+        'bounded desktop text preview; module activation remains denied.')
 
 Add-Check `
     -Name 'profile.schema-identity' `

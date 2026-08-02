@@ -1,0 +1,20 @@
+<Window
+    x:Class="Jarvis.Win10.TaskbarEdgeOverlay.OverlayWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:Jarvis.Win10.TaskbarEdgeOverlay"
+    Title="JARVIS owned taskbar edge overlay"
+    Width="1200"
+    Height="8"
+    AllowsTransparency="True"
+    Background="Transparent"
+    Focusable="False"
+    Opacity="0"
+    ResizeMode="NoResize"
+    ShowActivated="False"
+    ShowInTaskbar="False"
+    Topmost="True"
+    WindowStyle="None">
+
+    <local:TaskbarEdgeRail x:Name="Rail" />
+</Window>

@@ -102,12 +102,13 @@ $expectedWindows10Projects =
         'Jarvis.Win10.RgbThemeModel',
         'Jarvis.Win10.ShellSurfaceProbe',
         'Jarvis.Win10.SurfaceSelectorModel'
+        'Jarvis.Win10.TaskbarEdgeOverlay'
     )
 Add-Check `
     'windows10.reviewed-project-set' `
     (($windows10Projects -join '|') -eq
         ($expectedWindows10Projects -join '|')) `
-    'Windows 10 contains only the ten reviewed platform projects.'
+    'Windows 10 contains only the eleven reviewed platform projects.'
 
 $windows10 = @($matrix.platforms | Where-Object id -eq 'windows10')
 $windows11 = @($matrix.platforms | Where-Object id -eq 'windows11')
