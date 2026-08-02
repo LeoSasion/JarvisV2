@@ -68,8 +68,8 @@ The runtime remains provider-neutral: its WPF composition root selects the
 provider and owns any provider credential source. Production mode uses the
 desktop-only `OpenAiResponsesModelProvider`; its CurrentUser-DPAPI key never
 enters the broker protocol or sidecar. The Pi sidecar remains offline and has
-  only `read`, `grep`, `find`, `ls`, `propose_edit`, `propose_patch` and
-  `propose_create_file` inside one admitted
+  only `read`, `grep`, `find`, `ls`, `propose_edit`, `propose_patch`,
+  `propose_create_file` and `propose_change_set` inside one admitted
 workspace. Pi SDK session persistence remains disabled.
 The desktop can persist only the bounded completed-text checkpoint in its
 CurrentUser-DPAPI store; the sidecar never reads the store or encryption key.
@@ -77,7 +77,10 @@ Each terminal turn is saved in order. A persistence failure closes further
   submissions and is surfaced during shutdown while sidecar cleanup still runs.
   Proposal tools do not write. Existing-file patches are limited to 2–8
   distinct, unique, non-overlapping hunks in one strict UTF-8 file and commit
-  through the same single-file atomic replacement boundary. Exact commit and discard requests remain
+  through the same single-file atomic replacement boundary. Change sets bind
+  two to four ordered files to one review digest and one desktop decision; a
+  strict journal converges interrupted work to all-before or
+  all-committed-after state before tools return. Exact commit and discard requests remain
 desktop-only and are exposed through conversation-state owner decisions. The
 runtime does not enable shell or generic mutation tools, contact Explorer,
 modify the registry or control physical RGB devices.
@@ -100,8 +103,9 @@ The deterministic `runtime-probe` command proves:
   submission shutdown after a forced commit failure;
 - fail-closed rejection of duplicate and over-limit checkpoints;
 - exact broker/session admission;
-- one structured existing-text proposal, approved fixture commit, replay
-  rejection, drift rejection and explicit no-write rejection;
+- one structured existing-text proposal plus one mixed three-file change set,
+  approved fixture commits, exact per-file receipts, replay rejection, drift
+  rejection and explicit no-write rejection;
 - rejection of submissions after quiesce;
 - active-turn cancellation during shutdown;
 - cleanup of the provider, broker and owned sidecar after a protected-root

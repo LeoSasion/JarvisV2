@@ -8,6 +8,14 @@ public sealed record PiAgentDesktopRuntimeOptions(
     PiAgentConversationCheckpoint? ConversationCheckpoint = null,
     PiAgentConversationCheckpointStore? ConversationCheckpointStore = null);
 
+public sealed record PiAgentWorkspaceTransactionRecoveryReceipt(
+    int SchemaVersion,
+    string ReceiptType,
+    string Result,
+    string? ProposalId,
+    int FileCount,
+    bool MutationPerformed);
+
 public sealed class PiAgentDesktopRuntime : IAsyncDisposable
 {
     public const string OwnershipModel =
@@ -43,6 +51,7 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
         PiAgentConversationCheckpoint? restoredCheckpoint,
         bool checkpointLoadedFromStore,
         int restoredCheckpointTurnCount,
+        PiAgentWorkspaceTransactionRecoveryReceipt transactionRecovery,
         int shutdownTimeoutMilliseconds)
     {
         this.broker = broker;
@@ -55,6 +64,7 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
             lastQueuedCheckpoint = restoredCheckpoint;
         }
         RestoredCheckpointTurnCount = restoredCheckpointTurnCount;
+        WorkspaceTransactionRecovery = transactionRecovery;
         this.shutdownTimeoutMilliseconds = shutdownTimeoutMilliseconds;
         Conversation.TerminalCheckpointAvailable +=
             QueueCheckpointPersistence;
@@ -67,6 +77,8 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
     public int BrokerRequestCount => broker.RequestCount;
     public int BrokerFaultCount => broker.FaultCount;
     public int RestoredCheckpointTurnCount { get; }
+    public PiAgentWorkspaceTransactionRecoveryReceipt
+        WorkspaceTransactionRecovery { get; }
     public PiAgentConversationCheckpointStoreReceipt?
         LastCheckpointStoreReceipt
     {
@@ -145,7 +157,9 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
                     sessionRequestId,
                     checkpoint,
                     cancellationToken);
-            string canonicalWorkspaceRoot =
+            (string canonicalWorkspaceRoot,
+                PiAgentWorkspaceTransactionRecoveryReceipt
+                    transactionRecovery) =
                 ValidateSessionReceipt(
                     session.RootElement,
                     checkpoint?.Turns.Count ?? 0);
@@ -162,6 +176,7 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
                 checkpoint,
                 checkpointLoadedFromStore,
                 checkpoint?.Turns.Count ?? 0,
+                transactionRecovery,
                 options.Sidecar.ShutdownTimeoutMilliseconds);
         }
         catch
@@ -391,7 +406,9 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
         }
     }
 
-    private static string ValidateSessionReceipt(
+    private static (string WorkspaceRoot,
+        PiAgentWorkspaceTransactionRecoveryReceipt TransactionRecovery)
+        ValidateSessionReceipt(
         JsonElement root,
         int expectedRestoredTurnCount)
     {
@@ -415,6 +432,35 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
             .EnumerateArray()
             .Select(tool => tool.GetString() ?? string.Empty)
             .ToArray();
+        JsonElement recoveryData = data.GetProperty(
+            "workspaceTransactionRecovery");
+        JsonElement recoveryProposalId = recoveryData.GetProperty(
+            "proposalId");
+        PiAgentWorkspaceTransactionRecoveryReceipt transactionRecovery = new(
+            recoveryData.GetProperty("schemaVersion").GetInt32(),
+            recoveryData.GetProperty("receiptType").GetString()
+                ?? string.Empty,
+            recoveryData.GetProperty("result").GetString()
+                ?? string.Empty,
+            recoveryProposalId.ValueKind == JsonValueKind.Null
+                ? null
+                : recoveryProposalId.GetString(),
+            recoveryData.GetProperty("fileCount").GetInt32(),
+            recoveryData.GetProperty("mutationPerformed").GetBoolean());
+        bool recoveryValid =
+            transactionRecovery.SchemaVersion == 1 &&
+            transactionRecovery.ReceiptType ==
+                "jarvis2-workspace-change-set-recovery" &&
+            transactionRecovery.Result is
+                "none" or "rolled-back" or "completed" &&
+            (transactionRecovery.Result == "none"
+                ? transactionRecovery.ProposalId is null &&
+                    transactionRecovery.FileCount == 0 &&
+                    !transactionRecovery.MutationPerformed
+                : transactionRecovery.ProposalId is not null &&
+                    transactionRecovery.FileCount is >= 2 and <= 4 &&
+                    transactionRecovery.MutationPerformed ==
+                        (transactionRecovery.Result == "rolled-back"));
         bool valid =
             Path.IsPathFullyQualified(canonicalWorkspaceRoot) &&
             Directory.Exists(canonicalWorkspaceRoot) &&
@@ -427,7 +473,9 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
                     "propose_edit",
                     "propose_patch",
                     "propose_create_file",
+                    "propose_change_set",
                 ]) &&
+            recoveryValid &&
             !data.GetProperty("sessionPersisted").GetBoolean() &&
             data.GetProperty("modelSelected").GetBoolean() &&
             data.GetProperty("promptingEnabled").GetBoolean() &&
@@ -447,6 +495,6 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
             throw new InvalidOperationException(
                 "The desktop runtime session receipt failed admission.");
         }
-        return canonicalWorkspaceRoot;
+        return (canonicalWorkspaceRoot, transactionRecovery);
     }
 }

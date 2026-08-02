@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Jarvis.PiAgentHost;
 
-const int TimeoutMilliseconds = 45_000;
+const int TimeoutMilliseconds = 90_000;
 JsonSerializerOptions serializerOptions = new()
 {
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -128,7 +128,8 @@ try
     {
         PiAgentSidecarOptions options = new(
             Path.GetFullPath(args[2]),
-            Path.GetFullPath(args[4]));
+            Path.GetFullPath(args[4]),
+            RequestTimeoutMilliseconds: 15_000);
         PiAgentDesktopRuntimeProbeReceipt receipt =
             await PiAgentDesktopRuntimeProbe.RunAsync(
                 options,

@@ -6,6 +6,7 @@
   "testFiles": [
     "src/common/Jarvis.PiAgentHost/test/protocol.test.mjs",
     "src/common/Jarvis.PiAgentHost/test/desktop-model-broker.test.mjs",
-    "src/common/Jarvis.PiAgentHost/test/workspace-edit-approval.test.mjs"
+    "src/common/Jarvis.PiAgentHost/test/workspace-edit-approval.test.mjs",
+    "src/common/Jarvis.PiAgentHost/test/workspace-change-set-approval.test.mjs"
   ]
 }

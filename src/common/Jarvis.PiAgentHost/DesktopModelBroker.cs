@@ -64,6 +64,7 @@ public sealed class DesktopModelBrokerServer : IAsyncDisposable
                 "propose_edit",
                 "propose_patch",
                 "propose_create_file",
+                "propose_change_set",
             ],
             StringComparer.Ordinal);
 

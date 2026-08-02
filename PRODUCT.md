@@ -59,6 +59,12 @@ logic and explicit fail-closed platform adapters for native shell work.
   and reviewed before state. Existing-file operations use the complete file
   SHA-256 and one atomic replacement; creation uses a fixed absent-state
   sentinel plus exclusive no-overwrite commit.
+- Pi can instead stage one ordered two-to-four-file change set containing
+  replace, patch and exclusive-create members, capped at 32 KiB of review
+  content. One owner action covers the complete digest. A strict journal
+  guarantees durable convergence to every before state or every committed
+  after state across failure/restart; simultaneous multi-path visibility is
+  explicitly not claimed.
 - The desktop can arm a reviewed iteration from a clean Git HEAD for at most
   four owner-approved edits and six hours. Each approved write must pass the
   fixed HEAD/path-set/hash/diff/structured-text gate, then pause for a separate
@@ -68,7 +74,8 @@ logic and explicit fail-closed platform adapters for native shell work.
   repository receipt may return reasoning control to Pi. Pi cannot invoke the
   validator or its approval. Receipts are workspace-bound and protected with
   Windows CurrentUser DPAPI.
-- Multi-file atomic transactions, deletes, renames, directory creation, VCS metadata mutation, generic
+- Simultaneously visible cross-path atomic transactions, deletes, renames,
+  directory creation, VCS metadata mutation, generic
   `edit`/`write`, shell access, self-authored policy, unattended approval and
   ungated iteration remain outside the admitted capability set.
 - Native shell changes remain locked behind exact compatibility, build receipt,

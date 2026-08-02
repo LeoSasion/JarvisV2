@@ -352,6 +352,14 @@ action in keyboard order. Pi cannot operate either control, and the composer
 remains disabled until the owner decides. Every later proposal returns to a
 fresh owner-operated decision.
 
+A multi-file proposal stays in the same review plane and names `MULTI-FILE
+CHANGE SET`, its ordered file count, exact review digest and durable recovery
+boundary. Each member shows operation, path, before/after state and complete
+review segments without its own vertical scroller. `REJECT ALL` precedes
+`APPLY CHANGE SET ONCE`; there are no per-file approval toggles. Copy must say
+that interruption converges to all-before or all-committed-after state and must
+not imply simultaneous cross-path visibility.
+
 **The Owner Holds the Baton Rule.** A proposed write is neither success nor
 execution. Amber, the `OWNER REVIEW REQUIRED` label and the adjacent exact
 before/after state must remain visible until the human chooses Reject or the
@@ -417,6 +425,8 @@ primary actions.
 - **Do** show the owner the exact operation, path and before state plus either
   the removed/replacement text, every ordered patch remove/add pair, or the
   complete new-file content before every one-shot decision.
+- **Do** present every member of a change set in proposal order and keep one
+  whole-set owner decision bound to the displayed digest.
 - **Do** show policy state as a maximum of four owner-approved edits within six
   hours; every applied edit still requires its own Approve Once.
 - **Do** preserve CurrentUser-DPAPI durable receipts while making proposal
@@ -443,6 +453,8 @@ primary actions.
   or running process that the runtime has not actually admitted.
 - **Don't** hide a proposed diff, turn approval into a generic confirmation, or
   allow assistant prose to stand in for the structured edit capability.
+- **Don't** offer per-file change-set toggles or label durable convergence as a
+  simultaneous filesystem transaction.
 - **Don't** let Pi press approval controls, approve unattended, author or extend
   the policy, increase its four-edit/six-hour bounds, or describe another
   reasoning turn as an approved write.

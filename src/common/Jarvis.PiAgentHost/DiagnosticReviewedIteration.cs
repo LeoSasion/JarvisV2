@@ -18,6 +18,10 @@ public sealed record PiAgentReviewedIterationProbeReceipt(
     bool ApprovedEditValidated,
     bool ApprovedNewFileValidated,
     bool ApprovedPatchValidated,
+    bool ApprovedChangeSetValidated,
+    bool ChangeSetFileReceiptsPersisted,
+    bool CaseAliasedFileReceiptsRejected,
+    bool ProposalFreeWorkspaceReceiptsRejected,
     bool UntrackedWhitespaceRejected,
     bool SeparateTrustedValidationApprovalRequired,
     bool TrustedValidationPassed,
@@ -86,6 +90,7 @@ public static class PiAgentReviewedIterationProbe
                 new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
                 cancellationToken);
             Directory.CreateDirectory(Path.Combine(fixtureRoot, "config"));
+            Directory.CreateDirectory(Path.Combine(fixtureRoot, "docs"));
             await File.WriteAllTextAsync(
                 Path.Combine(
                     fixtureRoot,
@@ -200,6 +205,8 @@ public static class PiAgentReviewedIterationProbe
             bool approvedValidated;
             bool approvedNewFileValidated;
             bool approvedPatchValidated;
+            bool approvedChangeSetValidated;
+            bool changeSetFileReceiptsPersisted;
             bool separateValidationApproval;
             bool trustedValidationPassed;
             bool automaticContinuation;
@@ -314,9 +321,11 @@ public static class PiAgentReviewedIterationProbe
                         PiAgentReviewedIterationStatus.AwaitingOwnerReview &&
                     secondPending.CurrentProposalId ==
                         secondProposal.ProposalId &&
-                    secondProposal.Operation == "patch" &&
-                    secondProposal.PatchHunks.Count == 2 &&
-                    secondProposal.RelativePath == "generated.txt";
+                    secondProposal.Operation == "change-set" &&
+                    secondProposal.FileChanges.Count == 3 &&
+                    secondProposal.FileChanges.Select(file =>
+                        file.RelativePath).SequenceEqual(
+                            ["generated.txt", "review.txt", "docs/change.md"]);
                 PiAgentReviewedIterationDecisionResult patchApproved =
                     await coordinator.ApproveAndContinueAsync(
                         secondProposal.ProposalId,
@@ -324,8 +333,9 @@ public static class PiAgentReviewedIterationProbe
                 approvedPatchValidated =
                     patchApproved.Edit.Status ==
                         PiAgentWorkspaceEditStatus.Applied &&
-                    patchApproved.Edit.Operation == "patch" &&
-                    patchApproved.Edit.PatchHunks.Count == 2 &&
+                    patchApproved.Edit.Operation == "change-set" &&
+                    patchApproved.Edit.FileChanges.Single(file =>
+                        file.Operation == "patch").PatchHunks.Count == 2 &&
                     patchApproved.Iteration.ApprovedEditCount == 2 &&
                     patchApproved.Iteration.Steps.Count == 2 &&
                     patchApproved.Iteration.Steps.Last().ValidationResult ==
@@ -334,6 +344,26 @@ public static class PiAgentReviewedIterationProbe
                         createdFixturePath,
                         cancellationToken) ==
                         "OWNER-patched\n";
+                approvedChangeSetValidated =
+                    approvedPatchValidated &&
+                    await File.ReadAllTextAsync(
+                        fixturePath,
+                        cancellationToken) ==
+                        "ALPHA\nowner-reviewed\nOMEGA\n" &&
+                    await File.ReadAllTextAsync(
+                        Path.Combine(fixtureRoot, "docs", "change.md"),
+                        cancellationToken) ==
+                        "# Reviewed iteration change set\n";
+                PiAgentReviewedIterationStepReceipt changeSetStep =
+                    patchApproved.Iteration.Steps.Last();
+                changeSetFileReceiptsPersisted =
+                    changeSetStep.RelativePath == string.Empty &&
+                    changeSetStep.Files.Count == 3 &&
+                    changeSetStep.Files.All(file =>
+                        file.AfterSha256 is { Length: 64 }) &&
+                    changeSetStep.Files.Select(file => file.RelativePath)
+                        .SequenceEqual(
+                            ["generated.txt", "review.txt", "docs/change.md"]);
                 separateValidationApproval =
                     separateValidationApproval &&
                     patchApproved.ContinuedTurn is null &&
@@ -410,7 +440,36 @@ public static class PiAgentReviewedIterationProbe
                     step.TrustedValidationResult == "passed" &&
                     step.TrustedValidationReceiptDigest is not null &&
                     step.TrustedValidationOutputDigest is not null &&
-                    step.TrustedValidationExitCode == 0);
+                    step.TrustedValidationExitCode == 0) &&
+                durableFirst.Steps[0].Files.Count == 1 &&
+                durableFirst.Steps[1].Files.Count == 3;
+            PiAgentReviewedIterationStepReceipt[] caseAliasedSteps =
+                durableFirst.Steps.ToArray();
+            PiAgentReviewedIterationFileReceipt[] caseAliasedFiles =
+                caseAliasedSteps[1].Files.ToArray();
+            caseAliasedFiles[1] = caseAliasedFiles[1] with
+            {
+                RelativePath =
+                    caseAliasedFiles[0].RelativePath.ToUpperInvariant(),
+            };
+            caseAliasedSteps[1] = caseAliasedSteps[1] with
+            {
+                Files = caseAliasedFiles,
+                AfterSha256 = ComputeChangeSetAfterDigest(
+                    caseAliasedFiles),
+            };
+            bool caseAliasedFileReceiptsRejected = RejectsAdmission(
+                durableFirst with { Steps = caseAliasedSteps });
+            PiAgentReviewedIterationStepReceipt[] proposalFreeSteps =
+                durableFirst.Steps.ToArray();
+            proposalFreeSteps[2] = proposalFreeSteps[2] with
+            {
+                ProposalId = null,
+                Files = [],
+            };
+            bool proposalFreeWorkspaceReceiptsRejected =
+                RejectsAdmission(
+                    durableFirst with { Steps = proposalFreeSteps });
             bool ciphertext = Directory.EnumerateFiles(
                     storeRoot,
                     "*.j2iteration",
@@ -423,7 +482,13 @@ public static class PiAgentReviewedIterationProbe
             await RunGitAsync(
                 gitExecutable,
                 fixtureRoot,
-                ["add", "--", "review.txt", "generated.txt"],
+                [
+                    "add",
+                    "--",
+                    "review.txt",
+                    "generated.txt",
+                    "docs/change.md",
+                ],
                 cancellationToken);
             await RunGitAsync(
                 gitExecutable,
@@ -660,7 +725,7 @@ public static class PiAgentReviewedIterationProbe
                 durableFirst.ExpiresAtUtc - durableFirst.StartedAtUtc ==
                     TimeSpan.FromHours(
                         PiAgentReviewedIterationCoordinator.PolicyLifetimeHours) &&
-                durableFirst.SchemaVersion == 2 &&
+                durableFirst.SchemaVersion == 3 &&
                 !durableFirst.AutoContinueAfterApproval &&
                 durableFirst.TrustedValidationProfileId ==
                     "jarvisv2-reviewed-fixture-v1";
@@ -673,6 +738,10 @@ public static class PiAgentReviewedIterationProbe
                 approvedValidated &&
                 approvedNewFileValidated &&
                 approvedPatchValidated &&
+                approvedChangeSetValidated &&
+                changeSetFileReceiptsPersisted &&
+                caseAliasedFileReceiptsRejected &&
+                proposalFreeWorkspaceReceiptsRejected &&
                 untrackedWhitespaceRejected &&
                 separateValidationApproval &&
                 trustedValidationPassed &&
@@ -699,6 +768,10 @@ public static class PiAgentReviewedIterationProbe
                 approvedValidated,
                 approvedNewFileValidated,
                 approvedPatchValidated,
+                approvedChangeSetValidated,
+                changeSetFileReceiptsPersisted,
+                caseAliasedFileReceiptsRejected,
+                proposalFreeWorkspaceReceiptsRejected,
                 untrackedWhitespaceRejected,
                 separateValidationApproval,
                 trustedValidationPassed,
@@ -741,6 +814,41 @@ public static class PiAgentReviewedIterationProbe
                 storeRoot,
                 ".jarvis-reviewed-iteration-store-");
         }
+    }
+
+    private static bool RejectsAdmission(
+        PiAgentReviewedIterationSnapshot snapshot)
+    {
+        try
+        {
+            _ = PiAgentReviewedIterationAdmission.Admit(snapshot);
+            return false;
+        }
+        catch (ArgumentException)
+        {
+            return true;
+        }
+    }
+
+    private static string ComputeChangeSetAfterDigest(
+        IReadOnlyList<PiAgentReviewedIterationFileReceipt> files)
+    {
+        StringBuilder material = new(
+            "JARVIS2/workspace-change-set-after/v1");
+        foreach (PiAgentReviewedIterationFileReceipt file in files)
+        {
+            material
+                .Append('\0')
+                .Append(file.Ordinal.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture))
+                .Append('\0')
+                .Append(file.RelativePath)
+                .Append('\0')
+                .Append(file.AfterSha256);
+        }
+        return Convert.ToHexString(SHA256.HashData(
+                Encoding.UTF8.GetBytes(material.ToString())))
+            .ToLowerInvariant();
     }
 
     private static async Task RunGitAsync(
@@ -886,26 +994,46 @@ public static class PiAgentReviewedIterationProbe
             if (createFirst && sequence == 3)
             {
                 string patchToolCallId =
-                    $"reviewed-iteration-patch-{sequence}";
+                    $"reviewed-iteration-change-set-{sequence}";
                 yield return new DesktopModelToolCallStarted(
                     patchToolCallId,
-                    "propose_patch");
+                    "propose_change_set");
                 yield return new DesktopModelToolCallDelta(
                     patchToolCallId,
                     JsonSerializer.Serialize(new
                     {
-                        path = "generated.txt",
-                        replacements = new[]
+                        changes = new object[]
                         {
                             new
                             {
-                                oldText = "owner-",
-                                newText = "OWNER-",
+                                operation = "replace",
+                                path = "generated.txt",
+                                oldText = "owner-created",
+                                newText = "OWNER-patched",
                             },
                             new
                             {
-                                oldText = "created",
-                                newText = "patched",
+                                operation = "patch",
+                                path = "review.txt",
+                                replacements = new[]
+                                {
+                                    new
+                                    {
+                                        oldText = "alpha",
+                                        newText = "ALPHA",
+                                    },
+                                    new
+                                    {
+                                        oldText = "omega",
+                                        newText = "OMEGA",
+                                    },
+                                },
+                            },
+                            new
+                            {
+                                operation = "create",
+                                path = "docs/change.md",
+                                content = "# Reviewed iteration change set\n",
                             },
                         },
                     }));

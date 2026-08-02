@@ -221,11 +221,14 @@ public sealed class PiAgentReviewedIterationRepositoryGate
                 status.StandardOutput);
             string[] changedPaths = changedEntries
                 .Select(entry => entry.RelativePath)
+                .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
             string[] expectedPaths = expectedFiles.Keys
-                .OrderBy(path => path, StringComparer.Ordinal)
+                .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
-            if (!changedPaths.SequenceEqual(expectedPaths))
+            if (!changedPaths.SequenceEqual(
+                    expectedPaths,
+                    StringComparer.OrdinalIgnoreCase))
             {
                 return Failed(
                     currentHead,

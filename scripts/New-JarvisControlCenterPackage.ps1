@@ -294,11 +294,14 @@ Automation equivalent:
 The API key is protected under the current Windows user with DPAPI. It is not
 stored in this package and is never sent to the offline Pi sidecar. Pi tools are
 limited to read, grep, find, ls, and the non-mutating propose_edit,
-propose_patch and propose_create_file tools. Pi may stage one exact replacement,
-one 2-8 hunk non-overlapping patch in a single existing UTF-8 file, or one
-missing UTF-8 file (16 KiB maximum) whose parent directory already exists. Only
-the desktop owner can approve it once. Existing files are hash-rechecked and
-committed by one atomic replacement; new files use exclusive creation and never overwrite.
+propose_patch, propose_create_file and propose_change_set tools. Pi may stage
+one exact replacement, one 2-8 hunk non-overlapping patch in a single existing
+UTF-8 file, one missing UTF-8 file (16 KiB maximum) whose parent directory
+already exists, or one ordered 2-4 file change set capped at 32 KiB of review
+text. Only the desktop owner can approve it once. Single-file existing targets
+use atomic replacement and new files use exclusive creation. A change set uses
+a strict durable journal: failure or restart converges to every before state or
+every committed after state; simultaneous multi-path visibility is not claimed.
 Shell, directory creation, delete, rename, direct-write, VCS metadata mutation,
 and unattended approval remain unavailable. The desktop can arm a clean-HEAD
 reviewed iteration for at most four owner-approved writes and six hours. Each
@@ -369,12 +372,14 @@ $receipt = [ordered]@{
         'ls',
         'propose_edit',
         'propose_patch',
-        'propose_create_file')
+        'propose_create_file',
+        'propose_change_set')
     mutationTools = @()
     desktopOwnerApprovedWorkspaceOperations = @(
         'existing-utf8-exact-replacement',
         'existing-utf8-2-to-8-hunk-atomic-patch',
-        'missing-utf8-exclusive-create-existing-parent')
+        'missing-utf8-exclusive-create-existing-parent',
+        'ordered-2-to-4-file-durable-change-set')
     workspaceEditApprovalMode =
         'one-shot-explicit-operation-before-state-sha256'
     workspaceCreateMaximumBytes = 16384
@@ -382,6 +387,16 @@ $receipt = [ordered]@{
     workspacePatchMaximumPreviewBytes = 16384
     workspacePatchCommitMode =
         'single-file-atomic-replace-and-post-verify'
+    workspaceChangeSetMinimumFiles = 2
+    workspaceChangeSetMaximumFiles = 4
+    workspaceChangeSetMaximumReviewBytes = 32768
+    workspaceChangeSetCommitMode =
+        'durable-before-or-after-convergence-no-simultaneous-visibility-claim'
+    workspaceChangeSetRecovery =
+        'strict-journal-before-tools-rollback-or-complete'
+    workspaceChangeSetRecoveryAvailableToPi = $false
+    simultaneousMultiPathVisibilityClaimed = $false
+    sidecarTransportMaximumFrameBytes = 131072
     workspaceVersionControlMetadataMutation = $false
     reviewedSelfIteration = $true
     reviewedIterationPolicy =

@@ -135,6 +135,7 @@ try {
       "propose_edit",
       "propose_patch",
       "propose_create_file",
+      "propose_change_set",
     ],
   );
   assert.equal(records[2].data.sessionCreationEnabled, true);
@@ -174,6 +175,28 @@ try {
   assert.equal(
     records[2].data.workspaceFileCreateMode,
     "exclusive-existing-parent-owner-approved",
+  );
+  assert.equal(
+    records[2].data.workspaceChangeSetSupported,
+    true,
+  );
+  assert.equal(records[2].data.workspaceChangeSetMinimumFiles, 2);
+  assert.equal(records[2].data.workspaceChangeSetMaximumFiles, 4);
+  assert.equal(
+    records[2].data.workspaceChangeSetMaximumPreviewBytes,
+    32_768,
+  );
+  assert.equal(
+    records[2].data.workspaceChangeSetCommitMode,
+    "durable-before-or-after-convergence-no-simultaneous-visibility-claim",
+  );
+  assert.equal(
+    records[2].data.workspaceChangeSetRecovery,
+    "strict-journal-before-tools-rollback-or-complete",
+  );
+  assert.equal(
+    records[2].data.workspaceChangeSetRecoveryAvailableToModel,
+    false,
   );
   assert.equal(
     records[2].data.unattendedSelfIteration,
@@ -220,6 +243,7 @@ try {
       "propose_edit",
       "propose_patch",
       "propose_create_file",
+      "propose_change_set",
     ],
   );
   assert.equal(records[4].data.sessionPersisted, false);
@@ -228,6 +252,17 @@ try {
   assert.equal(
     records[4].data.restoredContextMessageCount,
     0,
+  );
+  assert.deepEqual(
+    records[4].data.workspaceTransactionRecovery,
+    {
+      schemaVersion: 1,
+      receiptType: "jarvis2-workspace-change-set-recovery",
+      result: "none",
+      proposalId: null,
+      fileCount: 0,
+      mutationPerformed: false,
+    },
   );
   assert.equal(records[4].data.resourceDiscoveryEnabled, false);
   assert.equal(records[4].data.modelNetworkAllowed, false);
@@ -415,7 +450,7 @@ try {
     JSON.stringify({
       type: "hello",
       id: "oversized",
-      padding: "x".repeat(70_000),
+      padding: "x".repeat(140_000),
     }),
   ]);
   assert.equal(oversized.exitCode, 13, oversized.stderr);
@@ -470,6 +505,17 @@ try {
       workspaceFileCreateSupported: true,
       workspaceFileCreateMode:
         "exclusive-existing-parent-owner-approved",
+      workspaceChangeSetSupported: true,
+      workspaceChangeSetMinimumFiles: 2,
+      workspaceChangeSetMaximumFiles: 4,
+      workspaceChangeSetMaximumPreviewBytes: 32_768,
+      workspaceChangeSetCommitMode:
+        "durable-before-or-after-convergence-no-simultaneous-visibility-claim",
+      workspaceChangeSetRecovery:
+        "strict-journal-before-tools-rollback-or-complete",
+      workspaceChangeSetRecoveryAvailableToModel: false,
+      workspaceTransactionRecoveryResult:
+        records[4].data.workspaceTransactionRecovery.result,
       unattendedSelfIteration: false,
       shellMutationSupported: false,
       explorerMutationSupported: false,

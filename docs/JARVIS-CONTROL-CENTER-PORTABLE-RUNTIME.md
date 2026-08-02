@@ -85,12 +85,15 @@ under the current Windows user outside the portable directory. The
 Packaging, auditing and conversation launch do not install software, inject a
 module, configure Windhawk, clear the JARVIS2 kill switch, modify the registry,
 restart Explorer or enable shell/direct mutation tools. It includes the
-review-gated text workflow: `propose_edit`, `propose_patch` and
-`propose_create_file` stage without writing, and only the desktop owner can
+review-gated text workflow: `propose_edit`, `propose_patch`,
+`propose_create_file` and `propose_change_set` stage without writing, and only the desktop owner can
 approve an exact replacement, a 2–8-hunk single-file exact patch, or an
-exclusive new UTF-8 file once against its reviewed before state. Patch hunks
+exclusive new UTF-8 file once against its reviewed before state, or an ordered
+two-to-four-file change set as one whole-set decision. Patch hunks
 must be distinct, uniquely matched and non-overlapping, and their combined
-review text is capped at 16 KiB. The
+review text is capped at 16 KiB; a complete change-set review is capped at
+32 KiB and uses strict startup recovery to converge to all-before or
+all-committed-after state without claiming simultaneous visibility. The
 desktop can also arm a four-edit, six-hour reviewed iteration from a clean Git
 HEAD. It stores CurrentUser-DPAPI receipts and continues reasoning only after
 each owner approval passes the fixed Git, strict UTF-8, tracked/untracked diff
@@ -101,6 +104,6 @@ revalidation; unattended approval and Pi process access remain unavailable.
 The portable receipt therefore
 records the bundled `runtime\git\cmd\git.exe` direct-process gate alongside
 the direct trusted-validation boundary, Node and Pi runtimes. No host Git
-installation is required by the package.
-fixes `activationPermitted=false`, `liveExplorer=not-run` and
+installation is required by the package. The receipt fixes
+`activationPermitted=false`, `liveExplorer=not-run` and
 `systemMutationPerformed=false`.

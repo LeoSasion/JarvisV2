@@ -182,10 +182,10 @@ if ($null -eq $receipt -or
     (@($receipt.portableNodePackages | ForEach-Object name) -join '|') -ne
         ($expectedPortablePackages -join '|') -or
     (@($receipt.initialTools) -join '|') -ne
-        'read|grep|find|ls|propose_edit|propose_patch|propose_create_file' -or
+        'read|grep|find|ls|propose_edit|propose_patch|propose_create_file|propose_change_set' -or
     @($receipt.mutationTools).Count -ne 0 -or
     (@($receipt.desktopOwnerApprovedWorkspaceOperations) -join '|') -ne
-        'existing-utf8-exact-replacement|existing-utf8-2-to-8-hunk-atomic-patch|missing-utf8-exclusive-create-existing-parent' -or
+        'existing-utf8-exact-replacement|existing-utf8-2-to-8-hunk-atomic-patch|missing-utf8-exclusive-create-existing-parent|ordered-2-to-4-file-durable-change-set' -or
     $receipt.workspaceEditApprovalMode -ne
         'one-shot-explicit-operation-before-state-sha256' -or
     $receipt.workspaceCreateMaximumBytes -ne 16384 -or
@@ -193,6 +193,16 @@ if ($null -eq $receipt -or
     $receipt.workspacePatchMaximumPreviewBytes -ne 16384 -or
     $receipt.workspacePatchCommitMode -ne
         'single-file-atomic-replace-and-post-verify' -or
+    $receipt.workspaceChangeSetMinimumFiles -ne 2 -or
+    $receipt.workspaceChangeSetMaximumFiles -ne 4 -or
+    $receipt.workspaceChangeSetMaximumReviewBytes -ne 32768 -or
+    $receipt.workspaceChangeSetCommitMode -ne
+        'durable-before-or-after-convergence-no-simultaneous-visibility-claim' -or
+    $receipt.workspaceChangeSetRecovery -ne
+        'strict-journal-before-tools-rollback-or-complete' -or
+    $receipt.workspaceChangeSetRecoveryAvailableToPi -or
+    $receipt.simultaneousMultiPathVisibilityClaimed -or
+    $receipt.sidecarTransportMaximumFrameBytes -ne 131072 -or
     $receipt.workspaceVersionControlMetadataMutation -or
     -not $receipt.reviewedSelfIteration -or
     $receipt.reviewedIterationPolicy -ne

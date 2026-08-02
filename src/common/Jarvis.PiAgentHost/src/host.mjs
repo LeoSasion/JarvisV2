@@ -7,7 +7,7 @@ import {
   handleRequest,
 } from "./protocol.mjs";
 
-function writeRecord(record, maximumBytes = 65_536) {
+function writeRecord(record, maximumBytes = 131_072) {
   const line = JSON.stringify(record);
   if (Buffer.byteLength(line, "utf8") > maximumBytes) {
     throw new Error("An outgoing JSONL frame exceeded the contract limit.");

@@ -27,6 +27,9 @@ $workspaceEditProposalPath = Join-Path $sourceRoot (
 $protocolTestPath = Join-Path $sourceRoot 'test\protocol.test.mjs'
 $workspaceEditTestPath = Join-Path $sourceRoot (
     'test\workspace-edit-approval.test.mjs')
+$workspaceChangeSetTestPath = Join-Path $sourceRoot (
+    'test\workspace-change-set-approval.test.mjs')
+$protocolSourcePath = Join-Path $sourceRoot 'src\protocol.mjs'
 $brokerTestPath = Join-Path $sourceRoot (
     'test\desktop-model-broker.test.mjs')
 $bridgeProjectPath = Join-Path $sourceRoot 'Jarvis.PiAgentHost.csproj'
@@ -123,6 +126,7 @@ $workspaceEditProposalText =
 $piSdkAdapterText = [IO.File]::ReadAllText($piSdkAdapterPath)
 $runtimeInspectorText = [IO.File]::ReadAllText($runtimeInspectorPath)
 $readOnlySessionText = [IO.File]::ReadAllText($readOnlySessionPath)
+$protocolSourceText = [IO.File]::ReadAllText($protocolSourcePath)
 
 Add-Check `
     -Name 'contract.official-exact-upstream' `
@@ -252,16 +256,19 @@ Add-Check `
         $contract.session.resourceDiscovery -eq 'disabled' -and
         -not $contract.session.modelNetworkAllowed -and
         (@($contract.tools.initialAllowlist) -join '|') -eq
-            'read|grep|find|ls|propose_edit|propose_patch|propose_create_file' -and
+            'read|grep|find|ls|propose_edit|propose_patch|propose_create_file|propose_change_set' -and
         (@($contract.tools.initiallyDenied) -join '|') -eq
             'bash|edit|write' -and
         $contract.tools.proposalTool -eq
-            'non-mutating-explicit-utf8-replace-patch-or-create' -and
+            'non-mutating-explicit-utf8-replace-patch-create-or-change-set' -and
         $contract.tools.proposalMaxFileBytes -eq 1048576 -and
         $contract.tools.proposalMaxSegmentBytes -eq 4096 -and
         $contract.tools.patchProposalMaxHunks -eq 8 -and
         $contract.tools.patchProposalMaxPreviewBytes -eq 16384 -and
         $contract.tools.createProposalMaxBytes -eq 16384 -and
+        $contract.tools.changeSetMinimumFiles -eq 2 -and
+        $contract.tools.changeSetMaximumFiles -eq 4 -and
+        $contract.tools.changeSetMaximumPreviewBytes -eq 32768 -and
         $contract.tools.pendingProposalLimit -eq 1 -and
         $contract.tools.pendingProposalPolicy -eq
             'blocks-new-turns-and-clears-on-shutdown' -and
@@ -269,14 +276,17 @@ Add-Check `
         $contract.tools.approvalMode -eq
             'one-shot-explicit-operation-before-state-sha256' -and
         $contract.tools.commitMode -eq
-            'atomic-existing-file-replace-or-patch-exclusive-create-and-post-verify' -and
+            'single-file-atomic-or-multi-file-durable-before-after-convergence' -and
+        $contract.tools.changeSetRecovery -eq
+            'strict-journal-before-tools-rollback-or-complete' -and
+        -not $contract.tools.simultaneousMultiPathVisibilityClaimed -and
         $contract.tools.newFileSupported -and
         $contract.tools.newFileParentPolicy -eq
             'existing-canonical-directory-no-auto-create' -and
         -not $contract.tools.versionControlMetadataMutation -and
         -not $contract.tools.deleteSupported -and
         $contract.tools.mutationGrant -eq
-            'desktop-owner-one-shot-reviewed-text-replace-patch-or-create' -and
+            'desktop-owner-one-shot-reviewed-text-single-file-or-two-to-four-file-set' -and
         $contract.tools.reviewedSelfIteration -and
         $contract.tools.automaticReasoningContinuation -and
         -not $contract.tools.unattendedApproval -and
@@ -294,7 +304,7 @@ Add-Check `
         $contract.runtime.integrationMode -eq 'sdk-sidecar-jsonl' -and
         $contract.runtime.piOfflineRequired -and
         $contract.transport.framing -eq 'lf-delimited-jsonl' -and
-        $contract.transport.maxFrameBytes -eq 65536 -and
+        $contract.transport.maxFrameBytes -eq 131072 -and
         -not $contract.transport.credentialFieldsAllowed -and
         -not $contract.boundaries.shellMutationSupported -and
         -not $contract.boundaries.explorerMutationSupported -and
@@ -349,7 +359,7 @@ Add-Check `
         $schema.properties.runtime.properties.desktopLaunchImplemented.const `
             -eq $true -and
         $schema.properties.transport.properties.maxFrameBytes.const -eq
-            65536 -and
+            131072 -and
         $schema.properties.runtime.properties.sessionCreationEnabled.const `
             -eq $true -and
         $schema.properties.session.properties.promptingEnabled.const `
@@ -439,9 +449,9 @@ Add-Check `
         $schema.properties.transport.properties.credentialFieldsAllowed.const `
             -eq $false -and
         (@($schema.properties.tools.properties.initialAllowlist.const) -join '|') `
-            -eq 'read|grep|find|ls|propose_edit|propose_patch|propose_create_file' -and
+            -eq 'read|grep|find|ls|propose_edit|propose_patch|propose_create_file|propose_change_set' -and
         $schema.properties.tools.properties.proposalTool.const -eq
-            'non-mutating-explicit-utf8-replace-patch-or-create' -and
+            'non-mutating-explicit-utf8-replace-patch-create-or-change-set' -and
         $schema.properties.tools.properties.proposalMaxFileBytes.const -eq
             1048576 -and
         $schema.properties.tools.properties.proposalMaxSegmentBytes.const -eq
@@ -452,12 +462,24 @@ Add-Check `
             -eq 16384 -and
         $schema.properties.tools.properties.createProposalMaxBytes.const -eq
             16384 -and
+        $schema.properties.tools.properties.changeSetMinimumFiles.const -eq
+            2 -and
+        $schema.properties.tools.properties.changeSetMaximumFiles.const -eq
+            4 -and
+        $schema.properties.tools.properties.changeSetMaximumPreviewBytes.const `
+            -eq 32768 -and
         $schema.properties.tools.properties.pendingProposalLimit.const -eq
             1 -and
         $schema.properties.tools.properties.approvalOwner.const -eq
             'desktop-user-only' -and
         $schema.properties.tools.properties.approvalMode.const -eq
             'one-shot-explicit-operation-before-state-sha256' -and
+        $schema.properties.tools.properties.commitMode.const -eq
+            'single-file-atomic-or-multi-file-durable-before-after-convergence' -and
+        $schema.properties.tools.properties.changeSetRecovery.const -eq
+            'strict-journal-before-tools-rollback-or-complete' -and
+        $schema.properties.tools.properties.simultaneousMultiPathVisibilityClaimed.const `
+            -eq $false -and
         $schema.properties.tools.properties.newFileSupported.const -eq
             $true -and
         $schema.properties.tools.properties.newFileParentPolicy.const -eq
@@ -531,9 +553,11 @@ Add-Check `
         $runtimeSourceText.Contains('credential-field-forbidden') -and
         (Test-Path -LiteralPath $workspaceEditProposalPath -PathType Leaf) -and
         (Test-Path -LiteralPath $workspaceEditTestPath -PathType Leaf) -and
+        (Test-Path -LiteralPath $workspaceChangeSetTestPath -PathType Leaf) -and
         $workspaceEditProposalText.Contains('propose_edit') -and
         $workspaceEditProposalText.Contains('propose_patch') -and
         $workspaceEditProposalText.Contains('propose_create_file') -and
+        $workspaceEditProposalText.Contains('propose_change_set') -and
         $workspaceEditProposalText.Contains(
             'maximumWorkspaceEditSegmentBytes = 4_096') -and
         $workspaceEditProposalText.Contains(
@@ -544,6 +568,21 @@ Add-Check `
             'maximumWorkspacePatchHunks = 8') -and
         $workspaceEditProposalText.Contains(
             'maximumWorkspacePatchPreviewBytes = 16_384') -and
+        $workspaceEditProposalText.Contains(
+            'minimumWorkspaceChangeSetFiles = 2') -and
+        $workspaceEditProposalText.Contains(
+            'maximumWorkspaceChangeSetFiles = 4') -and
+        $workspaceEditProposalText.Contains(
+            'maximumWorkspaceChangeSetPreviewBytes = 32_768') -and
+        $workspaceEditProposalText.Contains(
+            'workspaceTransactionJournalName') -and
+        $workspaceEditProposalText.Contains(
+            'workspace-change-set-recovery-required') -and
+        $workspaceEditProposalText.Contains(
+            'durable-before-or-after-convergence-no-simultaneous-visibility-claim') -and
+        $workspaceEditProposalText.Contains(
+            'WorkspaceTransactionCrashForTest') -and
+        -not $protocolSourceText.Contains('transactionHooks') -and
         $workspaceEditProposalText.Contains(
             'workspace-patch-overlap') -and
         $workspaceEditProposalText.Contains('isUtf8') -and
@@ -567,7 +606,7 @@ Add-Check `
         'Runtime source must create exactly one root-confined in-memory SDK ' +
         'session and one broker-gated prompt path without credential files, ' +
         'child processes or unreviewed writes; the isolated edit module must ' +
-        'bind one exact replacement, one bounded single-file multi-hunk patch, or one exclusive new UTF-8 file to an explicit operation, reviewed before-state hash and one-shot commit.')
+        'bind one exact replacement, one bounded single-file multi-hunk patch, one exclusive new UTF-8 file, or one bounded multi-file set to an explicit review digest and owner decision; recovery hooks remain unreachable from the protocol.')
 
 $bridgeSourceText =
     [IO.File]::ReadAllText($bridgeSourcePath) +
@@ -753,6 +792,7 @@ Add-Check `
         $openAiProviderText.Contains('"propose_edit"') -and
         $openAiProviderText.Contains('"propose_patch"') -and
         $openAiProviderText.Contains('"propose_create_file"') -and
+        $openAiProviderText.Contains('"propose_change_set"') -and
         $openAiCredentialText.Contains('ProtectedData.Protect') -and
         $openAiCredentialText.Contains('ProtectedData.Unprotect') -and
         $openAiCredentialText.Contains(
@@ -790,6 +830,12 @@ Add-Check `
             'MaximumApprovedEdits = 4') -and
         $reviewedIterationProductionText.Contains(
             'PolicyLifetimeHours = 6') -and
+        $reviewedIterationProductionText.Contains(
+            'PiAgentReviewedIterationFileReceipt') -and
+        $reviewedIterationProductionText.Contains(
+            'snapshot.SchemaVersion is not (1 or 2 or 3)') -and
+        $reviewedIterationProductionText.Contains(
+            'ComputeChangeSetAfterDigest') -and
         $reviewedIterationProductionText.Contains(
             'desktop-owner-one-shot-per-edit-no-model-decision-authority') -and
         $reviewedIterationProductionText.Contains(
@@ -1110,7 +1156,7 @@ if (-not $StaticOnly) {
             -not $protocolReceipt.resourceDiscoveryEnabled -and
             -not $protocolReceipt.credentialTransportAllowed -and
             (@($protocolReceipt.initialTools) -join '|') -eq
-                'read|grep|find|ls|propose_edit|propose_patch|propose_create_file' -and
+                'read|grep|find|ls|propose_edit|propose_patch|propose_create_file|propose_change_set' -and
             $protocolReceipt.workspaceEditProposalSupported -and
             $protocolReceipt.workspaceEditApprovalOwner -eq
                 'desktop-user-only' -and
@@ -1126,6 +1172,16 @@ if (-not $StaticOnly) {
             $protocolReceipt.workspaceFileCreateSupported -and
             $protocolReceipt.workspaceFileCreateMode -eq
                 'exclusive-existing-parent-owner-approved' -and
+            $protocolReceipt.workspaceChangeSetSupported -and
+            $protocolReceipt.workspaceChangeSetMinimumFiles -eq 2 -and
+            $protocolReceipt.workspaceChangeSetMaximumFiles -eq 4 -and
+            $protocolReceipt.workspaceChangeSetMaximumPreviewBytes -eq 32768 -and
+            $protocolReceipt.workspaceChangeSetCommitMode -eq
+                'durable-before-or-after-convergence-no-simultaneous-visibility-claim' -and
+            $protocolReceipt.workspaceChangeSetRecovery -eq
+                'strict-journal-before-tools-rollback-or-complete' -and
+            -not $protocolReceipt.workspaceChangeSetRecoveryAvailableToModel -and
+            $protocolReceipt.workspaceTransactionRecoveryResult -eq 'none' -and
             -not $protocolReceipt.unattendedSelfIteration -and
             -not $protocolReceipt.shellMutationSupported -and
             -not $protocolReceipt.explorerMutationSupported -and
@@ -1161,7 +1217,7 @@ if (-not $StaticOnly) {
             $null -ne $workspaceEditReceipt -and
             $workspaceEditReceipt.result -eq 'passed' -and
             (@($workspaceEditReceipt.activeTools) -join '|') -eq
-                'read|grep|find|ls|propose_edit|propose_patch|propose_create_file' -and
+                'read|grep|find|ls|propose_edit|propose_patch|propose_create_file|propose_change_set' -and
             -not $workspaceEditReceipt.proposalToolMutates -and
             -not $workspaceEditReceipt.existingTextFilesOnly -and
             $workspaceEditReceipt.newUtf8FileSupported -and
@@ -1191,6 +1247,55 @@ if (-not $StaticOnly) {
         -Detail (
             "Workspace edit probe exit $workspaceEditExitCode; result " +
             "$workspaceEditResult.")
+
+    $workspaceChangeSetOutput = @(
+        & $NodePath $workspaceChangeSetTestPath 2>&1
+    )
+    $workspaceChangeSetExitCode = $LASTEXITCODE
+    $workspaceChangeSetReceipt = $null
+    try {
+        $workspaceChangeSetReceipt =
+            ($workspaceChangeSetOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $workspaceChangeSetReceipt = $null
+    }
+    $workspaceChangeSetResult = if (
+        $null -ne $workspaceChangeSetReceipt
+    ) {
+        $workspaceChangeSetReceipt.result
+    }
+    else {
+        'unparsed'
+    }
+    Add-Check `
+        -Name 'runtime.workspace-change-set-approval-probe' `
+        -Passed (
+            $workspaceChangeSetExitCode -eq 0 -and
+            $null -ne $workspaceChangeSetReceipt -and
+            $workspaceChangeSetReceipt.result -eq 'passed' -and
+            $workspaceChangeSetReceipt.minimumFiles -eq 2 -and
+            $workspaceChangeSetReceipt.maximumFiles -eq 4 -and
+            $workspaceChangeSetReceipt.maximumReviewBytes -eq 32768 -and
+            $workspaceChangeSetReceipt.mixedReplacePatchCreateApplied -and
+            -not $workspaceChangeSetReceipt.proposalMutates -and
+            -not $workspaceChangeSetReceipt.wholeSetRejectMutates -and
+            $workspaceChangeSetReceipt.repeatedPathRejected -and
+            $workspaceChangeSetReceipt.windowsCaseAliasRejected -and
+            $workspaceChangeSetReceipt.anyMemberDriftPreventsAllWrites -and
+            $workspaceChangeSetReceipt.midCommitFailureRolledBack -and
+            $workspaceChangeSetReceipt.preCommitCrashRecoveredBeforeTools -and
+            $workspaceChangeSetReceipt.committedCrashCompletedCleanup -and
+            $workspaceChangeSetReceipt.tamperedRecoveryFailedClosed -and
+            -not $workspaceChangeSetReceipt.simultaneousVisibilityClaimed -and
+            -not $workspaceChangeSetReceipt.shellAvailableToPi -and
+            -not $workspaceChangeSetReceipt.recoveryAvailableToPi -and
+            $workspaceChangeSetReceipt.liveExplorer -eq 'not-run') `
+        -Detail (
+            "Workspace change-set probe exit " +
+            "$workspaceChangeSetExitCode; result " +
+            "$workspaceChangeSetResult.")
 
     $reviewedIterationOutput = @(
         & $DotnetPath run `
@@ -1235,6 +1340,10 @@ if (-not $StaticOnly) {
             $reviewedIterationReceipt.approvedEditValidated -and
             $reviewedIterationReceipt.approvedNewFileValidated -and
             $reviewedIterationReceipt.approvedPatchValidated -and
+            $reviewedIterationReceipt.approvedChangeSetValidated -and
+            $reviewedIterationReceipt.changeSetFileReceiptsPersisted -and
+            $reviewedIterationReceipt.caseAliasedFileReceiptsRejected -and
+            $reviewedIterationReceipt.proposalFreeWorkspaceReceiptsRejected -and
             $reviewedIterationReceipt.untrackedWhitespaceRejected -and
             $reviewedIterationReceipt.separateTrustedValidationApprovalRequired -and
             $reviewedIterationReceipt.trustedValidationPassed -and
@@ -1356,7 +1465,7 @@ if (-not $StaticOnly) {
             $bridgeReceipt.piOffline -and
             $bridgeReceipt.credentialEnvironmentScrubbed -and
             (@($bridgeReceipt.initialTools) -join '|') -eq
-                'read|grep|find|ls|propose_edit|propose_patch|propose_create_file' -and
+                'read|grep|find|ls|propose_edit|propose_patch|propose_create_file|propose_change_set' -and
             (@($bridgeReceipt.deniedTools) -join '|') -eq
                 'bash|edit|write' -and
             $bridgeReceipt.sessionCreationEnabled -and
@@ -1367,6 +1476,13 @@ if (-not $StaticOnly) {
             $bridgeReceipt.workspacePatchMinimumHunks -eq 2 -and
             $bridgeReceipt.workspacePatchMaximumHunks -eq 8 -and
             $bridgeReceipt.workspacePatchMaximumPreviewBytes -eq 16384 -and
+            $bridgeReceipt.workspaceChangeSetSupported -and
+            $bridgeReceipt.workspaceChangeSetMinimumFiles -eq 2 -and
+            $bridgeReceipt.workspaceChangeSetMaximumFiles -eq 4 -and
+            $bridgeReceipt.workspaceChangeSetMaximumPreviewBytes -eq 32768 -and
+            $bridgeReceipt.workspaceChangeSetRecoveryBeforeToolsPassed -and
+            -not $bridgeReceipt.workspaceChangeSetRecoveryAvailableToModel -and
+            -not $bridgeReceipt.simultaneousMultiPathVisibilityClaimed -and
             -not $bridgeReceipt.shellMutationSupported -and
             -not $bridgeReceipt.explorerMutationSupported -and
             -not $bridgeReceipt.systemMutationSupported -and
@@ -1544,6 +1660,9 @@ if (-not $StaticOnly) {
             $desktopRuntimeReceipt.workspaceEditRejectionPassed -and
             $desktopRuntimeReceipt.workspaceEditShutdownExpirationPassed -and
             $desktopRuntimeReceipt.workspaceEditFixtureMutationPerformed -and
+            $desktopRuntimeReceipt.workspaceChangeSetProposalPassed -and
+            $desktopRuntimeReceipt.workspaceChangeSetApprovalPassed -and
+            $desktopRuntimeReceipt.workspaceChangeSetFileReceiptsPassed -and
             $desktopRuntimeReceipt.checkpointExportPassed -and
             $desktopRuntimeReceipt.checkpointContextRestorePassed -and
             $desktopRuntimeReceipt.checkpointAdmissionPassed -and
@@ -1562,6 +1681,7 @@ if (-not $StaticOnly) {
             $desktopRuntimeReceipt.resumeBrokerRequestCount -eq 1 -and
             $desktopRuntimeReceipt.abortBrokerRequestCount -eq 1 -and
             $desktopRuntimeReceipt.workspaceEditBrokerRequestCount -eq 8 -and
+            $desktopRuntimeReceipt.workspaceChangeSetBrokerRequestCount -eq 2 -and
             $desktopRuntimeReceipt.exportedCheckpointTurnCount -eq 3 -and
             $desktopRuntimeReceipt.restoredCheckpointTurnCount -eq 3 -and
             $desktopRuntimeReceipt.persistedCheckpointTurnCount -eq 4 -and
@@ -1710,6 +1830,16 @@ $passed = $failures.Count -eq 0
     workspacePatchMaximumPreviewBytes = 16384
     workspacePatchCommitMode =
         'single-file-atomic-replace-and-post-verify'
+    workspaceChangeSetSupported = $true
+    workspaceChangeSetMinimumFiles = 2
+    workspaceChangeSetMaximumFiles = 4
+    workspaceChangeSetMaximumPreviewBytes = 32768
+    workspaceChangeSetCommitMode =
+        'durable-before-or-after-convergence-no-simultaneous-visibility-claim'
+    workspaceChangeSetRecovery =
+        'strict-journal-before-tools-rollback-or-complete'
+    workspaceChangeSetRecoveryAvailableToPi = $false
+    simultaneousMultiPathVisibilityClaimed = $false
     workspaceEditNewFileSupported = $true
     workspaceEditNewFileMaxBytes = 16384
     workspaceEditNewFileParentPolicy =

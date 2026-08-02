@@ -102,9 +102,11 @@ public sealed class PiAgentReviewedIterationCoordinator
         if (restored is not null && !restored.IsTerminal)
         {
             PiAgentReviewedIterationStatus restoredStatus =
-                DateTimeOffset.UtcNow >= restored.ExpiresAtUtc
-                    ? PiAgentReviewedIterationStatus.Expired
-                    : PiAgentReviewedIterationStatus.Interrupted;
+                restored.SchemaVersion != 3
+                    ? PiAgentReviewedIterationStatus.Faulted
+                    : DateTimeOffset.UtcNow >= restored.ExpiresAtUtc
+                        ? PiAgentReviewedIterationStatus.Expired
+                        : PiAgentReviewedIterationStatus.Interrupted;
             if (
                 restored.Status != restoredStatus ||
                 restored.CurrentTurnId is not null ||
@@ -117,7 +119,10 @@ public sealed class PiAgentReviewedIterationCoordinator
                         CurrentTurnId = null,
                         CurrentProposalId = null,
                         StatusDetail = restoredStatus ==
-                            PiAgentReviewedIterationStatus.Expired
+                            PiAgentReviewedIterationStatus.Faulted
+                                ? "This stored policy predates exact per-file transaction receipts. It was closed without restoring a capability; start a new clean-HEAD policy."
+                                : restoredStatus ==
+                                    PiAgentReviewedIterationStatus.Expired
                                 ? "The stored owner policy expired while the desktop was not running. No capability was restored."
                                 : restored.Steps.LastOrDefault()?.TrustedValidationResult == "pending"
                                     ? "The desktop restarted before trusted validation. Revalidate and explicitly re-arm the fixed test approval; no process capability was restored."
@@ -162,7 +167,7 @@ public sealed class PiAgentReviewedIterationCoordinator
                     cancellationToken);
             DateTimeOffset startedAtUtc = DateTimeOffset.UtcNow;
             PiAgentReviewedIterationSnapshot next = new(
-                2,
+                3,
                 1,
                 $"review-loop-{startedAtUtc:yyyyMMddHHmmssfff}-" +
                     Guid.NewGuid().ToString("N")[..16],
@@ -324,9 +329,7 @@ public sealed class PiAgentReviewedIterationCoordinator
                     proposalId,
                     cancellationToken);
             DateTimeOffset now = DateTimeOffset.UtcNow;
-            if (
-                edit.Status != PiAgentWorkspaceEditStatus.Applied ||
-                edit.AfterSha256 is null)
+            if (!HasCompleteAppliedReceipt(edit))
             {
                 PiAgentReviewedIterationSnapshot failed = await RecordDecisionAsync(
                     RequireSnapshot(),
@@ -442,7 +445,7 @@ public sealed class PiAgentReviewedIterationCoordinator
             if (
                 current.Status !=
                     PiAgentReviewedIterationStatus.AwaitingTrustedValidation ||
-                current.SchemaVersion != 2 ||
+                current.SchemaVersion != 3 ||
                 current.Steps.LastOrDefault()?.TrustedValidationResult !=
                     "pending")
             {
@@ -657,14 +660,14 @@ public sealed class PiAgentReviewedIterationCoordinator
                 throw new InvalidOperationException(
                     "The reviewed iteration owner policy expired.");
             }
-            if (current.SchemaVersion != 2)
+            if (current.SchemaVersion != 3)
             {
                 await PersistAsync(
                     current with
                     {
                         Status = PiAgentReviewedIterationStatus.Faulted,
                         StatusDetail =
-                            "This stored policy predates separate trusted validation approval. Start a new clean-HEAD policy.",
+                            "This stored policy predates exact per-file transaction receipts. Start a new clean-HEAD policy.",
                         UpdatedAtUtc = DateTimeOffset.UtcNow,
                     },
                     cancellationToken);
@@ -939,7 +942,7 @@ public sealed class PiAgentReviewedIterationCoordinator
         prompt.AppendLine(
             "Inspect with read, grep, find and ls. Choose the smallest coherent next improvement.");
         prompt.AppendLine(
-            "If one text mutation advances the mission, call exactly one proposal tool: propose_edit for one exact replacement, propose_patch for 2-8 distinct non-overlapping exact replacements in one existing UTF-8 file, or propose_create_file for one missing UTF-8 file whose parent directory already exists. Then explain the evidence and expected validation.");
+            "If one coherent text mutation advances the mission, call exactly one proposal tool: propose_edit for one exact replacement, propose_patch for 2-8 distinct non-overlapping replacements in one existing UTF-8 file, propose_create_file for one missing UTF-8 file whose parent already exists, or propose_change_set for one inseparable 2-4 file source/test/documentation transaction. Then explain the evidence and expected validation.");
         prompt.AppendLine(
             "If neither safe proposal is appropriate or the mission is complete, do not propose a mutation; explain the completion or blocker.");
         prompt.AppendLine(
@@ -979,6 +982,7 @@ public sealed class PiAgentReviewedIterationCoordinator
             errorCode,
             recordedAtUtc)
         {
+            Files = BuildFileReceipts(edit),
             TrustedValidationResult = trustedValidationResult,
         };
         PiAgentReviewedIterationSnapshot next = current with
@@ -1053,11 +1057,24 @@ public sealed class PiAgentReviewedIterationCoordinator
         PiAgentWorkspaceEditSnapshot? newlyApplied = null)
     {
         Dictionary<string, string> files =
-            new(StringComparer.Ordinal);
+            new(StringComparer.OrdinalIgnoreCase);
         foreach (PiAgentReviewedIterationStepReceipt step in current.Steps)
         {
-            if (
-                step.OwnerDecision == "approved" &&
+            if (step.OwnerDecision != "approved")
+            {
+                continue;
+            }
+            if (step.Files.Count > 0)
+            {
+                foreach (PiAgentReviewedIterationFileReceipt file in step.Files)
+                {
+                    if (file.AfterSha256 is not null)
+                    {
+                        files[file.RelativePath] = file.AfterSha256;
+                    }
+                }
+            }
+            else if (
                 step.RelativePath is not null &&
                 step.AfterSha256 is not null)
             {
@@ -1066,12 +1083,48 @@ public sealed class PiAgentReviewedIterationCoordinator
         }
         if (
             newlyApplied is not null &&
-            newlyApplied.Status == PiAgentWorkspaceEditStatus.Applied &&
-            newlyApplied.AfterSha256 is not null)
+            HasCompleteAppliedReceipt(newlyApplied))
         {
-            files[newlyApplied.RelativePath] = newlyApplied.AfterSha256;
+            foreach (
+                PiAgentReviewedIterationFileReceipt file in
+                    BuildFileReceipts(newlyApplied))
+            {
+                files[file.RelativePath] = file.AfterSha256!;
+            }
         }
         return files;
+    }
+
+    private static bool HasCompleteAppliedReceipt(
+        PiAgentWorkspaceEditSnapshot edit) =>
+        edit.Status == PiAgentWorkspaceEditStatus.Applied &&
+        edit.AfterSha256 is not null &&
+        (!edit.IsChangeSet ||
+            (edit.FileChanges.Count is >= 2 and <= 4 &&
+             edit.FileChanges.All(file => file.AfterSha256 is not null)));
+
+    private static PiAgentReviewedIterationFileReceipt[] BuildFileReceipts(
+        PiAgentWorkspaceEditSnapshot edit)
+    {
+        if (edit.IsChangeSet)
+        {
+            return edit.FileChanges.Select(file =>
+                new PiAgentReviewedIterationFileReceipt(
+                    file.Ordinal,
+                    file.Operation,
+                    file.RelativePath,
+                    file.BeforeSha256,
+                    file.AfterSha256)).ToArray();
+        }
+        return
+        [
+            new PiAgentReviewedIterationFileReceipt(
+                1,
+                edit.Operation,
+                edit.RelativePath,
+                edit.BeforeSha256,
+                edit.AfterSha256),
+        ];
     }
 
     private PiAgentReviewedIterationSnapshot RequirePendingProposal(

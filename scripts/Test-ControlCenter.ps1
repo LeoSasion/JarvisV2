@@ -148,7 +148,9 @@ $requiredVisibleLabels = @(
     'NEW UTF-8 FILE PROPOSAL',
     'EXACT TEXT REPLACEMENT',
     'MULTI-HUNK PATCH',
-    'Content="REJECT"',
+    'MULTI-FILE CHANGE SET',
+    'REJECT ALL',
+    'APPLY CHANGE SET ONCE',
     'APPROVE ONCE',
     'CREATE ONCE',
     'APPLY PATCH ONCE',
@@ -205,12 +207,16 @@ Add-Check `
             'AutomationProperties.LiveSetting="Polite"') -and
         $mainWindowText.Contains('ItemsSource="{Binding WorkspaceEdits}"') -and
         $mainWindowText.Contains(
-            'AutomationProperties.Name="Reject workspace edit without writing"') -and
+            'AutomationProperties.Name="{Binding RejectionAutomationName}"') -and
         $mainWindowText.Contains(
             'AutomationProperties.Name="{Binding ApprovalAutomationName}"') -and
         $mainWindowText.Contains(
             'Content="{Binding ApproveActionLabel}"') -and
+        $mainWindowText.Contains(
+            'Content="{Binding RejectActionLabel}"') -and
         $mainWindowText.Contains('Text="{Binding ProposalLabel}"') -and
+        $mainWindowText.Contains('Text="{Binding PathLabel}"') -and
+        $mainWindowText.Contains('ItemsSource="{Binding FileChanges}"') -and
         $mainWindowText.Contains('ItemsSource="{Binding ReviewSegments}"') -and
         [regex]::Matches(
             $mainWindowText,
@@ -218,6 +224,9 @@ Add-Check `
         $conversationStateText.Contains('NEW UTF-8 FILE PROPOSAL') -and
         $conversationStateText.Contains('EXACT TEXT REPLACEMENT') -and
         $conversationStateText.Contains('MULTI-HUNK PATCH') -and
+        $conversationStateText.Contains('MULTI-FILE CHANGE SET') -and
+        $conversationStateText.Contains('REJECT ALL') -and
+        $conversationStateText.Contains('APPLY CHANGE SET ONCE') -and
         $conversationStateText.Contains('CREATE ONCE') -and
         $conversationStateText.Contains('APPLY PATCH ONCE') -and
         $conversationStateText.Contains('APPROVE ONCE') -and
@@ -238,7 +247,7 @@ Add-Check `
         $modelSetupText.Contains('PasswordBox') -and
         $modelSetupText.Contains('gpt-5.6-sol') -and
         $modelSetupText.Contains(
-            'READ / GREP / FIND / LS / PROPOSE_EDIT') -and
+            'READ / GREP / FIND / LS / PROPOSE_EDIT / PROPOSE_PATCH / PROPOSE_CREATE_FILE / PROPOSE_CHANGE_SET') -and
         $modelSetupText.Contains(
             'WRITE // DESKTOP OWNER APPROVAL ONLY') -and
         $modelSetupText.Contains('RETENTION // STORE FALSE') -and

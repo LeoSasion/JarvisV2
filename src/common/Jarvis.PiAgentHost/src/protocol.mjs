@@ -160,6 +160,15 @@ export async function handleRequest(
             workspaceFileCreateSupported: true,
             workspaceFileCreateMode:
               "exclusive-existing-parent-owner-approved",
+            workspaceChangeSetSupported: true,
+            workspaceChangeSetMinimumFiles: 2,
+            workspaceChangeSetMaximumFiles: 4,
+            workspaceChangeSetMaximumPreviewBytes: 32_768,
+            workspaceChangeSetCommitMode:
+              "durable-before-or-after-convergence-no-simultaneous-visibility-claim",
+            workspaceChangeSetRecovery:
+              "strict-journal-before-tools-rollback-or-complete",
+            workspaceChangeSetRecoveryAvailableToModel: false,
             unattendedSelfIteration: false,
             shellMutationSupported: false,
             explorerMutationSupported: false,
@@ -209,6 +218,9 @@ export async function handleRequest(
               restoredContextMessageCount:
                 state.sessionHandle
                   .restoredContextMessageCount,
+              workspaceTransactionRecovery:
+                state.sessionHandle
+                  .workspaceTransactionRecovery,
               resourceDiscoveryEnabled: false,
               modelNetworkAllowed: false,
             },
@@ -325,6 +337,7 @@ export async function handleRequest(
                   "propose_edit",
                   "propose_patch",
                   "propose_create_file",
+                  "propose_change_set",
                 ].includes(
                   event.toolName,
                 ) &&

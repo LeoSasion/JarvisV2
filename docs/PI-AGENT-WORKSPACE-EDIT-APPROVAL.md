@@ -3,8 +3,8 @@
 JarvisV2 can stage one exact existing-text replacement, one bounded multi-hunk
 patch to a single existing UTF-8 file, or one new UTF-8 file and present it to
 the desktop owner inside the conversation that produced it. Pi cannot approve
-the proposal, and calling `propose_edit`, `propose_patch` or
-`propose_create_file` never writes a file.
+the proposal, and calling `propose_edit`, `propose_patch`,
+`propose_create_file` or `propose_change_set` never writes a file.
 
 This is the one-shot mutation primitive used by both ordinary conversation and
 the durable reviewed-iteration workflow. It is not general shell access, a
@@ -174,8 +174,10 @@ new work until the session is restarted.
 ## Conversation behavior
 
 The structured `workspace_edit_proposed` event is admitted only after a
-successful `propose_edit`, `propose_patch` or `propose_create_file` completion.
-Its schema-v3 payload carries the explicit operation and is folded into the same immutable,
+successful `propose_edit`, `propose_patch`, `propose_create_file` or
+`propose_change_set` completion. A single-file schema-v3 payload carries the
+explicit operation; schema v4 carries the exact ordered file set and review
+digest. Both are folded into the same immutable,
 revisioned conversation turn as the request, tool lifecycle, and assistant
 response.
 
@@ -219,14 +221,14 @@ prove:
 `PiAgentDesktopRuntimeProbe` additionally proves the complete
 provider-to-Pi-to-JSONL-to-managed-state path, including inline proposal state,
 submission blocking, approved fixture commit, replay rejection, drift handling,
-explicit rejection, shutdown expiration, eight broker requests, and zero broker
-faults. The fixture is created under the admitted JarvisV2 workspace and removed
-after the probe.
+explicit rejection, shutdown expiration, and a mixed replace/patch/create
+three-file change set with exact managed file receipts. The fixtures are
+created under the admitted JarvisV2 workspace and removed after the probe.
 
 `PiAgentReviewedIterationProbe` adds the desktop coordinator path: it approves
-creation, approves a two-hunk patch, runs the fixed repository gate after each,
-then rejects a third proposal. It requires ten broker requests, zero broker
-faults and exact durable after hashes.
+creation, approves a three-file change set containing a two-hunk patch, runs the
+fixed repository gate after each, then rejects a third proposal. It requires ten
+broker requests, zero broker faults and exact durable per-file after hashes.
 
 These tests do not contact a live model, clear the kill switch, activate a shell
 module, inject into Explorer, restart Explorer, modify the registry, or mutate a
@@ -238,14 +240,15 @@ This milestone does not grant:
 
 - `bash`, generic `edit`, or `write` tools;
 - unattended or model-triggered approval;
-- multi-file atomic transactions;
+- simultaneous cross-path atomic visibility (change sets instead guarantee
+  durable all-before or all-committed-after convergence);
 - delete, rename, directory creation, VCS metadata or binary mutation;
 - persistent pending capabilities;
 - self-authored approval policy;
 - Shell, Explorer, registry, service, device, or system mutation.
 
 The desktop-reviewed iteration layer is documented in
-`PI-AGENT-REVIEWED-ITERATION.md`. It adds durable receipts, a fixed repository
-test gate and an explicit owner policy without changing this one-shot decision
-boundary. It does not restore pending proposals after restart and does not let
-Pi operate either owner control.
+`PI-AGENT-REVIEWED-ITERATION.md`. The bounded multi-file extension is specified
+in `PI-AGENT-MULTI-FILE-TRANSACTION.md`. It adds durable receipts, a fixed
+repository test gate and an explicit owner policy without giving Pi either
+owner control or recovery authority.

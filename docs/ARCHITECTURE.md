@@ -11,10 +11,12 @@ selection. The production key is stored with CurrentUser DPAPI and used only
 by desktop HTTPS. The broker pipe and offline sidecar never receive it.
 
 Both modes expose only `read`, `grep`, `find`, `ls` and the non-writing
-`propose_edit` / `propose_patch` / `propose_create_file` tools. Only the desktop
+`propose_edit` / `propose_patch` / `propose_create_file` /
+`propose_change_set` tools. Only the desktop
 owner can apply one exact replacement, one 2–8-hunk exact non-overlapping patch
-to a single existing UTF-8 file, or exclusively create one reviewed UTF-8 file
-beneath an existing parent. The optional reviewed loop requires a fresh
+to a single existing UTF-8 file, exclusively create one reviewed UTF-8 file
+beneath an existing parent, or accept one ordered two-to-four-file durable
+change set. The optional reviewed loop requires a fresh
 one-shot write approval plus fixed repository validation for every write. It
 then pauses for a separate desktop-owner approval of the exact Node test profile
 pinned in the clean Git HEAD. The desktop executes that profile directly without

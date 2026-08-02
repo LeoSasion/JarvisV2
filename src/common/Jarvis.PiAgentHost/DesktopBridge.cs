@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -10,7 +11,7 @@ namespace Jarvis.PiAgentHost;
 public sealed record PiAgentSidecarOptions(
     string NodeExecutablePath,
     string HostScriptPath,
-    int MaximumFrameBytes = 65_536,
+    int MaximumFrameBytes = 131_072,
     int RequestTimeoutMilliseconds = 10_000,
     int ShutdownTimeoutMilliseconds = 3_000,
     string? ModelBrokerPipePath = null);
@@ -62,12 +63,25 @@ public sealed record PiAgentWorkspaceEditProposed(
     string OldText,
     string NewText,
     IReadOnlyList<PiAgentWorkspacePatchHunk> PatchHunks) :
-    PiAgentTurnStreamEvent(TurnId, Sequence);
+    PiAgentTurnStreamEvent(TurnId, Sequence)
+{
+    public IReadOnlyList<PiAgentWorkspaceFileChange> FileChanges
+        { get; init; } = [];
+}
 
 public sealed record PiAgentWorkspacePatchHunk(
     int Ordinal,
     string OldText,
     string NewText);
+
+public sealed record PiAgentWorkspaceFileChange(
+    int Ordinal,
+    string Operation,
+    string RelativePath,
+    string BeforeSha256,
+    string OldText,
+    string NewText,
+    IReadOnlyList<PiAgentWorkspacePatchHunk> PatchHunks);
 
 public sealed record PiAgentTurnCompleted(
     string TurnId,
@@ -82,7 +96,19 @@ public sealed record PiAgentWorkspaceEditDecisionReceipt(
     string BeforeSha256,
     string? AfterSha256,
     string Status,
-    bool MutationPerformed);
+    bool MutationPerformed)
+{
+    public string? TransactionModel { get; init; }
+    public IReadOnlyList<PiAgentWorkspaceFileDecisionReceipt> Files
+        { get; init; } = [];
+}
+
+public sealed record PiAgentWorkspaceFileDecisionReceipt(
+    int Ordinal,
+    string Operation,
+    string RelativePath,
+    string BeforeSha256,
+    string? AfterSha256);
 
 public sealed class PiAgentWorkspaceEditDecisionException(
     string errorCode,
@@ -148,6 +174,13 @@ public sealed record PiAgentDesktopProbeReceipt(
     int WorkspacePatchMinimumHunks,
     int WorkspacePatchMaximumHunks,
     int WorkspacePatchMaximumPreviewBytes,
+    bool WorkspaceChangeSetSupported,
+    int WorkspaceChangeSetMinimumFiles,
+    int WorkspaceChangeSetMaximumFiles,
+    int WorkspaceChangeSetMaximumPreviewBytes,
+    bool WorkspaceChangeSetRecoveryBeforeToolsPassed,
+    bool WorkspaceChangeSetRecoveryAvailableToModel,
+    bool SimultaneousMultiPathVisibilityClaimed,
     bool ShellMutationSupported,
     bool ExplorerMutationSupported,
     bool SystemMutationSupported,
@@ -215,6 +248,7 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 "propose_edit",
                 "propose_patch",
                 "propose_create_file",
+                "propose_change_set",
             ],
             StringComparer.Ordinal);
 
@@ -875,7 +909,8 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 (toolName is
                     "propose_edit" or
                     "propose_patch" or
-                    "propose_create_file") &&
+                    "propose_create_file" or
+                    "propose_change_set") &&
                 !isError)
             {
                 pending.AwaitingWorkspaceEditProposalCount++;
@@ -903,46 +938,59 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 root.GetProperty("operation").GetString()
                 ?? throw new InvalidOperationException(
                     "The Pi Agent workspace proposal operation was missing.");
-            string relativePath =
-                root.GetProperty("relativePath").GetString()
-                ?? throw new InvalidOperationException(
-                    "The Pi Agent workspace edit path was missing.");
             string beforeSha256 =
                 root.GetProperty("beforeSha256").GetString()
                 ?? throw new InvalidOperationException(
                     "The Pi Agent workspace edit hash was missing.");
-            string oldText =
-                root.GetProperty("oldText").GetString()
-                ?? throw new InvalidOperationException(
-                    "The Pi Agent workspace edit old text was missing.");
-            string newText =
-                root.GetProperty("newText").GetString()
-                ?? throw new InvalidOperationException(
-                    "The Pi Agent workspace edit new text was missing.");
-            PiAgentWorkspacePatchHunk[] patchHunks = root
-                .GetProperty("patchHunks")
-                .EnumerateArray()
-                .Select(hunk => new PiAgentWorkspacePatchHunk(
-                    hunk.GetProperty("ordinal").GetInt32(),
-                    hunk.GetProperty("oldText").GetString()
-                        ?? throw new InvalidOperationException(
-                            "A Pi Agent workspace patch old text was missing."),
-                    hunk.GetProperty("newText").GetString()
-                        ?? throw new InvalidOperationException(
-                            "A Pi Agent workspace patch new text was missing.")))
-                .ToArray();
+            string relativePath = string.Empty;
+            string oldText = string.Empty;
+            string newText = string.Empty;
+            PiAgentWorkspacePatchHunk[] patchHunks = [];
+            PiAgentWorkspaceFileChange[] fileChanges = [];
+            bool proposalValid;
+            if (schemaVersion == 4 && operation == "change-set")
+            {
+                fileChanges = root
+                    .GetProperty("changes")
+                    .EnumerateArray()
+                    .Select(ParseWorkspaceFileChange)
+                    .ToArray();
+                proposalValid =
+                    IsValidWorkspaceChangeSet(
+                        fileChanges,
+                        beforeSha256);
+            }
+            else
+            {
+                relativePath =
+                    root.GetProperty("relativePath").GetString()
+                    ?? throw new InvalidOperationException(
+                        "The Pi Agent workspace edit path was missing.");
+                oldText =
+                    root.GetProperty("oldText").GetString()
+                    ?? throw new InvalidOperationException(
+                        "The Pi Agent workspace edit old text was missing.");
+                newText =
+                    root.GetProperty("newText").GetString()
+                    ?? throw new InvalidOperationException(
+                        "The Pi Agent workspace edit new text was missing.");
+                patchHunks = ParseWorkspacePatchHunks(
+                    root.GetProperty("patchHunks"));
+                proposalValid =
+                    schemaVersion == 3 &&
+                    operation is "replace" or "patch" or "create" &&
+                    IsValidWorkspaceRelativePath(relativePath) &&
+                    IsValidWorkspaceProposalText(
+                        operation,
+                        beforeSha256,
+                        oldText,
+                        newText,
+                        patchHunks);
+            }
             if (
-                schemaVersion != 3 ||
                 !WorkspaceEditProposalIdPattern.IsMatch(proposalId) ||
-                operation is not ("replace" or "patch" or "create") ||
-                !IsValidWorkspaceRelativePath(relativePath) ||
                 !Sha256Pattern.IsMatch(beforeSha256) ||
-                !IsValidWorkspaceProposalText(
-                    operation,
-                    beforeSha256,
-                    oldText,
-                    newText,
-                    patchHunks) ||
+                !proposalValid ||
                 pending.AwaitingWorkspaceEditProposalCount != 1)
             {
                 throw new InvalidOperationException(
@@ -961,7 +1009,10 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                     beforeSha256,
                     oldText,
                     newText,
-                    patchHunks),
+                    patchHunks)
+                {
+                    FileChanges = fileChanges,
+                },
                 cancellationToken);
             return;
         }
@@ -1211,7 +1262,7 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             throw new ArgumentException(
                 "HostScriptPath must name an existing absolute host.mjs.");
         }
-        if (options.MaximumFrameBytes != 65_536 ||
+        if (options.MaximumFrameBytes != 131_072 ||
             options.RequestTimeoutMilliseconds is < 1_000 or > 15_000 ||
             options.ShutdownTimeoutMilliseconds is < 1_000 or > 10_000)
         {
@@ -1319,8 +1370,6 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             data.GetProperty("proposalId").GetString() ?? string.Empty;
         string operation =
             data.GetProperty("operation").GetString() ?? string.Empty;
-        string relativePath =
-            data.GetProperty("relativePath").GetString() ?? string.Empty;
         string beforeSha256 =
             data.GetProperty("beforeSha256").GetString() ?? string.Empty;
         JsonElement afterElement = data.GetProperty("afterSha256");
@@ -1331,12 +1380,9 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             data.GetProperty("status").GetString() ?? string.Empty;
         bool mutationPerformed =
             data.GetProperty("mutationPerformed").GetBoolean();
-        bool valid =
-            schemaVersion == 3 &&
+        bool commonValid =
             proposalId == expectedProposalId &&
-            operation is "replace" or "patch" or "create" &&
             beforeSha256 == expectedBeforeSha256 &&
-            IsValidWorkspaceRelativePath(relativePath) &&
             status == expectedStatus &&
             mutationPerformed == mutationExpected &&
             (mutationExpected
@@ -1344,6 +1390,66 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                     Sha256Pattern.IsMatch(afterSha256) &&
                     afterSha256 != beforeSha256
                 : afterSha256 is null);
+        if (schemaVersion == 4 && operation == "change-set")
+        {
+            string transactionModel = data
+                .GetProperty("transactionModel")
+                .GetString() ?? string.Empty;
+            PiAgentWorkspaceFileDecisionReceipt[] files = data
+                .GetProperty("files")
+                .EnumerateArray()
+                .Select(file =>
+                {
+                    JsonElement fileAfterElement =
+                        file.GetProperty("afterSha256");
+                    return new PiAgentWorkspaceFileDecisionReceipt(
+                        file.GetProperty("ordinal").GetInt32(),
+                        file.GetProperty("operation").GetString()
+                            ?? string.Empty,
+                        file.GetProperty("relativePath").GetString()
+                            ?? string.Empty,
+                        file.GetProperty("beforeSha256").GetString()
+                            ?? string.Empty,
+                        fileAfterElement.ValueKind == JsonValueKind.Null
+                            ? null
+                            : fileAfterElement.GetString());
+                })
+                .ToArray();
+            bool changeSetValid =
+                commonValid &&
+                transactionModel ==
+                    "durable-before-or-after-convergence-no-simultaneous-visibility-claim" &&
+                IsValidWorkspaceChangeSetDecision(
+                    files,
+                    afterSha256,
+                    mutationExpected);
+            if (!changeSetValid)
+            {
+                throw new InvalidOperationException(
+                    "The Pi Agent workspace change-set decision receipt was invalid.");
+            }
+            return new PiAgentWorkspaceEditDecisionReceipt(
+                schemaVersion,
+                proposalId,
+                operation,
+                string.Empty,
+                beforeSha256,
+                afterSha256,
+                status,
+                mutationPerformed)
+            {
+                TransactionModel = transactionModel,
+                Files = files,
+            };
+        }
+
+        string relativePath =
+            data.GetProperty("relativePath").GetString() ?? string.Empty;
+        bool valid =
+            commonValid &&
+            schemaVersion == 3 &&
+            operation is "replace" or "patch" or "create" &&
+            IsValidWorkspaceRelativePath(relativePath);
         if (!valid)
         {
             throw new InvalidOperationException(
@@ -1358,6 +1464,62 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             afterSha256,
             status,
             mutationPerformed);
+    }
+
+    private static bool IsValidWorkspaceChangeSetDecision(
+        IReadOnlyList<PiAgentWorkspaceFileDecisionReceipt> files,
+        string? afterSha256,
+        bool mutationExpected)
+    {
+        if (files.Count is < 2 or > 4)
+        {
+            return false;
+        }
+        HashSet<string> paths = new(StringComparer.OrdinalIgnoreCase);
+        for (int index = 0; index < files.Count; index++)
+        {
+            PiAgentWorkspaceFileDecisionReceipt file = files[index];
+            if (
+                file.Ordinal != index + 1 ||
+                file.Operation is not
+                    ("replace" or "patch" or "create") ||
+                !IsValidWorkspaceRelativePath(file.RelativePath) ||
+                !paths.Add(file.RelativePath) ||
+                !Sha256Pattern.IsMatch(file.BeforeSha256) ||
+                (mutationExpected
+                    ? file.AfterSha256 is null ||
+                        !Sha256Pattern.IsMatch(file.AfterSha256) ||
+                        file.AfterSha256 == file.BeforeSha256
+                    : file.AfterSha256 is not null))
+            {
+                return false;
+            }
+        }
+        return !mutationExpected || string.Equals(
+            ComputeWorkspaceChangeSetAfterDigest(files),
+            afterSha256,
+            StringComparison.Ordinal);
+    }
+
+    private static string ComputeWorkspaceChangeSetAfterDigest(
+        IReadOnlyList<PiAgentWorkspaceFileDecisionReceipt> files)
+    {
+        StringBuilder material = new(
+            "JARVIS2/workspace-change-set-after/v1");
+        foreach (PiAgentWorkspaceFileDecisionReceipt file in files)
+        {
+            material
+                .Append('\0')
+                .Append(file.Ordinal.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture))
+                .Append('\0')
+                .Append(file.RelativePath)
+                .Append('\0')
+                .Append(file.AfterSha256);
+        }
+        return Convert.ToHexString(SHA256.HashData(
+                Encoding.UTF8.GetBytes(material.ToString())))
+            .ToLowerInvariant();
     }
 
     private static bool IsValidWorkspaceRelativePath(
@@ -1381,6 +1543,12 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             .All(segment =>
                 segment is not "." and not ".." &&
                 !segment.Equals(
+                    ".jarvis2-workspace-transaction.json",
+                    StringComparison.OrdinalIgnoreCase) &&
+                !segment.StartsWith(
+                    ".jarvis2-workspace-transaction-",
+                    StringComparison.OrdinalIgnoreCase) &&
+                !segment.Equals(
                     ".git",
                     StringComparison.OrdinalIgnoreCase) &&
                 !segment.Equals(
@@ -1389,6 +1557,133 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 !segment.Equals(
                     ".svn",
                     StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static PiAgentWorkspacePatchHunk[]
+        ParseWorkspacePatchHunks(JsonElement element) => element
+            .EnumerateArray()
+            .Select(hunk => new PiAgentWorkspacePatchHunk(
+                hunk.GetProperty("ordinal").GetInt32(),
+                hunk.GetProperty("oldText").GetString()
+                    ?? throw new InvalidOperationException(
+                        "A Pi Agent workspace patch old text was missing."),
+                hunk.GetProperty("newText").GetString()
+                    ?? throw new InvalidOperationException(
+                        "A Pi Agent workspace patch new text was missing.")))
+            .ToArray();
+
+    private static PiAgentWorkspaceFileChange
+        ParseWorkspaceFileChange(JsonElement element) => new(
+            element.GetProperty("ordinal").GetInt32(),
+            element.GetProperty("operation").GetString()
+                ?? throw new InvalidOperationException(
+                    "A Pi Agent change-set operation was missing."),
+            element.GetProperty("relativePath").GetString()
+                ?? throw new InvalidOperationException(
+                    "A Pi Agent change-set path was missing."),
+            element.GetProperty("beforeSha256").GetString()
+                ?? throw new InvalidOperationException(
+                    "A Pi Agent change-set before hash was missing."),
+            element.GetProperty("oldText").GetString()
+                ?? throw new InvalidOperationException(
+                    "A Pi Agent change-set old text was missing."),
+            element.GetProperty("newText").GetString()
+                ?? throw new InvalidOperationException(
+                    "A Pi Agent change-set new text was missing."),
+            ParseWorkspacePatchHunks(
+                element.GetProperty("patchHunks")));
+
+    private static bool IsValidWorkspaceChangeSet(
+        IReadOnlyList<PiAgentWorkspaceFileChange> changes,
+        string reviewDigest)
+    {
+        if (
+            changes.Count is < 2 or > 4 ||
+            !Sha256Pattern.IsMatch(reviewDigest))
+        {
+            return false;
+        }
+        HashSet<string> paths = new(StringComparer.OrdinalIgnoreCase);
+        int previewBytes = 0;
+        for (int index = 0; index < changes.Count; index++)
+        {
+            PiAgentWorkspaceFileChange change = changes[index];
+            if (
+                change.Ordinal != index + 1 ||
+                change.Operation is not
+                    ("replace" or "patch" or "create") ||
+                !IsValidWorkspaceRelativePath(change.RelativePath) ||
+                !paths.Add(change.RelativePath) ||
+                !Sha256Pattern.IsMatch(change.BeforeSha256) ||
+                !IsValidWorkspaceProposalText(
+                    change.Operation,
+                    change.BeforeSha256,
+                    change.OldText,
+                    change.NewText,
+                    change.PatchHunks))
+            {
+                return false;
+            }
+            if (change.Operation == "patch")
+            {
+                previewBytes += change.PatchHunks.Sum(hunk =>
+                    Encoding.UTF8.GetByteCount(hunk.OldText) +
+                    Encoding.UTF8.GetByteCount(hunk.NewText));
+            }
+            else
+            {
+                previewBytes +=
+                    Encoding.UTF8.GetByteCount(change.OldText) +
+                    Encoding.UTF8.GetByteCount(change.NewText);
+            }
+        }
+        return
+            previewBytes <= 32_768 &&
+            string.Equals(
+                ComputeWorkspaceChangeSetReviewDigest(changes),
+                reviewDigest,
+                StringComparison.Ordinal);
+    }
+
+    private static string ComputeWorkspaceChangeSetReviewDigest(
+        IReadOnlyList<PiAgentWorkspaceFileChange> changes)
+    {
+        StringBuilder material = new(
+            "JARVIS2/workspace-change-set-review/v1");
+        foreach (PiAgentWorkspaceFileChange change in changes)
+        {
+            material
+                .Append('\0')
+                .Append(change.Ordinal.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture))
+                .Append('\0')
+                .Append(change.Operation)
+                .Append('\0')
+                .Append(change.RelativePath)
+                .Append('\0')
+                .Append(change.BeforeSha256)
+                .Append('\0')
+                .Append(change.OldText)
+                .Append('\0')
+                .Append(change.NewText)
+                .Append('\0')
+                .Append(change.PatchHunks.Count.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture));
+            foreach (PiAgentWorkspacePatchHunk hunk in change.PatchHunks)
+            {
+                material
+                    .Append('\0')
+                    .Append(hunk.Ordinal.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture))
+                    .Append('\0')
+                    .Append(hunk.OldText)
+                    .Append('\0')
+                    .Append(hunk.NewText);
+            }
+        }
+        return Convert.ToHexString(SHA256.HashData(
+                Encoding.UTF8.GetBytes(material.ToString())))
+            .ToLowerInvariant();
     }
 
     private static bool IsValidWorkspaceProposalText(
@@ -1529,6 +1824,21 @@ public static class PiAgentDesktopProbe
             .EnumerateArray()
             .Select(value => value.GetString() ?? string.Empty)
             .ToArray();
+        bool workspaceChangeSetSupported = capabilityData
+            .GetProperty("workspaceChangeSetSupported")
+            .GetBoolean();
+        int workspaceChangeSetMinimumFiles = capabilityData
+            .GetProperty("workspaceChangeSetMinimumFiles")
+            .GetInt32();
+        int workspaceChangeSetMaximumFiles = capabilityData
+            .GetProperty("workspaceChangeSetMaximumFiles")
+            .GetInt32();
+        int workspaceChangeSetMaximumPreviewBytes = capabilityData
+            .GetProperty("workspaceChangeSetMaximumPreviewBytes")
+            .GetInt32();
+        bool workspaceChangeSetRecoveryAvailableToModel = capabilityData
+            .GetProperty("workspaceChangeSetRecoveryAvailableToModel")
+            .GetBoolean();
         bool capabilitiesPassed =
             capabilities.RootElement.GetProperty("success").GetBoolean() &&
             initialTools.SequenceEqual(
@@ -1540,6 +1850,7 @@ public static class PiAgentDesktopProbe
                     "propose_edit",
                     "propose_patch",
                     "propose_create_file",
+                    "propose_change_set",
                 ]) &&
             deniedTools.SequenceEqual(["bash", "edit", "write"]) &&
             capabilityData
@@ -1595,6 +1906,19 @@ public static class PiAgentDesktopProbe
                 .GetProperty("workspacePatchCommitMode")
                 .GetString() ==
                     "single-file-atomic-replace-and-post-verify" &&
+            workspaceChangeSetSupported &&
+            workspaceChangeSetMinimumFiles == 2 &&
+            workspaceChangeSetMaximumFiles == 4 &&
+            workspaceChangeSetMaximumPreviewBytes == 32_768 &&
+            capabilityData
+                .GetProperty("workspaceChangeSetCommitMode")
+                .GetString() ==
+                    "durable-before-or-after-convergence-no-simultaneous-visibility-claim" &&
+            capabilityData
+                .GetProperty("workspaceChangeSetRecovery")
+                .GetString() ==
+                    "strict-journal-before-tools-rollback-or-complete" &&
+            !workspaceChangeSetRecoveryAvailableToModel &&
             !capabilityData
                 .GetProperty("shellMutationSupported")
                 .GetBoolean() &&
@@ -1617,6 +1941,17 @@ public static class PiAgentDesktopProbe
                 cancellationToken);
         JsonElement sessionData =
             admittedSession.RootElement.GetProperty("data");
+        JsonElement recoveryData = sessionData
+            .GetProperty("workspaceTransactionRecovery");
+        bool workspaceChangeSetRecoveryBeforeToolsPassed =
+            recoveryData.GetProperty("schemaVersion").GetInt32() == 1 &&
+            recoveryData.GetProperty("receiptType").GetString() ==
+                "jarvis2-workspace-change-set-recovery" &&
+            recoveryData.GetProperty("result").GetString() == "none" &&
+            recoveryData.GetProperty("proposalId").ValueKind ==
+                JsonValueKind.Null &&
+            recoveryData.GetProperty("fileCount").GetInt32() == 0 &&
+            !recoveryData.GetProperty("mutationPerformed").GetBoolean();
         string[] activeTools = sessionData
             .GetProperty("activeTools")
             .EnumerateArray()
@@ -1635,7 +1970,9 @@ public static class PiAgentDesktopProbe
                     "propose_edit",
                     "propose_patch",
                     "propose_create_file",
+                    "propose_change_set",
                 ]) &&
+            workspaceChangeSetRecoveryBeforeToolsPassed &&
             !sessionData
                 .GetProperty("sessionPersisted")
                 .GetBoolean() &&
@@ -1693,6 +2030,13 @@ public static class PiAgentDesktopProbe
             2,
             8,
             16_384,
+            workspaceChangeSetSupported,
+            workspaceChangeSetMinimumFiles,
+            workspaceChangeSetMaximumFiles,
+            workspaceChangeSetMaximumPreviewBytes,
+            workspaceChangeSetRecoveryBeforeToolsPassed,
+            workspaceChangeSetRecoveryAvailableToModel,
+            false,
             false,
             false,
             false,

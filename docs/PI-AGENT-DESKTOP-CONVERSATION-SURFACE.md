@@ -27,6 +27,12 @@ and decision state. Reject comes first in keyboard order and performs no write.
 Approve Once rechecks the exact file immediately before commit. The composer is
 disabled until the owner decides, and Pi cannot operate either control.
 
+A change set uses the same plane: its header shows the exact review digest and
+all-or-recover boundary, followed by two to four ordered file sections with
+complete operations, paths, hashes and review segments. The transcript owns
+scrolling. `REJECT ALL` and `APPLY CHANGE SET ONCE` are the only decisions; Pi
+has no per-file toggle or recovery control.
+
 Closing a window with an owned runtime first quiesces submissions, cancels an
 active turn, waits for its terminal event, flushes the CurrentUser-DPAPI
 checkpoint and releases the owned sidecar and broker. The window gives that
@@ -63,7 +69,8 @@ WPF command
 ```
 
 `read`, `grep`, `find`, `ls`, non-mutating `propose_edit`, non-mutating
-`propose_patch` and non-mutating `propose_create_file` are the only Pi tools installed in the session and
+`propose_patch`, non-mutating `propose_create_file` and non-mutating
+`propose_change_set` are the only Pi tools installed in the session and
 admitted by the production provider. The
 diagnostic provider itself requests only `ls`. `bash`, generic `edit` and
 `write` are unavailable. No provider credential enters the sidecar and its
@@ -175,6 +182,10 @@ The multi-hunk review state is captured at
 `docs/screenshots/jarvis-control-center-reviewed-multi-hunk-patch.png`; it keeps
 every full remove/add segment in the producing turn and exposes `APPLY PATCH
 ONCE` without starting Pi or changing a file.
+The whole-set review state is captured at
+`docs/screenshots/jarvis-control-center-reviewed-change-set.png`; it shows the
+ordered file hierarchy and durable convergence disclosure without starting Pi
+or mutating the workspace.
 The separate trusted-validation control is captured at
 `docs/screenshots/jarvis-control-center-trusted-validation.png`; it shows the
 pinned-profile disclosure and test-once action without starting Pi, Node or a

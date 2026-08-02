@@ -30,6 +30,7 @@ import {
   registerDesktopBrokerProvider,
 } from "./desktop-model-broker.mjs";
 import {
+  createWorkspaceChangeSetProposalTool,
   createWorkspaceEditProposalTool,
   createWorkspaceFileProposalTool,
   createWorkspacePatchProposalTool,
@@ -589,7 +590,13 @@ export async function createReadOnlyAgentSession(
     admission.canonicalRoot,
   );
   const workspaceEditProposalManager =
-    new WorkspaceEditProposalManager(admission);
+    await WorkspaceEditProposalManager.create(
+      admission,
+      {
+        transactionHooks:
+          options.workspaceTransactionHooks,
+      },
+    );
   seedConversationCheckpoint(
     sessionManager,
     checkpointTurns,
@@ -612,6 +619,10 @@ export async function createReadOnlyAgentSession(
       admission,
       workspaceEditProposalManager,
     ),
+    createWorkspaceChangeSetProposalTool(
+      admission,
+      workspaceEditProposalManager,
+    ),
   ];
   const result = await createAgentSession({
     cwd: admission.canonicalRoot,
@@ -625,6 +636,7 @@ export async function createReadOnlyAgentSession(
       "propose_edit",
       "propose_patch",
       "propose_create_file",
+      "propose_change_set",
     ],
     excludeTools: ["bash", "edit", "write"],
     customTools: tools,
@@ -644,7 +656,7 @@ export async function createReadOnlyAgentSession(
   );
   if (
     activeTools.join("|") !==
-      "read|grep|find|ls|propose_edit|propose_patch|propose_create_file" ||
+      "read|grep|find|ls|propose_edit|propose_patch|propose_create_file|propose_change_set" ||
     persisted ||
     result.session.messages.length !==
       restoredContextMessageCount ||
@@ -667,6 +679,8 @@ export async function createReadOnlyAgentSession(
     modelId: result.session.model?.id ?? null,
     restoredTurnCount: checkpointTurns.length,
     restoredContextMessageCount,
+    workspaceTransactionRecovery:
+      workspaceEditProposalManager.recoveryReceipt,
     workspaceEditProposalManager,
   };
 }

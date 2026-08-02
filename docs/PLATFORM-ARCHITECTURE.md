@@ -44,10 +44,11 @@ sidecar and bounded LF-delimited JSONL. The managed desktop bridge now owns the
 no-shell child lifecycle, imports the real package, proves a clean child
 environment and creates one in-memory SDK session for one canonical workspace.
 Its custom `read`, `grep`, `find` and `ls` tools reject path escape and reparse
-points. Non-mutating `propose_edit`, `propose_patch` and `propose_create_file`
-tools can stage one exact replacement, one 2–8-hunk exact non-overlapping patch
-in a single existing UTF-8 file, or one missing UTF-8 file under an existing
-parent; only the native desktop owner can approve the explicit operation once
+points. Non-mutating `propose_edit`, `propose_patch`, `propose_create_file` and
+`propose_change_set` tools can stage one exact replacement, one 2–8-hunk exact non-overlapping patch
+in a single existing UTF-8 file, one missing UTF-8 file under an existing
+parent, or one ordered two-to-four-file durable set in the workspace; only the
+native desktop owner can approve the explicit operation once
 against its reviewed before state. Prompting is admitted only when the desktop owns a current-user local
 model-broker pipe; resource discovery, sidecar provider network access,
 credential transport and direct mutation tools remain disabled. The desktop now owns

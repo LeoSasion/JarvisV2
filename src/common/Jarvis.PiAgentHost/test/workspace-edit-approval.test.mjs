@@ -57,6 +57,7 @@ try {
       "propose_edit",
       "propose_patch",
       "propose_create_file",
+      "propose_change_set",
     ],
   );
   const proposeTool =
@@ -67,9 +68,14 @@ try {
     sessionHandle.session.getToolDefinition(
       "propose_create_file",
     );
+  const changeSetTool =
+    sessionHandle.session.getToolDefinition(
+      "propose_change_set",
+    );
   assert.ok(proposeTool);
   assert.ok(patchTool);
   assert.ok(createTool);
+  assert.ok(changeSetTool);
 
   const firstResult = await proposeTool.execute(
     "proposal-tool-1",

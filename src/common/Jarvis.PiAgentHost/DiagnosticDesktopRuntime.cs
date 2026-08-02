@@ -19,6 +19,9 @@ public sealed record PiAgentDesktopRuntimeProbeReceipt(
     bool WorkspaceEditRejectionPassed,
     bool WorkspaceEditShutdownExpirationPassed,
     bool WorkspaceEditFixtureMutationPerformed,
+    bool WorkspaceChangeSetProposalPassed,
+    bool WorkspaceChangeSetApprovalPassed,
+    bool WorkspaceChangeSetFileReceiptsPassed,
     bool CheckpointExportPassed,
     bool CheckpointContextRestorePassed,
     bool CheckpointAdmissionPassed,
@@ -37,6 +40,7 @@ public sealed record PiAgentDesktopRuntimeProbeReceipt(
     int ResumeBrokerRequestCount,
     int AbortBrokerRequestCount,
     int WorkspaceEditBrokerRequestCount,
+    int WorkspaceChangeSetBrokerRequestCount,
     int ExportedCheckpointTurnCount,
     int RestoredCheckpointTurnCount,
     int PersistedCheckpointTurnCount,
@@ -320,6 +324,11 @@ public static class PiAgentDesktopRuntimeProbe
                 sidecarOptions,
                 workspaceRoot,
                 cancellationToken);
+        WorkspaceChangeSetApprovalProbe workspaceChangeSetProbe =
+            await ProbeWorkspaceChangeSetApprovalAsync(
+                sidecarOptions,
+                workspaceRoot,
+                cancellationToken);
 
         int abortBrokerRequestCount;
         int abortBrokerFaultCount;
@@ -376,6 +385,7 @@ public static class PiAgentDesktopRuntimeProbe
             abortBrokerFaultCount +
             storeFailureProbe.BrokerFaultCount;
         brokerFaultCount += workspaceEditProbe.BrokerFaultCount;
+        brokerFaultCount += workspaceChangeSetProbe.BrokerFaultCount;
         bool startupRollbackPassed =
             await ProbeStartupRollbackAsync(
                 sidecarOptions,
@@ -393,6 +403,9 @@ public static class PiAgentDesktopRuntimeProbe
             workspaceEditProbe.RejectionPassed &&
             workspaceEditProbe.ShutdownExpirationPassed &&
             workspaceEditProbe.FixtureMutationPerformed &&
+            workspaceChangeSetProbe.ProposalPassed &&
+            workspaceChangeSetProbe.ApprovalPassed &&
+            workspaceChangeSetProbe.FileReceiptsPassed &&
             checkpointExportPassed &&
             checkpointContextRestorePassed &&
             checkpointAdmissionPassed &&
@@ -414,6 +427,7 @@ public static class PiAgentDesktopRuntimeProbe
             resumeBrokerRequestCount == 1 &&
             abortBrokerRequestCount == 1 &&
             workspaceEditProbe.BrokerRequestCount == 8 &&
+            workspaceChangeSetProbe.BrokerRequestCount == 2 &&
             checkpoint.Turns.Count == 3 &&
             restoredCheckpointTurnCount == 3 &&
             brokerFaultCount == 0;
@@ -434,6 +448,9 @@ public static class PiAgentDesktopRuntimeProbe
             workspaceEditProbe.RejectionPassed,
             workspaceEditProbe.ShutdownExpirationPassed,
             workspaceEditProbe.FixtureMutationPerformed,
+            workspaceChangeSetProbe.ProposalPassed,
+            workspaceChangeSetProbe.ApprovalPassed,
+            workspaceChangeSetProbe.FileReceiptsPassed,
             checkpointExportPassed,
             checkpointContextRestorePassed,
             checkpointAdmissionPassed,
@@ -454,6 +471,7 @@ public static class PiAgentDesktopRuntimeProbe
             resumeBrokerRequestCount,
             abortBrokerRequestCount,
             workspaceEditProbe.BrokerRequestCount,
+            workspaceChangeSetProbe.BrokerRequestCount,
             checkpoint.Turns.Count,
             restoredCheckpointTurnCount,
             persistedCheckpointTurnCount,
@@ -655,6 +673,109 @@ public static class PiAgentDesktopRuntimeProbe
     private sealed record CheckpointStoreFailureProbe(
         bool Passed,
         int BrokerFaultCount);
+
+    private sealed record WorkspaceChangeSetApprovalProbe(
+        bool ProposalPassed,
+        bool ApprovalPassed,
+        bool FileReceiptsPassed,
+        int BrokerRequestCount,
+        int BrokerFaultCount);
+
+    private static async Task<WorkspaceChangeSetApprovalProbe>
+        ProbeWorkspaceChangeSetApprovalAsync(
+            PiAgentSidecarOptions sidecarOptions,
+            string parentWorkspaceRoot,
+            CancellationToken cancellationToken)
+    {
+        string fixtureRoot = Path.Combine(
+            parentWorkspaceRoot,
+            $".jarvis-workspace-change-set-{Guid.NewGuid():N}");
+        string sourcePath = Path.Combine(fixtureRoot, "source.txt");
+        string testPath = Path.Combine(fixtureRoot, "test.txt");
+        string documentationRoot = Path.Combine(fixtureRoot, "docs");
+        string documentationPath = Path.Combine(
+            documentationRoot,
+            "change.md");
+        Directory.CreateDirectory(fixtureRoot);
+        Directory.CreateDirectory(documentationRoot);
+        await File.WriteAllTextAsync(
+            sourcePath,
+            "const value = 1;\n",
+            cancellationToken);
+        await File.WriteAllTextAsync(
+            testPath,
+            "alpha\nbeta\ngamma\n",
+            cancellationToken);
+        try
+        {
+            DiagnosticWorkspaceChangeSetModelProvider provider = new();
+            await using PiAgentDesktopRuntime runtime =
+                await PiAgentDesktopRuntime.StartAsync(
+                    new PiAgentDesktopRuntimeOptions(
+                        sidecarOptions,
+                        fixtureRoot),
+                    provider,
+                    cancellationToken: cancellationToken);
+            PiAgentConversationTurn turn =
+                await runtime.Conversation.SubmitAsync(
+                    "Stage one reviewed source, test and documentation change set.",
+                    "workspace-change-set-approval-turn",
+                    cancellationToken);
+            PiAgentConversationTurnSnapshot final =
+                await turn.Completion.WaitAsync(cancellationToken);
+            PiAgentWorkspaceEditSnapshot proposal =
+                final.WorkspaceEdits.Single();
+            bool proposalPassed =
+                proposal.SchemaVersion == 4 &&
+                proposal.Operation == "change-set" &&
+                proposal.FileChanges.Count == 3 &&
+                proposal.FileChanges.Select(file => file.RelativePath)
+                    .SequenceEqual(
+                        ["source.txt", "test.txt", "docs/change.md"]) &&
+                proposal.Status == PiAgentWorkspaceEditStatus.Pending &&
+                !runtime.Conversation.Snapshot.CanSubmit &&
+                runtime.WorkspaceTransactionRecovery.Result == "none" &&
+                await File.ReadAllTextAsync(
+                    sourcePath,
+                    cancellationToken) == "const value = 1;\n" &&
+                !File.Exists(documentationPath);
+
+            PiAgentWorkspaceEditSnapshot applied =
+                await runtime.Conversation.ApplyWorkspaceEditAsync(
+                    proposal.ProposalId,
+                    cancellationToken);
+            bool approvalPassed =
+                applied.Status == PiAgentWorkspaceEditStatus.Applied &&
+                applied.AfterSha256 is not null &&
+                runtime.Conversation.Snapshot.CanSubmit &&
+                await File.ReadAllTextAsync(
+                    sourcePath,
+                    cancellationToken) == "const value = 2;\n" &&
+                await File.ReadAllTextAsync(
+                    testPath,
+                    cancellationToken) == "ALPHA\nbeta\nGAMMA\n" &&
+                await File.ReadAllTextAsync(
+                    documentationPath,
+                    cancellationToken) == "# Reviewed change\n";
+            bool receiptsPassed =
+                applied.FileChanges.Count == 3 &&
+                applied.FileChanges.All(file =>
+                    file.AfterSha256 is { Length: 64 }) &&
+                applied.PathLabel ==
+                    "3 ORDERED FILES / ALL OR RECOVER";
+            await runtime.ShutdownAsync(cancellationToken);
+            return new WorkspaceChangeSetApprovalProbe(
+                proposalPassed,
+                approvalPassed,
+                receiptsPassed,
+                runtime.BrokerRequestCount,
+                runtime.BrokerFaultCount);
+        }
+        finally
+        {
+            Directory.Delete(fixtureRoot, recursive: true);
+        }
+    }
 
     private static async Task<CheckpointStoreFailureProbe>
         ProbeCheckpointStoreFailureShutdownAsync(
@@ -1072,6 +1193,85 @@ public static class PiAgentDesktopRuntimeProbe
         {
             Interlocked.Exchange(ref disposed, 1);
             return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class DiagnosticWorkspaceChangeSetModelProvider :
+        IDesktopModelProvider
+    {
+        private int requestSequence;
+
+        public async IAsyncEnumerable<DesktopModelStreamEvent> StreamAsync(
+            DesktopModelBrokerRequest request,
+            [EnumeratorCancellation]
+            CancellationToken cancellationToken)
+        {
+            await Task.Yield();
+            cancellationToken.ThrowIfCancellationRequested();
+            int sequence = Interlocked.Increment(
+                ref requestSequence);
+            if (sequence == 2)
+            {
+                yield return new DesktopModelTextDelta(
+                    "JARVIS staged one coherent three-file change set for owner review.");
+                yield return new DesktopModelCompleted(
+                    "stop",
+                    new DesktopModelUsage(18, 10, 0, 0));
+                yield break;
+            }
+            if (sequence != 1)
+            {
+                throw new InvalidOperationException(
+                    "The diagnostic change-set sequence exceeded its fixture.");
+            }
+            const string toolCallId =
+                "diagnostic-propose-change-set-1";
+            yield return new DesktopModelToolCallStarted(
+                toolCallId,
+                "propose_change_set");
+            yield return new DesktopModelToolCallDelta(
+                toolCallId,
+                JsonSerializer.Serialize(new
+                {
+                    changes = new object[]
+                    {
+                        new
+                        {
+                            operation = "replace",
+                            path = "source.txt",
+                            oldText = "value = 1",
+                            newText = "value = 2",
+                        },
+                        new
+                        {
+                            operation = "patch",
+                            path = "test.txt",
+                            replacements = new[]
+                            {
+                                new
+                                {
+                                    oldText = "alpha",
+                                    newText = "ALPHA",
+                                },
+                                new
+                                {
+                                    oldText = "gamma",
+                                    newText = "GAMMA",
+                                },
+                            },
+                        },
+                        new
+                        {
+                            operation = "create",
+                            path = "docs/change.md",
+                            content = "# Reviewed change\n",
+                        },
+                    },
+                }));
+            yield return new DesktopModelToolCallCompleted(toolCallId);
+            yield return new DesktopModelCompleted(
+                "toolUse",
+                new DesktopModelUsage(24, 16, 0, 0));
         }
     }
 

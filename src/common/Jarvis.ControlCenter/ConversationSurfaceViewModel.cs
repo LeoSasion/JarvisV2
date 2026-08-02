@@ -559,10 +559,10 @@ public sealed class ConversationSurfaceViewModel :
             PiAgentWorkspaceEditStatus.Applied =>
                 reviewedIterationSnapshot?.Status ==
                     PiAgentReviewedIterationStatus.AwaitingTrustedValidation
-                    ? $"Applied once: {result.RelativePath}. The repository gate passed; pinned tests now require a separate owner approval."
-                    : $"Applied once: {result.RelativePath}. The exact before-hash capability is consumed.",
+                    ? $"Applied once: {result.PathLabel}. The repository gate passed; pinned tests now require a separate owner approval."
+                    : $"Applied once: {result.PathLabel}. The exact before-hash capability is consumed.",
             PiAgentWorkspaceEditStatus.Drifted =>
-                $"Edit not applied: {result.RelativePath} changed after proposal. Review a fresh proposal.",
+                $"Edit not applied: {result.PathLabel} changed after proposal. Review a fresh proposal.",
             _ =>
                 $"Edit approval failed closed: {result.ErrorCode ?? "unknown error"}. Restart the session before more work.",
         };
@@ -601,7 +601,7 @@ public sealed class ConversationSurfaceViewModel :
         statusDetail = result.Status switch
         {
             PiAgentWorkspaceEditStatus.Rejected =>
-                $"Rejected without writing: {result.RelativePath}. The proposal capability is consumed.",
+                $"Rejected without writing: {result.PathLabel}. The proposal capability is consumed.",
             _ =>
                 $"Edit rejection failed closed: {result.ErrorCode ?? "unknown error"}. Restart the session before more work.",
         };
@@ -885,26 +885,58 @@ public sealed class ConversationSurfaceViewModel :
             ],
             [
                 new PiAgentWorkspaceEditSnapshot(
-                    3,
+                    4,
                     "workspace-edit-0123456789abcdef0123456789abcdef",
-                    "patch",
-                    "src/common/Jarvis.PiAgentHost/RuntimePolicy.cs",
+                    "change-set",
+                    "",
                     "38c7f12af806e7c5bb13bb7d557cc4210dd31e2d75461b208f07600da9d7f214",
                     "",
                     "",
-                    [
-                        new PiAgentWorkspacePatchHunk(
-                            1,
-                            "public const int MaximumSteps = 3;",
-                            "public const int MaximumSteps = 4;"),
-                        new PiAgentWorkspacePatchHunk(
-                            2,
-                            "\"One exact replacement per turn.\"",
-                            "\"One reviewed single-file patch per turn.\""),
-                    ],
+                    [],
                     PiAgentWorkspaceEditStatus.Pending,
                     null,
-                    null),
+                    null)
+                {
+                    FileChanges =
+                    [
+                        new PiAgentWorkspaceFileReviewSnapshot(
+                            1,
+                            "replace",
+                            "src/common/Jarvis.PiAgentHost/ReviewedIterationCoordinator.cs",
+                            "84c7f12af806e7c5bb13bb7d557cc4210dd31e2d75461b208f07600da9d7f211",
+                            "MaximumApprovedEdits = 3",
+                            "MaximumApprovedEdits = 4",
+                            [],
+                            null),
+                        new PiAgentWorkspaceFileReviewSnapshot(
+                            2,
+                            "patch",
+                            "src/common/Jarvis.PiAgentHost/test/reviewed-iteration.test.mjs",
+                            "74c7f12af806e7c5bb13bb7d557cc4210dd31e2d75461b208f07600da9d7f212",
+                            "",
+                            "",
+                            [
+                                new PiAgentWorkspacePatchHunk(
+                                    1,
+                                    "assert.equal(files.length, 1);",
+                                    "assert.equal(files.length, 3);"),
+                                new PiAgentWorkspacePatchHunk(
+                                    2,
+                                    "assert.equal(recovery, false);",
+                                    "assert.equal(recovery, true);"),
+                            ],
+                            null),
+                        new PiAgentWorkspaceFileReviewSnapshot(
+                            3,
+                            "create",
+                            "docs/PI-AGENT-MULTI-FILE-TRANSACTION.md",
+                            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                            "",
+                            "# Durable change set\n\nOwner review covers all files once.\n",
+                            [],
+                            null),
+                    ],
+                },
             ],
             null);
         return new PiAgentConversationSnapshot(

@@ -161,7 +161,7 @@ public sealed class PiAgentReviewedIterationTrustedValidator
                 "The trusted validation manifest testFiles value must be an array.");
         }
         List<string> testFiles = [];
-        HashSet<string> uniqueFiles = new(StringComparer.Ordinal);
+        HashSet<string> uniqueFiles = new(StringComparer.OrdinalIgnoreCase);
         foreach (JsonElement element in testFileArray.EnumerateArray())
         {
             string relativePath = element.GetString() ?? "";
@@ -257,7 +257,7 @@ public sealed class PiAgentReviewedIterationTrustedValidator
             }
             HashSet<string> changedPaths = new(
                 expectedChangedPaths,
-                StringComparer.Ordinal);
+                StringComparer.OrdinalIgnoreCase);
             if (profile.TestFiles.Any(changedPaths.Contains))
             {
                 return Failed(

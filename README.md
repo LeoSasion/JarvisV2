@@ -27,14 +27,17 @@ Open `jarvis-control-center.exe`, choose `START PI SESSION`, select one local
 workspace and keep the default local diagnostic provider for the fastest
 deterministic first turn. The launcher validates both the workspace boundary and
 the fixed portable/developer runtime before the existing window becomes the Pi
-conversation surface. Reads are root-confined. `propose_edit`, `propose_patch`
-and `propose_create_file` can only stage a review card. A patch applies 2–8
+conversation surface. Reads are root-confined. `propose_edit`, `propose_patch`,
+`propose_create_file` and `propose_change_set` can only stage a review card. A patch applies 2–8
 distinct, unique and non-overlapping exact replacements to one existing UTF-8
 file, with at most 16 KiB of combined review text. Creation is limited to one
 missing UTF-8 file of at most 16 KiB beneath an existing canonical parent and
-uses exclusive creation after approval. Deletes, renames, directory creation,
-multi-file transactions, VCS metadata mutation, direct writes, shell access and
-unattended approval remain unavailable.
+uses exclusive creation after approval. `propose_change_set` stages one ordered
+two-to-four-file reviewed transaction; the owner accepts or rejects the complete
+digest once, and a strict startup journal converges interrupted work to
+all-before or all-committed-after state. Simultaneous cross-path visibility is
+not promised. Deletes, renames, directory creation, VCS metadata mutation,
+direct writes, shell access and unattended approval remain unavailable.
 
 JarvisV2 是一个独立于旧版 JARVIS 的 Windows 原生桌面改造实验。它不铺设全屏画布，不用 Electron/WebView 假装桌面，也不替换任务栏的交互模型；模块进入明确的 Windows 宿主进程，修改现有原生组件，并且必须可以失败关闭和撤销。仓库与公开展示名称为 **JarvisV2**，内部运行时安全标识仍为 `JARVIS2`；状态目录、命名状态门、模块 ID 和既有收据不做破坏性改名。
 

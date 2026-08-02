@@ -2,9 +2,10 @@
 
 JarvisV2 now has a desktop-owned workflow that can carry one owner mission
 across several Pi reasoning turns without granting unattended writes. The
-workflow reuses the `propose_edit` / `propose_patch` / `propose_create_file`
-and one-shot owner boundary: Pi can stage one exact replacement, one 2–8-hunk
-exact patch in a single existing UTF-8 file, or one missing UTF-8 file, but only
+workflow reuses the `propose_edit` / `propose_patch` /
+`propose_create_file` / `propose_change_set` one-shot owner boundary: Pi can
+stage one exact replacement, one 2–8-hunk exact patch in a single existing
+UTF-8 file, one missing UTF-8 file, or one ordered two-to-four-file set, but only
 the human-operated WPF control can consume that proposal.
 
 This milestone is reviewed self-iteration with a separately owner-approved,
@@ -44,11 +45,11 @@ owner mission
                             |
                             +-- no proposal -> complete without write
                             |
-                            +-- one replace/patch/create proposal -> pause
+                            +-- one single-file or 2-4-file proposal -> pause
                                     |
                                     +-- REJECT -> no write, stop
                                     |
-                                    +-- APPROVE ONCE / APPLY PATCH ONCE / CREATE ONCE
+                                    +-- one owner approval for the exact proposal digest
                                             |
                                             +-- exact one-shot sidecar commit
                                             +-- fixed repository gate
@@ -87,10 +88,13 @@ write-through flush and atomic replacement. Reparse points, copied envelopes,
 unknown fields, invalid identifiers, oversized payloads and inconsistent step
 counts fail closed.
 
-Each durable step records the producing turn, proposal id, path, before and
-after SHA-256, owner decision, repository result, repository digest, trusted
+Schema 3 records the producing turn, proposal id, top-level review/after digest,
+one ordered receipt for every approved file (operation, path, before and after
+SHA-256), owner decision, repository result, repository digest, trusted
 validation result, exit code, output/receipt digests, error code and UTC
-timestamps. A proposal itself remains session-memory-only.
+timestamps. A single-file step carries one file receipt; a change set carries
+two to four. Older active schema-1/2 policies fail closed on open and restore no
+capability. A proposal itself remains session-memory-only.
 
 ## Non-executing repository gate
 
@@ -190,8 +194,9 @@ proves:
   reasoning turn;
 - active trusted-validation cancellation terminates the owned Node process tree
   before its delayed completion marker can be written;
-- second proposal pause, explicit approval of a two-hunk patch in the created
-  file and a passed repository gate;
+- second proposal pause, explicit whole-set approval of one replace, one
+  two-hunk patch and one exclusive create across three files, schema-3 durable
+  per-file receipts and a passed exact-path-set repository gate;
 - automatic next reasoning turn followed by a third proposal and explicit
   rejection;
 - shutdown suspension and absence of restored proposal authority;
@@ -203,8 +208,10 @@ proves:
 The native surface evidence is
 `docs/screenshots/jarvis-control-center-trusted-validation.png`; it is an
 illustrative no-runtime preview of the inspector command disclosure and
-separate test-once action. The earlier explicit two-hunk write decision remains
-captured in `docs/screenshots/jarvis-control-center-reviewed-multi-hunk-patch.png`.
+separate test-once action. The multi-file owner decision is captured in
+`docs/screenshots/jarvis-control-center-reviewed-change-set.png`; the earlier
+single-file two-hunk decision remains in
+`docs/screenshots/jarvis-control-center-reviewed-multi-hunk-patch.png`.
 
 ## Still unavailable
 
@@ -214,8 +221,8 @@ captured in `docs/screenshots/jarvis-control-center-reviewed-multi-hunk-patch.pn
 - unattended or model-triggered approval;
 - policy authored or extended by Pi;
 - more than four approved edits or more than six hours per policy;
-- multi-file atomic transactions, delete, rename, directory creation, VCS
-  metadata or binary mutation;
+- simultaneous cross-path atomic visibility, delete, rename, directory
+  creation, VCS metadata or binary mutation;
 - restoring or replaying a pending proposal after restart;
 - Git commit, push, merge or branch mutation from the reviewed loop;
 - Explorer, registry, service, device or system mutation.

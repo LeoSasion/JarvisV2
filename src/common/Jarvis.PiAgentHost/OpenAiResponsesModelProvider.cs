@@ -36,6 +36,7 @@ public sealed class OpenAiResponsesModelProvider :
                 "propose_edit",
                 "propose_patch",
                 "propose_create_file",
+                "propose_change_set",
             ],
             StringComparer.Ordinal);
     private static readonly IReadOnlySet<string> AllowedReasoningEfforts =

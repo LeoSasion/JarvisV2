@@ -104,7 +104,7 @@
           "const": "utf-8"
         },
         "maxFrameBytes": {
-          "const": 65536
+          "const": 131072
         },
         "requestTypes": {
           "type": "array",
@@ -389,11 +389,16 @@
         "patchProposalMaxHunks",
         "patchProposalMaxPreviewBytes",
         "createProposalMaxBytes",
+        "changeSetMinimumFiles",
+        "changeSetMaximumFiles",
+        "changeSetMaximumPreviewBytes",
         "pendingProposalLimit",
         "pendingProposalPolicy",
         "approvalOwner",
         "approvalMode",
         "commitMode",
+        "changeSetRecovery",
+        "simultaneousMultiPathVisibilityClaimed",
         "newFileSupported",
         "newFileParentPolicy",
         "versionControlMetadataMutation",
@@ -414,7 +419,8 @@
             "ls",
             "propose_edit",
             "propose_patch",
-            "propose_create_file"
+            "propose_create_file",
+            "propose_change_set"
           ]
         },
         "initiallyDenied": {
@@ -425,7 +431,7 @@
           ]
         },
         "proposalTool": {
-          "const": "non-mutating-explicit-utf8-replace-patch-or-create"
+          "const": "non-mutating-explicit-utf8-replace-patch-create-or-change-set"
         },
         "proposalMaxFileBytes": {
           "const": 1048576
@@ -442,6 +448,15 @@
         "createProposalMaxBytes": {
           "const": 16384
         },
+        "changeSetMinimumFiles": {
+          "const": 2
+        },
+        "changeSetMaximumFiles": {
+          "const": 4
+        },
+        "changeSetMaximumPreviewBytes": {
+          "const": 32768
+        },
         "pendingProposalLimit": {
           "const": 1
         },
@@ -455,7 +470,13 @@
           "const": "one-shot-explicit-operation-before-state-sha256"
         },
         "commitMode": {
-          "const": "atomic-existing-file-replace-or-patch-exclusive-create-and-post-verify"
+          "const": "single-file-atomic-or-multi-file-durable-before-after-convergence"
+        },
+        "changeSetRecovery": {
+          "const": "strict-journal-before-tools-rollback-or-complete"
+        },
+        "simultaneousMultiPathVisibilityClaimed": {
+          "const": false
         },
         "newFileSupported": {
           "const": true
@@ -470,7 +491,7 @@
           "const": false
         },
         "mutationGrant": {
-          "const": "desktop-owner-one-shot-reviewed-text-replace-patch-or-create"
+          "const": "desktop-owner-one-shot-reviewed-text-single-file-or-two-to-four-file-set"
         },
         "reviewedSelfIteration": {
           "const": true

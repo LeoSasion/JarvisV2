@@ -37,7 +37,9 @@ Only these Pi tools may be described to or invoked by the provider:
 - `propose_patch`, which can only stage 2–8 distinct, unique, non-overlapping
   exact replacements in one existing UTF-8 file;
 - `propose_create_file`, which can only stage one missing UTF-8 file beneath an
-  existing parent and never creates or overwrites anything itself.
+  existing parent and never creates or overwrites anything itself;
+- `propose_change_set`, which can only stage one ordered two-to-four-file
+  replace/patch/create review digest and cannot approve or recover it.
 
 `bash`, `edit`, `write` and every unknown tool are rejected before a request is
 sent. The provider maps Pi tool calls to Responses function tools and maps

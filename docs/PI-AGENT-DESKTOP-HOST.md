@@ -39,7 +39,8 @@ Shell process.
   across multiple requests, admits at most four current-user connections and
   caps every broker frame at 1 MiB;
 - validates provider event order and permits only the session's `read`, `grep`,
-  `find`, `ls`, `propose_edit`, `propose_patch` and `propose_create_file` identities before forwarding
+  `find`, `ls`, `propose_edit`, `propose_patch`, `propose_create_file` and
+  `propose_change_set` identities before forwarding
   tool calls to Pi;
 - rejects an offline provider attempt to emit `bash`, returns a closed failure
   to the Pi turn and proves the broker remains isolated from the Shell;
@@ -71,7 +72,8 @@ Shell process.
   `ls` definitions plus `propose_edit` for exact existing-text replacement and
   `propose_patch` for 2–8 distinct, unique, non-overlapping exact replacements
   in one existing UTF-8 file, plus
-  `propose_create_file` for a missing UTF-8 file beneath an existing parent;
+  `propose_create_file` for a missing UTF-8 file beneath an existing parent,
+  plus `propose_change_set` for one ordered two-to-four-file reviewed unit;
   all proposal tools are non-mutating, while `bash`, generic `edit` and
   `write` stay unavailable;
 - emits the proposal as a structured turn event, blocks new turns while one is
@@ -80,7 +82,10 @@ Shell process.
   SHA-256; replacement and patch recheck file identity/hash and reconstruct the
   exact reviewed result before one atomic replacement, while creation rechecks
   parent identity and target absence before exclusive no-overwrite creation;
-  all reject replay and drift;
+  all reject replay and drift. Change sets revalidate the complete member set
+  and use a strict journal before writes so startup recovers to all-before or
+  completes committed cleanup before any Pi tool is available; they do not
+  claim simultaneous cross-path visibility;
 - lets the desktop owner arm one reviewed iteration only from a clean Git HEAD,
   with a fixed four-approved-edit limit and six-hour expiry;
 - writes every policy and step transition to a workspace-bound CurrentUser
@@ -97,7 +102,7 @@ Shell process.
   requires explicit re-arm plus repository revalidation after restart;
 - rejects drive roots, protected OS/profile roots, relative paths, canonical
   aliases, junctions, symbolic links, workspace escapes and a second binding;
-- rejects credential-shaped fields and frames over 64 KiB while accepting
+- rejects credential-shaped fields and sidecar frames over 128 KiB while accepting
   batched valid frames;
 - reports whether any credential-shaped environment variable survived into the
   sidecar; the managed desktop bridge rejects readiness unless the result is

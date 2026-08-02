@@ -47,6 +47,62 @@ public sealed record PiAgentWorkspaceReviewSegment(
     string OriginalAutomationName,
     string ProposedAutomationName);
 
+public sealed record PiAgentWorkspaceFileReviewSnapshot(
+    int Ordinal,
+    string Operation,
+    string RelativePath,
+    string BeforeSha256,
+    string OldText,
+    string NewText,
+    IReadOnlyList<PiAgentWorkspacePatchHunk> PatchHunks,
+    string? AfterSha256)
+{
+    public bool IsCreate => Operation == "create";
+    public bool IsPatch => Operation == "patch";
+    public string FileLabel =>
+        $"FILE {Ordinal:D2} / " + Operation switch
+        {
+            "create" => "CREATE",
+            "patch" => $"PATCH / {PatchHunks.Count} HUNKS",
+            _ => "REPLACE",
+        };
+    public string BeforeHashLabel => IsCreate
+        ? $"BEFORE  ABSENT / {BeforeSha256}"
+        : $"BEFORE  {BeforeSha256}";
+    public string AfterHashLabel => AfterSha256 is null
+        ? "AFTER   PENDING WHOLE-SET DECISION"
+        : $"AFTER   {AfterSha256}";
+    public IReadOnlyList<PiAgentWorkspaceReviewSegment> ReviewSegments =>
+        IsPatch
+            ? PatchHunks.Select(hunk =>
+                new PiAgentWorkspaceReviewSegment(
+                    $"HUNK {hunk.Ordinal:D2} / REMOVE",
+                    $"HUNK {hunk.Ordinal:D2} / ADD",
+                    hunk.OldText,
+                    hunk.NewText,
+                    $"Current text for file {Ordinal} patch hunk {hunk.Ordinal}",
+                    $"Proposed text for file {Ordinal} patch hunk {hunk.Ordinal}"))
+                .ToArray()
+            :
+            [
+                new PiAgentWorkspaceReviewSegment(
+                    IsCreate
+                        ? "TARGET / CURRENT STATE"
+                        : "REMOVE / EXACT TEXT",
+                    IsCreate
+                        ? "CREATE / COMPLETE FILE CONTENT"
+                        : "ADD / REPLACEMENT TEXT",
+                    IsCreate ? "FILE DOES NOT EXIST" : OldText,
+                    NewText,
+                    IsCreate
+                        ? $"Current missing state for file {Ordinal}"
+                        : $"Current target text for file {Ordinal}",
+                    IsCreate
+                        ? $"Complete proposed content for file {Ordinal}"
+                        : $"Proposed replacement text for file {Ordinal}"),
+            ];
+}
+
 public sealed record PiAgentWorkspaceEditSnapshot(
     int SchemaVersion,
     string ProposalId,
@@ -60,17 +116,24 @@ public sealed record PiAgentWorkspaceEditSnapshot(
     string? AfterSha256,
     string? ErrorCode)
 {
+    public IReadOnlyList<PiAgentWorkspaceFileReviewSnapshot> FileChanges
+        { get; init; } = [];
     public bool CanDecide => Status == PiAgentWorkspaceEditStatus.Pending;
+    public bool IsChangeSet => Operation == "change-set";
     public bool IsCreate => Operation == "create";
     public bool IsPatch => Operation == "patch";
     public string ProposalLabel => Operation switch
     {
+        "change-set" =>
+            $"MULTI-FILE CHANGE SET / {FileChanges.Count} FILES",
         "create" => "NEW UTF-8 FILE PROPOSAL",
         "patch" => $"MULTI-HUNK PATCH / {PatchHunks.Count} EXACT CHANGES",
         _ => "EXACT TEXT REPLACEMENT",
     };
     public string ConstraintLabel => Operation switch
     {
+        "change-set" =>
+            "2-4 UNIQUE UTF-8 FILES / ONE REVIEW DIGEST / DURABLE BEFORE-OR-AFTER CONVERGENCE",
         "create" =>
             "TARGET ABSENT / EXISTING PARENT / EXCLUSIVE ONE-SHOT CREATE",
         "patch" =>
@@ -89,18 +152,28 @@ public sealed record PiAgentWorkspaceEditSnapshot(
         : OldText;
     public string ApproveActionLabel => Operation switch
     {
+        "change-set" => "APPLY CHANGE SET ONCE",
         "create" => "CREATE ONCE",
         "patch" => "APPLY PATCH ONCE",
         _ => "APPROVE ONCE",
     };
+    public string RejectActionLabel => IsChangeSet
+        ? "REJECT ALL"
+        : "REJECT";
+    public string RejectionAutomationName => IsChangeSet
+        ? "Reject the complete workspace change set without writing"
+        : "Reject workspace edit without writing";
     public string ApprovalAutomationName => Operation switch
     {
+        "change-set" => "Apply the complete workspace change set once",
         "create" => "Create proposed workspace file once",
         "patch" => "Apply proposed multi-hunk workspace patch once",
         _ => "Approve workspace text replacement once",
     };
     public string DecisionBoundaryText => Operation switch
     {
+        "change-set" =>
+            "Pi cannot press these controls. Reject All writes nothing. Apply Change Set Once rechecks every file and parent, then uses a durable journal so failure or restart converges to every before state or every committed after state; simultaneous multi-path visibility is not claimed.",
         "create" =>
             "Pi cannot press these controls. Reject creates nothing; Create Once rechecks the parent identity and target absence, then uses an exclusive write.",
         "patch" =>
@@ -109,7 +182,9 @@ public sealed record PiAgentWorkspaceEditSnapshot(
             "Pi cannot press these controls. Reject performs no write; Approve Once rechecks the exact file hash immediately before commit.",
     };
     public IReadOnlyList<PiAgentWorkspaceReviewSegment> ReviewSegments =>
-        IsPatch
+        IsChangeSet
+            ? []
+            : IsPatch
             ? PatchHunks.Select(hunk =>
                 new PiAgentWorkspaceReviewSegment(
                     $"HUNK {hunk.Ordinal:D2} / REMOVE",
@@ -147,7 +222,9 @@ public sealed record PiAgentWorkspaceEditSnapshot(
     };
     public string BeforeHashLabel => IsCreate
         ? $"BEFORE  ABSENT / {BeforeSha256}"
-        : $"BEFORE  {BeforeSha256}";
+        : IsChangeSet
+            ? $"REVIEW DIGEST  {BeforeSha256}"
+            : $"BEFORE  {BeforeSha256}";
     public string AfterHashLabel => AfterSha256 is null
         ? Status switch
         {
@@ -162,6 +239,9 @@ public sealed record PiAgentWorkspaceEditSnapshot(
             _ => "AFTER   NOT COMMITTED",
         }
         : $"AFTER   {AfterSha256}";
+    public string PathLabel => IsChangeSet
+        ? $"{FileChanges.Count} ORDERED FILES / ALL OR RECOVER"
+        : RelativePath;
 }
 
 public sealed record PiAgentConversationTurnSnapshot(
@@ -247,10 +327,28 @@ public sealed class PiAgentConversationState
             get;
             init;
         }
+        public required IReadOnlyList<MutableWorkspaceFileChange> FileChanges
+        {
+            get;
+            init;
+        }
         public PiAgentWorkspaceEditStatus Status { get; set; } =
             PiAgentWorkspaceEditStatus.Pending;
         public string? AfterSha256 { get; set; }
         public string? ErrorCode { get; set; }
+    }
+
+    private sealed class MutableWorkspaceFileChange
+    {
+        public required int Ordinal { get; init; }
+        public required string Operation { get; init; }
+        public required string RelativePath { get; init; }
+        public required string BeforeSha256 { get; init; }
+        public required string OldText { get; init; }
+        public required string NewText { get; init; }
+        public required IReadOnlyList<PiAgentWorkspacePatchHunk> PatchHunks
+            { get; init; }
+        public string? AfterSha256 { get; set; }
     }
 
     private static readonly Regex TurnIdPattern = new(
@@ -602,18 +700,18 @@ public sealed class PiAgentConversationState
                     if (
                         current.Status !=
                             PiAgentWorkspaceEditStatus.Applying ||
-                        receipt.RelativePath != current.RelativePath ||
-                        receipt.Operation != current.Operation ||
-                        receipt.BeforeSha256 != current.BeforeSha256 ||
-                        receipt.Status != "applied" ||
-                        !receipt.MutationPerformed ||
-                        receipt.AfterSha256 is null)
+                        !DecisionReceiptMatches(
+                            current,
+                            receipt,
+                            "applied",
+                            mutationExpected: true))
                     {
                         throw new InvalidOperationException(
                             "The applied workspace edit receipt diverged from conversation state.");
                     }
                     current.Status = PiAgentWorkspaceEditStatus.Applied;
                     current.AfterSha256 = receipt.AfterSha256;
+                    ApplyFileReceipts(current, receipt);
                     pendingWorkspaceEditId = null;
                     appliedSnapshot = AdvanceSnapshotLocked();
                     result = ToSnapshot(current);
@@ -634,6 +732,7 @@ public sealed class PiAgentConversationState
                             ? decision.ErrorCode
                             : "workspace-edit-approval-uncertain";
                     current.Status = errorCode == "workspace-edit-drifted"
+                        || errorCode == "workspace-change-set-drifted"
                         ? PiAgentWorkspaceEditStatus.Drifted
                         : PiAgentWorkspaceEditStatus.Failed;
                     current.ErrorCode = errorCode;
@@ -694,12 +793,11 @@ public sealed class PiAgentConversationState
                     if (
                         current.Status !=
                             PiAgentWorkspaceEditStatus.Rejecting ||
-                        receipt.RelativePath != current.RelativePath ||
-                        receipt.Operation != current.Operation ||
-                        receipt.BeforeSha256 != current.BeforeSha256 ||
-                        receipt.Status != "rejected" ||
-                        receipt.MutationPerformed ||
-                        receipt.AfterSha256 is not null)
+                        !DecisionReceiptMatches(
+                            current,
+                            receipt,
+                            "rejected",
+                            mutationExpected: false))
                     {
                         throw new InvalidOperationException(
                             "The rejected workspace edit receipt diverged from conversation state.");
@@ -926,6 +1024,7 @@ public sealed class PiAgentConversationState
                             {
                                 "create" => "propose_create_file",
                                 "patch" => "propose_patch",
+                                "change-set" => "propose_change_set",
                                 _ => "propose_edit",
                             }) &&
                             tool.Status ==
@@ -944,6 +1043,17 @@ public sealed class PiAgentConversationState
                         OldText = proposed.OldText,
                         NewText = proposed.NewText,
                         PatchHunks = proposed.PatchHunks,
+                        FileChanges = proposed.FileChanges.Select(change =>
+                            new MutableWorkspaceFileChange
+                            {
+                                Ordinal = change.Ordinal,
+                                Operation = change.Operation,
+                                RelativePath = change.RelativePath,
+                                BeforeSha256 = change.BeforeSha256,
+                                OldText = change.OldText,
+                                NewText = change.NewText,
+                                PatchHunks = change.PatchHunks,
+                            }).ToArray(),
                     };
                     if (!acceptingSubmissions)
                     {
@@ -1083,6 +1193,76 @@ public sealed class PiAgentConversationState
             turn.WorkspaceEdits.Select(ToSnapshot).ToArray(),
             turn.ErrorCode);
 
+    private static bool DecisionReceiptMatches(
+        MutableWorkspaceEdit proposal,
+        PiAgentWorkspaceEditDecisionReceipt receipt,
+        string expectedStatus,
+        bool mutationExpected)
+    {
+        bool common =
+            receipt.SchemaVersion == proposal.SchemaVersion &&
+            receipt.Operation == proposal.Operation &&
+            receipt.BeforeSha256 == proposal.BeforeSha256 &&
+            receipt.Status == expectedStatus &&
+            receipt.MutationPerformed == mutationExpected &&
+            (mutationExpected
+                ? receipt.AfterSha256 is not null
+                : receipt.AfterSha256 is null);
+        if (!common)
+        {
+            return false;
+        }
+        if (proposal.Operation != "change-set")
+        {
+            return
+                receipt.RelativePath == proposal.RelativePath &&
+                receipt.Files.Count == 0 &&
+                receipt.TransactionModel is null;
+        }
+        if (
+            receipt.RelativePath.Length != 0 ||
+            receipt.TransactionModel !=
+                "durable-before-or-after-convergence-no-simultaneous-visibility-claim" ||
+            receipt.Files.Count != proposal.FileChanges.Count)
+        {
+            return false;
+        }
+        for (int index = 0; index < proposal.FileChanges.Count; index++)
+        {
+            MutableWorkspaceFileChange expected =
+                proposal.FileChanges[index];
+            PiAgentWorkspaceFileDecisionReceipt actual =
+                receipt.Files[index];
+            if (
+                actual.Ordinal != expected.Ordinal ||
+                actual.Operation != expected.Operation ||
+                actual.RelativePath != expected.RelativePath ||
+                actual.BeforeSha256 != expected.BeforeSha256 ||
+                (mutationExpected
+                    ? actual.AfterSha256 is null
+                    : actual.AfterSha256 is not null))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static void ApplyFileReceipts(
+        MutableWorkspaceEdit proposal,
+        PiAgentWorkspaceEditDecisionReceipt receipt)
+    {
+        if (proposal.Operation != "change-set")
+        {
+            return;
+        }
+        for (int index = 0; index < proposal.FileChanges.Count; index++)
+        {
+            proposal.FileChanges[index].AfterSha256 =
+                receipt.Files[index].AfterSha256;
+        }
+    }
+
     private static PiAgentWorkspaceEditSnapshot ToSnapshot(
         MutableWorkspaceEdit proposal) =>
         new(
@@ -1096,7 +1276,19 @@ public sealed class PiAgentConversationState
             proposal.PatchHunks,
             proposal.Status,
             proposal.AfterSha256,
-            proposal.ErrorCode);
+            proposal.ErrorCode)
+        {
+            FileChanges = proposal.FileChanges.Select(change =>
+                new PiAgentWorkspaceFileReviewSnapshot(
+                    change.Ordinal,
+                    change.Operation,
+                    change.RelativePath,
+                    change.BeforeSha256,
+                    change.OldText,
+                    change.NewText,
+                    change.PatchHunks,
+                    change.AfterSha256)).ToArray(),
+        };
 
     private void Publish(PiAgentConversationSnapshot snapshot)
     {
