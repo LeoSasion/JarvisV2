@@ -385,6 +385,11 @@ Add-Check `
         'no mutation. Output: ' +
         (($bootstrapProbeOutput | Select-Object -Last 14) -join ' '))
 
+$piRuntimeDependency = Join-Path $root (
+    'src\common\Jarvis.PiAgentHost\node_modules\' +
+    '@earendil-works\pi-coding-agent\package.json')
+$piRuntimeDependenciesAvailable =
+    Test-Path -LiteralPath $piRuntimeDependency -PathType Leaf
 $nodeCommand = Get-Command $NodePath -ErrorAction Stop
 $resolvedNodePath = [IO.Path]::GetFullPath($nodeCommand.Source)
 $sessionLaunchProbeOutput = @(
@@ -406,13 +411,26 @@ try {
 catch {
     $sessionLaunchProbe = $null
 }
+$sessionProviderBoundaryPassed =
+    if ($null -eq $sessionLaunchProbe) {
+        $false
+    }
+    elseif ($piRuntimeDependenciesAvailable) {
+        $sessionLaunchProbe.LocalLaunchPassed -and
+        $sessionLaunchProbe.OpenAiLaunchPassed -and
+        -not $sessionLaunchProbe.IncompleteRuntimeRejected
+    }
+    else {
+        -not $sessionLaunchProbe.LocalLaunchPassed -and
+        -not $sessionLaunchProbe.OpenAiLaunchPassed -and
+        $sessionLaunchProbe.IncompleteRuntimeRejected
+    }
 $sessionLaunchProbePassed =
     $sessionLaunchProbeExitCode -eq 0 -and
     $null -ne $sessionLaunchProbe -and
     $sessionLaunchProbe.Result -eq 'passed' -and
     $sessionLaunchProbe.WorkspaceAdmissionPassed -and
-    $sessionLaunchProbe.LocalLaunchPassed -and
-    $sessionLaunchProbe.OpenAiLaunchPassed -and
+    $sessionProviderBoundaryPassed -and
     $sessionLaunchProbe.RelativeWorkspaceRejected -and
     $sessionLaunchProbe.MissingWorkspaceRejected -and
     $sessionLaunchProbe.DriveRootRejected -and
@@ -424,15 +442,13 @@ Add-Check `
     -Name 'runtime.executable-session-launch-admission-probe' `
     -Passed $sessionLaunchProbePassed `
     -Detail (
-        'The executable launcher receipt must admit both providers for the ' +
-        'repository and reject relative, missing, drive-root, protected and ' +
-        'unknown-provider inputs without mutation. Output: ' +
+        'The executable launcher receipt must admit both providers when the ' +
+        'fixed runtime is complete, reject an incomplete clean-checkout ' +
+        'runtime, and reject invalid workspace/provider inputs without ' +
+        'mutation. Output: ' +
         (($sessionLaunchProbeOutput | Select-Object -Last 18) -join ' '))
 
-$piRuntimeDependency = Join-Path $root (
-    'src\common\Jarvis.PiAgentHost\node_modules\' +
-    '@earendil-works\pi-coding-agent\package.json')
-if (Test-Path -LiteralPath $piRuntimeDependency -PathType Leaf) {
+if ($piRuntimeDependenciesAvailable) {
     $sessionLifecycleProbeOutput = @(
         & $DotnetPath run `
             --project $diagnosticsProjectPath `

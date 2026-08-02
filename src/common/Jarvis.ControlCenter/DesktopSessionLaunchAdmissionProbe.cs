@@ -9,6 +9,7 @@ public sealed record DesktopSessionLaunchAdmissionProbeReceipt(
     bool WorkspaceAdmissionPassed,
     bool LocalLaunchPassed,
     bool OpenAiLaunchPassed,
+    bool IncompleteRuntimeRejected,
     bool RelativeWorkspaceRejected,
     bool MissingWorkspaceRejected,
     bool DriveRootRejected,
@@ -89,6 +90,13 @@ public static class DesktopSessionLaunchAdmissionProbe
             openAi.Options?.Provider ==
                 ConversationProviderKind.OpenAiResponses &&
             openAi.Options.WorkspaceRoot == workspace;
+        bool incompleteRuntimeRejected =
+            local.Result == "failed" &&
+            local.Options is null &&
+            local.Failures.Count != 0 &&
+            openAi.Result == "failed" &&
+            openAi.Options is null &&
+            openAi.Failures.Count != 0;
         bool relativeWorkspaceRejected =
             relative.Result == "failed" &&
             relative.FailureCode == "invalid-workspace-root";
@@ -109,12 +117,10 @@ public static class DesktopSessionLaunchAdmissionProbe
             "The repository workspace did not pass desktop admission.");
         AddFailure(
             failures,
-            localLaunchPassed,
-            "The local in-app session launch did not resolve.");
-        AddFailure(
-            failures,
-            openAiLaunchPassed,
-            "The OpenAI in-app session launch did not resolve.");
+            (localLaunchPassed && openAiLaunchPassed) ||
+                incompleteRuntimeRejected,
+            "The provider launch boundary neither resolved a complete " +
+                "runtime nor rejected an incomplete runtime.");
         AddFailure(
             failures,
             relativeWorkspaceRejected,
@@ -143,6 +149,7 @@ public static class DesktopSessionLaunchAdmissionProbe
             workspaceAdmissionPassed,
             localLaunchPassed,
             openAiLaunchPassed,
+            incompleteRuntimeRejected,
             relativeWorkspaceRejected,
             missingWorkspaceRejected,
             driveRootRejected,
