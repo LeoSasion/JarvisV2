@@ -109,7 +109,7 @@ continuation advances reasoning only and never advances approval.
 
 The implemented visual world is evidenced by
 `src/common/Jarvis.ControlCenter/MainWindow.xaml` and the final reviewed render
-at `docs/screenshots/jarvis-control-center-handoff-constellation-vfx.png`. Its
+at `docs/screenshots/jarvis-control-center-triangle-glow.png`. Its
 selected surface concept is `docs/design/jarvis-conversation-handoff-rail.png`;
 the global effect selection is recorded under
 `docs/design/neural-void-vfx/README.md`; the durable concept seed is `32fb29e4`.
@@ -132,8 +132,8 @@ shell activation.
 - Durable receipts and ephemeral proposal authority are visually distinct:
   restart can offer RE-ARM, but it never restores a pending proposal.
 - The retained B / Handoff Constellation uses one shared RGB signal; A's
-  lower-right focus follows only the current owner and never becomes a local
-  card glow.
+  lower-right triangular cursor follows only the current owner. A single bounded
+  post-process glow belongs to that cursor, never to the card surface.
 
 ## Colors
 
@@ -247,10 +247,11 @@ drop shadows. Canvas, chrome, surface, panel and raised-plane neutrals establish
 containment. A brighter rule or dim state plane indicates activity without making
 the UI float above Windows.
 
-The first global effects layer is now the selected B / Handoff Constellation
-with A's lower-right active-stage focus. It is retained mathematical geometry,
-not a component-level shadow token, and it must not be baked into cards, buttons
-or text. Bloom and other post-processing remain future capabilities.
+The first global effects layer is the selected B / Handoff Constellation with
+A's lower-right active-stage triangle. Its source is retained mathematical
+geometry. One reviewed Gaussian glow pass may process only the bounded active
+signal region; it is not a component-level shadow token and must not be baked
+into cards, buttons or text. Multi-pass bloom remains a future capability.
 
 **The Plane, Not Card Rule.** Create hierarchy by changing a matte plane and its
 structural rule. Do not stack soft shadows or glass panels.
@@ -270,20 +271,26 @@ rounding softens an edge only enough to avoid brittle geometry.
 
 The ordinary Control Center window owns one hit-test-invisible retained layer.
 Twenty-three static point/line commands form a sparse header constellation, a
-quiet navigation-gutter route and four rail nodes. Eight per-frame commands draw
-one focus at the active stage's lower-right corner and one matching rail pulse.
-The same focus follows `USER -> PI RUNTIME -> BOUNDED TOOL -> JARVIS`; an owner
-review returns it to USER and freezes it there.
+quiet navigation-gutter route and four rail nodes. Five per-frame commands draw
+one closed-outline triangle at the active stage's lower-right corner and one
+matching rail pulse. The same focus follows
+`USER -> PI RUNTIME -> BOUNDED TOOL -> JARVIS`; an owner review returns it to
+USER and freezes it there.
 
 The signal contract remains fixed-step at 60 Hz and the WPF layer samples 30
-frozen frames per second. No brush, pen or geometry is allocated on the steady
-frame path. Hidden or minimized windows detach the timer; high contrast removes
-the optional layer; disabled client-area animation and WPF rendering tier zero
-retain a static frame only. Fault state removes the active cyan focus so the
-existing coral disclosure remains authoritative.
+frozen frames per second. A frozen `BlurEffect` with radius 8 processes only the
+active signal envelope, measured at no more than 139 by 66 pixels in the 1440 by
+900 reference layout. The crisp vector core renders above it; no bitmap asset,
+image brush, render-target capture or bitmap cache participates in the effect.
+No brush, pen or geometry is allocated on the steady frame path.
 
-Particles, trails, shaders, bloom, component-local glow and physical-device I/O
-are not part of this layer.
+Hidden or minimized windows detach the timer and remove the glow; high contrast
+removes the optional layer; disabled client-area animation and WPF rendering
+tier zero retain the crisp static vector only. Fault state removes both cyan
+focus passes so the existing coral disclosure remains authoritative.
+
+Particles, trails, custom shaders, multi-pass bloom, component-local glow and
+physical-device I/O are not part of this layer.
 
 ## Components
 

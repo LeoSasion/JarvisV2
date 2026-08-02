@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Threading;
 using Jarvis.VisualEffects;
 
@@ -37,6 +38,14 @@ public sealed record HandoffConstellationProbeReceipt(
     int RenderSampleHz,
     bool RetainedScenesCompiled,
     bool SharedRgbBound,
+    string FocusPrimitive,
+    string PostProcessId,
+    double GlowRadius,
+    double MaximumGlowRegionWidth,
+    double MaximumGlowRegionHeight,
+    bool BoundedPostProcessRegion,
+    bool VectorCorePreserved,
+    bool BitmapAssetsUsed,
     bool ParticlesEnabled,
     bool PostProcessingEnabled,
     bool ReadyForShellMutation,
@@ -67,6 +76,9 @@ public static class HandoffConstellationProbe
         bool allCompiled =
             staticReceipt.Result == "compiled-retained-vector-scene";
         int maximumPerFrame = 0;
+        double maximumGlowWidth = 0.0;
+        double maximumGlowHeight = 0.0;
+        bool trianglePrimitive = true;
         bool sharedRgbBound = staticScene.Commands
             .Where(command =>
                 command.Material.ColorChannel is "accent" or "pulse")
@@ -76,6 +88,16 @@ public static class HandoffConstellationProbe
 
         for (int stage = 0; stage < layout.Stages.Count; stage++)
         {
+            HandoffStageBounds glowRegion =
+                HandoffConstellationSceneFactory.GetGlowRegion(
+                    layout,
+                    stage);
+            maximumGlowWidth = Math.Max(
+                maximumGlowWidth,
+                glowRegion.Width);
+            maximumGlowHeight = Math.Max(
+                maximumGlowHeight,
+                glowRegion.Height);
             for (
                 int frame = 0;
                 frame < HandoffConstellationSceneFactory.RenderSampleHz;
@@ -94,6 +116,9 @@ public static class HandoffConstellationProbe
                 maximumPerFrame = Math.Max(
                     maximumPerFrame,
                     dynamicReceipt.PerFrameCommandCount);
+                trianglePrimitive &= dynamicScene.Commands.Any(command =>
+                    command is VectorPolylineCommand &&
+                    command.Id == "active-corner-triangle");
                 sharedRgbBound &= dynamicScene.Commands.All(command =>
                     RetainedVectorSceneContract.SharedSignalChannels.Contains(
                         command.Material.ColorChannel));
@@ -108,6 +133,19 @@ public static class HandoffConstellationProbe
         {
             failures.Add("handoff-scenes-left-shared-rgb-boundary");
         }
+        if (!trianglePrimitive)
+        {
+            failures.Add("active-focus-is-not-a-vector-triangle");
+        }
+        bool boundedPostProcessRegion =
+            maximumGlowWidth <=
+                HandoffConstellationSceneFactory.MaxGlowRegionWidth &&
+            maximumGlowHeight <=
+                HandoffConstellationSceneFactory.MaxGlowRegionHeight;
+        if (!boundedPostProcessRegion)
+        {
+            failures.Add("glow-post-process-region-exceeded");
+        }
         if (
             staticScene.Commands.Count >
                 HandoffConstellationSceneFactory.MaxStaticCommands ||
@@ -118,7 +156,7 @@ public static class HandoffConstellationProbe
         }
 
         return new HandoffConstellationProbeReceipt(
-            1,
+            2,
             "jarvisv2-control-center-handoff-vfx-probe",
             failures.Count == 0 ? "passed" : "failed",
             HandoffConstellationSceneFactory.CompositionId,
@@ -129,8 +167,16 @@ public static class HandoffConstellationProbe
             HandoffConstellationSceneFactory.RenderSampleHz,
             allCompiled,
             sharedRgbBound,
+            "closed-outline-triangle",
+            HandoffConstellationSceneFactory.PostProcessId,
+            HandoffConstellationSceneFactory.GlowRadius,
+            maximumGlowWidth,
+            maximumGlowHeight,
+            boundedPostProcessRegion,
+            true,
             false,
             false,
+            true,
             false,
             false,
             "not-run",
@@ -142,16 +188,23 @@ public static class HandoffConstellationProbe
 internal static class HandoffConstellationSceneFactory
 {
     public const string CompositionId =
-        "handoff-constellation-with-active-corner-focus-v1";
+        "handoff-constellation-with-triangle-glow-v2";
+    public const string PostProcessId =
+        "bounded-vector-gaussian-glow-v1";
     public const int SignalFixedStepHz = 60;
     public const int RenderSampleHz = 30;
     public const int MaxStaticCommands = 96;
     public const int MaxPerFrameCommands = 24;
+    public const double GlowRadius = 8.0;
+    public const double MaxGlowRegionWidth = 160.0;
+    public const double MaxGlowRegionHeight = 72.0;
 
     private static readonly VectorSceneBudget LowPowerBudget =
         RetainedVectorSceneContract.GetRequiredBudget("low-power");
     private static readonly VectorStroke Hairline =
         new(1.0, "round", "round", []);
+    private static readonly VectorStroke TriangleStroke =
+        new(1.35, "round", "round", []);
     private static readonly VectorMaterial NeutralGhost =
         new("neutral-ghost", 0.78, 0.34, "alpha");
     private static readonly VectorMaterial AccentGhost =
@@ -302,8 +355,8 @@ internal static class HandoffConstellationSceneFactory
         }
 
         HandoffStageBounds stage = layout.Stages[stageIndex];
-        double cornerX = Math.Clamp(stage.Right - 2.0, 0.0, layout.Width);
-        double cornerY = Math.Clamp(stage.Bottom - 2.0, 0.0, layout.Height);
+        double cornerX = Math.Clamp(stage.Right - 5.0, 0.0, layout.Width);
+        double cornerY = Math.Clamp(stage.Bottom - 5.0, 0.0, layout.Height);
         double railY = Math.Clamp(
             layout.Stages[0].Bottom + 12.0,
             0.0,
@@ -312,55 +365,31 @@ internal static class HandoffConstellationSceneFactory
             1 + (stageIndex * RenderSampleHz) + frameIndex;
         List<VectorCommand> commands =
         [
-            new VectorLineCommand(
-                "active-corner-horizontal",
+            new VectorPolylineCommand(
+                "active-corner-triangle",
                 200,
                 0,
                 "per-frame",
                 Pulse,
-                new(cornerX - 18.0, cornerY),
-                new(cornerX, cornerY),
-                Hairline),
-            new VectorLineCommand(
-                "active-corner-vertical",
+                [
+                    new(cornerX - 12.0, cornerY),
+                    new(cornerX, cornerY - 12.0),
+                    new(cornerX, cornerY),
+                    new(cornerX - 12.0, cornerY),
+                ],
+                TriangleStroke),
+            new VectorPointCommand(
+                "active-corner-triangle-core",
                 200,
                 1,
                 "per-frame",
                 Pulse,
-                new(cornerX, cornerY - 18.0),
-                new(cornerX, cornerY),
-                Hairline),
-            new VectorPointCommand(
-                "active-corner-field",
-                200,
-                2,
-                "per-frame",
-                PulseGhost,
-                new(cornerX, cornerY),
-                5.0),
-            new VectorEllipseCommand(
-                "active-corner-ring",
-                200,
-                3,
-                "per-frame",
-                PulseGhost,
-                new(cornerX, cornerY),
-                7.0,
-                7.0,
-                0.56,
-                Hairline),
-            new VectorPointCommand(
-                "active-corner-point",
-                200,
-                4,
-                "per-frame",
-                Pulse,
-                new(cornerX, cornerY),
-                1.8),
+                new(cornerX - 4.0, cornerY - 4.0),
+                1.35),
             new VectorLineCommand(
                 "active-rail-segment",
                 200,
-                5,
+                2,
                 "per-frame",
                 PulseGhost,
                 new(stage.CenterX - 11.0, railY),
@@ -369,7 +398,7 @@ internal static class HandoffConstellationSceneFactory
             new VectorEllipseCommand(
                 "active-rail-ring",
                 200,
-                6,
+                3,
                 "per-frame",
                 PulseGhost,
                 new(stage.CenterX, railY),
@@ -380,7 +409,7 @@ internal static class HandoffConstellationSceneFactory
             new VectorPointCommand(
                 "active-rail-point",
                 200,
-                7,
+                4,
                 "per-frame",
                 Pulse,
                 new(stage.CenterX, railY),
@@ -391,6 +420,42 @@ internal static class HandoffConstellationSceneFactory
             revision,
             layout,
             commands);
+    }
+
+    public static HandoffStageBounds GetGlowRegion(
+        HandoffConstellationLayout layout,
+        int stageIndex)
+    {
+        if (stageIndex < 0 || stageIndex >= layout.Stages.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(stageIndex));
+        }
+
+        HandoffStageBounds stage = layout.Stages[stageIndex];
+        double cornerX = Math.Clamp(stage.Right - 5.0, 0.0, layout.Width);
+        double cornerY = Math.Clamp(stage.Bottom - 5.0, 0.0, layout.Height);
+        double railY = Math.Clamp(
+            layout.Stages[0].Bottom + 12.0,
+            0.0,
+            layout.Height);
+        double padding = GlowRadius + 8.0;
+        double left = Math.Max(
+            0.0,
+            Math.Min(stage.CenterX - 11.0, cornerX - 12.0) - padding);
+        double top = Math.Max(
+            0.0,
+            Math.Min(cornerY - 12.0, railY - 5.0) - padding);
+        double right = Math.Min(
+            layout.Width,
+            Math.Max(stage.CenterX + 11.0, cornerX) + padding);
+        double bottom = Math.Min(
+            layout.Height,
+            Math.Max(cornerY, railY + 5.0) + padding);
+        return new(
+            left,
+            top,
+            right - left,
+            bottom - top);
     }
 
     public static RgbFrame SampleAccent(int frameIndex) =>
@@ -421,6 +486,50 @@ internal static class HandoffConstellationSceneFactory
             false);
 }
 
+internal sealed class VectorGlowPresenter : FrameworkElement
+{
+    private readonly DrawingVisual visual = new();
+
+    public VectorGlowPresenter()
+    {
+        IsHitTestVisible = false;
+        Focusable = false;
+        Opacity = 0.52;
+        BlurEffect effect = new()
+        {
+            Radius = HandoffConstellationSceneFactory.GlowRadius,
+            KernelType = KernelType.Gaussian,
+            RenderingBias = RenderingBias.Performance,
+        };
+        effect.Freeze();
+        Effect = effect;
+        AddVisualChild(visual);
+    }
+
+    protected override int VisualChildrenCount => 1;
+
+    protected override AutomationPeer? OnCreateAutomationPeer() => null;
+
+    protected override Visual GetVisualChild(int index) =>
+        index == 0
+            ? visual
+            : throw new ArgumentOutOfRangeException(nameof(index));
+
+    public void Replay(DrawingGroup group)
+    {
+        using DrawingContext context = visual.RenderOpen();
+        foreach (Drawing drawing in group.Children)
+        {
+            context.DrawDrawing(drawing);
+        }
+    }
+
+    public void Clear()
+    {
+        using DrawingContext context = visual.RenderOpen();
+    }
+}
+
 public sealed class HandoffConstellationLayer : FrameworkElement
 {
     private const int StaticPreviewFrame = 7;
@@ -431,6 +540,7 @@ public sealed class HandoffConstellationLayer : FrameworkElement
         Color.FromRgb(0x55, 0xDE, 0xD3);
 
     private readonly DrawingVisual staticVisual = new();
+    private readonly VectorGlowPresenter glowPresenter = new();
     private readonly DrawingVisual dynamicVisual = new();
     private readonly DispatcherTimer renderTimer = new(
         DispatcherPriority.Render)
@@ -439,6 +549,7 @@ public sealed class HandoffConstellationLayer : FrameworkElement
             1.0 / HandoffConstellationSceneFactory.RenderSampleHz),
     };
     private readonly List<DrawingGroup> dynamicFrames = [];
+    private readonly List<DrawingGroup> glowFrames = [];
     private Window? owner;
     private FrameworkElement[] stages = [];
     private ConversationRuntimePhase phase =
@@ -450,21 +561,41 @@ public sealed class HandoffConstellationLayer : FrameworkElement
     private bool systemParametersSubscribed;
     private int activeStage;
     private int frameIndex = StaticPreviewFrame;
+    private Rect glowRegion = Rect.Empty;
 
     public HandoffConstellationLayer()
     {
         IsHitTestVisible = false;
         Focusable = false;
         AddVisualChild(staticVisual);
+        AddVisualChild(glowPresenter);
         AddVisualChild(dynamicVisual);
         renderTimer.Tick += OnRenderTimerTick;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
 
-    protected override int VisualChildrenCount => 2;
+    protected override int VisualChildrenCount => 3;
 
     protected override AutomationPeer? OnCreateAutomationPeer() => null;
+
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        glowPresenter.Measure(
+            glowRegion.IsEmpty
+                ? new Size(0.0, 0.0)
+                : glowRegion.Size);
+        return new Size(0.0, 0.0);
+    }
+
+    protected override Size ArrangeOverride(Size finalSize)
+    {
+        glowPresenter.Arrange(
+            glowRegion.IsEmpty
+                ? new Rect(0.0, 0.0, 0.0, 0.0)
+                : glowRegion);
+        return finalSize;
+    }
 
     public void Attach(
         Window ownerWindow,
@@ -538,15 +669,19 @@ public sealed class HandoffConstellationLayer : FrameworkElement
         }
         DetachOwnerAndStages();
         ClearVisual(staticVisual);
+        glowPresenter.Clear();
         ClearVisual(dynamicVisual);
         dynamicFrames.Clear();
+        glowFrames.Clear();
+        glowRegion = Rect.Empty;
     }
 
     protected override Visual GetVisualChild(int index) =>
         index switch
         {
             0 => staticVisual,
-            1 => dynamicVisual,
+            1 => glowPresenter,
+            2 => dynamicVisual,
             _ => throw new ArgumentOutOfRangeException(nameof(index)),
         };
 
@@ -640,14 +775,29 @@ public sealed class HandoffConstellationLayer : FrameworkElement
     {
         StopTimer();
         dynamicFrames.Clear();
+        glowFrames.Clear();
         if (
             SystemParameters.HighContrast ||
             !TryCreateLayout(out HandoffConstellationLayout? layout))
         {
             ClearVisual(staticVisual);
+            glowPresenter.Clear();
             ClearVisual(dynamicVisual);
+            glowRegion = Rect.Empty;
+            InvalidateMeasure();
             return;
         }
+
+        HandoffStageBounds nextGlowRegion =
+            HandoffConstellationSceneFactory.GetGlowRegion(
+                layout,
+                activeStage);
+        glowRegion = new Rect(
+            nextGlowRegion.Left,
+            nextGlowRegion.Top,
+            nextGlowRegion.Width,
+            nextGlowRegion.Height);
+        InvalidateMeasure();
 
         RetainedVectorScene staticScene =
             HandoffConstellationSceneFactory.CreateStatic(layout);
@@ -657,6 +807,7 @@ public sealed class HandoffConstellationLayer : FrameworkElement
         if (staticDrawing is null)
         {
             ClearVisual(staticVisual);
+            glowPresenter.Clear();
             ClearVisual(dynamicVisual);
             return;
         }
@@ -677,13 +828,21 @@ public sealed class HandoffConstellationLayer : FrameworkElement
             DrawingGroup? frame = BuildFrozenDrawing(
                 frameScene,
                 Color.FromRgb(accent.Red, accent.Green, accent.Blue));
-            if (frame is null)
+            DrawingGroup? glowFrame = BuildFrozenDrawing(
+                frameScene,
+                Color.FromRgb(accent.Red, accent.Green, accent.Blue),
+                glowRegion.Left,
+                glowRegion.Top);
+            if (frame is null || glowFrame is null)
             {
                 dynamicFrames.Clear();
+                glowFrames.Clear();
+                glowPresenter.Clear();
                 ClearVisual(dynamicVisual);
                 return;
             }
             dynamicFrames.Add(frame);
+            glowFrames.Add(glowFrame);
         }
         ReplayDynamicFrame();
         UpdateTimerState();
@@ -731,7 +890,9 @@ public sealed class HandoffConstellationLayer : FrameworkElement
 
     private static DrawingGroup? BuildFrozenDrawing(
         RetainedVectorScene scene,
-        Color accent)
+        Color accent,
+        double offsetX = 0.0,
+        double offsetY = 0.0)
     {
         VectorSceneCompilationReceipt compilation =
             RetainedVectorSceneCompiler.Compile(scene);
@@ -743,6 +904,13 @@ public sealed class HandoffConstellationLayer : FrameworkElement
         DrawingGroup group = new();
         using (DrawingContext context = group.Open())
         {
+            bool hasOffset = offsetX != 0.0 || offsetY != 0.0;
+            if (hasOffset)
+            {
+                context.PushTransform(
+                    new TranslateTransform(-offsetX, -offsetY));
+            }
+            bool supported = true;
             foreach (VectorCommand command in scene.Commands)
             {
                 Color source = command.Material.ColorChannel switch
@@ -753,7 +921,8 @@ public sealed class HandoffConstellationLayer : FrameworkElement
                 };
                 if (source == Colors.Transparent)
                 {
-                    return null;
+                    supported = false;
+                    break;
                 }
                 SolidColorBrush brush = CreateBrush(
                     source,
@@ -774,6 +943,12 @@ public sealed class HandoffConstellationLayer : FrameworkElement
                             ToPoint(line.Start),
                             ToPoint(line.End));
                         break;
+                    case VectorPolylineCommand polyline:
+                        context.DrawGeometry(
+                            null,
+                            CreatePen(brush, polyline.Stroke),
+                            CreatePolyline(polyline.Points));
+                        break;
                     case VectorEllipseCommand ellipse:
                         context.PushOpacity(ellipse.DrawingOpacity);
                         context.DrawEllipse(
@@ -785,8 +960,21 @@ public sealed class HandoffConstellationLayer : FrameworkElement
                         context.Pop();
                         break;
                     default:
-                        return null;
+                        supported = false;
+                        break;
                 }
+                if (!supported)
+                {
+                    break;
+                }
+            }
+            if (hasOffset)
+            {
+                context.Pop();
+            }
+            if (!supported)
+            {
+                return null;
             }
         }
         group.Freeze();
@@ -821,6 +1009,25 @@ public sealed class HandoffConstellationLayer : FrameworkElement
         return pen;
     }
 
+    private static StreamGeometry CreatePolyline(
+        IReadOnlyList<VectorPoint> points)
+    {
+        StreamGeometry geometry = new();
+        using (StreamGeometryContext context = geometry.Open())
+        {
+            context.BeginFigure(
+                ToPoint(points[0]),
+                false,
+                false);
+            context.PolyLineTo(
+                points.Skip(1).Select(ToPoint).ToArray(),
+                true,
+                false);
+        }
+        geometry.Freeze();
+        return geometry;
+    }
+
     private static Point ToPoint(VectorPoint point) =>
         new(point.X, point.Y);
 
@@ -833,6 +1040,7 @@ public sealed class HandoffConstellationLayer : FrameworkElement
     {
         if (dynamicFrames.Count == 0)
         {
+            glowPresenter.Clear();
             ClearVisual(dynamicVisual);
             return;
         }
@@ -840,6 +1048,16 @@ public sealed class HandoffConstellationLayer : FrameworkElement
             frameIndex,
             0,
             dynamicFrames.Count - 1);
+        if (
+            CanRenderGlow() &&
+            frameIndex < glowFrames.Count)
+        {
+            glowPresenter.Replay(glowFrames[frameIndex]);
+        }
+        else
+        {
+            glowPresenter.Clear();
+        }
         Replay(dynamicVisual, dynamicFrames[frameIndex]);
     }
 
@@ -871,11 +1089,21 @@ public sealed class HandoffConstellationLayer : FrameworkElement
         !ownerReviewPending &&
         !handoffComplete;
 
+    private bool CanRenderGlow() =>
+        IsLoaded &&
+        owner?.IsVisible == true &&
+        owner.WindowState != WindowState.Minimized &&
+        !SystemParameters.HighContrast &&
+        SystemParameters.ClientAreaAnimation &&
+        (RenderCapability.Tier >> 16) > 0 &&
+        phase != ConversationRuntimePhase.Faulted;
+
     private void UpdateTimerState()
     {
         if (phase == ConversationRuntimePhase.Faulted)
         {
             StopTimer();
+            glowPresenter.Clear();
             ClearVisual(dynamicVisual);
             return;
         }

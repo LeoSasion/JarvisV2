@@ -156,7 +156,13 @@ Add-Check `
         $mainWindowCodeText.Contains('HandoffConstellationVfx.SetState') -and
         $mainWindowCodeText.Contains('HandoffConstellationVfx.Detach') -and
         $handoffVfxText.Contains(
-            'handoff-constellation-with-active-corner-focus-v1') -and
+            'handoff-constellation-with-triangle-glow-v2') -and
+        $handoffVfxText.Contains('active-corner-triangle') -and
+        $handoffVfxText.Contains('BlurEffect') -and
+        $handoffVfxText.Contains(
+            'bounded-vector-gaussian-glow-v1') -and
+        $handoffVfxText.Contains('MaxGlowRegionWidth = 160.0') -and
+        $handoffVfxText.Contains('MaxGlowRegionHeight = 72.0') -and
         $handoffVfxText.Contains('MaxStaticCommands = 96') -and
         $handoffVfxText.Contains('MaxPerFrameCommands = 24') -and
         $handoffVfxText.Contains('RenderSampleHz = 30') -and
@@ -166,12 +172,16 @@ Add-Check `
         $handoffVfxText.Contains('SystemParameters.ClientAreaAnimation') -and
         $handoffVfxText.Contains('RenderCapability.Tier') -and
         $handoffVfxText.Contains('WindowState.Minimized') -and
+        -not $handoffVfxText.Contains('RenderTargetBitmap') -and
+        -not $handoffVfxText.Contains('BitmapImage') -and
+        -not $handoffVfxText.Contains('ImageBrush') -and
+        -not $handoffVfxText.Contains('BitmapCache') -and
         -not $handoffVfxText.Contains('CompositionTarget.Rendering')) `
     -Detail (
-        'The selected B constellation plus A active-corner focus must use ' +
-        'the shared retained-vector/RGB boundary, stop or degrade with native ' +
-        'accessibility and visibility state, and keep the arrowless scrollbar ' +
-        'functional through native Track commands.')
+        'The selected B constellation plus triangular active-corner focus must ' +
+        'use the shared retained-vector/RGB boundary and one bounded blur ' +
+        'post-process without bitmap assets; native accessibility, visibility ' +
+        'and scrollbar Track behavior must remain intact.')
 
 $requiredVisibleLabels = @(
     'Text="Conversation"',
@@ -519,9 +529,10 @@ catch {
 $handoffVfxProbePassed =
     $handoffVfxProbeExitCode -eq 0 -and
     $null -ne $handoffVfxProbe -and
+    $handoffVfxProbe.SchemaVersion -eq 2 -and
     $handoffVfxProbe.Result -eq 'passed' -and
     $handoffVfxProbe.CompositionId -eq
-        'handoff-constellation-with-active-corner-focus-v1' -and
+        'handoff-constellation-with-triangle-glow-v2' -and
     $handoffVfxProbe.StaticCommandCount -le 96 -and
     $handoffVfxProbe.MaximumPerFrameCommandCount -le 24 -and
     $handoffVfxProbe.StageCount -eq 4 -and
@@ -529,8 +540,18 @@ $handoffVfxProbePassed =
     $handoffVfxProbe.RenderSampleHz -eq 30 -and
     $handoffVfxProbe.RetainedScenesCompiled -and
     $handoffVfxProbe.SharedRgbBound -and
+    $handoffVfxProbe.FocusPrimitive -eq
+        'closed-outline-triangle' -and
+    $handoffVfxProbe.PostProcessId -eq
+        'bounded-vector-gaussian-glow-v1' -and
+    $handoffVfxProbe.GlowRadius -eq 8 -and
+    $handoffVfxProbe.MaximumGlowRegionWidth -le 160 -and
+    $handoffVfxProbe.MaximumGlowRegionHeight -le 72 -and
+    $handoffVfxProbe.BoundedPostProcessRegion -and
+    $handoffVfxProbe.VectorCorePreserved -and
+    -not $handoffVfxProbe.BitmapAssetsUsed -and
     -not $handoffVfxProbe.ParticlesEnabled -and
-    -not $handoffVfxProbe.PostProcessingEnabled -and
+    $handoffVfxProbe.PostProcessingEnabled -and
     -not $handoffVfxProbe.ReadyForShellMutation -and
     -not $handoffVfxProbe.ActivationPermitted -and
     $handoffVfxProbe.LiveExplorer -eq 'not-run' -and
@@ -540,9 +561,10 @@ Add-Check `
     -Name 'vfx.executable-retained-handoff-probe' `
     -Passed $handoffVfxProbePassed `
     -Detail (
-        'The executable probe must compile every selected-stage/frame scene, ' +
-        'remain within the 96/24 command caps, bind shared RGB, and expose no ' +
-        'particle, post-process, Shell or activation capability. Output: ' +
+        'The executable probe must compile every triangular stage/frame scene, ' +
+        'bound the glow pass to 160x72, remain within the 96/24 command caps, ' +
+        'bind shared RGB, use no bitmap asset, and expose no particle, Shell or ' +
+        'activation capability. Output: ' +
         (($handoffVfxProbeOutput | Select-Object -Last 18) -join ' '))
 
 $providerProbeOutput = @(

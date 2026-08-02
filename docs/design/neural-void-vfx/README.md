@@ -4,22 +4,25 @@
 - Surface: `Jarvis.ControlCenter` owned WPF window
 - Mode: Operate
 - Source frame: `docs/screenshots/jarvis-control-center-reviewed-multi-hunk-patch.png`
-- Review state: **IMPLEMENTED / LOCAL FINISH REVIEW PASS**
-- Product implementation: **B + A FOCUS + NEURAL SCROLLBAR**
+- Review state: **IMPLEMENTED / TRIANGLE GLOW FINISH REVIEW PASS**
+- Product implementation: **B + A TRIANGLE + BOUNDED GLOW + NEURAL SCROLLBAR**
 
 ## Owner decision
 
 On 2026-08-03 the owner selected a deliberate hybrid:
 
 - use **B / Handoff Constellation** as the global composition;
-- retain A's bright lower-right focus on the active `USER` stage, and let that
-  focus follow the current owner across all four handoff stages;
+- retain A's bright lower-right focus as a small vector triangle on the active
+  `USER` stage, and let it follow the current owner across all four handoff
+  stages;
 - replace the default white WPF scrollbar chrome with a narrow Neural Void
   track and graphite thumb that uses shared cyan only on hover or drag.
+- process only the triangle and matching rail signal through one bounded
+  Gaussian glow pass, while rendering the crisp vector source above it.
 
 This is the complete visible authorization for the first Control Center slice.
 It does not select A's perimeter current, C's evidence wake, D's aperture frame,
-particles, bloom or another post-process.
+particles, custom shaders, multi-pass bloom or another post-process.
 
 ## Reviewed proposals
 
@@ -55,9 +58,10 @@ contract:
   injection, registry write or physical-device I/O is introduced;
 - text, keyboard focus, automation names and state labels carry the complete
   meaning when the visual layer is absent;
-- the first product slice uses retained points, lines, paths, arcs, rectangles
-  and ellipses only. Particles and post-processing stay disabled until a later
-  independently reviewed slice.
+- the product geometry uses retained points, lines, polylines, paths, arcs,
+  rectangles and ellipses. The only enabled post-process is the independently
+  reviewed bounded triangle/rail glow; particles and every other stage remain
+  disabled.
 
 ## Runtime state mapping
 
@@ -96,7 +100,7 @@ expressed with:
 
 - at most 96 retained vector commands;
 - at most 24 per-frame commands;
-- zero particles, trail buffers and post-process passes;
+- zero particles or trail buffers and exactly one bounded glow post-process;
 - the existing deterministic 60 Hz signal clock, with rendering sampled no
   faster than the profiled owned-window budget;
 - no allocation of brushes, pens or geometry on the steady-state frame path;
@@ -104,8 +108,10 @@ expressed with:
 
 The implemented layer keeps the deterministic signal contract at 60 Hz and
 samples 30 prebuilt frozen drawings per second. The timer runs only for an active
-ready turn; hidden, minimized, reduced-motion, rendering-tier-zero and fault
-states stop or statically degrade it.
+ready turn. The Gaussian pass is confined to a maximum 139 by 66 pixel envelope
+at the reference layout; hidden, minimized, reduced-motion, rendering-tier-zero
+and fault states remove it and retain or remove the crisp vector core according
+to the existing state contract.
 
 ## Proposal notes
 
@@ -148,9 +154,10 @@ the compound contour must remain incomplete and subordinate to the transcript.
 
 ## Selected implementation boundary
 
-The owner selection authorizes only the B constellation, travelling active-stage
-focus and scrollbar restyle in the owned Control Center window. It does not
-authorize particles, post-processing, Shell rendering, Explorer mutation, a
+The owner selection authorizes only the B constellation, travelling triangular
+active-stage focus, its one bounded Gaussian glow pass and the scrollbar restyle
+in the owned Control Center window. It does not authorize particles, custom
+shaders, multi-pass post-processing, Shell rendering, Explorer mutation, a
 physical RGB adapter or a live module.
 
 ## Finish review
@@ -158,15 +165,18 @@ physical RGB adapter or a live module.
 The bounded owned-window review is **PASS**:
 
 - actual WPF evidence at 1440 x 900:
-  `docs/screenshots/jarvis-control-center-handoff-constellation-vfx.png`;
+  `docs/screenshots/jarvis-control-center-triangle-glow.png`;
 - compact 1180 x 760 evidence:
-  `docs/screenshots/jarvis-control-center-handoff-constellation-vfx-compact.png`;
-- 23 retained static commands and eight commands in each prebuilt dynamic frame,
+  `docs/screenshots/jarvis-control-center-triangle-glow-compact.png`;
+- 23 retained static commands and five commands in each prebuilt dynamic frame,
   below the reviewed 96 / 24 caps;
+- one radius-8 WPF blur pass over a maximum 139 by 66 pixel active-signal
+  envelope, with the crisp triangle rendered above it and no bitmap asset;
 - the native scrollbar `Track`, paging commands and draggable thumb are retained
   for both orientations; high contrast switches it to system colors;
-- the executable Control Center audit passes all 20 checks and the shared RGB
-  model audit passes all 19 checks;
+- the executable triangular VFX probe passes every stage/frame case and the
+  shared RGB model audit passes all 19 checks; the complete Control Center audit
+  remains subject to the repository's clean-runner publication gate;
 - publication boundary and cross-platform layout audits pass;
 - activation remains false, live Explorer validation remains `not-run`, and no
   mutation was performed.

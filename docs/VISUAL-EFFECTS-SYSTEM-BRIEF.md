@@ -5,9 +5,11 @@
 This brief records the direction confirmed by the owner. Four Control Center
 compositions are recorded at `docs/design/neural-void-vfx/README.md`. On
 2026-08-03 the owner selected B / Handoff Constellation with A's active-stage
-lower-right focus plus a Neural Void scrollbar restyle. That exact retained-
-vector owned-window slice is authorized; particles, post-processing, Shell
-rendering and device integration remain blocked.
+lower-right focus plus a Neural Void scrollbar restyle, then clarified that the
+focus is a small vector triangle and authorized one bounded glow pass over that
+active signal. That exact retained-vector plus Gaussian-post-process owned-window
+slice is authorized; particles, broader post-processing, Shell rendering and
+device integration remain blocked.
 
 ## Job and audience
 
@@ -27,9 +29,9 @@ continuous, named by behavior, reusable across effects and saved as presets.
   optional inputs, not the default construction material.
 - The default composition stays sparse and monochromatic. Hue comes from one
   global color relationship; luminance, opacity and density create hierarchy.
-- Particles and post-processing are separate global layers. Glow is a disabled
-  post-process capability until a later approved visual slice, never a baked
-  property copied into each control.
+- Particles and post-processing are separate global layers. The first approved
+  post-process is one radius-8 Gaussian glow over the triangular active signal's
+  bounded envelope; glow is never a baked property copied into each control.
 - Desktop color and physical-device lighting consume the same normalized
   visual signal, while platform and hardware adapters retain independent
   output limits.
@@ -163,15 +165,19 @@ The implementation foundation now includes:
 - a first Win10 WPF adapter that renders all eight primitive kinds, currently
   consuming the owned preview's static planes, datums, junction paths,
   reusable aperture contours, registration marks and per-frame focus geometry;
+- a Control Center-specific WPF post stage that replays frozen vector drawings
+  through one `BlurEffect` inside a measured 139-by-66-pixel maximum envelope,
+  then renders the crisp vector triangle above it without bitmap assets;
 - deterministic fixed-step, seed and quality-profile contracts;
 - fail-closed compilation to an inactive frame or preset when input is
   unsupported.
 
 The Win11 adapter, broader Win10 geometry migration, live frame-time counters
-and an actual compositor remain future work. The current implementation must
+and a general compositor remain future work. The current implementation must
 not:
 
-- enable glow, particles or post-processing in the product UI;
+- enable particles or any post-process beyond the one bounded active-signal
+  glow admitted above;
 - add decorative mouse or keyboard objects to the screen;
 - contact a physical RGB device;
 - inject rendering into Explorer or another process;
@@ -181,7 +187,7 @@ not:
 
 - CPU vector renderer versus GPU-backed renderer after Win10 profiling;
 - realistic minimum, typical and maximum particle counts;
-- later particle/post compositions beyond the selected vector-only first slice;
+- later particle/post compositions beyond the selected triangle-glow slice;
 - modulation UI depth for ordinary versus expert operation;
 - accessibility controls for motion reduction, flash limits and contrast;
 - hardware protocol and device-zone mapping.
