@@ -42,6 +42,7 @@ public sealed record PiAgentConversationToolSnapshot(
 public sealed record PiAgentWorkspaceEditSnapshot(
     int SchemaVersion,
     string ProposalId,
+    string Operation,
     string RelativePath,
     string BeforeSha256,
     string OldText,
@@ -51,6 +52,31 @@ public sealed record PiAgentWorkspaceEditSnapshot(
     string? ErrorCode)
 {
     public bool CanDecide => Status == PiAgentWorkspaceEditStatus.Pending;
+    public bool IsCreate => Operation == "create";
+    public string ProposalLabel => IsCreate
+        ? "NEW UTF-8 FILE PROPOSAL"
+        : "EXACT TEXT REPLACEMENT";
+    public string ConstraintLabel => IsCreate
+        ? "TARGET ABSENT / EXISTING PARENT / EXCLUSIVE ONE-SHOT CREATE"
+        : "EXISTING UTF-8 FILE / EXACT UNIQUE MATCH / ONE-SHOT BEFORE HASH";
+    public string OriginalTextLabel => IsCreate
+        ? "TARGET / CURRENT STATE"
+        : "REMOVE / EXACT TEXT";
+    public string ProposedTextLabel => IsCreate
+        ? "CREATE / COMPLETE FILE CONTENT"
+        : "ADD / REPLACEMENT TEXT";
+    public string OriginalTextDisplay => IsCreate
+        ? "FILE DOES NOT EXIST"
+        : OldText;
+    public string ApproveActionLabel => IsCreate
+        ? "CREATE ONCE"
+        : "APPROVE ONCE";
+    public string ApprovalAutomationName => IsCreate
+        ? "Create proposed workspace file once"
+        : "Approve workspace text replacement once";
+    public string DecisionBoundaryText => IsCreate
+        ? "Pi cannot press these controls. Reject creates nothing; Create Once rechecks the parent identity and target absence, then uses an exclusive write."
+        : "Pi cannot press these controls. Reject performs no write; Approve Once rechecks the exact file hash immediately before commit.";
     public string StatusLabel => Status switch
     {
         PiAgentWorkspaceEditStatus.Pending => "OWNER REVIEW REQUIRED",
@@ -63,7 +89,9 @@ public sealed record PiAgentWorkspaceEditSnapshot(
         PiAgentWorkspaceEditStatus.Failed => "FAILED CLOSED",
         _ => "UNKNOWN",
     };
-    public string BeforeHashLabel => $"BEFORE  {BeforeSha256}";
+    public string BeforeHashLabel => IsCreate
+        ? $"BEFORE  ABSENT / {BeforeSha256}"
+        : $"BEFORE  {BeforeSha256}";
     public string AfterHashLabel => AfterSha256 is null
         ? Status switch
         {
@@ -153,6 +181,7 @@ public sealed class PiAgentConversationState
     {
         public required int SchemaVersion { get; init; }
         public required string ProposalId { get; init; }
+        public required string Operation { get; init; }
         public required string RelativePath { get; init; }
         public required string BeforeSha256 { get; init; }
         public required string OldText { get; init; }
@@ -513,6 +542,7 @@ public sealed class PiAgentConversationState
                         current.Status !=
                             PiAgentWorkspaceEditStatus.Applying ||
                         receipt.RelativePath != current.RelativePath ||
+                        receipt.Operation != current.Operation ||
                         receipt.BeforeSha256 != current.BeforeSha256 ||
                         receipt.Status != "applied" ||
                         !receipt.MutationPerformed ||
@@ -604,6 +634,7 @@ public sealed class PiAgentConversationState
                         current.Status !=
                             PiAgentWorkspaceEditStatus.Rejecting ||
                         receipt.RelativePath != current.RelativePath ||
+                        receipt.Operation != current.Operation ||
                         receipt.BeforeSha256 != current.BeforeSha256 ||
                         receipt.Status != "rejected" ||
                         receipt.MutationPerformed ||
@@ -830,7 +861,10 @@ public sealed class PiAgentConversationState
                             .Any(edit =>
                                 edit.ProposalId == proposed.ProposalId) ||
                         !turn.Tools.Any(tool =>
-                            tool.ToolName == "propose_edit" &&
+                            tool.ToolName == (
+                                proposed.Operation == "create"
+                                    ? "propose_create_file"
+                                    : "propose_edit") &&
                             tool.Status ==
                                 PiAgentConversationToolStatus.Completed))
                     {
@@ -841,6 +875,7 @@ public sealed class PiAgentConversationState
                     {
                         SchemaVersion = proposed.SchemaVersion,
                         ProposalId = proposed.ProposalId,
+                        Operation = proposed.Operation,
                         RelativePath = proposed.RelativePath,
                         BeforeSha256 = proposed.BeforeSha256,
                         OldText = proposed.OldText,
@@ -989,6 +1024,7 @@ public sealed class PiAgentConversationState
         new(
             proposal.SchemaVersion,
             proposal.ProposalId,
+            proposal.Operation,
             proposal.RelativePath,
             proposal.BeforeSha256,
             proposal.OldText,

@@ -293,14 +293,17 @@ Automation equivalent:
 
 The API key is protected under the current Windows user with DPAPI. It is not
 stored in this package and is never sent to the offline Pi sidecar. Pi tools are
-limited to read, grep, find, ls, and non-mutating propose_edit. An edit can only
-replace one exact match in an existing UTF-8 workspace file after the desktop
-owner selects APPROVE ONCE. The current file SHA-256 is rechecked immediately
-before commit. Shell, new-file, delete, direct-write, and unattended approval
-remain unavailable. The desktop can arm a clean-HEAD reviewed iteration for at
-most four owner-approved edits and six hours. Each approved write must pass the
-fixed Git and structured-text gate before another reasoning turn; restart never
-restores a proposal and requires explicit re-arm.
+limited to read, grep, find, ls, and the non-mutating propose_edit and
+propose_create_file tools. Pi may stage either one exact replacement in an
+existing UTF-8 file or one missing UTF-8 file (16 KiB maximum) whose parent
+directory already exists. Only the desktop owner can approve it once. Existing
+files are hash-rechecked; new files use exclusive creation and never overwrite.
+Shell, directory creation, delete, rename, direct-write, VCS metadata mutation,
+and unattended approval remain unavailable. The desktop can arm a clean-HEAD
+reviewed iteration for at most four owner-approved writes and six hours. Each
+approved write must pass the fixed Git, strict UTF-8, tracked/untracked diff and
+structured-text gate before another reasoning turn; restart never restores a
+proposal and requires explicit re-arm.
 '@
 [IO.File]::WriteAllText(
     (Join-Path $target 'README.txt'),
@@ -354,16 +357,26 @@ $receipt = [ordered]@{
         'desktop-current-user-dpapi-atomic-no-sidecar-transport'
     piSidecarNetworkAllowed = $false
     piSidecarCredentialTransportAllowed = $false
-    initialTools = @('read', 'grep', 'find', 'ls', 'propose_edit')
+    initialTools = @(
+        'read',
+        'grep',
+        'find',
+        'ls',
+        'propose_edit',
+        'propose_create_file')
     mutationTools = @()
     desktopOwnerApprovedWorkspaceOperations = @(
-        'existing-utf8-exact-replacement')
-    workspaceEditApprovalMode = 'one-shot-exact-before-sha256'
+        'existing-utf8-exact-replacement',
+        'missing-utf8-exclusive-create-existing-parent')
+    workspaceEditApprovalMode =
+        'one-shot-explicit-operation-before-state-sha256'
+    workspaceCreateMaximumBytes = 16384
+    workspaceVersionControlMetadataMutation = $false
     reviewedSelfIteration = $true
     reviewedIterationPolicy =
         'desktop-owner-fixed-four-edits-six-hours'
     reviewedIterationValidationProfile =
-        'git-head-pathset-diffcheck-structured-parse-v1'
+        'git-head-pathset-text-hash-diffcheck-structured-parse-v2'
     reviewedIterationGitRuntime =
         'bundled-runtime-git-cmd-direct-no-shell'
     gitRuntimeFileCount = $gitRuntimeFiles.Count

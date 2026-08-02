@@ -44,9 +44,10 @@ sidecar and bounded LF-delimited JSONL. The managed desktop bridge now owns the
 no-shell child lifecycle, imports the real package, proves a clean child
 environment and creates one in-memory SDK session for one canonical workspace.
 Its custom `read`, `grep`, `find` and `ls` tools reject path escape and reparse
-points. A non-mutating `propose_edit` tool can stage one exact existing-text
-replacement; only the native desktop owner can approve it once against the
-current full-file SHA-256. Prompting is admitted only when the desktop owns a current-user local
+points. Non-mutating `propose_edit` and `propose_create_file` tools can stage
+one exact existing-text replacement or one missing UTF-8 file under an existing
+parent; only the native desktop owner can approve the explicit operation once
+against its reviewed before state. Prompting is admitted only when the desktop owns a current-user local
 model-broker pipe; resource discovery, sidecar provider network access,
 credential transport and direct mutation tools remain disabled. The desktop now owns
 a provider-neutral, multi-request model broker with bounded current-user pipes,

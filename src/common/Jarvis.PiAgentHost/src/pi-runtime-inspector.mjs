@@ -89,7 +89,10 @@ export async function inspectPiRuntime(contract) {
     workspaceEditProposalSupported: true,
     workspaceEditApprovalOwner: contract.tools.approvalOwner,
     workspaceEditApprovalMode: contract.tools.approvalMode,
-    workspaceEditExistingFilesOnly: true,
+    workspaceEditExistingFilesOnly: false,
+    workspaceFileCreateSupported: true,
+    workspaceFileCreateMode:
+      "exclusive-existing-parent-owner-approved",
     unattendedSelfIteration: false,
     shellMutationSupported: false,
     explorerMutationSupported: false,

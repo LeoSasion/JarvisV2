@@ -31,6 +31,7 @@ import {
 } from "./desktop-model-broker.mjs";
 import {
   createWorkspaceEditProposalTool,
+  createWorkspaceFileProposalTool,
   WorkspaceEditProposalManager,
 } from "./workspace-edit-proposal.mjs";
 
@@ -602,12 +603,23 @@ export async function createReadOnlyAgentSession(
       admission,
       workspaceEditProposalManager,
     ),
+    createWorkspaceFileProposalTool(
+      admission,
+      workspaceEditProposalManager,
+    ),
   ];
   const result = await createAgentSession({
     cwd: admission.canonicalRoot,
     ...(model ? { model } : {}),
     modelRuntime,
-    tools: ["read", "grep", "find", "ls", "propose_edit"],
+    tools: [
+      "read",
+      "grep",
+      "find",
+      "ls",
+      "propose_edit",
+      "propose_create_file",
+    ],
     excludeTools: ["bash", "edit", "write"],
     customTools: tools,
     resourceLoader: createInertResourceLoader(),
@@ -626,7 +638,7 @@ export async function createReadOnlyAgentSession(
   );
   if (
     activeTools.join("|") !==
-      "read|grep|find|ls|propose_edit" ||
+      "read|grep|find|ls|propose_edit|propose_create_file" ||
     persisted ||
     result.session.messages.length !==
       restoredContextMessageCount ||

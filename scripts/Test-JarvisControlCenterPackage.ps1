@@ -182,17 +182,19 @@ if ($null -eq $receipt -or
     (@($receipt.portableNodePackages | ForEach-Object name) -join '|') -ne
         ($expectedPortablePackages -join '|') -or
     (@($receipt.initialTools) -join '|') -ne
-        'read|grep|find|ls|propose_edit' -or
+        'read|grep|find|ls|propose_edit|propose_create_file' -or
     @($receipt.mutationTools).Count -ne 0 -or
     (@($receipt.desktopOwnerApprovedWorkspaceOperations) -join '|') -ne
-        'existing-utf8-exact-replacement' -or
+        'existing-utf8-exact-replacement|missing-utf8-exclusive-create-existing-parent' -or
     $receipt.workspaceEditApprovalMode -ne
-        'one-shot-exact-before-sha256' -or
+        'one-shot-explicit-operation-before-state-sha256' -or
+    $receipt.workspaceCreateMaximumBytes -ne 16384 -or
+    $receipt.workspaceVersionControlMetadataMutation -or
     -not $receipt.reviewedSelfIteration -or
     $receipt.reviewedIterationPolicy -ne
         'desktop-owner-fixed-four-edits-six-hours' -or
     $receipt.reviewedIterationValidationProfile -ne
-        'git-head-pathset-diffcheck-structured-parse-v1' -or
+        'git-head-pathset-text-hash-diffcheck-structured-parse-v2' -or
     $receipt.reviewedIterationGitRuntime -ne
         'bundled-runtime-git-cmd-direct-no-shell' -or
     -not $receipt.automaticReasoningContinuation -or

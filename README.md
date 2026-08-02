@@ -26,9 +26,12 @@ Open `jarvis-control-center.exe`, choose `START PI SESSION`, select one local
 workspace and keep the default local diagnostic provider for the fastest
 deterministic first turn. The launcher validates both the workspace boundary and
 the fixed portable/developer runtime before the existing window becomes the Pi
-conversation surface. Reads are root-confined. `propose_edit` can only stage a
-review card; new files, deletes, direct writes, shell access and unattended
-approval remain unavailable.
+conversation surface. Reads are root-confined. `propose_edit` and
+`propose_create_file` can only stage a review card; the latter is limited to a
+missing UTF-8 file of at most 16 KiB beneath an existing canonical parent and
+uses exclusive creation after approval. Deletes, renames, directory creation,
+VCS metadata mutation, direct writes, shell access and unattended approval
+remain unavailable.
 
 JarvisV2 是一个独立于旧版 JARVIS 的 Windows 原生桌面改造实验。它不铺设全屏画布，不用 Electron/WebView 假装桌面，也不替换任务栏的交互模型；模块进入明确的 Windows 宿主进程，修改现有原生组件，并且必须可以失败关闭和撤销。仓库与公开展示名称为 **JarvisV2**，内部运行时安全标识仍为 `JARVIS2`；状态目录、命名状态门、模块 ID 和既有收据不做破坏性改名。
 

@@ -18,7 +18,8 @@ One runtime instance owns, in order:
 The caller supplies no pipe name. `PiAgentDesktopRuntime.StartAsync` creates the
 broker first, injects only its generated pipe capability into the sidecar, and
 admits the returned session receipt before publishing the runtime. The receipt
-must prove the exact four read tools plus non-mutating `propose_edit`, the
+must prove the exact four read tools plus non-mutating `propose_edit` and
+`propose_create_file`, the
 desktop broker model identity,
 in-memory session state, disabled resource discovery and disabled sidecar model
 network.
@@ -67,7 +68,8 @@ The runtime remains provider-neutral: its WPF composition root selects the
 provider and owns any provider credential source. Production mode uses the
 desktop-only `OpenAiResponsesModelProvider`; its CurrentUser-DPAPI key never
 enters the broker protocol or sidecar. The Pi sidecar remains offline and has
-only `read`, `grep`, `find`, `ls` and `propose_edit` inside one admitted
+only `read`, `grep`, `find`, `ls`, `propose_edit` and
+`propose_create_file` inside one admitted
 workspace. Pi SDK session persistence remains disabled.
 The desktop can persist only the bounded completed-text checkpoint in its
 CurrentUser-DPAPI store; the sidecar never reads the store or encryption key.

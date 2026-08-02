@@ -149,8 +149,11 @@ export async function handleRequest(
             workspaceEditProposalSupported: true,
             workspaceEditApprovalOwner: "desktop-user-only",
             workspaceEditApprovalMode:
-              "one-shot-exact-before-sha256",
-            workspaceEditExistingFilesOnly: true,
+              "one-shot-explicit-operation-before-state-sha256",
+            workspaceEditExistingFilesOnly: false,
+            workspaceFileCreateSupported: true,
+            workspaceFileCreateMode:
+              "exclusive-existing-parent-owner-approved",
             unattendedSelfIteration: false,
             shellMutationSupported: false,
             explorerMutationSupported: false,
@@ -312,7 +315,9 @@ export async function handleRequest(
                 isError: event.isError === true,
               });
               const proposal =
-                event.toolName === "propose_edit" &&
+                ["propose_edit", "propose_create_file"].includes(
+                  event.toolName,
+                ) &&
                 event.isError !== true
                   ? extractWorkspaceEditProposal(event.result)
                   : null;

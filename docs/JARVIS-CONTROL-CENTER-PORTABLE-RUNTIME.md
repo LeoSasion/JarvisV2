@@ -85,11 +85,13 @@ under the current Windows user outside the portable directory. The
 Packaging, auditing and conversation launch do not install software, inject a
 module, configure Windhawk, clear the JARVIS2 kill switch, modify the registry,
 restart Explorer or enable shell/direct mutation tools. It includes the
-review-gated existing-text workflow: `propose_edit` stages without writing and
-only the desktop owner can approve once against the current file SHA-256. The
+review-gated text workflow: `propose_edit` and `propose_create_file` stage
+without writing, and only the desktop owner can approve an exact replacement or
+exclusive new UTF-8 file once against its reviewed before state. The
 desktop can also arm a four-edit, six-hour reviewed iteration from a clean Git
 HEAD. It stores CurrentUser-DPAPI receipts and continues reasoning only after
-each owner approval passes the fixed repository gate; unattended approval is
+each owner approval passes the fixed Git, strict UTF-8, tracked/untracked diff
+and structured-text gate; unattended approval is
 still unavailable. The portable receipt therefore
 records the bundled `runtime\git\cmd\git.exe` direct-process gate alongside
 the Node and Pi runtimes. No host Git installation is required by the package.

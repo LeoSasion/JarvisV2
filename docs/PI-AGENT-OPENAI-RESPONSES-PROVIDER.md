@@ -33,7 +33,9 @@ Only these Pi tools may be described to or invoked by the provider:
 - `grep`;
 - `find`;
 - `ls`;
-- `propose_edit`, which can only stage a non-mutating existing-text proposal.
+- `propose_edit`, which can only stage a non-mutating existing-text proposal;
+- `propose_create_file`, which can only stage one missing UTF-8 file beneath an
+  existing parent and never creates or overwrites anything itself.
 
 `bash`, `edit`, `write` and every unknown tool are rejected before a request is
 sent. The provider maps Pi tool calls to Responses function tools and maps

@@ -56,6 +56,7 @@ public sealed record PiAgentWorkspaceEditProposed(
     int Sequence,
     int SchemaVersion,
     string ProposalId,
+    string Operation,
     string RelativePath,
     string BeforeSha256,
     string OldText,
@@ -69,6 +70,7 @@ public sealed record PiAgentTurnCompleted(
 public sealed record PiAgentWorkspaceEditDecisionReceipt(
     int SchemaVersion,
     string ProposalId,
+    string Operation,
     string RelativePath,
     string BeforeSha256,
     string? AfterSha256,
@@ -194,8 +196,18 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
 
     private static readonly IReadOnlySet<string> AllowedTurnToolNames =
         new HashSet<string>(
-            ["read", "grep", "find", "ls", "propose_edit"],
+            [
+                "read",
+                "grep",
+                "find",
+                "ls",
+                "propose_edit",
+                "propose_create_file",
+            ],
             StringComparer.Ordinal);
+
+    public const string WorkspaceFileAbsentSha256 =
+        "679ac4df69d6bb3057107f0831a8a336ab25fc6b07a1679eb5ee97773ec0eaa3";
 
     private static readonly Regex WorkspaceEditProposalIdPattern = new(
         @"\Aworkspace-edit-[0-9a-f]{32}\z",
@@ -847,7 +859,9 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 throw new InvalidOperationException(
                     "The Pi Agent ended an inactive tool call.");
             }
-            if (toolName == "propose_edit" && !isError)
+            if (
+                (toolName is "propose_edit" or "propose_create_file") &&
+                !isError)
             {
                 pending.AwaitingWorkspaceEditProposalCount++;
             }
@@ -870,6 +884,10 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 root.GetProperty("proposalId").GetString()
                 ?? throw new InvalidOperationException(
                     "The Pi Agent workspace edit proposal id was missing.");
+            string operation =
+                root.GetProperty("operation").GetString()
+                ?? throw new InvalidOperationException(
+                    "The Pi Agent workspace proposal operation was missing.");
             string relativePath =
                 root.GetProperty("relativePath").GetString()
                 ?? throw new InvalidOperationException(
@@ -887,14 +905,16 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 ?? throw new InvalidOperationException(
                     "The Pi Agent workspace edit new text was missing.");
             if (
-                schemaVersion != 1 ||
+                schemaVersion != 2 ||
                 !WorkspaceEditProposalIdPattern.IsMatch(proposalId) ||
+                operation is not ("replace" or "create") ||
                 !IsValidWorkspaceRelativePath(relativePath) ||
                 !Sha256Pattern.IsMatch(beforeSha256) ||
-                string.IsNullOrEmpty(oldText) ||
-                Encoding.UTF8.GetByteCount(oldText) > 4_096 ||
-                Encoding.UTF8.GetByteCount(newText) > 4_096 ||
-                oldText == newText ||
+                !IsValidWorkspaceProposalText(
+                    operation,
+                    beforeSha256,
+                    oldText,
+                    newText) ||
                 pending.AwaitingWorkspaceEditProposalCount != 1)
             {
                 throw new InvalidOperationException(
@@ -908,6 +928,7 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                     NextEventSequence(pending),
                     schemaVersion,
                     proposalId,
+                    operation,
                     relativePath,
                     beforeSha256,
                     oldText,
@@ -1267,6 +1288,8 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             data.GetProperty("schemaVersion").GetInt32();
         string proposalId =
             data.GetProperty("proposalId").GetString() ?? string.Empty;
+        string operation =
+            data.GetProperty("operation").GetString() ?? string.Empty;
         string relativePath =
             data.GetProperty("relativePath").GetString() ?? string.Empty;
         string beforeSha256 =
@@ -1280,8 +1303,9 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         bool mutationPerformed =
             data.GetProperty("mutationPerformed").GetBoolean();
         bool valid =
-            schemaVersion == 1 &&
+            schemaVersion == 2 &&
             proposalId == expectedProposalId &&
+            operation is "replace" or "create" &&
             beforeSha256 == expectedBeforeSha256 &&
             IsValidWorkspaceRelativePath(relativePath) &&
             status == expectedStatus &&
@@ -1299,6 +1323,7 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         return new PiAgentWorkspaceEditDecisionReceipt(
             schemaVersion,
             proposalId,
+            operation,
             relativePath,
             beforeSha256,
             afterSha256,
@@ -1324,7 +1349,74 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         }
         return relativePath
             .Split('/', StringSplitOptions.RemoveEmptyEntries)
-            .All(segment => segment is not "." and not "..");
+            .All(segment =>
+                segment is not "." and not ".." &&
+                !segment.Equals(
+                    ".git",
+                    StringComparison.OrdinalIgnoreCase) &&
+                !segment.Equals(
+                    ".hg",
+                    StringComparison.OrdinalIgnoreCase) &&
+                !segment.Equals(
+                    ".svn",
+                    StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsValidWorkspaceProposalText(
+        string operation,
+        string beforeSha256,
+        string oldText,
+        string newText)
+    {
+        if (
+            oldText.Contains('\0') ||
+            newText.Contains('\0') ||
+            !IsStrictUtf16(oldText) ||
+            !IsStrictUtf16(newText))
+        {
+            return false;
+        }
+        if (operation == "replace")
+        {
+            return
+                oldText.Length != 0 &&
+                Encoding.UTF8.GetByteCount(oldText) <= 4_096 &&
+                Encoding.UTF8.GetByteCount(newText) <= 4_096 &&
+                oldText != newText;
+        }
+        return
+            beforeSha256 == WorkspaceFileAbsentSha256 &&
+            oldText.Length == 0 &&
+            Encoding.UTF8.GetByteCount(newText) is > 0 and <= 16_384 &&
+            !newText.Any(character =>
+                character is >= '\u0001' and <= '\u0008' or
+                    '\u000b' or
+                    '\u000c' or
+                    >= '\u000e' and <= '\u001f' or
+                    '\u007f');
+    }
+
+    private static bool IsStrictUtf16(string value)
+    {
+        for (int index = 0; index < value.Length; index++)
+        {
+            char character = value[index];
+            if (char.IsHighSurrogate(character))
+            {
+                if (
+                    index + 1 >= value.Length ||
+                    !char.IsLowSurrogate(value[index + 1]))
+                {
+                    return false;
+                }
+                index++;
+            }
+            else if (char.IsLowSurrogate(character))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 }
 
@@ -1369,7 +1461,14 @@ public static class PiAgentDesktopProbe
         bool capabilitiesPassed =
             capabilities.RootElement.GetProperty("success").GetBoolean() &&
             initialTools.SequenceEqual(
-                ["read", "grep", "find", "ls", "propose_edit"]) &&
+                [
+                    "read",
+                    "grep",
+                    "find",
+                    "ls",
+                    "propose_edit",
+                    "propose_create_file",
+                ]) &&
             deniedTools.SequenceEqual(["bash", "edit", "write"]) &&
             capabilityData
                 .GetProperty("sessionCreationEnabled")
@@ -1440,7 +1539,14 @@ public static class PiAgentDesktopProbe
                 .GetProperty("success")
                 .GetBoolean() &&
             activeTools.SequenceEqual(
-                ["read", "grep", "find", "ls", "propose_edit"]) &&
+                [
+                    "read",
+                    "grep",
+                    "find",
+                    "ls",
+                    "propose_edit",
+                    "propose_create_file",
+                ]) &&
             !sessionData
                 .GetProperty("sessionPersisted")
                 .GetBoolean() &&

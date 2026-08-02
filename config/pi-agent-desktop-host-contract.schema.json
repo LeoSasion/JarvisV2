@@ -287,7 +287,7 @@
           "const": 262144
         },
         "reviewedIterationValidationProfile": {
-          "const": "git-head-pathset-diffcheck-structured-parse-v1"
+          "const": "git-head-pathset-text-hash-diffcheck-structured-parse-v2"
         },
         "reviewedIterationRepositoryBaseline": {
           "const": "clean-git-head-required"
@@ -386,12 +386,15 @@
         "proposalTool",
         "proposalMaxFileBytes",
         "proposalMaxSegmentBytes",
+        "createProposalMaxBytes",
         "pendingProposalLimit",
         "pendingProposalPolicy",
         "approvalOwner",
         "approvalMode",
         "commitMode",
         "newFileSupported",
+        "newFileParentPolicy",
+        "versionControlMetadataMutation",
         "deleteSupported",
         "mutationGrant",
         "reviewedSelfIteration",
@@ -407,7 +410,8 @@
             "grep",
             "find",
             "ls",
-            "propose_edit"
+            "propose_edit",
+            "propose_create_file"
           ]
         },
         "initiallyDenied": {
@@ -418,13 +422,16 @@
           ]
         },
         "proposalTool": {
-          "const": "non-mutating-existing-utf8-exact-replacement"
+          "const": "non-mutating-explicit-utf8-replace-or-create"
         },
         "proposalMaxFileBytes": {
           "const": 1048576
         },
         "proposalMaxSegmentBytes": {
           "const": 4096
+        },
+        "createProposalMaxBytes": {
+          "const": 16384
         },
         "pendingProposalLimit": {
           "const": 1
@@ -436,19 +443,25 @@
           "const": "desktop-user-only"
         },
         "approvalMode": {
-          "const": "one-shot-exact-before-sha256"
+          "const": "one-shot-explicit-operation-before-state-sha256"
         },
         "commitMode": {
-          "const": "same-directory-atomic-replace-and-post-verify"
+          "const": "atomic-replace-or-exclusive-create-and-post-verify"
         },
         "newFileSupported": {
+          "const": true
+        },
+        "newFileParentPolicy": {
+          "const": "existing-canonical-directory-no-auto-create"
+        },
+        "versionControlMetadataMutation": {
           "const": false
         },
         "deleteSupported": {
           "const": false
         },
         "mutationGrant": {
-          "const": "desktop-owner-one-shot-existing-text-edit"
+          "const": "desktop-owner-one-shot-reviewed-text-replace-or-create"
         },
         "reviewedSelfIteration": {
           "const": true

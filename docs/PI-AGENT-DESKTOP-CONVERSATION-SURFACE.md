@@ -62,8 +62,9 @@ WPF command
                   -> encrypted terminal checkpoint
 ```
 
-`read`, `grep`, `find`, `ls` and non-mutating `propose_edit` are the only Pi
-tools installed in the session and admitted by the production provider. The
+`read`, `grep`, `find`, `ls`, non-mutating `propose_edit` and non-mutating
+`propose_create_file` are the only Pi tools installed in the session and
+admitted by the production provider. The
 diagnostic provider itself requests only `ls`. `bash`, generic `edit` and
 `write` are unavailable. No provider credential enters the sidecar and its
 model network remains disabled.
@@ -163,6 +164,10 @@ The reviewed-iteration extension is captured separately at
 `docs/screenshots/jarvis-control-center-reviewed-iteration.png`; its policy is
 visible in the incumbent inspector while the one-shot edit remains inside the
 producing turn.
+The explicit new-file review state is captured at
+`docs/screenshots/jarvis-control-center-reviewed-create-file.png`; it labels the
+target as absent and exposes `CREATE ONCE` without starting Pi or creating a
+file.
 The returning-user launcher is captured at
 `docs/screenshots/jarvis-session-launcher-recent-work.png`; it shows available
 and unavailable recent-work states without starting a runtime.

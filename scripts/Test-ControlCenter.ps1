@@ -17,6 +17,8 @@ $diagnosticsProjectPath = Join-Path $diagnosticsRoot (
 $mainWindowPath = Join-Path $sourceRoot 'MainWindow.xaml'
 $mainWindowCodePath = Join-Path $sourceRoot 'MainWindow.xaml.cs'
 $viewModelPath = Join-Path $sourceRoot 'ConversationSurfaceViewModel.cs'
+$conversationStatePath = Join-Path $root (
+    'src\common\Jarvis.PiAgentHost\ConversationState.cs')
 $providerPath = Join-Path $sourceRoot 'LocalDiagnosticModelProvider.cs'
 $appPath = Join-Path $sourceRoot 'App.xaml.cs'
 $launchOptionsPath = Join-Path $sourceRoot 'ConversationLaunchOptions.cs'
@@ -60,6 +62,7 @@ $diagnosticsProjectText = [IO.File]::ReadAllText($diagnosticsProjectPath)
 $mainWindowText = [IO.File]::ReadAllText($mainWindowPath)
 $mainWindowCodeText = [IO.File]::ReadAllText($mainWindowCodePath)
 $viewModelText = [IO.File]::ReadAllText($viewModelPath)
+$conversationStateText = [IO.File]::ReadAllText($conversationStatePath)
 $providerText = [IO.File]::ReadAllText($providerPath)
 $appText = [IO.File]::ReadAllText($appPath)
 $launchOptionsText = [IO.File]::ReadAllText($launchOptionsPath)
@@ -142,9 +145,11 @@ $requiredVisibleLabels = @(
     'Content="CANCEL"',
     'Writes: desktop-owner approval only',
     'Shell / direct edit / unattended approval: locked',
-    'WORKSPACE EDIT PROPOSAL',
+    'NEW UTF-8 FILE PROPOSAL',
+    'EXACT TEXT REPLACEMENT',
     'Content="REJECT"',
-    'Content="APPROVE ONCE"',
+    'APPROVE ONCE',
+    'CREATE ONCE',
     'Text="Reviewed iteration"',
     'Content="START REVIEWED LOOP"',
     'Content="RE-ARM"',
@@ -160,6 +165,7 @@ $requiredVisibleLabels = @(
 $visibleSource = @(
     $mainWindowText,
     $viewModelText,
+    $conversationStateText,
     $providerText
 ) -join [Environment]::NewLine
 $missingVisibleLabels = @(
@@ -190,7 +196,7 @@ Add-Check `
             'AutomationProperties.Name="Send one conversation message"') -and
         $mainWindowText.Contains('AutomationProperties.Name="Cancel active turn"') -and
         $mainWindowText.Contains(
-            'AutomationProperties.Name="Removed exact workspace text"') -and
+            'AutomationProperties.Name="Current workspace target state"') -and
         $mainWindowText.Contains(
             'AutomationProperties.Name="Replacement workspace text"') -and
         $mainWindowText.Contains(
@@ -199,7 +205,14 @@ Add-Check `
         $mainWindowText.Contains(
             'AutomationProperties.Name="Reject workspace edit without writing"') -and
         $mainWindowText.Contains(
-            'AutomationProperties.Name="Approve workspace edit once"') -and
+            'AutomationProperties.Name="{Binding ApprovalAutomationName}"') -and
+        $mainWindowText.Contains(
+            'Content="{Binding ApproveActionLabel}"') -and
+        $mainWindowText.Contains('Text="{Binding ProposalLabel}"') -and
+        $conversationStateText.Contains('NEW UTF-8 FILE PROPOSAL') -and
+        $conversationStateText.Contains('EXACT TEXT REPLACEMENT') -and
+        $conversationStateText.Contains('CREATE ONCE') -and
+        $conversationStateText.Contains('APPROVE ONCE') -and
         $mainWindowCodeText.Contains(
             'ApproveWorkspaceEditButton_OnClick') -and
         $mainWindowCodeText.Contains(

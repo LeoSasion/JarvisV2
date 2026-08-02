@@ -28,7 +28,14 @@ public sealed class OpenAiResponsesModelProvider :
         UriKind.Absolute);
     private static readonly IReadOnlySet<string> AllowedToolNames =
         new HashSet<string>(
-            ["read", "grep", "find", "ls", "propose_edit"],
+            [
+                "read",
+                "grep",
+                "find",
+                "ls",
+                "propose_edit",
+                "propose_create_file",
+            ],
             StringComparer.Ordinal);
     private static readonly IReadOnlySet<string> AllowedReasoningEfforts =
         new HashSet<string>(

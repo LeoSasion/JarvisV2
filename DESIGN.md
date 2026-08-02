@@ -108,7 +108,7 @@ continuation advances reasoning only and never advances approval.
 
 The implemented visual world is evidenced by
 `src/common/Jarvis.ControlCenter/MainWindow.xaml` and the final reviewed render
-at `docs/screenshots/jarvis-control-center-reviewed-iteration.png`. Its selected
+at `docs/screenshots/jarvis-control-center-reviewed-create-file.png`. Its selected
 surface concept is `docs/design/jarvis-conversation-handoff-rail.png`; the
 durable concept seed is `32fb29e4`. The bounded finish-review verdict is PASS:
 the accessibility, owner-action hierarchy and handoff-label clipping findings
@@ -333,21 +333,24 @@ rows, the streamed Jarvis response and an explicit terminal state. Running turns
 use a cyan rule, failed turns use coral rule and plane, and aborted turns use an
 amber rule. Completed work returns to neutral structure and recedes into history.
 
-### Workspace Edit Review
+### Workspace Write Review
 
-A staged edit stays inside the turn that produced it; it is not promoted to a
-modal or a separate approval application. The review plane uses amber while
-waiting, cyan after an exact commit, coral for drift or failure, and neutral
-structure after rejection. Every state is named in text. Show the normalized
-path, full before SHA-256, exact removed and replacement text, and the explicit
-one-shot boundary. Reject precedes Approve Once in keyboard order. Pi cannot
-operate either control, and the composer remains disabled until the owner
-decides. Approve Once never looks like permission for later proposals: each of
-the maximum four applied edits returns to a fresh, owner-operated decision.
+A staged replacement or new-file proposal stays inside the turn that produced
+it; it is not promoted to a modal or separate approval application. The same
+review plane uses amber while waiting, cyan after an exact commit, coral for
+drift or failure, and neutral structure after rejection. Every state is named
+in text. A replacement shows the normalized path, full before SHA-256, removed
+text and replacement text. A creation instead names `NEW UTF-8 FILE PROPOSAL`,
+shows the fixed absent-state sentinel, `FILE DOES NOT EXIST`, and the complete
+proposed content. Reject precedes the dynamic `APPROVE ONCE` or `CREATE ONCE`
+action in keyboard order. Pi cannot operate either control, and the composer
+remains disabled until the owner decides. Every later proposal returns to a
+fresh owner-operated decision.
 
-**The Owner Holds the Baton Rule.** A proposed edit is neither success nor
-execution. Amber, the `OWNER REVIEW REQUIRED` label and the adjacent exact diff
-must remain visible until the human chooses Reject or Approve Once.
+**The Owner Holds the Baton Rule.** A proposed write is neither success nor
+execution. Amber, the `OWNER REVIEW REQUIRED` label and the adjacent exact
+before/after state must remain visible until the human chooses Reject or the
+one-shot approval action.
 
 ### Reviewed Iteration Policy
 
@@ -361,11 +364,11 @@ rerun; restart never restores proposal authority.
 
 After Approve Once, keep the turn paused until the fixed validation evidence is
 terminal. The status must distinguish pinned HEAD, exact approved path set,
-current file hashes, `git diff --check`, strict JSON parsing and DTD-disabled
-XML/XAML/project parsing. A pass may submit one next Pi reasoning turn within the
-remaining count and time; a failure stops closed. Durable receipts record the
-decision and gate outcome, while proposal contents and capability remain
-session-memory-only.
+current file hashes, strict UTF-8 text, tracked and untracked whitespace diff
+checks, strict JSON parsing and DTD-disabled XML/XAML/project parsing. A pass may
+submit one next Pi reasoning turn within the remaining count and time; a failure
+stops closed. Durable receipts record the decision and gate outcome, while
+proposal contents and capability remain session-memory-only.
 
 Repository validation directly launches the bundled
 `runtime\git\cmd\git.exe` with no shell. No UI label may imply that a workspace
@@ -396,8 +399,9 @@ primary actions.
   owner-approved-write states explicit in plain language.
 - **Do** retain the `32fb29e4` seed in surface metadata when deriving variants of
   this handoff concept.
-- **Do** show the owner the exact path, before hash, removed text and replacement
-  text before every Approve Once decision.
+- **Do** show the owner the exact operation, path and before state plus either
+  the removed/replacement text or the complete new-file content before every
+  one-shot decision.
 - **Do** show policy state as a maximum of four owner-approved edits within six
   hours; every applied edit still requires its own Approve Once.
 - **Do** preserve CurrentUser-DPAPI durable receipts while making proposal

@@ -11,9 +11,10 @@ selection. The production key is stored with CurrentUser DPAPI and used only
 by desktop HTTPS. The broker pipe and offline sidecar never receive it.
 
 Both modes expose only `read`, `grep`, `find`, `ls` and the non-writing
-`propose_edit`. Only the desktop owner can apply one exact existing-text
-replacement, and the optional reviewed loop requires a fresh one-shot approval
-plus fixed repository validation for every edit. This desktop agent boundary
+`propose_edit` / `propose_create_file` tools. Only the desktop owner can apply
+one exact existing-text replacement or exclusively create one reviewed UTF-8
+file beneath an existing parent, and the optional reviewed loop requires a
+fresh one-shot approval plus fixed repository validation for every write. This desktop agent boundary
 has no shell injection, Windhawk activation, Explorer lifecycle, registry or
 generic mutation capability. See
 `PI-AGENT-OPENAI-RESPONSES-PROVIDER.md` and

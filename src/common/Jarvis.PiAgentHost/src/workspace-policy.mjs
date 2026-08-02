@@ -3,6 +3,7 @@ import {
   realpath,
 } from "node:fs/promises";
 import {
+  dirname,
   isAbsolute,
   join,
   parse,
@@ -45,6 +46,23 @@ function rejectsWindowsPathShape(value) {
     value.startsWith("//") ||
     /^[\\/]{2}[?.][\\/]/u.test(value)
   ) {
+    return true;
+  }
+  const segments = value
+    .split(/[\\/]/u)
+    .filter(segment => segment.length > 0);
+  if (segments.some(segment => {
+    if (segment === "." || segment === "..") {
+      return false;
+    }
+    if (/[. ]$/u.test(segment)) {
+      return true;
+    }
+    const baseName = segment.split(".", 1)[0];
+    return /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/iu.test(
+      baseName,
+    );
+  })) {
     return true;
   }
   const resolved = resolve(value);
@@ -205,6 +223,18 @@ async function assertWorkspaceIdentity(admission) {
   }
 }
 
+async function pathExists(candidate) {
+  try {
+    await lstat(candidate);
+    return true;
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+}
+
 export async function assertWorkspacePath(
   admission,
   requestedPath,
@@ -258,4 +288,61 @@ export async function assertWorkspacePath(
     );
   }
   return candidate;
+}
+
+export async function assertWorkspaceCreationPath(
+  admission,
+  requestedPath,
+) {
+  if (
+    typeof requestedPath !== "string" ||
+    requestedPath.length === 0 ||
+    rejectsWindowsPathShape(requestedPath)
+  ) {
+    throw new WorkspacePolicyError(
+      "invalid-workspace-path",
+      "Tool paths must use a conventional local path.",
+    );
+  }
+  await assertWorkspaceIdentity(admission);
+
+  const candidate = resolve(
+    admission.canonicalRoot,
+    requestedPath,
+  );
+  if (
+    candidate === admission.canonicalRoot ||
+    !isWithin(admission.canonicalRoot, candidate)
+  ) {
+    throw new WorkspacePolicyError(
+      "path-outside-workspace",
+      "The requested creation path is outside the admitted workspace.",
+    );
+  }
+
+  const parentPath = dirname(candidate);
+  const safeParentPath = await assertWorkspacePath(
+    admission,
+    parentPath,
+  );
+  const parentStats = await lstat(safeParentPath);
+  if (!parentStats.isDirectory()) {
+    throw new WorkspacePolicyError(
+      "workspace-parent-not-directory",
+      "New workspace files require an existing parent directory.",
+    );
+  }
+  if (await pathExists(candidate)) {
+    throw new WorkspacePolicyError(
+      "workspace-file-already-exists",
+      "New-file proposals cannot overwrite an existing workspace path.",
+    );
+  }
+
+  return Object.freeze({
+    safePath: candidate,
+    parentPath: safeParentPath,
+    parentDevice: String(parentStats.dev),
+    parentInode: String(parentStats.ino),
+  });
 }

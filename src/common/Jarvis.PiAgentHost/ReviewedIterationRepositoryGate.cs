@@ -36,6 +36,11 @@ public sealed class PiAgentReviewedIterationRepositoryGate
         "non-executing-json-xml-xaml-parse";
     public const int ProcessTimeoutMilliseconds = 10_000;
     public const int MaximumProcessOutputCharacters = 1_048_576;
+    public const int MaximumReviewedTextFileBytes = 1_048_576;
+
+    private static readonly UTF8Encoding StrictUtf8 = new(
+        encoderShouldEmitUTF8Identifier: false,
+        throwOnInvalidBytes: true);
 
     private readonly string gitExecutable;
 
@@ -211,8 +216,12 @@ public sealed class PiAgentReviewedIterationRepositoryGate
                     "--ignore-submodules=none",
                 ],
                 cancellationToken);
-            IReadOnlyList<string> changedPaths = ParseExactModifiedPaths(
+            IReadOnlyList<ReviewedPathState> changedEntries =
+                ParseExactChangedPaths(
                 status.StandardOutput);
+            string[] changedPaths = changedEntries
+                .Select(entry => entry.RelativePath)
+                .ToArray();
             string[] expectedPaths = expectedFiles.Keys
                 .OrderBy(path => path, StringComparer.Ordinal)
                 .ToArray();
@@ -225,31 +234,30 @@ public sealed class PiAgentReviewedIterationRepositoryGate
                     "repository-pathset-drifted",
                     validatedAtUtc);
             }
-            checks.Add("exact-modified-pathset");
+            checks.Add("exact-reviewed-pathset");
 
             await RequireDiffCheckAsync(root, cancellationToken);
-            checks.Add("git-diff-check");
+            foreach (ReviewedPathState entry in changedEntries.Where(
+                         entry => entry.IsUntracked))
+            {
+                await RequireUntrackedDiffCheckAsync(
+                    root,
+                    entry.RelativePath,
+                    cancellationToken);
+            }
+            checks.Add("git-diff-check-tracked-and-untracked");
 
             StringBuilder digestMaterial = new();
             digestMaterial.Append(currentHead).Append('\0');
             foreach (string relativePath in expectedPaths)
             {
                 string fullPath = AdmitChangedFile(root, relativePath);
-                string actualHash;
-                await using (FileStream stream = new(
+                byte[] bytes = await ReadReviewedTextFileAsync(
                     fullPath,
-                    FileMode.Open,
-                    FileAccess.Read,
-                    FileShare.Read,
-                    4096,
-                    FileOptions.Asynchronous | FileOptions.SequentialScan))
-                {
-                    actualHash = Convert.ToHexString(
-                            await SHA256.HashDataAsync(
-                                stream,
-                                cancellationToken))
-                        .ToLowerInvariant();
-                }
+                    cancellationToken);
+                string actualHash = Convert.ToHexString(
+                        SHA256.HashData(bytes))
+                    .ToLowerInvariant();
                 if (
                     !expectedFiles.TryGetValue(
                         relativePath,
@@ -266,7 +274,7 @@ public sealed class PiAgentReviewedIterationRepositoryGate
                         "repository-file-hash-drifted",
                         validatedAtUtc);
                 }
-                ValidateStructuredText(fullPath);
+                ValidateStructuredText(fullPath, bytes);
                 digestMaterial
                     .Append(relativePath)
                     .Append('\0')
@@ -274,6 +282,7 @@ public sealed class PiAgentReviewedIterationRepositoryGate
                     .Append('\0');
             }
             checks.Add("exact-file-hashes");
+            checks.Add("strict-utf8-text");
             checks.Add("structured-text-parse");
             return new PiAgentRepositoryValidationReceipt(
                 1,
@@ -330,6 +339,43 @@ public sealed class PiAgentReviewedIterationRepositoryGate
         {
             throw new InvalidOperationException(
                 "The fixed git diff check rejected the reviewed workspace state: " +
+                string.Join(
+                    " / ",
+                    new[]
+                    {
+                        result.StandardOutput.Trim(),
+                        result.StandardError.Trim(),
+                    }.Where(value => value.Length != 0)));
+        }
+    }
+
+    private async Task RequireUntrackedDiffCheckAsync(
+        string root,
+        string relativePath,
+        CancellationToken cancellationToken)
+    {
+        GitResult result = await RunGitAsync(
+            root,
+            [
+                "diff",
+                "--no-index",
+                "--check",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--no-color",
+                "--",
+                OperatingSystem.IsWindows() ? "NUL" : "/dev/null",
+                relativePath,
+            ],
+            cancellationToken,
+            allowNonZeroExit: true);
+        if (
+            result.ExitCode is not (0 or 1) ||
+            !string.IsNullOrWhiteSpace(result.StandardOutput))
+        {
+            throw new InvalidOperationException(
+                "The fixed Git untracked-file diff check rejected " +
+                relativePath + ": " +
                 string.Join(
                     " / ",
                     new[]
@@ -465,7 +511,7 @@ public sealed class PiAgentReviewedIterationRepositoryGate
         }
     }
 
-    private static IReadOnlyList<string> ParseExactModifiedPaths(
+    private static IReadOnlyList<ReviewedPathState> ParseExactChangedPaths(
         string porcelain)
     {
         if (porcelain.Length == 0)
@@ -475,32 +521,50 @@ public sealed class PiAgentReviewedIterationRepositoryGate
         string[] entries = porcelain.Split(
             '\0',
             StringSplitOptions.RemoveEmptyEntries);
-        List<string> paths = new(entries.Length);
+        List<ReviewedPathState> paths = new(entries.Length);
         foreach (string entry in entries)
         {
+            bool trackedModification =
+                entry.Length >= 4 &&
+                entry[0] == ' ' &&
+                entry[1] == 'M' &&
+                entry[2] == ' ';
+            bool untrackedCreation =
+                entry.Length >= 4 &&
+                entry[0] == '?' &&
+                entry[1] == '?' &&
+                entry[2] == ' ';
             if (
                 entry.Length < 4 ||
-                entry[0] != ' ' ||
-                entry[1] != 'M' ||
-                entry[2] != ' ')
+                (!trackedModification && !untrackedCreation))
             {
                 throw new InvalidOperationException(
-                    "The reviewed repository contains a staged, untracked, renamed, deleted, conflicted, or otherwise unadmitted path.");
+                    "The reviewed repository contains a staged, renamed, deleted, conflicted, ignored, or otherwise unadmitted path.");
             }
             string path = entry[3..].Replace('\\', '/');
             if (
                 string.IsNullOrWhiteSpace(path) ||
                 Path.IsPathFullyQualified(path) ||
+                path.Any(char.IsControl) ||
                 path.Split('/').Any(segment =>
-                    segment is "" or "." or ".."))
+                    segment is "" or "." or ".." ||
+                    segment.Equals(
+                        ".git",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    segment.Equals(
+                        ".hg",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    segment.Equals(
+                        ".svn",
+                        StringComparison.OrdinalIgnoreCase)))
             {
                 throw new InvalidOperationException(
                     "Git reported an invalid reviewed path.");
             }
-            paths.Add(path);
+            paths.Add(new ReviewedPathState(path, untrackedCreation));
         }
         return paths
-            .OrderBy(path => path, StringComparer.Ordinal)
+            .OrderBy(path => path.RelativePath, StringComparer.Ordinal)
             .ToArray();
     }
 
@@ -526,14 +590,42 @@ public sealed class PiAgentReviewedIterationRepositoryGate
         return fullPath;
     }
 
-    private static void ValidateStructuredText(string fullPath)
+    private static async Task<byte[]> ReadReviewedTextFileAsync(
+        string fullPath,
+        CancellationToken cancellationToken)
+    {
+        FileInfo info = new(fullPath);
+        if (info.Length > MaximumReviewedTextFileBytes)
+        {
+            throw new InvalidOperationException(
+                "A reviewed repository file exceeded the one MiB text boundary.");
+        }
+        byte[] bytes = await File.ReadAllBytesAsync(
+            fullPath,
+            cancellationToken);
+        if (bytes.Length > MaximumReviewedTextFileBytes)
+        {
+            throw new InvalidOperationException(
+                "A reviewed repository file grew beyond the one MiB text boundary.");
+        }
+        string text = StrictUtf8.GetString(bytes);
+        if (text.Contains('\0'))
+        {
+            throw new InvalidOperationException(
+                "A reviewed repository file contained binary NUL data.");
+        }
+        return bytes;
+    }
+
+    private static void ValidateStructuredText(
+        string fullPath,
+        byte[] bytes)
     {
         string extension = Path.GetExtension(fullPath).ToLowerInvariant();
         if (extension == ".json")
         {
-            using FileStream stream = File.OpenRead(fullPath);
             using JsonDocument document = JsonDocument.Parse(
-                stream,
+                bytes,
                 new JsonDocumentOptions
                 {
                     AllowTrailingCommas = false,
@@ -555,7 +647,7 @@ public sealed class PiAgentReviewedIterationRepositoryGate
             MaxCharactersInDocument = 2_097_152,
             MaxCharactersFromEntities = 0,
         };
-        using FileStream xmlStream = File.OpenRead(fullPath);
+        using MemoryStream xmlStream = new(bytes, writable: false);
         using XmlReader reader = XmlReader.Create(xmlStream, settings);
         while (reader.Read())
         {
@@ -674,4 +766,8 @@ public sealed class PiAgentReviewedIterationRepositoryGate
         int ExitCode,
         string StandardOutput,
         string StandardError);
+
+    private sealed record ReviewedPathState(
+        string RelativePath,
+        bool IsUntracked);
 }

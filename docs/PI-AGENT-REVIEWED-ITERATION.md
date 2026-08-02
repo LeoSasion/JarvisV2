@@ -2,9 +2,9 @@
 
 JarvisV2 now has a desktop-owned workflow that can carry one owner mission
 across several Pi reasoning turns without granting unattended writes. The
-workflow reuses the existing `propose_edit` and `APPROVE ONCE` boundary: Pi can
-stage one exact replacement, but only the human-operated WPF control can consume
-that proposal.
+workflow reuses the `propose_edit` / `propose_create_file` and one-shot owner
+boundary: Pi can stage one exact replacement or one missing UTF-8 file, but only
+the human-operated WPF control can consume that proposal.
 
 This milestone is reviewed self-iteration, not autonomous shell execution. It
 does not add a sidecar tool, a generic command runner, a persistent proposal or
@@ -19,7 +19,7 @@ The initial policy is deliberately not configurable by Pi:
 - the mission is the text currently present in the desktop composer;
 - at most four applied owner approvals are admitted;
 - the policy expires six hours after it is armed;
-- only one Pi turn and one edit proposal may be active;
+- only one Pi turn and one workspace write proposal may be active;
 - automatic continuation means another reasoning turn, never automatic
   approval;
 - the owner can stop the workflow at any time.
@@ -42,11 +42,11 @@ owner mission
                             |
                             +-- no proposal -> complete without write
                             |
-                            +-- one propose_edit -> pause
+                            +-- one replace/create proposal -> pause
                                     |
                                     +-- REJECT -> no write, stop
                                     |
-                                    +-- APPROVE ONCE
+                                    +-- APPROVE ONCE / CREATE ONCE
                                             |
                                             +-- exact one-shot sidecar commit
                                             +-- fixed repository gate
@@ -99,12 +99,17 @@ uses the same direct, no-shell process boundary.
 After an approved write, the gate requires:
 
 1. the repository root and pinned HEAD are unchanged;
-2. every status entry is an unstaged modification of an existing tracked file;
+2. every status entry is either one unstaged tracked-file modification or one
+   untracked new file; staged, ignored, deleted, renamed and conflicted paths
+   fail closed;
 3. the changed path set exactly equals all files approved by this workflow;
 4. every current file SHA-256 equals its latest approved after hash;
-5. `git diff --check` passes;
-6. changed JSON parses with comments and trailing commas disabled;
-7. changed XML, XAML, project, props and targets files parse with DTD processing
+5. every approved file is at most 1 MiB, strictly valid UTF-8 and contains no
+   NUL bytes;
+6. `git diff --check` passes for tracked files and fixed
+   `git diff --no-index --check -- NUL <path>` passes for every untracked file;
+7. changed JSON parses with comments and trailing commas disabled;
+8. changed XML, XAML, project, props and targets files parse with DTD processing
    prohibited and no resolver.
 
 This is a compiled repository-integrity and structured-text test gate. It does
@@ -131,7 +136,9 @@ proves:
 
 - clean-baseline admission;
 - CurrentUser-DPAPI ciphertext and durable round trip;
-- first proposal pause, one-shot approval and passed repository gate;
+- first new-file proposal pause, one-shot exclusive creation and passed
+  repository gate;
+- rejection of trailing whitespace in an untracked file;
 - automatic next reasoning turn but no automatic approval;
 - second proposal pause and explicit rejection;
 - shutdown suspension and absence of restored proposal authority;
@@ -141,7 +148,9 @@ proves:
   production workspace mutation.
 
 The native surface evidence is
-`docs/screenshots/jarvis-control-center-reviewed-iteration.png`.
+`docs/screenshots/jarvis-control-center-reviewed-create-file.png`; it is an
+illustrative no-runtime preview of the explicit create operation and owner-only
+decision state.
 
 ## Still unavailable
 
@@ -149,7 +158,8 @@ The native surface evidence is
 - unattended or model-triggered approval;
 - policy authored or extended by Pi;
 - more than four approved edits or more than six hours per policy;
-- multi-file atomic transactions, create, delete, rename or binary mutation;
+- multi-file atomic transactions, delete, rename, directory creation, VCS
+  metadata or binary mutation;
 - restoring or replaying a pending proposal after restart;
 - Git commit, push, merge or branch mutation from the reviewed loop;
 - Explorer, registry, service, device or system mutation.

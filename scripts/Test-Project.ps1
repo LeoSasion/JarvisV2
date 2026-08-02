@@ -31,6 +31,8 @@ $controlCenterSourceRoot =
     Join-Path $root 'src\common\Jarvis.ControlCenter'
 $controlCenterAuditPath =
     Join-Path $root 'scripts\Test-ControlCenter.ps1'
+$piAgentHostConversationStatePath =
+    Join-Path $root 'src\common\Jarvis.PiAgentHost\ConversationState.cs'
 $nativeStyleLabProject =
     Join-Path $root 'src\platforms\windows11\Jarvis.NativeStyleLab\Jarvis.NativeStyleLab.csproj'
 $nativeStyleLabSourceRoot =
@@ -504,6 +506,8 @@ $explorerHostPlanSchema =
 $phase7Task = [System.IO.File]::ReadAllText($phase7TaskPath)
 $controlCenterMainWindowSource = [System.IO.File]::ReadAllText(
     (Join-Path $controlCenterSourceRoot 'MainWindow.xaml'))
+$piAgentHostConversationStateSource = [System.IO.File]::ReadAllText(
+    $piAgentHostConversationStatePath)
 $controlCenterSource = @(
     Get-ChildItem -LiteralPath $controlCenterSourceRoot -File -Recurse |
         Where-Object Extension -In @('.cs', '.xaml', '.csproj') |
@@ -1459,8 +1463,15 @@ $phase7ControlCenterStaticContract =
     $controlCenterSource.Contains('Text="PI RUNTIME"') -and
     $controlCenterSource.Contains(
         'Writes: desktop-owner approval only') -and
-    $controlCenterSource.Contains('WORKSPACE EDIT PROPOSAL') -and
-    $controlCenterSource.Contains('Content="APPROVE ONCE"') -and
+    $controlCenterSource.Contains('Text="{Binding ProposalLabel}"') -and
+    $controlCenterSource.Contains(
+        'Content="{Binding ApproveActionLabel}"') -and
+    $piAgentHostConversationStateSource.Contains(
+        '"NEW UTF-8 FILE PROPOSAL"') -and
+    $piAgentHostConversationStateSource.Contains(
+        '"EXACT TEXT REPLACEMENT"') -and
+    $piAgentHostConversationStateSource.Contains('"CREATE ONCE"') -and
+    $piAgentHostConversationStateSource.Contains('"APPROVE ONCE"') -and
     $controlCenterSource.Contains('Content="REJECT"') -and
     $controlCenterSource.Contains('PiAgentDesktopRuntime.StartAsync') -and
     $controlCenterSource.Contains('SAFE SHUTDOWN') -and
@@ -1478,7 +1489,7 @@ $phase7ControlCenterStaticContract =
 Add-Check `
     'phase7.control-center-static-review-gated' `
     $phase7ControlCenterStaticContract `
-    'The visible Control Center must remain an ordinary review-gated Pi conversation window with explicit owner-only edit decisions, shell lock, orderly shutdown and no shell mutation API.'
+    'The visible Control Center must remain an ordinary review-gated Pi conversation window with explicit owner-only replace/create decisions, shell lock, orderly shutdown and no shell mutation API.'
 
 $controlCenterAuditOutput = @(
     & pwsh `

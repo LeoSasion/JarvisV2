@@ -28,10 +28,17 @@ const workspaceRoot = join(temporaryRoot, "workspace");
 const workspaceFile = join(workspaceRoot, "notes.txt");
 const invalidUtf8File = join(workspaceRoot, "invalid.txt");
 const overlappingFile = join(workspaceRoot, "overlapping.txt");
+const generatedRoot = join(workspaceRoot, "generated");
+const createdFile = join(generatedRoot, "owner-note.txt");
+const racedCreateFile = join(generatedRoot, "raced.txt");
+const rejectedCreateFile = join(generatedRoot, "rejected.txt");
+const vcsMetadataRoot = join(workspaceRoot, ".git");
 
 let sessionHandle;
 try {
   await mkdir(workspaceRoot);
+  await mkdir(generatedRoot);
+  await mkdir(vcsMetadataRoot);
   await writeFile(
     workspaceFile,
     "alpha\nowner-reviewed\nomega\n",
@@ -42,11 +49,23 @@ try {
   );
   assert.deepEqual(
     sessionHandle.activeTools,
-    ["read", "grep", "find", "ls", "propose_edit"],
+    [
+      "read",
+      "grep",
+      "find",
+      "ls",
+      "propose_edit",
+      "propose_create_file",
+    ],
   );
   const proposeTool =
     sessionHandle.session.getToolDefinition("propose_edit");
+  const createTool =
+    sessionHandle.session.getToolDefinition(
+      "propose_create_file",
+    );
   assert.ok(proposeTool);
+  assert.ok(createTool);
 
   const firstResult = await proposeTool.execute(
     "proposal-tool-1",
@@ -61,7 +80,8 @@ try {
   );
   const first =
     firstResult.details.workspaceEditProposal;
-  assert.equal(first.schemaVersion, 1);
+  assert.equal(first.schemaVersion, 2);
+  assert.equal(first.operation, "replace");
   assert.equal(first.relativePath, "notes.txt");
   assert.match(first.proposalId, /^workspace-edit-[0-9a-f]{32}$/u);
   assert.match(first.beforeSha256, /^[0-9a-f]{64}$/u);
@@ -88,6 +108,7 @@ try {
   );
   assert.equal(committed.response.success, true);
   assert.equal(committed.response.data.status, "applied");
+  assert.equal(committed.response.data.operation, "replace");
   assert.equal(
     committed.response.data.mutationPerformed,
     true,
@@ -257,6 +278,166 @@ try {
     (error) => error.code ===
       "workspace-edit-match-not-unique",
   );
+
+  const createResult = await createTool.execute(
+    "proposal-tool-create",
+    {
+      path: "generated/owner-note.txt",
+      content: "# Owner reviewed\n\nCreated once.\n",
+    },
+    undefined,
+    undefined,
+    undefined,
+  );
+  const createProposal =
+    createResult.details.workspaceEditProposal;
+  assert.equal(createProposal.schemaVersion, 2);
+  assert.equal(createProposal.operation, "create");
+  assert.equal(
+    createProposal.relativePath,
+    "generated/owner-note.txt",
+  );
+  assert.equal(createProposal.oldText, "");
+  await assert.rejects(
+    readFile(createdFile, "utf8"),
+    (error) => error.code === "ENOENT",
+  );
+  const created = await handleRequest(
+    {
+      type: "commit_workspace_edit",
+      id: "commit-create",
+      proposalId: createProposal.proposalId,
+      beforeSha256: createProposal.beforeSha256,
+    },
+    {},
+    {},
+    state,
+  );
+  assert.equal(created.response.success, true);
+  assert.equal(created.response.data.operation, "create");
+  assert.equal(created.response.data.mutationPerformed, true);
+  assert.equal(
+    await readFile(createdFile, "utf8"),
+    "# Owner reviewed\n\nCreated once.\n",
+  );
+
+  const racedResult = await createTool.execute(
+    "proposal-tool-create-race",
+    {
+      path: "generated/raced.txt",
+      content: "Pi proposal\n",
+    },
+    undefined,
+    undefined,
+    undefined,
+  );
+  const racedProposal =
+    racedResult.details.workspaceEditProposal;
+  await writeFile(racedCreateFile, "Owner file\n", "utf8");
+  const raced = await handleRequest(
+    {
+      type: "commit_workspace_edit",
+      id: "commit-create-race",
+      proposalId: racedProposal.proposalId,
+      beforeSha256: racedProposal.beforeSha256,
+    },
+    {},
+    {},
+    state,
+  );
+  assert.equal(raced.response.success, false);
+  assert.equal(
+    raced.response.error.code,
+    "workspace-edit-drifted",
+  );
+  assert.equal(
+    await readFile(racedCreateFile, "utf8"),
+    "Owner file\n",
+  );
+
+  const rejectCreateResult = await createTool.execute(
+    "proposal-tool-create-reject",
+    {
+      path: "generated/rejected.txt",
+      content: "Never written\n",
+    },
+    undefined,
+    undefined,
+    undefined,
+  );
+  const rejectCreateProposal =
+    rejectCreateResult.details.workspaceEditProposal;
+  const rejectedCreate = await handleRequest(
+    {
+      type: "discard_workspace_edit",
+      id: "reject-create",
+      proposalId: rejectCreateProposal.proposalId,
+      beforeSha256: rejectCreateProposal.beforeSha256,
+    },
+    {},
+    {},
+    state,
+  );
+  assert.equal(rejectedCreate.response.success, true);
+  assert.equal(rejectedCreate.response.data.operation, "create");
+  await assert.rejects(
+    readFile(rejectedCreateFile, "utf8"),
+    (error) => error.code === "ENOENT",
+  );
+
+  await assert.rejects(
+    createTool.execute(
+      "proposal-tool-create-existing",
+      { path: "notes.txt", content: "No overwrite\n" },
+      undefined,
+      undefined,
+      undefined,
+    ),
+    (error) => error.code === "workspace-file-already-exists",
+  );
+  await assert.rejects(
+    createTool.execute(
+      "proposal-tool-create-missing-parent",
+      { path: "missing/new.txt", content: "No directories\n" },
+      undefined,
+      undefined,
+      undefined,
+    ),
+    (error) => error.code === "workspace-path-not-found",
+  );
+  await assert.rejects(
+    createTool.execute(
+      "proposal-tool-create-vcs-metadata",
+      { path: ".git/config", content: "forbidden\n" },
+      undefined,
+      undefined,
+      undefined,
+    ),
+    (error) => error.code ===
+      "workspace-vcs-metadata-forbidden",
+  );
+  if (process.platform === "win32") {
+    await assert.rejects(
+      createTool.execute(
+        "proposal-tool-create-device-alias",
+        { path: "generated/NUL.txt", content: "forbidden\n" },
+        undefined,
+        undefined,
+        undefined,
+      ),
+      (error) => error.code === "invalid-workspace-path",
+    );
+    await assert.rejects(
+      createTool.execute(
+        "proposal-tool-create-trailing-dot-alias",
+        { path: "generated/alias.", content: "forbidden\n" },
+        undefined,
+        undefined,
+        undefined,
+      ),
+      (error) => error.code === "invalid-workspace-path",
+    );
+  }
   await writeFile(
     invalidUtf8File,
     Buffer.from([0xc3, 0x28]),
@@ -300,7 +481,14 @@ try {
       result: "passed",
       activeTools: sessionHandle.activeTools,
       proposalToolMutates: false,
-      existingTextFilesOnly: true,
+      existingTextFilesOnly: false,
+      newUtf8FileSupported: true,
+      newFileMaxBytes: 16_384,
+      existingParentRequired: true,
+      exclusiveCreate: true,
+      overwriteRejected: true,
+      versionControlMetadataRejected: true,
+      windowsDeviceAliasesRejected: process.platform === "win32",
       strictUtf8Required: true,
       overlappingMatchesRejected: true,
       exactBeforeSha256Bound: true,

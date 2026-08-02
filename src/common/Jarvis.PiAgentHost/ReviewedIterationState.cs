@@ -98,7 +98,7 @@ internal static partial class PiAgentReviewedIterationAdmission
     public const int MaximumSteps = 16;
     public const int MaximumStatusDetailBytes = 2_048;
     public const string ValidationProfile =
-        "git-head-pathset-diffcheck-structured-parse-v1";
+        "git-head-pathset-text-hash-diffcheck-structured-parse-v2";
 
     [GeneratedRegex(
         @"\Areview-loop-[0-9]{17}-[a-f0-9]{16}\z",

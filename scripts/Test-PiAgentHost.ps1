@@ -231,7 +231,7 @@ Add-Check `
             'local-appdata-jarvis2-pi-agent-reviewed-iterations' -and
         $contract.session.reviewedIterationEnvelopeMaxBytes -eq 262144 -and
         $contract.session.reviewedIterationValidationProfile -eq
-            'git-head-pathset-diffcheck-structured-parse-v1' -and
+            'git-head-pathset-text-hash-diffcheck-structured-parse-v2' -and
         $contract.session.reviewedIterationRepositoryBaseline -eq
             'clean-git-head-required' -and
         $contract.session.reviewedIterationRestart -eq
@@ -248,25 +248,29 @@ Add-Check `
         $contract.session.resourceDiscovery -eq 'disabled' -and
         -not $contract.session.modelNetworkAllowed -and
         (@($contract.tools.initialAllowlist) -join '|') -eq
-            'read|grep|find|ls|propose_edit' -and
+            'read|grep|find|ls|propose_edit|propose_create_file' -and
         (@($contract.tools.initiallyDenied) -join '|') -eq
             'bash|edit|write' -and
         $contract.tools.proposalTool -eq
-            'non-mutating-existing-utf8-exact-replacement' -and
+            'non-mutating-explicit-utf8-replace-or-create' -and
         $contract.tools.proposalMaxFileBytes -eq 1048576 -and
         $contract.tools.proposalMaxSegmentBytes -eq 4096 -and
+        $contract.tools.createProposalMaxBytes -eq 16384 -and
         $contract.tools.pendingProposalLimit -eq 1 -and
         $contract.tools.pendingProposalPolicy -eq
             'blocks-new-turns-and-clears-on-shutdown' -and
         $contract.tools.approvalOwner -eq 'desktop-user-only' -and
         $contract.tools.approvalMode -eq
-            'one-shot-exact-before-sha256' -and
+            'one-shot-explicit-operation-before-state-sha256' -and
         $contract.tools.commitMode -eq
-            'same-directory-atomic-replace-and-post-verify' -and
-        -not $contract.tools.newFileSupported -and
+            'atomic-replace-or-exclusive-create-and-post-verify' -and
+        $contract.tools.newFileSupported -and
+        $contract.tools.newFileParentPolicy -eq
+            'existing-canonical-directory-no-auto-create' -and
+        -not $contract.tools.versionControlMetadataMutation -and
         -not $contract.tools.deleteSupported -and
         $contract.tools.mutationGrant -eq
-            'desktop-owner-one-shot-existing-text-edit' -and
+            'desktop-owner-one-shot-reviewed-text-replace-or-create' -and
         $contract.tools.reviewedSelfIteration -and
         $contract.tools.automaticReasoningContinuation -and
         -not $contract.tools.unattendedApproval -and
@@ -403,7 +407,7 @@ Add-Check `
         $schema.properties.session.properties.reviewedIterationEnvelopeMaxBytes.const `
             -eq 262144 -and
         $schema.properties.session.properties.reviewedIterationValidationProfile.const `
-            -eq 'git-head-pathset-diffcheck-structured-parse-v1' -and
+            -eq 'git-head-pathset-text-hash-diffcheck-structured-parse-v2' -and
         $schema.properties.session.properties.reviewedIterationWorkspaceCodeExecution.const `
             -eq $false -and
         $schema.properties.session.properties.desktopRuntimeOwnership.const `
@@ -429,20 +433,26 @@ Add-Check `
         $schema.properties.transport.properties.credentialFieldsAllowed.const `
             -eq $false -and
         (@($schema.properties.tools.properties.initialAllowlist.const) -join '|') `
-            -eq 'read|grep|find|ls|propose_edit' -and
+            -eq 'read|grep|find|ls|propose_edit|propose_create_file' -and
         $schema.properties.tools.properties.proposalTool.const -eq
-            'non-mutating-existing-utf8-exact-replacement' -and
+            'non-mutating-explicit-utf8-replace-or-create' -and
         $schema.properties.tools.properties.proposalMaxFileBytes.const -eq
             1048576 -and
         $schema.properties.tools.properties.proposalMaxSegmentBytes.const -eq
             4096 -and
+        $schema.properties.tools.properties.createProposalMaxBytes.const -eq
+            16384 -and
         $schema.properties.tools.properties.pendingProposalLimit.const -eq
             1 -and
         $schema.properties.tools.properties.approvalOwner.const -eq
             'desktop-user-only' -and
         $schema.properties.tools.properties.approvalMode.const -eq
-            'one-shot-exact-before-sha256' -and
+            'one-shot-explicit-operation-before-state-sha256' -and
         $schema.properties.tools.properties.newFileSupported.const -eq
+            $true -and
+        $schema.properties.tools.properties.newFileParentPolicy.const -eq
+            'existing-canonical-directory-no-auto-create' -and
+        $schema.properties.tools.properties.versionControlMetadataMutation.const -eq
             $false -and
         $schema.properties.tools.properties.deleteSupported.const -eq
             $false -and
@@ -512,10 +522,13 @@ Add-Check `
         (Test-Path -LiteralPath $workspaceEditProposalPath -PathType Leaf) -and
         (Test-Path -LiteralPath $workspaceEditTestPath -PathType Leaf) -and
         $workspaceEditProposalText.Contains('propose_edit') -and
+        $workspaceEditProposalText.Contains('propose_create_file') -and
         $workspaceEditProposalText.Contains(
             'maximumWorkspaceEditSegmentBytes = 4_096') -and
         $workspaceEditProposalText.Contains(
             'maximumWorkspaceEditFileBytes = 1_048_576') -and
+        $workspaceEditProposalText.Contains(
+            'maximumWorkspaceCreateFileBytes = 16_384') -and
         $workspaceEditProposalText.Contains('isUtf8') -and
         $workspaceEditProposalText.Contains('stats.nlink !== 1') -and
         $workspaceEditProposalText.Contains(
@@ -528,12 +541,16 @@ Add-Check `
         $workspaceEditProposalText.Contains(
             'await rename(temporaryPath, first.safePath)') -and
         $workspaceEditProposalText.Contains(
+            'await open(safePath, "wx", 0o600)') -and
+        $workspaceEditProposalText.Contains(
+            'workspace-vcs-metadata-forbidden') -and
+        $workspaceEditProposalText.Contains(
             'mutationPerformed: true')) `
     -Detail (
         'Runtime source must create exactly one root-confined in-memory SDK ' +
         'session and one broker-gated prompt path without credential files, ' +
         'child processes or unreviewed writes; the isolated edit module must ' +
-        'bind one existing text replacement to an exact hash and atomic commit.')
+        'bind one exact replacement or exclusive new UTF-8 file to an explicit operation, reviewed before-state hash and one-shot commit.')
 
 $bridgeSourceText =
     [IO.File]::ReadAllText($bridgeSourcePath) +
@@ -715,8 +732,8 @@ Add-Check `
         $openAiProviderText.Contains(
             'did not return an SSE stream') -and
         $openAiProviderText.Contains('AllowedToolNames.Contains') -and
-        $openAiProviderText.Contains(
-            '["read", "grep", "find", "ls", "propose_edit"]') -and
+        $openAiProviderText.Contains('"propose_edit"') -and
+        $openAiProviderText.Contains('"propose_create_file"') -and
         $openAiCredentialText.Contains('ProtectedData.Protect') -and
         $openAiCredentialText.Contains('ProtectedData.Unprotect') -and
         $openAiCredentialText.Contains(
@@ -763,7 +780,11 @@ Add-Check `
         $reviewedIterationProductionText.Contains(
             'File.Move(temporaryPath, receiptPath, overwrite: true)') -and
         $reviewedIterationProductionText.Contains(
-            'git-head-pathset-diffcheck-structured-parse-v1') -and
+            'git-head-pathset-text-hash-diffcheck-structured-parse-v2') -and
+        $reviewedIterationProductionText.Contains(
+            'RequireUntrackedDiffCheckAsync') -and
+        $reviewedIterationProductionText.Contains(
+            'strict-utf8-text') -and
         $reviewedIterationProductionText.Contains(
             '"--no-textconv"') -and
         $reviewedIterationProductionText.Contains(
@@ -789,7 +810,11 @@ Add-Check `
         $reviewedIterationProbeText.Contains(
             'RestartDidNotRestoreProposalCapability') -and
         $reviewedIterationProbeText.Contains(
-            'UnattendedApprovalAllowed')) `
+            'UnattendedApprovalAllowed') -and
+        $reviewedIterationProbeText.Contains(
+            'ApprovedNewFileValidated') -and
+        $reviewedIterationProbeText.Contains(
+            'UntrackedWhitespaceRejected')) `
     -Detail (
         'Reviewed iteration must remain a desktop-owner policy with four ' +
         'one-shot approvals, six-hour expiry, DPAPI receipts, fixed direct-Git ' +
@@ -986,8 +1011,11 @@ if (-not $StaticOnly) {
             $inspectReceipt.workspaceEditApprovalOwner -eq
                 'desktop-user-only' -and
             $inspectReceipt.workspaceEditApprovalMode -eq
-                'one-shot-exact-before-sha256' -and
-            $inspectReceipt.workspaceEditExistingFilesOnly -and
+                'one-shot-explicit-operation-before-state-sha256' -and
+            -not $inspectReceipt.workspaceEditExistingFilesOnly -and
+            $inspectReceipt.workspaceFileCreateSupported -and
+            $inspectReceipt.workspaceFileCreateMode -eq
+                'exclusive-existing-parent-owner-approved' -and
             -not $inspectReceipt.unattendedSelfIteration -and
             -not $inspectReceipt.shellMutationSupported -and
             -not $inspectReceipt.explorerMutationSupported -and
@@ -1047,13 +1075,16 @@ if (-not $StaticOnly) {
             -not $protocolReceipt.resourceDiscoveryEnabled -and
             -not $protocolReceipt.credentialTransportAllowed -and
             (@($protocolReceipt.initialTools) -join '|') -eq
-                'read|grep|find|ls|propose_edit' -and
+                'read|grep|find|ls|propose_edit|propose_create_file' -and
             $protocolReceipt.workspaceEditProposalSupported -and
             $protocolReceipt.workspaceEditApprovalOwner -eq
                 'desktop-user-only' -and
             $protocolReceipt.workspaceEditApprovalMode -eq
-                'one-shot-exact-before-sha256' -and
-            $protocolReceipt.workspaceEditExistingFilesOnly -and
+                'one-shot-explicit-operation-before-state-sha256' -and
+            -not $protocolReceipt.workspaceEditExistingFilesOnly -and
+            $protocolReceipt.workspaceFileCreateSupported -and
+            $protocolReceipt.workspaceFileCreateMode -eq
+                'exclusive-existing-parent-owner-approved' -and
             -not $protocolReceipt.unattendedSelfIteration -and
             -not $protocolReceipt.shellMutationSupported -and
             -not $protocolReceipt.explorerMutationSupported -and
@@ -1089,9 +1120,16 @@ if (-not $StaticOnly) {
             $null -ne $workspaceEditReceipt -and
             $workspaceEditReceipt.result -eq 'passed' -and
             (@($workspaceEditReceipt.activeTools) -join '|') -eq
-                'read|grep|find|ls|propose_edit' -and
+                'read|grep|find|ls|propose_edit|propose_create_file' -and
             -not $workspaceEditReceipt.proposalToolMutates -and
-            $workspaceEditReceipt.existingTextFilesOnly -and
+            -not $workspaceEditReceipt.existingTextFilesOnly -and
+            $workspaceEditReceipt.newUtf8FileSupported -and
+            $workspaceEditReceipt.newFileMaxBytes -eq 16384 -and
+            $workspaceEditReceipt.existingParentRequired -and
+            $workspaceEditReceipt.exclusiveCreate -and
+            $workspaceEditReceipt.overwriteRejected -and
+            $workspaceEditReceipt.versionControlMetadataRejected -and
+            $workspaceEditReceipt.windowsDeviceAliasesRejected -and
             $workspaceEditReceipt.exactBeforeSha256Bound -and
             $workspaceEditReceipt.oneShotApproval -and
             $workspaceEditReceipt.replayRejected -and
@@ -1146,6 +1184,8 @@ if (-not $StaticOnly) {
             $reviewedIterationReceipt.ownerPolicyPassed -and
             $reviewedIterationReceipt.firstProposalPausedForOwner -and
             $reviewedIterationReceipt.approvedEditValidated -and
+            $reviewedIterationReceipt.approvedNewFileValidated -and
+            $reviewedIterationReceipt.untrackedWhitespaceRejected -and
             $reviewedIterationReceipt.automaticReasoningContinuationPassed -and
             $reviewedIterationReceipt.secondProposalPausedForOwner -and
             $reviewedIterationReceipt.rejectionStoppedLoop -and
@@ -1261,7 +1301,7 @@ if (-not $StaticOnly) {
             $bridgeReceipt.piOffline -and
             $bridgeReceipt.credentialEnvironmentScrubbed -and
             (@($bridgeReceipt.initialTools) -join '|') -eq
-                'read|grep|find|ls|propose_edit' -and
+                'read|grep|find|ls|propose_edit|propose_create_file' -and
             (@($bridgeReceipt.deniedTools) -join '|') -eq
                 'bash|edit|write' -and
             $bridgeReceipt.sessionCreationEnabled -and
@@ -1579,7 +1619,7 @@ $passed = $failures.Count -eq 0
         'current-user-dpapi-atomic-workspace-bound-durable-receipts'
     reviewedIterationEnvelopeMaxBytes = 262144
     reviewedIterationValidationProfile =
-        'git-head-pathset-diffcheck-structured-parse-v1'
+        'git-head-pathset-text-hash-diffcheck-structured-parse-v2'
     reviewedIterationRestart =
         'interrupted-explicit-rearm-no-proposal-restore'
     reviewedIterationWorkspaceCodeExecution = $false
@@ -1594,12 +1634,17 @@ $passed = $failures.Count -eq 0
     workspaceBinding = 'single-explicit-root'
     workspaceEditProposalSupported = $true
     workspaceEditProposalMutates = $false
-    workspaceEditExistingFilesOnly = $true
+    workspaceEditExistingFilesOnly = $false
     workspaceEditStrictUtf8 = $true
     workspaceEditSingleLinkOnly = $true
     workspaceEditApprovalOwner = 'desktop-user-only'
-    workspaceEditApprovalMode = 'one-shot-exact-before-sha256'
-    workspaceEditNewFileSupported = $false
+    workspaceEditApprovalMode =
+        'one-shot-explicit-operation-before-state-sha256'
+    workspaceEditNewFileSupported = $true
+    workspaceEditNewFileMaxBytes = 16384
+    workspaceEditNewFileParentPolicy =
+        'existing-canonical-directory-no-auto-create'
+    workspaceEditVersionControlMetadataMutation = $false
     workspaceEditDeleteSupported = $false
     reviewedSelfIteration = $true
     automaticReasoningContinuation = $true

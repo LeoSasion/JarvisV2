@@ -56,7 +56,14 @@ public sealed class DesktopModelBrokerServer : IAsyncDisposable
 
     private static readonly IReadOnlySet<string> AllowedToolNames =
         new HashSet<string>(
-            ["read", "grep", "find", "ls", "propose_edit"],
+            [
+                "read",
+                "grep",
+                "find",
+                "ls",
+                "propose_edit",
+                "propose_create_file",
+            ],
             StringComparer.Ordinal);
 
     private static readonly HashSet<string> ForbiddenCredentialFields =

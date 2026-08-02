@@ -196,7 +196,7 @@ public sealed class ConversationSurfaceViewModel :
     public string HandoffLabel => HandoffProgress switch
     {
         _ when PendingWorkspaceEdit is not null =>
-            "OWNER HOLDS A ONE-SHOT EDIT DECISION",
+            "OWNER HOLDS A ONE-SHOT WORKSPACE WRITE DECISION",
         <= 0 => "USER HOLDS THE NEXT TURN",
         < 2 => "PI RUNTIME OWNS THE ACTIVE TURN",
         < 3 => "BOUNDED TOOL OWNS THE ACTIVE TURN",
@@ -233,7 +233,7 @@ public sealed class ConversationSurfaceViewModel :
             "Configure the protected OpenAI key in the inspector, then submit " +
                 "your first request.",
         ConversationRuntimePhase.Ready =>
-            "Submit a request below. Reads are root-confined; edits can only be staged for your explicit review.",
+            "Submit a request below. Reads are root-confined; exact replacements and new UTF-8 files can only be staged for your explicit review.",
         ConversationRuntimePhase.Faulted =>
             "Review the status detail, then choose a different workspace or " +
                 "repair the portable runtime.",
@@ -334,7 +334,7 @@ public sealed class ConversationSurfaceViewModel :
                 IsOpenAiProvider && !providerCredentialReady
                     ? "Pi is ready. Configure OpenAI to enable authenticated turns."
                     : "Pi session admitted. Reads are root-confined and " +
-                        "edit proposals require a one-shot owner decision.");
+                        "workspace write proposals require a one-shot owner decision.");
             RaiseConversationProperties();
             RaiseReviewedIterationProperties();
         }
@@ -486,7 +486,7 @@ public sealed class ConversationSurfaceViewModel :
         if (binding is null || !CanReviewWorkspaceEdits)
         {
             throw new InvalidOperationException(
-                "The workspace edit proposal is not ready for approval.");
+                "The workspace proposal is not ready for approval.");
         }
         PiAgentWorkspaceEditSnapshot result;
         if (
@@ -532,7 +532,7 @@ public sealed class ConversationSurfaceViewModel :
         if (binding is null || !CanReviewWorkspaceEdits)
         {
             throw new InvalidOperationException(
-                "The workspace edit proposal is not ready for rejection.");
+                "The workspace proposal is not ready for rejection.");
         }
         PiAgentWorkspaceEditSnapshot result;
         if (
@@ -650,7 +650,7 @@ public sealed class ConversationSurfaceViewModel :
                     terminal.WorkspaceEdits.Any(edit =>
                             edit.Status ==
                                 PiAgentWorkspaceEditStatus.Pending)
-                        ? "Turn complete. One edit proposal is waiting for your explicit owner decision."
+                    ? "Turn complete. One workspace proposal is waiting for your explicit owner decision."
                         : "Turn completed and queued for encrypted checkpointing.",
                 PiAgentConversationTurnStatus.Aborted =>
                     "Turn aborted; no mutation capability was available.",
@@ -682,7 +682,7 @@ public sealed class ConversationSurfaceViewModel :
                 PiAgentConversationTurnStatus.Completed when
                     terminal.WorkspaceEdits.Any(edit =>
                         edit.Status == PiAgentWorkspaceEditStatus.Pending) =>
-                    "Reviewed turn complete. The loop is paused at the owner's one-shot edit decision.",
+                    "Reviewed turn complete. The loop is paused at the owner's one-shot workspace write decision.",
                 PiAgentConversationTurnStatus.Completed =>
                     "Reviewed turn completed without a mutation proposal; the loop ended without writing.",
                 PiAgentConversationTurnStatus.Aborted =>
@@ -834,12 +834,13 @@ public sealed class ConversationSurfaceViewModel :
             ],
             [
                 new PiAgentWorkspaceEditSnapshot(
-                    1,
+                    2,
                     "workspace-edit-0123456789abcdef0123456789abcdef",
-                    "src/common/Jarvis.ControlCenter/ConversationSurfaceViewModel.cs",
-                    new string('a', 64),
-                    "public string AccessLabel => \"READ + REVIEWED EDIT\";",
-                    "public string AccessLabel => \"READ + REVIEWED ITERATION\";",
+                    "create",
+                    "docs/agent-notes/next-step.md",
+                    PiAgentSidecarController.WorkspaceFileAbsentSha256,
+                    "",
+                    "# Next reviewed step\n\nCreate one owner-approved UTF-8 file.\n",
                     PiAgentWorkspaceEditStatus.Pending,
                     null,
                     null),

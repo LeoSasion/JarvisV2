@@ -663,7 +663,7 @@ public sealed class PiAgentReviewedIterationCoordinator
             CurrentTurnId = turnId,
             CurrentProposalId = null,
             StatusDetail =
-                $"Pi is working on reviewed step {stepNumber}. It may stage at most one exact edit and cannot approve it.",
+                $"Pi is working on reviewed step {stepNumber}. It may stage at most one exact replacement or new UTF-8 file and cannot approve it.",
             UpdatedAtUtc = DateTimeOffset.UtcNow,
         };
         await PersistAsync(active, cancellationToken);
@@ -705,9 +705,9 @@ public sealed class PiAgentReviewedIterationCoordinator
         prompt.AppendLine(
             "Inspect with read, grep, find and ls. Choose the smallest coherent next improvement.");
         prompt.AppendLine(
-            "If one existing UTF-8 exact replacement advances the mission, call propose_edit exactly once, then explain the evidence and expected validation.");
+            "If one text mutation advances the mission, call exactly one proposal tool: propose_edit for one exact replacement in an existing UTF-8 file, or propose_create_file for one missing UTF-8 file whose parent directory already exists. Then explain the evidence and expected validation.");
         prompt.AppendLine(
-            "If no safe single replacement is appropriate or the mission is complete, do not propose an edit; explain the completion or blocker.");
+            "If neither safe proposal is appropriate or the mission is complete, do not propose a mutation; explain the completion or blocker.");
         prompt.AppendLine(
             "You cannot approve, commit, run shell commands, change policy, or bypass the desktop repository gate.");
         return prompt.ToString();

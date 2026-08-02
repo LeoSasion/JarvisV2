@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -15,6 +16,8 @@ public sealed record PiAgentReviewedIterationProbeReceipt(
     bool OwnerPolicyPassed,
     bool FirstProposalPausedForOwner,
     bool ApprovedEditValidated,
+    bool ApprovedNewFileValidated,
+    bool UntrackedWhitespaceRejected,
     bool AutomaticReasoningContinuationPassed,
     bool SecondProposalPausedForOwner,
     bool RejectionStoppedLoop,
@@ -49,6 +52,9 @@ public static class PiAgentReviewedIterationProbe
         Directory.CreateDirectory(fixtureRoot);
         Directory.CreateDirectory(storeRoot);
         string fixturePath = Path.Combine(fixtureRoot, "review.txt");
+        string createdFixturePath = Path.Combine(
+            fixtureRoot,
+            "generated.txt");
         int brokerRequests = 0;
         int brokerFaults = 0;
         try
@@ -95,10 +101,37 @@ public static class PiAgentReviewedIterationProbe
                     Path.GetFullPath(fixtureRoot) &&
                 baseline.ValidationProfile ==
                     PiAgentReviewedIterationAdmission.ValidationProfile;
+            string whitespacePath = Path.Combine(
+                fixtureRoot,
+                "untracked-whitespace.txt");
+            await File.WriteAllTextAsync(
+                whitespacePath,
+                "trailing whitespace \n",
+                new UTF8Encoding(false),
+                cancellationToken);
+            string whitespaceHash = Convert.ToHexString(
+                    SHA256.HashData(
+                        await File.ReadAllBytesAsync(
+                            whitespacePath,
+                            cancellationToken)))
+                .ToLowerInvariant();
+            PiAgentRepositoryValidationReceipt whitespaceValidation =
+                await gate.ValidateAsync(
+                    fixtureRoot,
+                    baseline.Head,
+                    new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["untracked-whitespace.txt"] = whitespaceHash,
+                    },
+                    cancellationToken);
+            bool untrackedWhitespaceRejected =
+                !whitespaceValidation.Passed;
+            File.Delete(whitespacePath);
 
             DiagnosticIterationModelProvider provider = new();
             bool firstProposalPaused;
             bool approvedValidated;
+            bool approvedNewFileValidated;
             bool automaticContinuation;
             bool secondProposalPaused;
             bool rejectionStopped;
@@ -137,6 +170,7 @@ public static class PiAgentReviewedIterationProbe
                         PiAgentReviewedIterationStatus.AwaitingOwnerReview &&
                     firstPending.CurrentProposalId ==
                         firstProposal.ProposalId &&
+                    firstProposal.Operation == "create" &&
                     !runtime.Conversation.Snapshot.CanSubmit;
 
                 PiAgentReviewedIterationDecisionResult approved =
@@ -148,11 +182,15 @@ public static class PiAgentReviewedIterationProbe
                         PiAgentWorkspaceEditStatus.Applied &&
                     approved.Iteration.ApprovedEditCount == 1 &&
                     approved.Iteration.Steps.Single().ValidationResult ==
-                        "passed" &&
+                        "passed";
+                approvedNewFileValidated =
+                    approvedValidated &&
+                    approved.Edit.Operation == "create" &&
+                    approved.Edit.RelativePath == "generated.txt" &&
                     await File.ReadAllTextAsync(
-                        fixturePath,
+                        createdFixturePath,
                         cancellationToken) ==
-                        "alpha\nowner-approved\nomega\n";
+                        "owner-created\n";
                 automaticContinuation =
                     approved.ContinuedTurn is not null &&
                     approved.Iteration.Status ==
@@ -182,7 +220,9 @@ public static class PiAgentReviewedIterationProbe
                     secondPending.Status ==
                         PiAgentReviewedIterationStatus.AwaitingOwnerReview &&
                     secondPending.CurrentProposalId ==
-                        secondProposal.ProposalId;
+                        secondProposal.ProposalId &&
+                    secondProposal.Operation == "replace" &&
+                    secondProposal.RelativePath == "generated.txt";
                 PiAgentReviewedIterationDecisionResult rejected =
                     await coordinator.RejectAsync(
                         secondProposal.ProposalId,
@@ -223,7 +263,7 @@ public static class PiAgentReviewedIterationProbe
             await RunGitAsync(
                 gitExecutable,
                 fixtureRoot,
-                ["add", "--", "review.txt"],
+                ["add", "--", "review.txt", "generated.txt"],
                 cancellationToken);
             await RunGitAsync(
                 gitExecutable,
@@ -232,7 +272,8 @@ public static class PiAgentReviewedIterationProbe
                 cancellationToken);
 
             DiagnosticIterationModelProvider suspensionProvider = new(
-                startAtReplacement: "owner-approved");
+                startAtReplacement: "owner-reviewed",
+                createFirst: false);
             await using (
                 PiAgentDesktopRuntime runtime =
                     await PiAgentDesktopRuntime.StartAsync(
@@ -278,7 +319,8 @@ public static class PiAgentReviewedIterationProbe
             bool restartNoCapability;
             bool explicitRearm;
             DiagnosticIterationModelProvider resumeProvider = new(
-                startAtReplacement: "owner-approved");
+                startAtReplacement: "owner-reviewed",
+                createFirst: false);
             await using (
                 PiAgentDesktopRuntime runtime =
                     await PiAgentDesktopRuntime.StartAsync(
@@ -361,6 +403,8 @@ public static class PiAgentReviewedIterationProbe
                 ownerPolicy &&
                 firstProposalPaused &&
                 approvedValidated &&
+                approvedNewFileValidated &&
+                untrackedWhitespaceRejected &&
                 automaticContinuation &&
                 secondProposalPaused &&
                 rejectionStopped &&
@@ -380,6 +424,8 @@ public static class PiAgentReviewedIterationProbe
                 ownerPolicy,
                 firstProposalPaused,
                 approvedValidated,
+                approvedNewFileValidated,
+                untrackedWhitespaceRejected,
                 automaticContinuation,
                 secondProposalPaused,
                 rejectionStopped,
@@ -499,11 +545,13 @@ public static class PiAgentReviewedIterationProbe
     }
 
     private sealed class DiagnosticIterationModelProvider(
-        string startAtReplacement = "owner-reviewed") :
+        string startAtReplacement = "owner-reviewed",
+        bool createFirst = true) :
         IDesktopModelProvider
     {
         private int requestSequence;
         private string currentText = startAtReplacement;
+        private readonly bool createFirst = createFirst;
 
         public async IAsyncEnumerable<DesktopModelStreamEvent> StreamAsync(
             DesktopModelBrokerRequest request,
@@ -522,6 +570,28 @@ public static class PiAgentReviewedIterationProbe
                     new DesktopModelUsage(12, 8, 0, 0));
                 yield break;
             }
+            if (createFirst && sequence == 1)
+            {
+                string createToolCallId =
+                    $"reviewed-iteration-create-{sequence}";
+                yield return new DesktopModelToolCallStarted(
+                    createToolCallId,
+                    "propose_create_file");
+                yield return new DesktopModelToolCallDelta(
+                    createToolCallId,
+                    JsonSerializer.Serialize(new
+                    {
+                        path = "generated.txt",
+                        content = "owner-created\n",
+                    }));
+                yield return new DesktopModelToolCallCompleted(
+                    createToolCallId);
+                currentText = "owner-created";
+                yield return new DesktopModelCompleted(
+                    "toolUse",
+                    new DesktopModelUsage(14, 10, 0, 0));
+                yield break;
+            }
             string replacement = currentText switch
             {
                 "owner-reviewed" => "owner-approved",
@@ -536,7 +606,9 @@ public static class PiAgentReviewedIterationProbe
                 toolCallId,
                 JsonSerializer.Serialize(new
                 {
-                    path = "review.txt",
+                    path = createFirst
+                        ? "generated.txt"
+                        : "review.txt",
                     oldText = currentText,
                     newText = replacement,
                 }));

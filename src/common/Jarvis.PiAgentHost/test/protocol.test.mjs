@@ -127,7 +127,14 @@ try {
   assert.equal(records[1].success, true);
   assert.deepEqual(
     records[2].data.initialTools,
-    ["read", "grep", "find", "ls", "propose_edit"],
+    [
+      "read",
+      "grep",
+      "find",
+      "ls",
+      "propose_edit",
+      "propose_create_file",
+    ],
   );
   assert.equal(records[2].data.sessionCreationEnabled, true);
   assert.equal(records[2].data.promptingEnabled, false);
@@ -142,11 +149,19 @@ try {
   );
   assert.equal(
     records[2].data.workspaceEditApprovalMode,
-    "one-shot-exact-before-sha256",
+    "one-shot-explicit-operation-before-state-sha256",
   );
   assert.equal(
     records[2].data.workspaceEditExistingFilesOnly,
+    false,
+  );
+  assert.equal(
+    records[2].data.workspaceFileCreateSupported,
     true,
+  );
+  assert.equal(
+    records[2].data.workspaceFileCreateMode,
+    "exclusive-existing-parent-owner-approved",
   );
   assert.equal(
     records[2].data.unattendedSelfIteration,
@@ -185,7 +200,14 @@ try {
   assert.equal(records[4].success, true);
   assert.deepEqual(
     records[4].data.activeTools,
-    ["read", "grep", "find", "ls", "propose_edit"],
+    [
+      "read",
+      "grep",
+      "find",
+      "ls",
+      "propose_edit",
+      "propose_create_file",
+    ],
   );
   assert.equal(records[4].data.sessionPersisted, false);
   assert.equal(records[4].data.promptingEnabled, false);
@@ -424,8 +446,11 @@ try {
       workspaceEditProposalSupported: true,
       workspaceEditApprovalOwner: "desktop-user-only",
       workspaceEditApprovalMode:
-        "one-shot-exact-before-sha256",
-      workspaceEditExistingFilesOnly: true,
+        "one-shot-explicit-operation-before-state-sha256",
+      workspaceEditExistingFilesOnly: false,
+      workspaceFileCreateSupported: true,
+      workspaceFileCreateMode:
+        "exclusive-existing-parent-owner-approved",
       unattendedSelfIteration: false,
       shellMutationSupported: false,
       explorerMutationSupported: false,

@@ -39,7 +39,7 @@ Shell process.
   across multiple requests, admits at most four current-user connections and
   caps every broker frame at 1 MiB;
 - validates provider event order and permits only the session's `read`, `grep`,
-  `find`, `ls` and non-mutating `propose_edit` identities before forwarding
+  `find`, `ls`, `propose_edit` and `propose_create_file` identities before forwarding
   tool calls to Pi;
 - rejects an offline provider attempt to emit `bash`, returns a closed failure
   to the Pi turn and proves the broker remains isolated from the Shell;
@@ -68,14 +68,16 @@ Shell process.
 - quiesces submissions, cancels any active turn, flushes queued checkpoint
   saves and shuts down the owned sidecar before disposing the broker;
 - replaces the SDK file tools with root-confined `read`, `grep`, `find` and
-  `ls` definitions and one `propose_edit` definition that only stages an exact
-  existing-text replacement; `bash`, generic `edit` and `write` stay
-  unavailable;
+  `ls` definitions plus `propose_edit` for exact existing-text replacement and
+  `propose_create_file` for a missing UTF-8 file beneath an existing parent;
+  both proposal tools are non-mutating, while `bash`, generic `edit` and
+  `write` stay unavailable;
 - emits the proposal as a structured turn event, blocks new turns while one is
   pending, and exposes desktop-only commit and discard requests;
-- binds approval to the exact proposal id and full before SHA-256, rechecks the
-  workspace, path, reparse, file identity, hash and unique match immediately
-  before atomic replacement, then rejects replay and drift;
+- binds approval to the exact proposal id, explicit operation and before-state
+  SHA-256; replacement rechecks file identity/hash/unique match before atomic
+  replacement, while creation rechecks parent identity and target absence
+  before exclusive no-overwrite creation; both reject replay and drift;
 - lets the desktop owner arm one reviewed iteration only from a clean Git HEAD,
   with a fixed four-approved-edit limit and six-hour expiry;
 - writes every policy and step transition to a workspace-bound CurrentUser
