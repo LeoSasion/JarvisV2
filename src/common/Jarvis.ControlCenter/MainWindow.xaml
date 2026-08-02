@@ -13,6 +13,7 @@
     ResizeMode="CanResizeWithGrip"
     Background="#070A0D"
     Tag="impeccable:surface-seed:32fb29e4"
+    PreviewKeyDown="MainWindow_OnPreviewKeyDown"
     TextOptions.TextFormattingMode="Display"
     TextOptions.TextRenderingMode="ClearType">
 
@@ -325,12 +326,13 @@
     <Border BorderBrush="#2D4650" BorderThickness="1">
         <Grid Background="{StaticResource BackgroundBrush}">
             <Grid.RowDefinitions>
-                <RowDefinition Height="56" />
+                <RowDefinition x:Name="HeaderRow" Height="56" />
                 <RowDefinition Height="*" />
-                <RowDefinition Height="50" />
+                <RowDefinition x:Name="StatusDockRow" Height="50" />
             </Grid.RowDefinitions>
 
             <Border
+                x:Name="HeaderChrome"
                 Grid.Row="0"
                 Background="#081014"
                 BorderBrush="{StaticResource LineBrush}"
@@ -383,6 +385,23 @@
 
                     <StackPanel Grid.Column="4" Orientation="Horizontal">
                         <Button
+                            x:Name="ImmersiveModeButton"
+                            AutomationProperties.Name="{DynamicResource Loc.Immersive.EnterAutomation}"
+                            ToolTip="{DynamicResource Loc.Immersive.EnterTooltip}"
+                            Style="{StaticResource WindowButton}"
+                            Click="ImmersiveModeButton_OnClick">
+                            <Viewbox Width="16" Height="16">
+                                <Path
+                                    Width="18"
+                                    Height="18"
+                                    Data="M1,6 L1,1 L6,1 M12,1 L17,1 L17,6 M17,12 L17,17 L12,17 M6,17 L1,17 L1,12"
+                                    Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                                    StrokeThickness="1.5"
+                                    StrokeStartLineCap="Square"
+                                    StrokeEndLineCap="Square" />
+                            </Viewbox>
+                        </Button>
+                        <Button
                             AutomationProperties.Name="{DynamicResource Loc.Window.MinimizeAutomation}"
                             Style="{StaticResource WindowButton}"
                             Click="MinimizeButton_OnClick"
@@ -396,14 +415,15 @@
                 </Grid>
             </Border>
 
-            <Grid Grid.Row="1">
+            <Grid x:Name="BodyGrid" Grid.Row="1">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="204" />
+                    <ColumnDefinition x:Name="WorkspaceRailColumn" Width="204" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="304" />
+                    <ColumnDefinition x:Name="RuntimeInspectorColumn" Width="304" />
                 </Grid.ColumnDefinitions>
 
                 <Border
+                    x:Name="WorkspaceRail"
                     Grid.Column="0"
                     Background="#081014"
                     BorderBrush="{StaticResource LineBrush}"
@@ -515,7 +535,10 @@
                     </Grid>
                 </Border>
 
-                <Grid Grid.Column="1" Margin="20,16,18,16">
+                <Grid
+                    x:Name="ConversationWorkspace"
+                    Grid.Column="1"
+                    Margin="20,16,18,16">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="50" />
                         <RowDefinition Height="122" />
@@ -544,10 +567,23 @@
                                 Text="{Binding AccessLabel}" />
                         </StackPanel>
                         <TextBlock
+                            x:Name="ConversationShortcuts"
                             Grid.Column="1"
                             VerticalAlignment="Center"
                             Style="{StaticResource MonoText}"
-                                    Text="{DynamicResource Loc.Conversation.Shortcuts}" />
+                            Text="{DynamicResource Loc.Conversation.Shortcuts}" />
+                        <Button
+                            x:Name="ImmersiveExitButton"
+                            Grid.Column="1"
+                            Height="30"
+                            MinWidth="0"
+                            Padding="12,0"
+                            AutomationProperties.LiveSetting="Polite"
+                            AutomationProperties.Name="{DynamicResource Loc.Immersive.ExitAutomation}"
+                            Style="{StaticResource ActionButton}"
+                            Visibility="Collapsed"
+                            Click="ImmersiveExitButton_OnClick"
+                            Content="{DynamicResource Loc.Immersive.Exit}" />
                     </Grid>
 
                     <Border Grid.Row="1" Style="{StaticResource PanelBorder}" Padding="14">
@@ -1117,6 +1153,7 @@
                 </Grid>
 
                 <Border
+                    x:Name="RuntimeInspector"
                     Grid.Column="2"
                     Background="#081014"
                     BorderBrush="{StaticResource LineBrush}"
@@ -1454,6 +1491,7 @@
             </Grid>
 
             <Border
+                x:Name="StatusDock"
                 Grid.Row="2"
                 Background="#081014"
                 BorderBrush="{StaticResource LineBrush}"

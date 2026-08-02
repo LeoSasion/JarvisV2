@@ -146,6 +146,20 @@ exposes `RUN PINNED TESTS ONCE` as a separate owner action; Pi cannot press it
 or invoke the runner. It does not create a modal approval surface or displace
 the transcript.
 
+## Immersive conversation
+
+Press `F11` to focus the owned conversation across the Windows work area. The
+Control Center folds away its title, navigation, inspector and status rails but
+keeps the handoff stages, transcript, inline proposal review and composer. A
+localized `F11 / ESC` exit control remains visible; either key exits, with
+`Esc` leaving immersive mode before it can cancel an active turn.
+
+The transition preserves the conversation, transcript position and keyboard
+focus, then restores the exact prior window state and frame. It remains a
+non-topmost taskbar window and does not hide the Windows taskbar, replace the
+shell, interact with Explorer or widen Pi's capabilities. The inspector and
+status dock are only visually folded and return with unchanged trust state.
+
 ## Design decision
 
 The chosen structure is an active-turn handoff rail with a passed-baton
@@ -200,7 +214,10 @@ and unavailable recent-work states without starting a runtime.
 window and no-shell-mutation source gates, it validates the bound transcript,
 keyboard and accessibility controls, provider setup, runtime lifecycle,
 checkpoint shutdown, portable bootstrap and the visible credential/safety
-disclosures. A separate `Jarvis.ControlCenter.Diagnostics` executable runs the
+disclosures. It also proves that immersive mode has both keyboard exits, keeps
+an accessible exit control visible, restores the owned frame and never enables
+topmost or taskbar takeover. A separate `Jarvis.ControlCenter.Diagnostics`
+executable runs the
 local provider stream, runtime-bootstrap and real CurrentUser-DPAPI
 recent-session probes outside the WPF lifecycle.
 

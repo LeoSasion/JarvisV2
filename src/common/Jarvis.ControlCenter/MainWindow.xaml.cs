@@ -18,6 +18,14 @@ public partial class MainWindow : Window
     };
     private readonly ConversationSurfaceViewModel conversation;
     private DesktopRecentSessionStore? recentSessionStore;
+    private IInputElement? focusBeforeImmersive;
+    private WindowState windowStateBeforeImmersive;
+    private GridLength headerHeightBeforeImmersive;
+    private GridLength statusDockHeightBeforeImmersive;
+    private GridLength workspaceRailWidthBeforeImmersive;
+    private GridLength runtimeInspectorWidthBeforeImmersive;
+    private Thickness conversationMarginBeforeImmersive;
+    private bool immersiveMode;
     private bool shutdownInProgress;
     private bool closeAuthorized;
 
@@ -75,6 +83,119 @@ public partial class MainWindow : Window
         RoutedEventArgs eventArgs)
     {
         WindowState = WindowState.Minimized;
+    }
+
+    private void ImmersiveModeButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        ToggleImmersiveMode();
+    }
+
+    private void ImmersiveExitButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        ExitImmersiveMode();
+    }
+
+    private void MainWindow_OnPreviewKeyDown(
+        object sender,
+        KeyEventArgs eventArgs)
+    {
+        if (eventArgs.Key == Key.F11)
+        {
+            eventArgs.Handled = true;
+            if (!eventArgs.IsRepeat)
+            {
+                ToggleImmersiveMode();
+            }
+            return;
+        }
+        if (eventArgs.Key == Key.Escape && eventArgs.IsRepeat)
+        {
+            eventArgs.Handled = true;
+            return;
+        }
+        if (eventArgs.Key == Key.Escape && immersiveMode)
+        {
+            eventArgs.Handled = true;
+            ExitImmersiveMode();
+        }
+    }
+
+    private void ToggleImmersiveMode()
+    {
+        if (immersiveMode)
+        {
+            ExitImmersiveMode();
+            return;
+        }
+        EnterImmersiveMode();
+    }
+
+    private void EnterImmersiveMode()
+    {
+        focusBeforeImmersive = Keyboard.FocusedElement;
+        windowStateBeforeImmersive = WindowState;
+        headerHeightBeforeImmersive = HeaderRow.Height;
+        statusDockHeightBeforeImmersive = StatusDockRow.Height;
+        workspaceRailWidthBeforeImmersive = WorkspaceRailColumn.Width;
+        runtimeInspectorWidthBeforeImmersive = RuntimeInspectorColumn.Width;
+        conversationMarginBeforeImmersive = ConversationWorkspace.Margin;
+
+        immersiveMode = true;
+        HeaderChrome.Visibility = Visibility.Collapsed;
+        WorkspaceRail.Visibility = Visibility.Collapsed;
+        RuntimeInspector.Visibility = Visibility.Collapsed;
+        StatusDock.Visibility = Visibility.Collapsed;
+        HeaderRow.Height = new GridLength(0);
+        StatusDockRow.Height = new GridLength(0);
+        WorkspaceRailColumn.Width = new GridLength(0);
+        RuntimeInspectorColumn.Width = new GridLength(0);
+        ConversationWorkspace.Margin = new Thickness(18, 14, 18, 16);
+        ConversationShortcuts.Visibility = Visibility.Collapsed;
+        ImmersiveExitButton.Visibility = Visibility.Visible;
+        WindowState = WindowState.Maximized;
+
+        if (!ConversationWorkspace.IsKeyboardFocusWithin)
+        {
+            ImmersiveExitButton.Focus();
+        }
+    }
+
+    private void ExitImmersiveMode()
+    {
+        if (!immersiveMode)
+        {
+            return;
+        }
+
+        immersiveMode = false;
+        HeaderChrome.Visibility = Visibility.Visible;
+        WorkspaceRail.Visibility = Visibility.Visible;
+        RuntimeInspector.Visibility = Visibility.Visible;
+        StatusDock.Visibility = Visibility.Visible;
+        HeaderRow.Height = headerHeightBeforeImmersive;
+        StatusDockRow.Height = statusDockHeightBeforeImmersive;
+        WorkspaceRailColumn.Width = workspaceRailWidthBeforeImmersive;
+        RuntimeInspectorColumn.Width = runtimeInspectorWidthBeforeImmersive;
+        ConversationWorkspace.Margin = conversationMarginBeforeImmersive;
+        ConversationShortcuts.Visibility = Visibility.Visible;
+        ImmersiveExitButton.Visibility = Visibility.Collapsed;
+        WindowState = windowStateBeforeImmersive;
+
+        IInputElement? elementToRestore = focusBeforeImmersive;
+        focusBeforeImmersive = null;
+        _ = Dispatcher.BeginInvoke(
+            DispatcherPriority.Input,
+            new Action(() =>
+            {
+                if (elementToRestore?.Focus() != true)
+                {
+                    ImmersiveModeButton.Focus();
+                }
+            }));
     }
 
     private void CloseButton_OnClick(

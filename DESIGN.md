@@ -226,6 +226,22 @@ thumb remain intact. The thumb uses Faint Text at rest for sufficient component
 contrast, then shared Live Cyan on hover or drag. It never returns to the bright
 default WPF scrollbar used by the pre-effect surface.
 
+### Immersive Conversation Mode
+
+`F11` enters a reversible focus layout inside the owned Control Center window.
+The title rail, navigation rail, runtime inspector and status dock fold away;
+the conversation title, four-stage handoff rail, transcript, proposal review
+and composer remain. The window expands to the Windows work area but remains a
+normal non-topmost taskbar window. It does not hide the taskbar, replace the
+shell, inject into Explorer or acquire any new runtime authority.
+
+A localized `F11 / ESC` exit control stays visible in the conversation header.
+`F11` toggles the mode, while `Esc` exits it before the composer considers an
+active-turn cancellation. On exit, the prior normal or maximized state, exact
+rail widths, margins, conversation scroll position and keyboard focus are
+restored. The hidden inspector and status dock are presentation-only: their
+trust state continues to exist unchanged and returns immediately on exit.
+
 The session launcher is a focused 760-by-730 owned window. Returning work is
 shown first as a compact recent-work plane, followed by the numbered manual
 workspace and provider sequence. It may display three recent entries even
@@ -474,6 +490,8 @@ Control Panel state itself.
   preserve accessible automation names for Send, Cancel and window controls.
 - **Do** preserve `Ctrl+Enter` for submit and `Esc` for cancellation, with visible
   shortcut copy near the conversation title.
+- **Do** keep immersive mode reversible with `F11`, a visible localized exit
+  control, and `Esc` taking precedence over turn cancellation while immersed.
 - **Do** make preview, offline, unauthenticated, proposal-only and
   owner-approved-write states explicit in plain language.
 - **Do** retain the `32fb29e4` seed in surface metadata when deriving variants of
@@ -509,6 +527,8 @@ Control Panel state itself.
   color alone.
 - **Don't** imply a workspace, credential, network provider, mutation capability
   or running process that the runtime has not actually admitted.
+- **Don't** turn immersive mode into a topmost window, hidden taskbar, shell
+  replacement or authority change.
 - **Don't** hide a proposed diff, turn approval into a generic confirmation, or
   allow assistant prose to stand in for the structured edit capability.
 - **Don't** offer per-file change-set toggles or label durable convergence as a

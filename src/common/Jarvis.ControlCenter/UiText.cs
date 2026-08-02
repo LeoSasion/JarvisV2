@@ -33,6 +33,12 @@ public static class UiText
             ["Loc.Header.ReviewGated"] = "REVIEW-GATED PI TOOLS",
             ["Loc.Window.MinimizeAutomation"] = "Minimize JarvisV2",
             ["Loc.Window.CloseAutomation"] = "Close JarvisV2",
+            ["Loc.Immersive.EnterAutomation"] =
+                "Enter immersive conversation mode",
+            ["Loc.Immersive.EnterTooltip"] = "Immersive mode (F11)",
+            ["Loc.Immersive.ExitAutomation"] =
+                "Exit immersive conversation mode",
+            ["Loc.Immersive.Exit"] = "F11 / ESC · EXIT IMMERSIVE",
             ["Loc.Nav.Workspace"] = "Workspace",
             ["Loc.Nav.Conversation"] = "Conversation",
             ["Loc.Nav.Runtime"] = "Runtime",
@@ -271,6 +277,10 @@ public static class UiText
             ["Loc.Header.ReviewGated"] = "受审查保护的 PI 工具",
             ["Loc.Window.MinimizeAutomation"] = "最小化 JarvisV2",
             ["Loc.Window.CloseAutomation"] = "关闭 JarvisV2",
+            ["Loc.Immersive.EnterAutomation"] = "进入沉浸式对话模式",
+            ["Loc.Immersive.EnterTooltip"] = "沉浸模式（F11）",
+            ["Loc.Immersive.ExitAutomation"] = "退出沉浸式对话模式",
+            ["Loc.Immersive.Exit"] = "F11 / ESC · 退出沉浸模式",
             ["Loc.Nav.Workspace"] = "工作区",
             ["Loc.Nav.Conversation"] = "对话",
             ["Loc.Nav.Runtime"] = "运行时",

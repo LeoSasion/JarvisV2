@@ -148,6 +148,52 @@ Add-Check `
         'transparent, topmost or maximized shell replacement.')
 
 Add-Check `
+    -Name 'surface.reversible-own-window-immersive-mode' `
+    -Passed (
+        $mainWindowText.Contains(
+            'PreviewKeyDown="MainWindow_OnPreviewKeyDown"') -and
+        $mainWindowText.Contains('x:Name="ImmersiveModeButton"') -and
+        $mainWindowText.Contains('x:Name="ImmersiveExitButton"') -and
+        $mainWindowText.Contains(
+            'AutomationProperties.Name="{DynamicResource Loc.Immersive.EnterAutomation}"') -and
+        $mainWindowText.Contains(
+            'AutomationProperties.Name="{DynamicResource Loc.Immersive.ExitAutomation}"') -and
+        $mainWindowText.Contains(
+            'Data="M1,6 L1,1 L6,1 M12,1 L17,1 L17,6 M17,12 L17,17 L12,17 M6,17 L1,17 L1,12"') -and
+        $mainWindowCodeText.Contains('eventArgs.Key == Key.F11') -and
+        $mainWindowCodeText.Contains(
+            'eventArgs.Key == Key.Escape && immersiveMode') -and
+        $mainWindowCodeText.Contains('eventArgs.IsRepeat') -and
+        $mainWindowCodeText.Contains('EnterImmersiveMode()') -and
+        $mainWindowCodeText.Contains('ExitImmersiveMode()') -and
+        $mainWindowCodeText.Contains(
+            'HeaderChrome.Visibility = Visibility.Collapsed') -and
+        $mainWindowCodeText.Contains(
+            'WorkspaceRail.Visibility = Visibility.Collapsed') -and
+        $mainWindowCodeText.Contains(
+            'RuntimeInspector.Visibility = Visibility.Collapsed') -and
+        $mainWindowCodeText.Contains(
+            'StatusDock.Visibility = Visibility.Collapsed') -and
+        $mainWindowCodeText.Contains(
+            'ConversationShortcuts.Visibility = Visibility.Collapsed') -and
+        $mainWindowCodeText.Contains(
+            'ImmersiveExitButton.Visibility = Visibility.Visible') -and
+        $mainWindowCodeText.Contains(
+            'WindowState = WindowState.Maximized') -and
+        $mainWindowCodeText.Contains(
+            'WindowState = windowStateBeforeImmersive') -and
+        $mainWindowCodeText.Contains(
+            'ConversationWorkspace.IsKeyboardFocusWithin') -and
+        $mainWindowCodeText.Contains('DispatcherPriority.Input') -and
+        -not $mainWindowCodeText.Contains('Topmost = true') -and
+        -not $mainWindowCodeText.Contains('ShowInTaskbar = false')) `
+    -Detail (
+        'F11 must reversibly focus the owned conversation window, Esc must ' +
+        'exit before composer cancellation, an accessible in-frame escape ' +
+        'control must remain visible, and the mode must restore layout, focus ' +
+        'and prior window state without topmost or taskbar takeover.')
+
+Add-Check `
     -Name 'project.wpf-runtime-and-diagnostics-composition' `
     -Passed (
         $projectText.Contains('<OutputType>WinExe</OutputType>') -and
