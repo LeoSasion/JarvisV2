@@ -389,7 +389,8 @@ if ($null -ne $compiler -and $null -ne $dumpbin) {
                 /DJARVIS_BRIDGE_CORE_SHARED_INSTANCE `
                 "/I$callbackRoot" "/I$bridgeRoot" `
                 $bridgeCorePath $callbackCorePath $callbackWindowsPath `
-                user32.lib "/Fe$dllPath" 2>&1
+                user32.lib kernel32.lib "/Fe$dllPath" `
+                /link /NOENTRY /NODEFAULTLIB 2>&1
         )
         $dllExit = $LASTEXITCODE
         $callbackDllBuilt =
@@ -458,6 +459,15 @@ if ($null -ne $compiler -and $null -ne $dumpbin) {
                 -Detail (
                     "dumpbin exit $headerExit; .jvbrdg must be shared, " +
                     'readable, writable and non-executable.')
+
+            Add-Check `
+                -Name 'binary.zero-entry-point-no-crt-startup' `
+                -Passed (
+                    $headerExit -eq 0 -and
+                    $headerText -match '(?im)^\s*0 entry point\s*$') `
+                -Detail (
+                    "dumpbin exit $headerExit; the callback DLL must have " +
+                    'a zero PE entry point and no CRT or custom loader startup.')
 
             $importOutput = @(& $dumpbin /nologo /imports $dllPath 2>&1)
             $importExit = $LASTEXITCODE

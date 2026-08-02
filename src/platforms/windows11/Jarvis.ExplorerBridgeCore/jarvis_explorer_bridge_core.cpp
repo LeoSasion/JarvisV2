@@ -1,6 +1,5 @@
 #include "jarvis_explorer_bridge_core_internal.h"
 
-#include <algorithm>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -175,7 +174,9 @@ void jarvis_bridge_core_reset_for_test(
     instance->explorer_process_id = 0U;
     instance->shell_thread_id = 0U;
     instance->session_nonce = 0U;
-    std::fill_n(instance->settings_sha256, 32U, std::uint8_t{0U});
+    for (std::size_t index = 0U; index < 32U; ++index) {
+        instance->settings_sha256[index] = 0U;
+    }
 }
 
 jarvis_bridge_core_result jarvis_bridge_core_prepare(
@@ -232,10 +233,9 @@ jarvis_bridge_core_result jarvis_bridge_core_prepare(
     instance->explorer_process_id = request->explorer_process_id;
     instance->shell_thread_id = request->shell_thread_id;
     instance->session_nonce = request->session_nonce;
-    std::copy_n(
-        request->settings_sha256,
-        32U,
-        instance->settings_sha256);
+    for (std::size_t index = 0U; index < 32U; ++index) {
+        instance->settings_sha256[index] = request->settings_sha256[index];
+    }
     instance->generation.store(1U, std::memory_order_release);
     instance->pass_through.store(1U, std::memory_order_release);
     instance->state.store(

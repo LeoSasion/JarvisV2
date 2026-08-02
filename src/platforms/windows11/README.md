@@ -27,5 +27,6 @@ shape. In that build only, the pointer-free bridge instance occupies a shared,
 read/write, non-executable PE section so controller-side initialization and
 target-side callback ownership refer to the same state. The exported callback
 reads only its current PID/TID, performs no message or visual work, releases
-ownership, and always returns `CallNextHookEx`. There is no collector or loader.
+ownership, and always returns `CallNextHookEx`. The DLL has a zero PE entry
+point and no CRT or custom startup. There is no collector or loader.
 See `docs/PHASE-20-DISK-ONLY-CALLWNDPROC-BRIDGE-TASK.md`.

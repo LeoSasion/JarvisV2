@@ -9,6 +9,7 @@ Phase 20 produces the first complete DLL shape for the thread-specific host:
 - the four Phase 18 bridge exports;
 - one `JarvisBridge_CallWndProc` export with the Windows `HOOKPROC` signature;
 - one optional shared bridge instance used only in this DLL build;
+- a zero PE entry point with no CRT or custom DLL startup;
 - no callback body, selector, property access or visual mutation.
 
 Public CI builds and inspects the AMD64 DLL as a file. It never calls
@@ -89,6 +90,7 @@ the GitHub Windows runner it additionally:
   to chain exactly once with no ownership leak;
 - builds the shared callback DLL but never loads it;
 - verifies exactly five exports;
+- verifies the PE entry point is zero and no CRT/custom startup exists;
 - verifies `.jvbrdg` is shared, readable, writable and non-executable;
 - verifies the callback imports `CallNextHookEx`, `GetCurrentProcessId` and
   `GetCurrentThreadId`, while loader, installer, discovery and mutation APIs
