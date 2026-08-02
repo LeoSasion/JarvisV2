@@ -303,8 +303,12 @@ Shell, directory creation, delete, rename, direct-write, VCS metadata mutation,
 and unattended approval remain unavailable. The desktop can arm a clean-HEAD
 reviewed iteration for at most four owner-approved writes and six hours. Each
 approved write must pass the fixed Git, strict UTF-8, tracked/untracked diff and
-structured-text gate before another reasoning turn; restart never restores a
-proposal and requires explicit re-arm.
+structured-text gate, then pause for a separate RUN PINNED TESTS ONCE owner
+approval. That command is loaded from the clean Git HEAD, launches bundled Node
+directly without a shell, has bounded time/output, and is surrounded by pre/post
+repository revalidation. Only a pass may start another reasoning turn. Pi cannot
+invoke the runner or its approval. Restart restores neither proposal nor process
+authority and requires explicit re-arm.
 '@
 [IO.File]::WriteAllText(
     (Join-Path $target 'README.txt'),
@@ -386,6 +390,10 @@ $receipt = [ordered]@{
         'git-head-pathset-text-hash-diffcheck-structured-parse-v2'
     reviewedIterationGitRuntime =
         'bundled-runtime-git-cmd-direct-no-shell'
+    reviewedIterationTrustedValidation =
+        'owner-approved-pinned-head-node-test-direct-no-shell-pre-post-gate'
+    ownerTrustedValidationApprovalRequired = $true
+    piTrustedValidationProcessAvailable = $false
     gitRuntimeFileCount = $gitRuntimeFiles.Count
     gitRuntimeBytes = $gitRuntimeBytes
     automaticReasoningContinuation = $true

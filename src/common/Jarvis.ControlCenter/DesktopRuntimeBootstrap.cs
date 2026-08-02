@@ -266,6 +266,14 @@ public static class DesktopRuntimeBootstrap
                     "self-contained-wpf-plus-bundled-node-pi-sidecar-and-fixed-git" ||
                 root.GetProperty("reviewedIterationGitRuntime").GetString() !=
                     "bundled-runtime-git-cmd-direct-no-shell" ||
+                root.GetProperty("reviewedIterationTrustedValidation")
+                    .GetString() !=
+                    "owner-approved-pinned-head-node-test-direct-no-shell-pre-post-gate" ||
+                !root.GetProperty(
+                    "ownerTrustedValidationApprovalRequired")
+                    .GetBoolean() ||
+                root.GetProperty("piTrustedValidationProcessAvailable")
+                    .GetBoolean() ||
                 root.GetProperty("piSidecarNetworkAllowed").GetBoolean() ||
                 root.GetProperty("piSidecarCredentialTransportAllowed")
                     .GetBoolean() ||

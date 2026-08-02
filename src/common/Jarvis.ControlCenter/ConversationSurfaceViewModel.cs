@@ -174,6 +174,13 @@ public sealed class ConversationSurfaceViewModel :
             PiAgentReviewedIterationStatus.Interrupted &&
         (launchOptions?.Provider != ConversationProviderKind.OpenAiResponses ||
             providerCredentialReady);
+    public bool CanRunTrustedValidation =>
+        phase == ConversationRuntimePhase.Ready &&
+        snapshot.CanSubmit &&
+        reviewedIterationSnapshot?.Status ==
+            PiAgentReviewedIterationStatus.AwaitingTrustedValidation &&
+        (launchOptions?.Provider != ConversationProviderKind.OpenAiResponses ||
+            providerCredentialReady);
     public bool CanStopReviewedIteration =>
         phase == ConversationRuntimePhase.Ready &&
         reviewedIterationSnapshot is { IsTerminal: false };
@@ -190,6 +197,13 @@ public sealed class ConversationSurfaceViewModel :
         reviewedIterationSnapshot?.HeadLabel ?? "CLEAN GIT HEAD REQUIRED";
     public string ReviewedIterationExpiryLabel =>
         reviewedIterationSnapshot?.ExpiryLabel ?? "6 HOUR OWNER POLICY";
+    public string ReviewedIterationValidationProfileLabel =>
+        reviewedIterationSnapshot?.TrustedValidationProfileId is string profile
+            ? $"PINNED TEST PROFILE / {profile}"
+            : "PINNED TEST PROFILE REQUIRED";
+    public string ReviewedIterationValidationCommand =>
+        reviewedIterationSnapshot?.TrustedValidationCommand ??
+        "No trusted validation command admitted.";
     public bool IsOpenAiProvider =>
         launchOptions?.Provider == ConversationProviderKind.OpenAiResponses;
     public double HandoffProgress => DetermineHandoffProgress();
@@ -325,6 +339,7 @@ public sealed class ConversationSurfaceViewModel :
                 await PiAgentReviewedIterationCoordinator.OpenAsync(
                     runtime.Conversation,
                     runtime.WorkspaceRoot,
+                    sidecar,
                     cancellationToken: cancellationToken);
             reviewedIteration.SnapshotChanged +=
                 OnReviewedIterationSnapshotChanged;
@@ -454,13 +469,42 @@ public sealed class ConversationSurfaceViewModel :
             throw new InvalidOperationException(
                 "The reviewed iteration is not ready for explicit re-arm.");
         }
-        PiAgentConversationTurn turn =
+        PiAgentConversationTurn? turn =
             await reviewedIteration.ResumeAsync(cancellationToken);
-        statusDetail =
-            "Durable receipts and repository state revalidated. One bounded continuation was re-armed.";
+        statusDetail = turn is null
+            ? "Durable receipts revalidated. The pending fixed test run still requires its separate owner approval."
+            : "Durable receipts and repository state revalidated. One bounded continuation was re-armed.";
         RaisePropertyChanged(nameof(StatusDetail));
         RaiseReviewedIterationProperties();
-        _ = ObserveReviewedIterationCompletionAsync(turn);
+        if (turn is not null)
+        {
+            _ = ObserveReviewedIterationCompletionAsync(turn);
+        }
+    }
+
+    public async Task RunTrustedValidationAsync(
+        CancellationToken cancellationToken = default)
+    {
+        uiError = null;
+        if (reviewedIteration is null || !CanRunTrustedValidation)
+        {
+            throw new InvalidOperationException(
+                "The reviewed iteration is not awaiting trusted validation approval.");
+        }
+        PiAgentTrustedValidationDecisionResult result =
+            await reviewedIteration.RunTrustedValidationAndContinueAsync(
+                cancellationToken);
+        statusDetail = result.Validation?.Passed == true
+            ? "Pinned trusted tests passed once and the repository remained exact."
+            : result.Iteration.StatusDetail;
+        RaisePropertyChanged(nameof(StatusDetail));
+        RaiseConversationProperties();
+        RaiseReviewedIterationProperties();
+        if (result.ContinuedTurn is not null)
+        {
+            _ = ObserveReviewedIterationCompletionAsync(
+                result.ContinuedTurn);
+        }
     }
 
     public async Task StopReviewedIterationAsync(
@@ -513,7 +557,10 @@ public sealed class ConversationSurfaceViewModel :
         statusDetail = result.Status switch
         {
             PiAgentWorkspaceEditStatus.Applied =>
-                $"Applied once: {result.RelativePath}. The exact before-hash capability is consumed.",
+                reviewedIterationSnapshot?.Status ==
+                    PiAgentReviewedIterationStatus.AwaitingTrustedValidation
+                    ? $"Applied once: {result.RelativePath}. The repository gate passed; pinned tests now require a separate owner approval."
+                    : $"Applied once: {result.RelativePath}. The exact before-hash capability is consumed.",
             PiAgentWorkspaceEditStatus.Drifted =>
                 $"Edit not applied: {result.RelativePath} changed after proposal. Review a fresh proposal.",
             _ =>
@@ -778,6 +825,7 @@ public sealed class ConversationSurfaceViewModel :
         RaisePropertyChanged(nameof(SessionLaunchActionLabel));
         RaisePropertyChanged(nameof(CanStartReviewedIteration));
         RaisePropertyChanged(nameof(CanResumeReviewedIteration));
+        RaisePropertyChanged(nameof(CanRunTrustedValidation));
         RaisePropertyChanged(nameof(CanStopReviewedIteration));
     }
 
@@ -787,6 +835,7 @@ public sealed class ConversationSurfaceViewModel :
         RaisePropertyChanged(nameof(HasReviewedIteration));
         RaisePropertyChanged(nameof(CanStartReviewedIteration));
         RaisePropertyChanged(nameof(CanResumeReviewedIteration));
+        RaisePropertyChanged(nameof(CanRunTrustedValidation));
         RaisePropertyChanged(nameof(CanStopReviewedIteration));
         RaisePropertyChanged(nameof(ReviewedIterationStatusLabel));
         RaisePropertyChanged(nameof(ReviewedIterationDetail));
@@ -794,6 +843,8 @@ public sealed class ConversationSurfaceViewModel :
         RaisePropertyChanged(nameof(ReviewedIterationReceiptLabel));
         RaisePropertyChanged(nameof(ReviewedIterationHeadLabel));
         RaisePropertyChanged(nameof(ReviewedIterationExpiryLabel));
+        RaisePropertyChanged(nameof(ReviewedIterationValidationProfileLabel));
+        RaisePropertyChanged(nameof(ReviewedIterationValidationCommand));
     }
 
     private void RaiseRuntimeProperties()

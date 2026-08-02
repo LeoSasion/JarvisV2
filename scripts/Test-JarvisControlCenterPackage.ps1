@@ -201,6 +201,10 @@ if ($null -eq $receipt -or
         'git-head-pathset-text-hash-diffcheck-structured-parse-v2' -or
     $receipt.reviewedIterationGitRuntime -ne
         'bundled-runtime-git-cmd-direct-no-shell' -or
+    $receipt.reviewedIterationTrustedValidation -ne
+        'owner-approved-pinned-head-node-test-direct-no-shell-pre-post-gate' -or
+    -not $receipt.ownerTrustedValidationApprovalRequired -or
+    $receipt.piTrustedValidationProcessAvailable -or
     -not $receipt.automaticReasoningContinuation -or
     $receipt.unattendedApproval -or
     $receipt.unattendedSelfIteration) {

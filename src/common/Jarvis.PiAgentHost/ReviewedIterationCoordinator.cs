@@ -7,6 +7,11 @@ public sealed record PiAgentReviewedIterationDecisionResult(
     PiAgentReviewedIterationSnapshot Iteration,
     PiAgentConversationTurn? ContinuedTurn);
 
+public sealed record PiAgentTrustedValidationDecisionResult(
+    PiAgentTrustedValidationReceipt? Validation,
+    PiAgentReviewedIterationSnapshot Iteration,
+    PiAgentConversationTurn? ContinuedTurn);
+
 public sealed class PiAgentReviewedIterationSnapshotChangedEventArgs(
     PiAgentReviewedIterationSnapshot? snapshot) : EventArgs
 {
@@ -18,16 +23,21 @@ public sealed class PiAgentReviewedIterationCoordinator
     public const int MaximumApprovedEdits = 4;
     public const int PolicyLifetimeHours = 6;
     public const string ContinuationModel =
-        "desktop-auto-continue-after-owner-approved-edit-and-fixed-gate";
+        "desktop-continue-only-after-separate-owner-approved-trusted-validation";
     public const string ApprovalModel =
         "desktop-owner-one-shot-per-edit-no-model-decision-authority";
+    public const string ValidationApprovalModel =
+        "desktop-owner-one-shot-pinned-head-tests-no-model-execution-authority";
 
     private readonly PiAgentConversationState conversation;
     private readonly string workspaceRoot;
     private readonly PiAgentReviewedIterationStore store;
     private readonly PiAgentReviewedIterationRepositoryGate repositoryGate;
+    private readonly PiAgentReviewedIterationTrustedValidator trustedValidator;
     private readonly SemaphoreSlim operationGate = new(1, 1);
     private readonly object snapshotGate = new();
+    private readonly object validationOperationGate = new();
+    private CancellationTokenSource? validationOperationCancellation;
     private PiAgentReviewedIterationSnapshot? snapshot;
 
     private PiAgentReviewedIterationCoordinator(
@@ -35,12 +45,14 @@ public sealed class PiAgentReviewedIterationCoordinator
         string workspaceRoot,
         PiAgentReviewedIterationStore store,
         PiAgentReviewedIterationRepositoryGate repositoryGate,
+        PiAgentReviewedIterationTrustedValidator trustedValidator,
         PiAgentReviewedIterationSnapshot? snapshot)
     {
         this.conversation = conversation;
         this.workspaceRoot = workspaceRoot;
         this.store = store;
         this.repositoryGate = repositoryGate;
+        this.trustedValidator = trustedValidator;
         this.snapshot = snapshot;
     }
 
@@ -61,11 +73,13 @@ public sealed class PiAgentReviewedIterationCoordinator
     public static async Task<PiAgentReviewedIterationCoordinator> OpenAsync(
         PiAgentConversationState conversation,
         string workspaceRoot,
+        PiAgentSidecarOptions sidecarOptions,
         PiAgentReviewedIterationStore? store = null,
         PiAgentReviewedIterationRepositoryGate? repositoryGate = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(conversation);
+        ArgumentNullException.ThrowIfNull(sidecarOptions);
         string canonicalRoot = Path.TrimEndingDirectorySeparator(
             Path.GetFullPath(workspaceRoot));
         PiAgentReviewedIterationStore admittedStore =
@@ -74,12 +88,16 @@ public sealed class PiAgentReviewedIterationCoordinator
             await admittedStore.LoadLatestAsync(
                 canonicalRoot,
                 cancellationToken);
+        PiAgentReviewedIterationRepositoryGate admittedRepositoryGate =
+            repositoryGate ?? new PiAgentReviewedIterationRepositoryGate();
         PiAgentReviewedIterationCoordinator coordinator = new(
             conversation,
             canonicalRoot,
             admittedStore,
-            repositoryGate ??
-                new PiAgentReviewedIterationRepositoryGate(),
+            admittedRepositoryGate,
+            new PiAgentReviewedIterationTrustedValidator(
+                sidecarOptions.NodeExecutablePath,
+                admittedRepositoryGate),
             restored);
         if (restored is not null && !restored.IsTerminal)
         {
@@ -101,7 +119,9 @@ public sealed class PiAgentReviewedIterationCoordinator
                         StatusDetail = restoredStatus ==
                             PiAgentReviewedIterationStatus.Expired
                                 ? "The stored owner policy expired while the desktop was not running. No capability was restored."
-                                : "The desktop restarted. Validate and explicitly re-arm before Pi continues; no pending edit capability was restored.",
+                                : restored.Steps.LastOrDefault()?.TrustedValidationResult == "pending"
+                                    ? "The desktop restarted before trusted validation. Revalidate and explicitly re-arm the fixed test approval; no process capability was restored."
+                                    : "The desktop restarted. Validate and explicitly re-arm before Pi continues; no pending edit capability was restored.",
                         UpdatedAtUtc = DateTimeOffset.UtcNow,
                     },
                     cancellationToken,
@@ -135,9 +155,14 @@ public sealed class PiAgentReviewedIterationCoordinator
                 await repositoryGate.CaptureCleanBaselineAsync(
                     workspaceRoot,
                     cancellationToken);
+            PiAgentTrustedValidationProfileReceipt trustedProfile =
+                await trustedValidator.CaptureProfileAsync(
+                    workspaceRoot,
+                    baseline.Head,
+                    cancellationToken);
             DateTimeOffset startedAtUtc = DateTimeOffset.UtcNow;
             PiAgentReviewedIterationSnapshot next = new(
-                1,
+                2,
                 1,
                 $"review-loop-{startedAtUtc:yyyyMMddHHmmssfff}-" +
                     Guid.NewGuid().ToString("N")[..16],
@@ -147,7 +172,7 @@ public sealed class PiAgentReviewedIterationCoordinator
                 startedAtUtc.AddHours(PolicyLifetimeHours),
                 baseline.Head,
                 baseline.ValidationProfile,
-                true,
+                false,
                 PiAgentReviewedIterationStatus.ReadyToContinue,
                 1,
                 null,
@@ -156,7 +181,14 @@ public sealed class PiAgentReviewedIterationCoordinator
                 baseline.RepositoryDigest,
                 "Owner policy armed from a clean Git HEAD. Preparing the first bounded Pi turn.",
                 [],
-                startedAtUtc);
+                startedAtUtc)
+            {
+                TrustedValidationProfileId = trustedProfile.ProfileId,
+                TrustedValidationProfileDigest = trustedProfile.ProfileDigest,
+                TrustedValidationCommand = trustedProfile.CommandDisplay,
+                TrustedValidationTimeoutSeconds =
+                    trustedProfile.TimeoutSeconds,
+            };
             await PersistAsync(next, cancellationToken);
             return await BeginNextTurnLockedAsync(cancellationToken);
         }
@@ -352,21 +384,15 @@ public sealed class PiAgentReviewedIterationCoordinator
                 RequireSnapshot();
             int approvedCount =
                 currentAfterValidation.ApprovedEditCount + 1;
-            bool limitReached =
-                approvedCount >= currentAfterValidation.MaximumApprovedEdits;
             bool expired =
                 validationCompletedAtUtc >=
                     currentAfterValidation.ExpiresAtUtc;
             PiAgentReviewedIterationStatus nextStatus = expired
                 ? PiAgentReviewedIterationStatus.Expired
-                : limitReached
-                    ? PiAgentReviewedIterationStatus.Completed
-                    : PiAgentReviewedIterationStatus.ReadyToContinue;
+                : PiAgentReviewedIterationStatus.AwaitingTrustedValidation;
             string detail = expired
-                ? "The repository gate passed, but the owner policy expired before another turn could begin."
-                : limitReached
-                    ? "The repository gate passed and the owner policy reached its approved-edit limit."
-                    : "The repository gate passed. The desktop may continue to the next bounded proposal turn.";
+                ? "The repository gate passed, but the owner policy expired before trusted tests were authorized. No process was started."
+                : "The repository gate passed. The edit is paused until the owner separately authorizes the pinned HEAD test profile once.";
             PiAgentReviewedIterationSnapshot passed = await RecordDecisionAsync(
                 currentAfterValidation,
                 edit,
@@ -379,19 +405,177 @@ public sealed class PiAgentReviewedIterationCoordinator
                 detail,
                 validationCompletedAtUtc,
                 cancellationToken,
-                approvedCount);
-            if (nextStatus != PiAgentReviewedIterationStatus.ReadyToContinue)
-            {
-                return new(edit, passed, null);
-            }
-
-            PiAgentConversationTurn nextTurn =
-                await BeginNextTurnLockedAsync(cancellationToken);
-            return new(edit, RequireSnapshot(), nextTurn);
+                approvedCount,
+                expired ? "not-run-policy-expired" : "pending");
+            return new(edit, passed, null);
         }
         finally
         {
             operationGate.Release();
+        }
+    }
+
+    public async Task<PiAgentTrustedValidationDecisionResult>
+        RunTrustedValidationAndContinueAsync(
+            CancellationToken cancellationToken = default)
+    {
+        using CancellationTokenSource ownedCancellation = new();
+        using CancellationTokenSource operationCancellation =
+            CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
+                ownedCancellation.Token);
+        lock (validationOperationGate)
+        {
+            if (validationOperationCancellation is not null)
+            {
+                throw new InvalidOperationException(
+                    "A trusted validation operation is already active.");
+            }
+            validationOperationCancellation = ownedCancellation;
+        }
+        bool operationGateHeld = false;
+        try
+        {
+            await operationGate.WaitAsync(operationCancellation.Token);
+            operationGateHeld = true;
+            PiAgentReviewedIterationSnapshot current = RequireSnapshot();
+            if (
+                current.Status !=
+                    PiAgentReviewedIterationStatus.AwaitingTrustedValidation ||
+                current.SchemaVersion != 2 ||
+                current.Steps.LastOrDefault()?.TrustedValidationResult !=
+                    "pending")
+            {
+                throw new InvalidOperationException(
+                    "The reviewed iteration is not awaiting a trusted validation decision.");
+            }
+            if (DateTimeOffset.UtcNow >= current.ExpiresAtUtc)
+            {
+                PiAgentReviewedIterationSnapshot expired =
+                    await RecordTrustedValidationAsync(
+                        current,
+                        "not-run-policy-expired",
+                        null,
+                        null,
+                        "trusted-validation-policy-expired",
+                        PiAgentReviewedIterationStatus.Expired,
+                        "The owner policy expired before trusted validation was authorized. No process was started.",
+                        DateTimeOffset.UtcNow,
+                        operationCancellation.Token);
+                return new(null, expired, null);
+            }
+            await PersistAsync(
+                current with
+                {
+                    Status = PiAgentReviewedIterationStatus
+                        .TrustedValidationInFlight,
+                    StatusDetail =
+                        "The owner authorized one fixed validation run. Rechecking repository receipts before Node starts.",
+                    UpdatedAtUtc = DateTimeOffset.UtcNow,
+                },
+                operationCancellation.Token);
+
+            current = RequireSnapshot();
+            Dictionary<string, string> expectedFiles =
+                BuildExpectedFiles(current);
+            PiAgentRepositoryValidationReceipt before =
+                await repositoryGate.ValidateAsync(
+                    workspaceRoot,
+                    current.RepositoryHead,
+                    expectedFiles,
+                    operationCancellation.Token);
+            if (!before.Passed || before.RepositoryDigest is null)
+            {
+                PiAgentReviewedIterationSnapshot failed =
+                    await RecordTrustedValidationAsync(
+                        current,
+                        "not-run-repository-drift",
+                        null,
+                        null,
+                        before.ErrorCode ??
+                            "trusted-validation-pre-gate-failed",
+                        PiAgentReviewedIterationStatus.Faulted,
+                        "Trusted validation did not start because the repository no longer matched the reviewed receipts.",
+                        DateTimeOffset.UtcNow,
+                        operationCancellation.Token);
+                return new(null, failed, null);
+            }
+
+            PiAgentTrustedValidationReceipt validation =
+                await trustedValidator.RunAsync(
+                    workspaceRoot,
+                    current.RepositoryHead,
+                    current.TrustedValidationProfileId ?? "",
+                    current.TrustedValidationProfileDigest ?? "",
+                    expectedFiles.Keys.ToArray(),
+                    operationCancellation.Token);
+            PiAgentRepositoryValidationReceipt after =
+                await repositoryGate.ValidateAsync(
+                    workspaceRoot,
+                    current.RepositoryHead,
+                    expectedFiles,
+                    operationCancellation.Token);
+            bool passed =
+                validation.Passed &&
+                after.Passed &&
+                after.RepositoryDigest is not null;
+            DateTimeOffset completedAtUtc = DateTimeOffset.UtcNow;
+            PiAgentReviewedIterationStatus nextStatus = !passed
+                ? PiAgentReviewedIterationStatus.Faulted
+                : completedAtUtc >= current.ExpiresAtUtc
+                    ? PiAgentReviewedIterationStatus.Expired
+                    : current.ApprovedEditCount >=
+                        current.MaximumApprovedEdits
+                        ? PiAgentReviewedIterationStatus.Completed
+                        : PiAgentReviewedIterationStatus.ReadyToContinue;
+            string detail = !validation.Passed
+                ? "The fixed trusted test profile failed. The reviewed loop stopped without another Pi turn."
+                : !after.Passed
+                    ? "The tests exited successfully, but post-run repository revalidation detected drift. The loop stopped closed."
+                    : nextStatus == PiAgentReviewedIterationStatus.Expired
+                        ? "Trusted tests passed and the repository remained exact, but the owner policy expired before another turn."
+                        : nextStatus == PiAgentReviewedIterationStatus.Completed
+                            ? "Trusted tests passed and the approved-edit limit is complete."
+                            : "Trusted tests passed and the repository remained exact. The next bounded Pi turn may begin.";
+            string? errorCode = passed
+                ? null
+                : validation.ErrorCode ??
+                    after.ErrorCode ??
+                    "trusted-validation-post-gate-failed";
+            PiAgentReviewedIterationSnapshot recorded =
+                await RecordTrustedValidationAsync(
+                    current,
+                    passed ? "passed" : "failed",
+                    validation,
+                    after.RepositoryDigest,
+                    errorCode,
+                    nextStatus,
+                    detail,
+                    completedAtUtc,
+                    operationCancellation.Token);
+            if (nextStatus != PiAgentReviewedIterationStatus.ReadyToContinue)
+            {
+                return new(validation, recorded, null);
+            }
+            PiAgentConversationTurn nextTurn =
+                await BeginNextTurnLockedAsync(operationCancellation.Token);
+            return new(validation, RequireSnapshot(), nextTurn);
+        }
+        finally
+        {
+            if (operationGateHeld)
+            {
+                operationGate.Release();
+            }
+            lock (validationOperationGate)
+            {
+                if (ReferenceEquals(
+                        validationOperationCancellation,
+                        ownedCancellation))
+                {
+                    validationOperationCancellation = null;
+                }
+            }
         }
     }
 
@@ -444,7 +628,7 @@ public sealed class PiAgentReviewedIterationCoordinator
         }
     }
 
-    public async Task<PiAgentConversationTurn> ResumeAsync(
+    public async Task<PiAgentConversationTurn?> ResumeAsync(
         CancellationToken cancellationToken = default)
     {
         await operationGate.WaitAsync(cancellationToken);
@@ -472,6 +656,20 @@ public sealed class PiAgentReviewedIterationCoordinator
                     cancellationToken);
                 throw new InvalidOperationException(
                     "The reviewed iteration owner policy expired.");
+            }
+            if (current.SchemaVersion != 2)
+            {
+                await PersistAsync(
+                    current with
+                    {
+                        Status = PiAgentReviewedIterationStatus.Faulted,
+                        StatusDetail =
+                            "This stored policy predates separate trusted validation approval. Start a new clean-HEAD policy.",
+                        UpdatedAtUtc = DateTimeOffset.UtcNow,
+                    },
+                    cancellationToken);
+                throw new InvalidOperationException(
+                    "A legacy reviewed iteration policy cannot be re-armed.");
             }
             PiAgentRepositoryValidationReceipt validation =
                 await repositoryGate.ValidateAsync(
@@ -507,16 +705,50 @@ public sealed class PiAgentReviewedIterationCoordinator
                 throw new InvalidOperationException(
                     "The reviewed iteration owner policy expired during repository revalidation.");
             }
+            PiAgentTrustedValidationProfileReceipt trustedProfile =
+                await trustedValidator.CaptureProfileAsync(
+                    workspaceRoot,
+                    current.RepositoryHead,
+                    cancellationToken);
+            if (
+                trustedProfile.ProfileId !=
+                    current.TrustedValidationProfileId ||
+                trustedProfile.ProfileDigest !=
+                    current.TrustedValidationProfileDigest)
+            {
+                await PersistAsync(
+                    current with
+                    {
+                        Status = PiAgentReviewedIterationStatus.Faulted,
+                        StatusDetail =
+                            "Re-arm failed because the pinned trusted validation profile no longer matches its durable receipt.",
+                        UpdatedAtUtc = DateTimeOffset.UtcNow,
+                    },
+                    cancellationToken);
+                throw new InvalidOperationException(
+                    "The trusted validation profile failed durable revalidation.");
+            }
+            bool validationPending =
+                current.Steps.LastOrDefault()?.TrustedValidationResult ==
+                    "pending";
             await PersistAsync(
                 current with
                 {
-                    Status = PiAgentReviewedIterationStatus.ReadyToContinue,
+                    Status = validationPending
+                        ? PiAgentReviewedIterationStatus
+                            .AwaitingTrustedValidation
+                        : PiAgentReviewedIterationStatus.ReadyToContinue,
                     RepositoryDigest = validation.RepositoryDigest,
-                    StatusDetail =
-                        "Repository receipts revalidated. The owner explicitly re-armed one bounded continuation.",
+                    StatusDetail = validationPending
+                        ? "Repository and profile receipts revalidated. The owner may now separately authorize the pending fixed test run once."
+                        : "Repository and profile receipts revalidated. The owner explicitly re-armed one bounded continuation.",
                     UpdatedAtUtc = DateTimeOffset.UtcNow,
                 },
                 cancellationToken);
+            if (validationPending)
+            {
+                return null;
+            }
             return await BeginNextTurnLockedAsync(cancellationToken);
         }
         finally
@@ -528,6 +760,7 @@ public sealed class PiAgentReviewedIterationCoordinator
     public async Task StopAsync(
         CancellationToken cancellationToken = default)
     {
+        CancelTrustedValidationOperation();
         await operationGate.WaitAsync(cancellationToken);
         try
         {
@@ -591,6 +824,7 @@ public sealed class PiAgentReviewedIterationCoordinator
     public async Task SuspendAsync(
         CancellationToken cancellationToken = default)
     {
+        CancelTrustedValidationOperation();
         await operationGate.WaitAsync(cancellationToken);
         try
         {
@@ -709,7 +943,7 @@ public sealed class PiAgentReviewedIterationCoordinator
         prompt.AppendLine(
             "If neither safe proposal is appropriate or the mission is complete, do not propose a mutation; explain the completion or blocker.");
         prompt.AppendLine(
-            "You cannot approve, commit, run shell commands, change policy, or bypass the desktop repository gate.");
+            "You cannot approve, commit, run shell commands or tests, change policy, or bypass the desktop repository and separately owner-approved trusted validation gates.");
         return prompt.ToString();
     }
 
@@ -725,7 +959,8 @@ public sealed class PiAgentReviewedIterationCoordinator
         string detail,
         DateTimeOffset recordedAtUtc,
         CancellationToken cancellationToken,
-        int? approvedEditCount = null)
+        int? approvedEditCount = null,
+        string trustedValidationResult = "not-run")
     {
         string turnId = current.CurrentTurnId ??
             throw new InvalidOperationException(
@@ -742,7 +977,10 @@ public sealed class PiAgentReviewedIterationCoordinator
             validationResult,
             repositoryDigest,
             errorCode,
-            recordedAtUtc);
+            recordedAtUtc)
+        {
+            TrustedValidationResult = trustedValidationResult,
+        };
         PiAgentReviewedIterationSnapshot next = current with
         {
             Status = status,
@@ -758,6 +996,56 @@ public sealed class PiAgentReviewedIterationCoordinator
         };
         await PersistAsync(next, cancellationToken);
         return next;
+    }
+
+    private async Task<PiAgentReviewedIterationSnapshot>
+        RecordTrustedValidationAsync(
+            PiAgentReviewedIterationSnapshot current,
+            string result,
+            PiAgentTrustedValidationReceipt? validation,
+            string? repositoryDigest,
+            string? errorCode,
+            PiAgentReviewedIterationStatus status,
+            string detail,
+            DateTimeOffset completedAtUtc,
+            CancellationToken cancellationToken)
+    {
+        if (
+            current.Steps.Count == 0 ||
+            current.Steps[^1].TrustedValidationResult != "pending")
+        {
+            throw new InvalidOperationException(
+                "The trusted validation receipt has no pending reviewed edit.");
+        }
+        PiAgentReviewedIterationStepReceipt updatedStep =
+            current.Steps[^1] with
+            {
+                TrustedValidationResult = result,
+                TrustedValidationReceiptDigest =
+                    validation?.ReceiptDigest,
+                TrustedValidationOutputDigest =
+                    validation?.OutputDigest,
+                TrustedValidationExitCode = validation?.ExitCode,
+                TrustedValidationCompletedAtUtc =
+                    validation is null ? null : completedAtUtc,
+                ErrorCode = errorCode,
+                RepositoryDigest =
+                    repositoryDigest ?? current.Steps[^1].RepositoryDigest,
+            };
+        PiAgentReviewedIterationSnapshot next = current with
+        {
+            Status = status,
+            RepositoryDigest =
+                repositoryDigest ?? current.RepositoryDigest,
+            StatusDetail = detail,
+            Steps = current.Steps
+                .Take(current.Steps.Count - 1)
+                .Append(updatedStep)
+                .ToArray(),
+            UpdatedAtUtc = completedAtUtc,
+        };
+        await PersistAsync(next, cancellationToken);
+        return RequireSnapshot();
     }
 
     private static Dictionary<string, string> BuildExpectedFiles(
@@ -799,6 +1087,21 @@ public sealed class PiAgentReviewedIterationCoordinator
                 "The proposal is not the current reviewed iteration owner decision.");
         }
         return current;
+    }
+
+    private void CancelTrustedValidationOperation()
+    {
+        lock (validationOperationGate)
+        {
+            try
+            {
+                validationOperationCancellation?.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+        trustedValidator.CancelActiveRun();
     }
 
     private PiAgentReviewedIterationSnapshot RequireSnapshot() =>

@@ -15,7 +15,11 @@ Both modes expose only `read`, `grep`, `find`, `ls` and the non-writing
 owner can apply one exact replacement, one 2–8-hunk exact non-overlapping patch
 to a single existing UTF-8 file, or exclusively create one reviewed UTF-8 file
 beneath an existing parent. The optional reviewed loop requires a fresh
-one-shot approval plus fixed repository validation for every write. This desktop agent boundary
+one-shot write approval plus fixed repository validation for every write. It
+then pauses for a separate desktop-owner approval of the exact Node test profile
+pinned in the clean Git HEAD. The desktop executes that profile directly without
+a shell and reruns the repository gate afterward; only both passes may continue
+reasoning. Pi receives neither process nor validation-approval authority. This desktop agent boundary
 has no shell injection, Windhawk activation, Explorer lifecycle, registry or
 generic mutation capability. See
 `PI-AGENT-OPENAI-RESPONSES-PROVIDER.md` and

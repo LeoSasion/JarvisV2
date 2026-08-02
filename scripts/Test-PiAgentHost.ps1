@@ -49,8 +49,12 @@ $reviewedIterationGatePath = Join-Path $sourceRoot (
     'ReviewedIterationRepositoryGate.cs')
 $reviewedIterationCoordinatorPath = Join-Path $sourceRoot (
     'ReviewedIterationCoordinator.cs')
+$reviewedIterationTrustedValidationPath = Join-Path $sourceRoot (
+    'ReviewedIterationTrustedValidation.cs')
 $reviewedIterationProbePath = Join-Path $sourceRoot (
     'DiagnosticReviewedIteration.cs')
+$trustedValidationManifestPath = Join-Path $root (
+    'config\pi-agent-trusted-validation.json')
 $openAiProviderSourcePath = Join-Path $sourceRoot (
     'OpenAiResponsesModelProvider.cs')
 $openAiCredentialSourcePath = Join-Path $sourceRoot (
@@ -590,7 +594,8 @@ $reviewedIterationProductionText = @(
     [IO.File]::ReadAllText($reviewedIterationStatePath),
     [IO.File]::ReadAllText($reviewedIterationStorePath),
     [IO.File]::ReadAllText($reviewedIterationGatePath),
-    [IO.File]::ReadAllText($reviewedIterationCoordinatorPath)
+    [IO.File]::ReadAllText($reviewedIterationCoordinatorPath),
+    [IO.File]::ReadAllText($reviewedIterationTrustedValidationPath)
 ) -join [Environment]::NewLine
 $reviewedIterationProbeText =
     [IO.File]::ReadAllText($reviewedIterationProbePath)
@@ -775,6 +780,8 @@ Add-Check `
         (Test-Path -LiteralPath $reviewedIterationStorePath -PathType Leaf) -and
         (Test-Path -LiteralPath $reviewedIterationGatePath -PathType Leaf) -and
         (Test-Path -LiteralPath $reviewedIterationCoordinatorPath -PathType Leaf) -and
+        (Test-Path -LiteralPath $reviewedIterationTrustedValidationPath -PathType Leaf) -and
+        (Test-Path -LiteralPath $trustedValidationManifestPath -PathType Leaf) -and
         (Test-Path -LiteralPath $reviewedIterationProbePath -PathType Leaf) -and
         -not [regex]::IsMatch(
             $reviewedIterationProductionText,
@@ -785,6 +792,10 @@ Add-Check `
             'PolicyLifetimeHours = 6') -and
         $reviewedIterationProductionText.Contains(
             'desktop-owner-one-shot-per-edit-no-model-decision-authority') -and
+        $reviewedIterationProductionText.Contains(
+            'desktop-owner-one-shot-pinned-head-tests-no-model-execution-authority') -and
+        $reviewedIterationProductionText.Contains(
+            'desktop-owner-approved-pinned-head-node-test-direct-no-shell') -and
         $reviewedIterationProductionText.Contains(
             'current-user-dpapi-atomic-workspace-bound-durable-receipts') -and
         $reviewedIterationProductionText.Contains(
@@ -803,6 +814,16 @@ Add-Check `
             '"--no-textconv"') -and
         $reviewedIterationProductionText.Contains(
             'UseShellExecute = false') -and
+        $reviewedIterationProductionText.Contains(
+            'startInfo.Environment.Clear()') -and
+        $reviewedIterationProductionText.Contains(
+            'startInfo.ArgumentList.Add("--test")') -and
+        $reviewedIterationProductionText.Contains(
+            'AwaitingTrustedValidation') -and
+        $reviewedIterationProductionText.Contains(
+            'RunTrustedValidationAndContinueAsync') -and
+        $reviewedIterationProductionText.Contains(
+            'CancelTrustedValidationOperation') -and
         $reviewedIterationProductionText.Contains(
             'GIT_OPTIONAL_LOCKS') -and
         $reviewedIterationProductionText.Contains(
@@ -831,8 +852,8 @@ Add-Check `
             'UntrackedWhitespaceRejected')) `
     -Detail (
         'Reviewed iteration must remain a desktop-owner policy with four ' +
-        'one-shot approvals, six-hour expiry, DPAPI receipts, fixed direct-Git ' +
-        'and non-executing structured-text validation, and explicit restart re-arm.')
+        'one-shot write approvals, separate pinned-test approval, six-hour expiry, ' +
+        'DPAPI receipts, fixed direct-Git pre/post gates and explicit restart re-arm.')
 
 $controlCenterProjectText =
     [IO.File]::ReadAllText($controlCenterProjectPath)
@@ -1215,6 +1236,10 @@ if (-not $StaticOnly) {
             $reviewedIterationReceipt.approvedNewFileValidated -and
             $reviewedIterationReceipt.approvedPatchValidated -and
             $reviewedIterationReceipt.untrackedWhitespaceRejected -and
+            $reviewedIterationReceipt.separateTrustedValidationApprovalRequired -and
+            $reviewedIterationReceipt.trustedValidationPassed -and
+            $reviewedIterationReceipt.modifiedTrustedTestRejected -and
+            $reviewedIterationReceipt.trustedValidationCancellationPassed -and
             $reviewedIterationReceipt.automaticReasoningContinuationPassed -and
             $reviewedIterationReceipt.secondProposalPausedForOwner -and
             $reviewedIterationReceipt.rejectionStoppedLoop -and
@@ -1223,6 +1248,7 @@ if (-not $StaticOnly) {
             $reviewedIterationReceipt.explicitRearmPassed -and
             $reviewedIterationReceipt.repositoryDriftRejected -and
             -not $reviewedIterationReceipt.shellAvailableToPi -and
+            -not $reviewedIterationReceipt.validationProcessAvailableToPi -and
             -not $reviewedIterationReceipt.unattendedApprovalAllowed -and
             $reviewedIterationReceipt.maximumApprovedEdits -eq 4 -and
             $reviewedIterationReceipt.policyLifetimeHours -eq 6 -and
@@ -1647,15 +1673,20 @@ $passed = $failures.Count -eq 0
     reviewedIterationPolicy =
         'desktop-owner-fixed-four-edits-six-hours'
     reviewedIterationContinuation =
-        'automatic-after-owner-approval-and-passed-repository-gate'
+        'automatic-only-after-separate-owner-approved-trusted-validation-pass'
     reviewedIterationStore =
         'current-user-dpapi-atomic-workspace-bound-durable-receipts'
     reviewedIterationEnvelopeMaxBytes = 262144
     reviewedIterationValidationProfile =
         'git-head-pathset-text-hash-diffcheck-structured-parse-v2'
     reviewedIterationRestart =
-        'interrupted-explicit-rearm-no-proposal-restore'
-    reviewedIterationWorkspaceCodeExecution = $false
+        'interrupted-explicit-rearm-no-proposal-or-process-restore'
+    reviewedIterationTrustedValidation =
+        'pinned-head-node-test-direct-no-shell-pre-post-repository-gate'
+    reviewedIterationWorkspaceCodeExecution = $true
+    reviewedIterationWorkspaceCodeExecutionAuthority =
+        'desktop-owner-one-shot-only'
+    reviewedIterationValidationProcessAvailableToPi = $false
     desktopRuntimeImplemented = $true
     desktopRuntimeOwnership =
         'desktop-owned-broker-sidecar-session-conversation'

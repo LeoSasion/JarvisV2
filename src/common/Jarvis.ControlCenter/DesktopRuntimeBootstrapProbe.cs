@@ -338,6 +338,10 @@ public static class DesktopRuntimeBootstrapProbe
                 "self-contained-wpf-plus-bundled-node-pi-sidecar-and-fixed-git",
             reviewedIterationGitRuntime =
                 "bundled-runtime-git-cmd-direct-no-shell",
+            reviewedIterationTrustedValidation =
+                "owner-approved-pinned-head-node-test-direct-no-shell-pre-post-gate",
+            ownerTrustedValidationApprovalRequired = true,
+            piTrustedValidationProcessAvailable = false,
             gitRuntimeFileCount = 1,
             gitRuntimeBytes = new FileInfo(Path.Combine(
                 application,

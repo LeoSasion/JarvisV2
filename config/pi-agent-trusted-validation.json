@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "profileId": "jarvisv2-pi-agent-node-tests-v1",
+  "runner": "node-test",
+  "timeoutSeconds": 90,
+  "testFiles": [
+    "src/common/Jarvis.PiAgentHost/test/protocol.test.mjs",
+    "src/common/Jarvis.PiAgentHost/test/desktop-model-broker.test.mjs",
+    "src/common/Jarvis.PiAgentHost/test/workspace-edit-approval.test.mjs"
+  ]
+}

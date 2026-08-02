@@ -133,8 +133,11 @@ The runtime inspector also contains the reviewed-iteration owner policy. The
 operator types a mission in the existing composer, arms it from the inspector,
 and can stop or explicitly re-arm an interrupted policy without leaving the
 conversation. The same panel names the four-edit limit, six-hour expiry, pinned
-HEAD, durable receipt count and current gate state. It does not create a modal
-approval surface or displace the transcript.
+HEAD, durable receipt count, current gate state and exact baseline-owned Node
+test command. After an approved write passes the non-executing gate, the panel
+exposes `RUN PINNED TESTS ONCE` as a separate owner action; Pi cannot press it
+or invoke the runner. It does not create a modal approval surface or displace
+the transcript.
 
 ## Design decision
 
@@ -172,6 +175,10 @@ The multi-hunk review state is captured at
 `docs/screenshots/jarvis-control-center-reviewed-multi-hunk-patch.png`; it keeps
 every full remove/add segment in the producing turn and exposes `APPLY PATCH
 ONCE` without starting Pi or changing a file.
+The separate trusted-validation control is captured at
+`docs/screenshots/jarvis-control-center-trusted-validation.png`; it shows the
+pinned-profile disclosure and test-once action without starting Pi, Node or a
+workspace mutation.
 The returning-user launcher is captured at
 `docs/screenshots/jarvis-session-launcher-recent-work.png`; it shows available
 and unavailable recent-work states without starting a runtime.

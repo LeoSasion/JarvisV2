@@ -19,6 +19,10 @@ public sealed record PiAgentReviewedIterationProbeReceipt(
     bool ApprovedNewFileValidated,
     bool ApprovedPatchValidated,
     bool UntrackedWhitespaceRejected,
+    bool SeparateTrustedValidationApprovalRequired,
+    bool TrustedValidationPassed,
+    bool ModifiedTrustedTestRejected,
+    bool TrustedValidationCancellationPassed,
     bool AutomaticReasoningContinuationPassed,
     bool SecondProposalPausedForOwner,
     bool RejectionStoppedLoop,
@@ -27,6 +31,7 @@ public sealed record PiAgentReviewedIterationProbeReceipt(
     bool ExplicitRearmPassed,
     bool RepositoryDriftRejected,
     bool ShellAvailableToPi,
+    bool ValidationProcessAvailableToPi,
     bool UnattendedApprovalAllowed,
     int MaximumApprovedEdits,
     int PolicyLifetimeHours,
@@ -56,6 +61,21 @@ public static class PiAgentReviewedIterationProbe
         string createdFixturePath = Path.Combine(
             fixtureRoot,
             "generated.txt");
+        string validationMarkerPath = Path.Combine(
+            Path.GetTempPath(),
+            "jarvis-reviewed-validation-" +
+                Path.GetFileName(fixtureRoot) +
+                ".marker");
+        string validationCancelStartedPath = Path.Combine(
+            Path.GetTempPath(),
+            "jarvis-reviewed-validation-" +
+                Path.GetFileName(fixtureRoot) +
+                "-cancel-started.marker");
+        string validationCancelCompletedPath = Path.Combine(
+            Path.GetTempPath(),
+            "jarvis-reviewed-validation-" +
+                Path.GetFileName(fixtureRoot) +
+                "-cancel-completed.marker");
         int brokerRequests = 0;
         int brokerFaults = 0;
         try
@@ -64,6 +84,46 @@ public static class PiAgentReviewedIterationProbe
                 fixturePath,
                 "alpha\nowner-reviewed\nomega\n",
                 new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+                cancellationToken);
+            Directory.CreateDirectory(Path.Combine(fixtureRoot, "config"));
+            await File.WriteAllTextAsync(
+                Path.Combine(
+                    fixtureRoot,
+                    PiAgentReviewedIterationTrustedValidator
+                        .ManifestRelativePath.Replace(
+                            '/',
+                            Path.DirectorySeparatorChar)),
+                """
+                {
+                  "schemaVersion": 1,
+                  "profileId": "jarvisv2-reviewed-fixture-v1",
+                  "runner": "node-test",
+                  "timeoutSeconds": 30,
+                  "testFiles": ["trusted-validation.test.mjs"]
+                }
+                """ + "\n",
+                new UTF8Encoding(false),
+                cancellationToken);
+            await File.WriteAllTextAsync(
+                Path.Combine(fixtureRoot, "trusted-validation.test.mjs"),
+                """
+                import assert from "node:assert/strict";
+                import { appendFile, readFile } from "node:fs/promises";
+                import { tmpdir } from "node:os";
+                import { basename, join } from "node:path";
+
+                const content = await readFile("generated.txt", "utf8");
+                assert.match(content, /^(owner-created|OWNER-patched)\n$/);
+                await appendFile(
+                  join(
+                    tmpdir(),
+                    `jarvis-reviewed-validation-${basename(process.cwd())}.marker`,
+                  ),
+                  "run\n",
+                  "utf8",
+                );
+                """ + "\n",
+                new UTF8Encoding(false),
                 cancellationToken);
             await RunGitAsync(
                 gitExecutable,
@@ -83,7 +143,13 @@ public static class PiAgentReviewedIterationProbe
             await RunGitAsync(
                 gitExecutable,
                 fixtureRoot,
-                ["add", "--", "review.txt"],
+                [
+                    "add",
+                    "--",
+                    "review.txt",
+                    "config/pi-agent-trusted-validation.json",
+                    "trusted-validation.test.mjs",
+                ],
                 cancellationToken);
             await RunGitAsync(
                 gitExecutable,
@@ -134,6 +200,8 @@ public static class PiAgentReviewedIterationProbe
             bool approvedValidated;
             bool approvedNewFileValidated;
             bool approvedPatchValidated;
+            bool separateValidationApproval;
+            bool trustedValidationPassed;
             bool automaticContinuation;
             bool secondProposalPaused;
             bool rejectionStopped;
@@ -150,6 +218,7 @@ public static class PiAgentReviewedIterationProbe
                     await PiAgentReviewedIterationCoordinator.OpenAsync(
                         runtime.Conversation,
                         fixtureRoot,
+                        sidecarOptions,
                         store,
                         gate,
                         cancellationToken);
@@ -193,21 +262,43 @@ public static class PiAgentReviewedIterationProbe
                         createdFixturePath,
                         cancellationToken) ==
                         "owner-created\n";
-                automaticContinuation =
-                    approved.ContinuedTurn is not null &&
+                separateValidationApproval =
+                    approved.ContinuedTurn is null &&
                     approved.Iteration.Status ==
+                        PiAgentReviewedIterationStatus
+                            .AwaitingTrustedValidation &&
+                    approved.Iteration.Steps.Single()
+                        .TrustedValidationResult == "pending" &&
+                    !File.Exists(validationMarkerPath);
+                PiAgentTrustedValidationDecisionResult firstValidation =
+                    await coordinator
+                        .RunTrustedValidationAndContinueAsync(
+                            cancellationToken);
+                trustedValidationPassed =
+                    firstValidation.Validation is
+                        { Passed: true, ExitCode: 0 } &&
+                    firstValidation.Iteration.Steps.Single()
+                        .TrustedValidationResult == "passed" &&
+                    File.Exists(validationMarkerPath) &&
+                    (await File.ReadAllLinesAsync(
+                        validationMarkerPath,
+                        cancellationToken)).Length == 1;
+                automaticContinuation =
+                    firstValidation.ContinuedTurn is not null &&
+                    firstValidation.Iteration.Status ==
                         PiAgentReviewedIterationStatus.ActiveTurn;
-                if (approved.ContinuedTurn is null)
+                if (firstValidation.ContinuedTurn is null)
                 {
                     throw new InvalidOperationException(
-                        "The reviewed iteration did not continue after approval: " +
-                        approved.Iteration.StatusDetail + " / " +
-                        approved.Iteration.Steps.Last().ValidationResult +
+                        "The reviewed iteration did not continue after trusted validation: " +
+                        firstValidation.Iteration.StatusDetail + " / " +
+                        firstValidation.Iteration.Steps.Last()
+                            .TrustedValidationResult +
                         " / " +
-                        approved.Iteration.Steps.Last().ErrorCode);
+                        firstValidation.Iteration.Steps.Last().ErrorCode);
                 }
                 PiAgentConversationTurnSnapshot secondFinal =
-                    await approved.ContinuedTurn.Completion.WaitAsync(
+                    await firstValidation.ContinuedTurn.Completion.WaitAsync(
                         cancellationToken);
                 await coordinator.ObserveTurnCompletionAsync(
                     secondFinal,
@@ -243,18 +334,42 @@ public static class PiAgentReviewedIterationProbe
                         createdFixturePath,
                         cancellationToken) ==
                         "OWNER-patched\n";
+                separateValidationApproval =
+                    separateValidationApproval &&
+                    patchApproved.ContinuedTurn is null &&
+                    patchApproved.Iteration.Status ==
+                        PiAgentReviewedIterationStatus
+                            .AwaitingTrustedValidation &&
+                    patchApproved.Iteration.Steps.Last()
+                        .TrustedValidationResult == "pending" &&
+                    (await File.ReadAllLinesAsync(
+                        validationMarkerPath,
+                        cancellationToken)).Length == 1;
+                PiAgentTrustedValidationDecisionResult secondValidation =
+                    await coordinator
+                        .RunTrustedValidationAndContinueAsync(
+                            cancellationToken);
+                trustedValidationPassed =
+                    trustedValidationPassed &&
+                    secondValidation.Validation is
+                        { Passed: true, ExitCode: 0 } &&
+                    secondValidation.Iteration.Steps.Last()
+                        .TrustedValidationResult == "passed" &&
+                    (await File.ReadAllLinesAsync(
+                        validationMarkerPath,
+                        cancellationToken)).Length == 2;
                 automaticContinuation =
                     automaticContinuation &&
-                    patchApproved.ContinuedTurn is not null &&
-                    patchApproved.Iteration.Status ==
+                    secondValidation.ContinuedTurn is not null &&
+                    secondValidation.Iteration.Status ==
                         PiAgentReviewedIterationStatus.ActiveTurn;
-                if (patchApproved.ContinuedTurn is null)
+                if (secondValidation.ContinuedTurn is null)
                 {
                     throw new InvalidOperationException(
-                        "The reviewed iteration did not continue after the approved patch.");
+                        "The reviewed iteration did not continue after the second trusted validation.");
                 }
                 PiAgentConversationTurnSnapshot thirdFinal =
-                    await patchApproved.ContinuedTurn.Completion.WaitAsync(
+                    await secondValidation.ContinuedTurn.Completion.WaitAsync(
                         cancellationToken);
                 await coordinator.ObserveTurnCompletionAsync(
                     thirdFinal,
@@ -290,7 +405,12 @@ public static class PiAgentReviewedIterationProbe
                 durableFirst.Status ==
                     PiAgentReviewedIterationStatus.Stopped &&
                 durableFirst.Steps.Count == 3 &&
-                durableFirst.ApprovedEditCount == 2;
+                durableFirst.ApprovedEditCount == 2 &&
+                durableFirst.Steps.Take(2).All(step =>
+                    step.TrustedValidationResult == "passed" &&
+                    step.TrustedValidationReceiptDigest is not null &&
+                    step.TrustedValidationOutputDigest is not null &&
+                    step.TrustedValidationExitCode == 0);
             bool ciphertext = Directory.EnumerateFiles(
                     storeRoot,
                     "*.j2iteration",
@@ -327,6 +447,7 @@ public static class PiAgentReviewedIterationProbe
                     await PiAgentReviewedIterationCoordinator.OpenAsync(
                         runtime.Conversation,
                         fixtureRoot,
+                        sidecarOptions,
                         store,
                         gate,
                         cancellationToken);
@@ -374,6 +495,7 @@ public static class PiAgentReviewedIterationProbe
                     await PiAgentReviewedIterationCoordinator.OpenAsync(
                         runtime.Conversation,
                         fixtureRoot,
+                        sidecarOptions,
                         store,
                         gate,
                         cancellationToken);
@@ -385,7 +507,9 @@ public static class PiAgentReviewedIterationProbe
                         .Count() == 0 &&
                     runtime.Conversation.Snapshot.CanSubmit;
                 PiAgentConversationTurn resumed =
-                    await coordinator.ResumeAsync(cancellationToken);
+                    await coordinator.ResumeAsync(cancellationToken) ??
+                    throw new InvalidOperationException(
+                        "Explicit re-arm did not start a bounded turn.");
                 PiAgentConversationTurnSnapshot resumedFinal =
                     await resumed.Completion.WaitAsync(cancellationToken);
                 await coordinator.ObserveTurnCompletionAsync(
@@ -423,6 +547,107 @@ public static class PiAgentReviewedIterationProbe
                     cancellationToken);
             bool repositoryDriftRejected =
                 !drift.Passed && drift.RepositoryDigest is null;
+            await File.WriteAllTextAsync(
+                Path.Combine(fixtureRoot, "trusted-cancellation.test.mjs"),
+                """
+                import { writeFile } from "node:fs/promises";
+                import { tmpdir } from "node:os";
+                import { basename, join } from "node:path";
+
+                const prefix = join(
+                  tmpdir(),
+                  `jarvis-reviewed-validation-${basename(process.cwd())}`,
+                );
+                await writeFile(`${prefix}-cancel-started.marker`, "started\n", "utf8");
+                await new Promise((resolve) => setTimeout(resolve, 60_000));
+                await writeFile(`${prefix}-cancel-completed.marker`, "completed\n", "utf8");
+                """ + "\n",
+                new UTF8Encoding(false),
+                cancellationToken);
+            await File.WriteAllTextAsync(
+                Path.Combine(
+                    fixtureRoot,
+                    PiAgentReviewedIterationTrustedValidator
+                        .ManifestRelativePath.Replace(
+                            '/',
+                            Path.DirectorySeparatorChar)),
+                """
+                {
+                  "schemaVersion": 1,
+                  "profileId": "jarvisv2-reviewed-cancellation-v1",
+                  "runner": "node-test",
+                  "timeoutSeconds": 120,
+                  "testFiles": ["trusted-cancellation.test.mjs"]
+                }
+                """ + "\n",
+                new UTF8Encoding(false),
+                cancellationToken);
+            await RunGitAsync(
+                gitExecutable,
+                fixtureRoot,
+                [
+                    "add",
+                    "--",
+                    "config/pi-agent-trusted-validation.json",
+                    "trusted-cancellation.test.mjs",
+                ],
+                cancellationToken);
+            await RunGitAsync(
+                gitExecutable,
+                fixtureRoot,
+                ["commit", "--quiet", "-m", "probe cancellation profile"],
+                cancellationToken);
+            PiAgentRepositoryBaselineReceipt cancellationBaseline =
+                await gate.CaptureCleanBaselineAsync(
+                    fixtureRoot,
+                    cancellationToken);
+            PiAgentReviewedIterationTrustedValidator cancellationValidator =
+                new(sidecarOptions.NodeExecutablePath, gate);
+            PiAgentTrustedValidationProfileReceipt cancellationProfile =
+                await cancellationValidator.CaptureProfileAsync(
+                    fixtureRoot,
+                    cancellationBaseline.Head,
+                    cancellationToken);
+            PiAgentTrustedValidationReceipt modifiedTestReceipt =
+                await cancellationValidator.RunAsync(
+                    fixtureRoot,
+                    cancellationBaseline.Head,
+                    cancellationProfile.ProfileId,
+                    cancellationProfile.ProfileDigest,
+                    ["trusted-cancellation.test.mjs"],
+                    cancellationToken);
+            bool modifiedTrustedTestRejected =
+                !modifiedTestReceipt.Passed &&
+                modifiedTestReceipt.ErrorCode ==
+                    "trusted-validation-test-file-modified" &&
+                !File.Exists(validationCancelStartedPath);
+            Task<PiAgentTrustedValidationReceipt> cancellationRun =
+                cancellationValidator.RunAsync(
+                    fixtureRoot,
+                    cancellationBaseline.Head,
+                    cancellationProfile.ProfileId,
+                    cancellationProfile.ProfileDigest,
+                    [],
+                    cancellationToken);
+            for (
+                int attempt = 0;
+                attempt < 40 && !File.Exists(validationCancelStartedPath);
+                attempt++)
+            {
+                await Task.Delay(50, cancellationToken);
+            }
+            cancellationValidator.CancelActiveRun();
+            PiAgentTrustedValidationReceipt cancellationReceipt =
+                await cancellationRun.WaitAsync(
+                    TimeSpan.FromSeconds(5),
+                    cancellationToken);
+            await Task.Delay(200, cancellationToken);
+            bool trustedValidationCancellation =
+                File.Exists(validationCancelStartedPath) &&
+                !File.Exists(validationCancelCompletedPath) &&
+                !cancellationReceipt.Passed &&
+                cancellationReceipt.ErrorCode ==
+                    "trusted-validation-cancelled";
             int receiptCount = Directory.EnumerateFiles(
                     storeRoot,
                     "*.j2iteration",
@@ -435,7 +660,10 @@ public static class PiAgentReviewedIterationProbe
                 durableFirst.ExpiresAtUtc - durableFirst.StartedAtUtc ==
                     TimeSpan.FromHours(
                         PiAgentReviewedIterationCoordinator.PolicyLifetimeHours) &&
-                durableFirst.AutoContinueAfterApproval;
+                durableFirst.SchemaVersion == 2 &&
+                !durableFirst.AutoContinueAfterApproval &&
+                durableFirst.TrustedValidationProfileId ==
+                    "jarvisv2-reviewed-fixture-v1";
             bool passed =
                 cleanBaselineRequired &&
                 durableRoundTrip &&
@@ -446,6 +674,10 @@ public static class PiAgentReviewedIterationProbe
                 approvedNewFileValidated &&
                 approvedPatchValidated &&
                 untrackedWhitespaceRejected &&
+                separateValidationApproval &&
+                trustedValidationPassed &&
+                modifiedTrustedTestRejected &&
+                trustedValidationCancellation &&
                 automaticContinuation &&
                 secondProposalPaused &&
                 rejectionStopped &&
@@ -468,6 +700,10 @@ public static class PiAgentReviewedIterationProbe
                 approvedNewFileValidated,
                 approvedPatchValidated,
                 untrackedWhitespaceRejected,
+                separateValidationApproval,
+                trustedValidationPassed,
+                modifiedTrustedTestRejected,
+                trustedValidationCancellation,
                 automaticContinuation,
                 secondProposalPaused,
                 rejectionStopped,
@@ -475,6 +711,7 @@ public static class PiAgentReviewedIterationProbe
                 restartNoCapability,
                 explicitRearm,
                 repositoryDriftRejected,
+                false,
                 false,
                 false,
                 PiAgentReviewedIterationCoordinator.MaximumApprovedEdits,
@@ -487,6 +724,18 @@ public static class PiAgentReviewedIterationProbe
         }
         finally
         {
+            if (File.Exists(validationMarkerPath))
+            {
+                File.Delete(validationMarkerPath);
+            }
+            if (File.Exists(validationCancelStartedPath))
+            {
+                File.Delete(validationCancelStartedPath);
+            }
+            if (File.Exists(validationCancelCompletedPath))
+            {
+                File.Delete(validationCancelCompletedPath);
+            }
             DeleteProbeDirectory(fixtureRoot, ".jarvis-reviewed-iteration-");
             DeleteProbeDirectory(
                 storeRoot,

@@ -94,9 +94,13 @@ review text is capped at 16 KiB. The
 desktop can also arm a four-edit, six-hour reviewed iteration from a clean Git
 HEAD. It stores CurrentUser-DPAPI receipts and continues reasoning only after
 each owner approval passes the fixed Git, strict UTF-8, tracked/untracked diff
-and structured-text gate; unattended approval is
-still unavailable. The portable receipt therefore
+and structured-text gate, then the owner separately approves the exact Node
+test profile pinned in that HEAD. The bundled Node executable is launched
+directly without a shell, with bounded time/output and full pre/post repository
+revalidation; unattended approval and Pi process access remain unavailable.
+The portable receipt therefore
 records the bundled `runtime\git\cmd\git.exe` direct-process gate alongside
-the Node and Pi runtimes. No host Git installation is required by the package.
+the direct trusted-validation boundary, Node and Pi runtimes. No host Git
+installation is required by the package.
 fixes `activationPermitted=false`, `liveExplorer=not-run` and
 `systemMutationPerformed=false`.

@@ -99,9 +99,10 @@ The interface earns its science-fiction character through precision and visible
 system truth rather than ornament.
 
 The signature relationship is one active request moving from operator to Pi,
-through an admitted read-or-propose tool, into an exact owner decision, through
-a fixed repository and structured-text gate, and back to Pi for at most one next
-reasoning turn. The design keeps ownership, capability limits, cancellation,
+through an admitted read-or-propose tool, into an exact owner write decision,
+through a fixed repository and structured-text gate, into a second owner
+decision for the pinned trusted tests, and back to Pi only after their pass and
+an exact post-run repository receipt. The design keeps ownership, capability limits, cancellation,
 persistence and shutdown in the same visual field as the conversation.
 Completed work recedes; the current owner receives the accent. Automatic
 continuation advances reasoning only and never advances approval.
@@ -207,7 +208,8 @@ gaps are 18-20 pixels; four- and eight-pixel increments handle local rhythm.
 
 Reviewed iteration remains inside this same frame. The proposal occupies a
 bounded plane within its producing transcript turn; the owner policy, 0-of-4
-counter, six-hour boundary, receipt state and START / RE-ARM / STOP controls live
+counter, six-hour boundary, receipt state and START / RUN PINNED TESTS ONCE /
+RE-ARM / STOP controls live
 in the right inspector. The four-stage rail stays four stages wide: its compact
 `BOUNDED TOOL` label covers read, find and propose without clipping, while the
 owner decision is shown where the exact diff can be reviewed. Transcript and
@@ -359,24 +361,34 @@ one-shot approval action.
 
 The inspector presents reviewed iteration as a bounded owner policy, not an
 agent preference. Its durable summary shows armed/not-armed status, applied
-owner approvals out of four, expiry within six hours, pinned clean Git HEAD and
-CurrentUser-DPAPI receipt state. START REVIEWED LOOP is available only from an
-owner mission in the composer. STOP LOOP is always an owner action. RE-ARM may
-appear only for an interrupted, unexpired policy after the full fixed gate is
-rerun; restart never restores proposal authority.
+owner approvals out of four, expiry within six hours, pinned clean Git HEAD,
+the exact baseline-owned test command and CurrentUser-DPAPI receipt state.
+START REVIEWED LOOP is available only from an owner mission in the composer.
+After an approved write passes the non-executing repository gate, RUN PINNED
+TESTS ONCE becomes the sole amber advancing action and consumes a separate
+owner decision. STOP LOOP is always an owner action. RE-ARM may appear only for
+an interrupted, unexpired policy after the full fixed gate and validation
+profile are rechecked; restart restores neither proposal nor process authority.
 
-After Approve Once, keep the turn paused until the fixed validation evidence is
-terminal. The status must distinguish pinned HEAD, exact approved path set,
-current file hashes, strict UTF-8 text, tracked and untracked whitespace diff
-checks, strict JSON parsing and DTD-disabled XML/XAML/project parsing. A pass may
-submit one next Pi reasoning turn within the remaining count and time; a failure
-stops closed. Durable receipts record the decision and gate outcome, while
-proposal contents and capability remain session-memory-only.
+After Approve Once, keep the turn paused through two visibly distinct phases.
+First, the non-executing gate must distinguish pinned HEAD, exact approved path
+set, current file hashes, strict UTF-8 text, tracked and untracked whitespace
+diff checks, strict JSON parsing and DTD-disabled XML/XAML/project parsing.
+Second, show the exact Node test command loaded from the clean HEAD and require
+RUN PINNED TESTS ONCE. The desktop bounds execution time and output, strips the
+environment to an OS allowlist, and reruns the full repository gate afterward.
+Only both passes may submit one next Pi reasoning turn within the remaining
+count and time; either failure stops closed. Durable receipts record the write,
+both gate outcomes and test-output digest, while proposal contents and process
+authority remain unavailable to Pi.
 
 Repository validation directly launches the bundled
 `runtime\git\cmd\git.exe` with no shell. No UI label may imply that a workspace
 script, build, test target, PowerShell or command prompt was executed by this
-gate.
+gate. The separately labeled trusted-validation action launches the bundled
+`runtime\node\node.exe` directly with the fixed `--test` argument list from
+`config/pi-agent-trusted-validation.json` at the pinned HEAD; it must never be
+described as part of the repository gate or as a Pi tool.
 
 ### Runtime Inspector and Status Dock
 
@@ -410,8 +422,8 @@ primary actions.
 - **Do** preserve CurrentUser-DPAPI durable receipts while making proposal
   authority explicitly ephemeral across shutdown and restart.
 - **Do** expose the fixed pinned-HEAD, exact-path-set, hash, diff-check, strict
-  JSON and safe XML/XAML/project parse gate before automatic reasoning may
-  continue.
+  JSON and safe XML/XAML/project parse gate, then the exact pinned Node test
+  command and its separate owner approval before reasoning may continue.
 - **Do** keep recent-work resume one action while naming its revalidation and
   showing unavailable paths instead of silently dropping them.
 - **Do** render RE-ARM as a fresh owner action after repository revalidation,
@@ -439,6 +451,9 @@ primary actions.
 - **Don't** imply that the repository gate invokes a shell or repository-authored
   code: it starts the bundled `runtime\git\cmd\git.exe` directly and validates
   only the fixed Git/hash/diff/structured-text conditions.
+- **Don't** present trusted validation as model authority: Pi cannot invoke
+  Node, choose the test files, change the baseline profile or press RUN PINNED
+  TESTS ONCE.
 - **Don't** treat the recent-session catalog as path admission, checkpoint
   authentication or permission to resume a pending proposal.
 - **Don't** expand reviewed iteration into Explorer, registry, service, device,

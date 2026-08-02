@@ -10,6 +10,8 @@ public enum PiAgentReviewedIterationStatus
     AwaitingOwnerReview,
     DecisionInFlight,
     Validating,
+    AwaitingTrustedValidation,
+    TrustedValidationInFlight,
     ReadyToContinue,
     Completed,
     Stopped,
@@ -30,7 +32,14 @@ public sealed record PiAgentReviewedIterationStepReceipt(
     string ValidationResult,
     string? RepositoryDigest,
     string? ErrorCode,
-    DateTimeOffset RecordedAtUtc);
+    DateTimeOffset RecordedAtUtc)
+{
+    public string TrustedValidationResult { get; init; } = "not-run";
+    public string? TrustedValidationReceiptDigest { get; init; }
+    public string? TrustedValidationOutputDigest { get; init; }
+    public int? TrustedValidationExitCode { get; init; }
+    public DateTimeOffset? TrustedValidationCompletedAtUtc { get; init; }
+}
 
 public sealed record PiAgentReviewedIterationSnapshot(
     int SchemaVersion,
@@ -53,6 +62,11 @@ public sealed record PiAgentReviewedIterationSnapshot(
     IReadOnlyList<PiAgentReviewedIterationStepReceipt> Steps,
     DateTimeOffset UpdatedAtUtc)
 {
+    public string? TrustedValidationProfileId { get; init; }
+    public string? TrustedValidationProfileDigest { get; init; }
+    public string? TrustedValidationCommand { get; init; }
+    public int? TrustedValidationTimeoutSeconds { get; init; }
+
     public bool IsTerminal => Status is
         PiAgentReviewedIterationStatus.Completed or
         PiAgentReviewedIterationStatus.Stopped or
@@ -68,6 +82,10 @@ public sealed record PiAgentReviewedIterationSnapshot(
             "OWNER DECISION IN FLIGHT",
         PiAgentReviewedIterationStatus.Validating =>
             "REPOSITORY GATE RUNNING",
+        PiAgentReviewedIterationStatus.AwaitingTrustedValidation =>
+            "VALIDATION APPROVAL REQUIRED",
+        PiAgentReviewedIterationStatus.TrustedValidationInFlight =>
+            "TRUSTED TESTS RUNNING",
         PiAgentReviewedIterationStatus.ReadyToContinue =>
             "VALIDATED / CONTINUING",
         PiAgentReviewedIterationStatus.Completed => "COMPLETED",
@@ -130,7 +148,7 @@ internal static partial class PiAgentReviewedIterationAdmission
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         if (
-            snapshot.SchemaVersion != 1 ||
+            snapshot.SchemaVersion is not (1 or 2) ||
             snapshot.Revision is < 1 or > 64 ||
             !IterationIdPattern().IsMatch(snapshot.IterationId) ||
             string.IsNullOrWhiteSpace(snapshot.Mission) ||
@@ -143,7 +161,6 @@ internal static partial class PiAgentReviewedIterationAdmission
                 TimeSpan.FromHours(6) ||
             !GitObjectIdPattern().IsMatch(snapshot.RepositoryHead) ||
             snapshot.ValidationProfile != ValidationProfile ||
-            !snapshot.AutoContinueAfterApproval ||
             snapshot.CurrentStepNumber is < 1 or > 5 ||
             snapshot.ApprovedEditCount is < 0 or > 4 ||
             snapshot.ApprovedEditCount > snapshot.MaximumApprovedEdits ||
@@ -159,6 +176,39 @@ internal static partial class PiAgentReviewedIterationAdmission
         {
             throw new ArgumentException(
                 "The reviewed iteration snapshot failed policy admission.",
+                nameof(snapshot));
+        }
+
+        bool trustedValidationSchema = snapshot.SchemaVersion == 2;
+        if (trustedValidationSchema)
+        {
+            if (
+                snapshot.AutoContinueAfterApproval ||
+                string.IsNullOrWhiteSpace(
+                    snapshot.TrustedValidationProfileId) ||
+                !ValidOptionalText(snapshot.TrustedValidationProfileId, 128) ||
+                !Sha256Pattern().IsMatch(
+                    snapshot.TrustedValidationProfileDigest ?? "") ||
+                string.IsNullOrWhiteSpace(
+                    snapshot.TrustedValidationCommand) ||
+                !ValidOptionalText(snapshot.TrustedValidationCommand, 2_048) ||
+                snapshot.TrustedValidationTimeoutSeconds is
+                    null or < 5 or > 120)
+            {
+                throw new ArgumentException(
+                    "The reviewed iteration trusted validation profile failed admission.",
+                    nameof(snapshot));
+            }
+        }
+        else if (
+            !snapshot.AutoContinueAfterApproval ||
+            snapshot.TrustedValidationProfileId is not null ||
+            snapshot.TrustedValidationProfileDigest is not null ||
+            snapshot.TrustedValidationCommand is not null ||
+            snapshot.TrustedValidationTimeoutSeconds is not null)
+        {
+            throw new ArgumentException(
+                "The legacy reviewed iteration snapshot shape diverged.",
                 nameof(snapshot));
         }
 
@@ -203,7 +253,21 @@ internal static partial class PiAgentReviewedIterationAdmission
                 !ValidOptionalSha(step.AfterSha256) ||
                 !ValidOptionalSha(step.RepositoryDigest) ||
                 !ValidOptionalText(step.RelativePath, 512) ||
-                !ValidOptionalText(step.ErrorCode, 256))
+                !ValidOptionalText(step.ErrorCode, 256) ||
+                string.IsNullOrWhiteSpace(
+                    step.TrustedValidationResult) ||
+                Encoding.UTF8.GetByteCount(
+                    step.TrustedValidationResult) > 128 ||
+                !ValidOptionalSha(
+                    step.TrustedValidationReceiptDigest) ||
+                !ValidOptionalSha(
+                    step.TrustedValidationOutputDigest) ||
+                step.TrustedValidationExitCode is < -1 or > 65_535 ||
+                (step.TrustedValidationCompletedAtUtc is not null &&
+                    (step.TrustedValidationCompletedAtUtc <
+                        snapshot.StartedAtUtc ||
+                     step.TrustedValidationCompletedAtUtc >
+                        snapshot.UpdatedAtUtc)))
             {
                 throw new ArgumentException(
                     "The reviewed iteration contains an invalid step receipt.",
@@ -222,6 +286,25 @@ internal static partial class PiAgentReviewedIterationAdmission
                     throw new ArgumentException(
                         "An approved iteration step omitted its durable hashes.",
                         nameof(snapshot));
+                }
+                if (trustedValidationSchema)
+                {
+                    bool completedValidation =
+                        step.TrustedValidationResult is "passed" or "failed";
+                    if (
+                        completedValidation !=
+                            (step.TrustedValidationReceiptDigest is not null) ||
+                        completedValidation !=
+                            (step.TrustedValidationOutputDigest is not null) ||
+                        completedValidation !=
+                            (step.TrustedValidationCompletedAtUtc is not null) ||
+                        (step.TrustedValidationResult == "passed" &&
+                            step.TrustedValidationExitCode != 0))
+                    {
+                        throw new ArgumentException(
+                            "An approved iteration step has an invalid trusted validation receipt.",
+                            nameof(snapshot));
+                    }
                 }
             }
             admittedSteps.Add(step);
@@ -242,6 +325,13 @@ internal static partial class PiAgentReviewedIterationAdmission
             PiAgentReviewedIterationStatus.Validating =>
                 snapshot.CurrentTurnId is not null &&
                 snapshot.CurrentProposalId is not null,
+            PiAgentReviewedIterationStatus.AwaitingTrustedValidation or
+            PiAgentReviewedIterationStatus.TrustedValidationInFlight =>
+                trustedValidationSchema &&
+                snapshot.CurrentTurnId is null &&
+                snapshot.CurrentProposalId is null &&
+                snapshot.Steps.LastOrDefault()?.TrustedValidationResult ==
+                    "pending",
             _ =>
                 snapshot.CurrentTurnId is null &&
                 snapshot.CurrentProposalId is null,
@@ -250,6 +340,21 @@ internal static partial class PiAgentReviewedIterationAdmission
         {
             throw new ArgumentException(
                 "The reviewed iteration capability shape diverged from its status.",
+                nameof(snapshot));
+        }
+
+        if (
+            trustedValidationSchema &&
+            snapshot.Status is (
+                PiAgentReviewedIterationStatus.ActiveTurn or
+                PiAgentReviewedIterationStatus.AwaitingOwnerReview) &&
+            snapshot.Steps.Any(step =>
+                step.OwnerDecision == "approved" &&
+                step.ValidationResult == "passed" &&
+                step.TrustedValidationResult != "passed"))
+        {
+            throw new ArgumentException(
+                "The reviewed iteration tried to continue before trusted validation passed.",
                 nameof(snapshot));
         }
 

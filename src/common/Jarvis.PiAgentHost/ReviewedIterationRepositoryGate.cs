@@ -317,6 +317,55 @@ public sealed class PiAgentReviewedIterationRepositoryGate
         }
     }
 
+    public async Task<string> ReadHeadUtf8FileAsync(
+        string workspaceRoot,
+        string expectedHead,
+        string relativePath,
+        int maximumUtf8Bytes,
+        CancellationToken cancellationToken = default)
+    {
+        string root = AdmitWorkspaceRoot(workspaceRoot);
+        string head = NormalizeHead(expectedHead);
+        if (
+            maximumUtf8Bytes is < 1 or > 65_536 ||
+            string.IsNullOrWhiteSpace(relativePath) ||
+            Path.IsPathFullyQualified(relativePath) ||
+            relativePath.Contains('\\') ||
+            relativePath.Any(char.IsControl) ||
+            relativePath.Split('/').Any(segment =>
+                segment is "" or "." or ".." ||
+                segment.Equals(
+                    ".git",
+                    StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new ArgumentException(
+                "The fixed Git HEAD read rejected its relative path or size boundary.",
+                nameof(relativePath));
+        }
+
+        string currentHead = NormalizeHead(
+            (await RunGitAsync(
+                root,
+                ["rev-parse", "--verify", "HEAD"],
+                cancellationToken)).StandardOutput.Trim());
+        if (!string.Equals(currentHead, head, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "The fixed Git HEAD read rejected repository drift.");
+        }
+
+        string content = (await RunGitAsync(
+            root,
+            ["cat-file", "blob", $"{head}:{relativePath}"],
+            cancellationToken)).StandardOutput;
+        if (Encoding.UTF8.GetByteCount(content) > maximumUtf8Bytes)
+        {
+            throw new InvalidOperationException(
+                "The fixed Git HEAD file exceeded its UTF-8 boundary.");
+        }
+        return content;
+    }
+
     private async Task RequireDiffCheckAsync(
         string root,
         CancellationToken cancellationToken)

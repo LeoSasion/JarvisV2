@@ -156,7 +156,7 @@ $requiredVisibleLabels = @(
     'Content="START REVIEWED LOOP"',
     'Content="RE-ARM"',
     'Content="STOP LOOP"',
-    'four approvals maximum',
+    'four writes maximum',
     'SHELL // LOCKED',
     'SAFE SHUTDOWN',
     'CONFIGURE OPENAI',
@@ -269,21 +269,27 @@ Add-Check `
         $mainWindowText.Contains(
             'AutomationProperties.Name="Stop reviewed iteration"') -and
         $mainWindowText.Contains(
+            'AutomationProperties.Name="Run the exact pinned trusted tests once"') -and
+        $mainWindowText.Contains(
             'IsEnabled="{Binding CanStartReviewedIteration}"') -and
         $mainWindowText.Contains(
             'IsEnabled="{Binding CanResumeReviewedIteration}"') -and
         $mainWindowText.Contains(
             'IsEnabled="{Binding CanStopReviewedIteration}"') -and
+        $mainWindowText.Contains(
+            'IsEnabled="{Binding CanRunTrustedValidation}"') -and
         $mainWindowText.Contains('ReviewedIterationStatusLabel') -and
         $mainWindowText.Contains('ReviewedIterationReceiptLabel') -and
         $mainWindowText.Contains(
-            'fixed Git and structured-text gate') -and
+            'separate owner approval for pinned tests') -and
         $mainWindowCodeText.Contains(
             'StartReviewedIterationButton_OnClick') -and
         $mainWindowCodeText.Contains(
             'ResumeReviewedIterationButton_OnClick') -and
         $mainWindowCodeText.Contains(
             'StopReviewedIterationButton_OnClick') -and
+        $mainWindowCodeText.Contains(
+            'RunTrustedValidationButton_OnClick') -and
         $mainWindowCodeText.Contains(
             'Type the reviewed iteration mission in the composer') -and
         $mainWindowText.Contains('ONE-TURN COMPOSER / SEND ONCE HERE') -and
@@ -295,13 +301,15 @@ Add-Check `
         $viewModelText.Contains(
             'ApproveAndContinueAsync') -and
         $viewModelText.Contains(
+            'RunTrustedValidationAndContinueAsync') -and
+        $viewModelText.Contains(
             'ObserveReviewedIterationCompletionAsync') -and
         $viewModelText.Contains(
             'reviewedIteration.SuspendAsync')) `
     -Detail (
         'The incumbent conversation surface must expose a named, keyboard-' +
-        'reachable owner policy with durable status, start/re-arm/stop actions, ' +
-        'and the repository-gated coordinator lifecycle.')
+        'reachable owner policy with durable status, start/test-once/re-arm/stop ' +
+        'actions and the repository-plus-pinned-test coordinator lifecycle.')
 
 Add-Check `
     -Name 'runtime.owned-start-stream-cancel-checkpoint-shutdown' `

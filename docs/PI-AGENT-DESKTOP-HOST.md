@@ -85,11 +85,14 @@ Shell process.
   with a fixed four-approved-edit limit and six-hour expiry;
 - writes every policy and step transition to a workspace-bound CurrentUser
   DPAPI envelope, keeping completed workflow receipts under LocalAppData;
-- automatically starts the next bounded reasoning turn only after the owner
-  approved the prior exact edit and the fixed repository gate passed;
+- pauses after the owner-approved exact edit and fixed repository gate, then
+  requires a second owner action for the baseline-pinned Node test profile;
 - pins HEAD, admits exactly the accumulated modified path set and after hashes,
   runs direct `git diff --check`, and non-executingly parses JSON plus
   XML/XAML/project files without running workspace code;
+- starts the admitted absolute Node executable directly without a shell only
+  after `RUN PINNED TESTS ONCE`, bounds time/output/environment, hashes the
+  receipt and reruns the repository gate before another reasoning turn;
 - suspends a live policy on shutdown, restores no proposal capability, and
   requires explicit re-arm plus repository revalidation after restart;
 - rejects drive roots, protected OS/profile roots, relative paths, canonical
@@ -216,8 +219,9 @@ concurrent desktop response pump. A dedicated isolated workspace fixture proves
 proposal, approval, replay rejection, drift rejection and explicit rejection
 through six additional broker requests and zero broker faults. A separate
 reviewed-iteration probe proves an approved two-hunk patch between approved
-creation and explicit rejection, through ten broker requests and zero broker
-faults. The Node probe also covers duplicate/overlapping patch hunks,
+creation and explicit rejection, with a separate owner-approved pinned test
+run and exact post-run repository receipt after each write, through ten broker
+requests and zero broker faults. The Node probe also covers duplicate/overlapping patch hunks,
 exact-capability mismatch, missing files and ambiguous matches. No
 path contacts an online model, transports a provider credential, touches
 Explorer or writes a production workspace file.

@@ -314,6 +314,22 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void RunTrustedValidationButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        try
+        {
+            await conversation.RunTrustedValidationAsync();
+            TranscriptScroll.ScrollToEnd();
+        }
+        catch (Exception exception)
+        {
+            conversation.ReportUiError(
+                $"Trusted validation failed closed: {exception.Message}");
+        }
+    }
+
     private async void StopReviewedIterationButton_OnClick(
         object sender,
         RoutedEventArgs eventArgs)

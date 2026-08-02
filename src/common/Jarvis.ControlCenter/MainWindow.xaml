@@ -978,6 +978,14 @@
                                                     <Setter Property="Background" Value="{StaticResource AmberDimBrush}" />
                                                     <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
                                                 </DataTrigger>
+                                                <DataTrigger Binding="{Binding ReviewedIteration.Status}" Value="AwaitingTrustedValidation">
+                                                    <Setter Property="Background" Value="{StaticResource AmberDimBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ReviewedIteration.Status}" Value="TrustedValidationInFlight">
+                                                    <Setter Property="Background" Value="{StaticResource CyanDimBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{StaticResource CyanBrush}" />
+                                                </DataTrigger>
                                                 <DataTrigger Binding="{Binding ReviewedIteration.Status}" Value="Interrupted">
                                                     <Setter Property="Background" Value="{StaticResource AmberDimBrush}" />
                                                     <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
@@ -1014,6 +1022,12 @@
                                                             <DataTrigger Binding="{Binding ReviewedIteration.Status}" Value="AwaitingOwnerReview">
                                                                 <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
                                                             </DataTrigger>
+                                                            <DataTrigger Binding="{Binding ReviewedIteration.Status}" Value="AwaitingTrustedValidation">
+                                                                <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding ReviewedIteration.Status}" Value="TrustedValidationInFlight">
+                                                                <Setter Property="Foreground" Value="{StaticResource CyanBrush}" />
+                                                            </DataTrigger>
                                                             <DataTrigger Binding="{Binding ReviewedIteration.Status}" Value="Interrupted">
                                                                 <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
                                                             </DataTrigger>
@@ -1048,10 +1062,32 @@
                                         <TextBlock Margin="0,3,0,0" Style="{StaticResource MonoText}" Text="{Binding ReviewedIterationExpiryLabel}" />
                                         <TextBlock
                                             Margin="0,9,0,0"
+                                            Style="{StaticResource MonoText}"
+                                            Foreground="{StaticResource AmberBrush}"
+                                            Text="{Binding ReviewedIterationValidationProfileLabel}"
+                                            TextWrapping="Wrap" />
+                                        <Border
+                                            Margin="0,6,0,0"
+                                            Padding="8"
+                                            Background="{StaticResource SurfaceBrush}"
+                                            BorderBrush="{StaticResource LineBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="2">
+                                            <TextBlock
+                                                AutomationProperties.Name="Exact pinned trusted validation command"
+                                                Foreground="{StaticResource TextMutedBrush}"
+                                                FontFamily="Consolas"
+                                                FontSize="9"
+                                                LineHeight="14"
+                                                Text="{Binding ReviewedIterationValidationCommand}"
+                                                TextWrapping="Wrap" />
+                                        </Border>
+                                        <TextBlock
+                                            Margin="0,9,0,0"
                                             Foreground="{StaticResource TextMutedBrush}"
                                             FontSize="10"
                                             LineHeight="15"
-                                            Text="Clean HEAD · four approvals maximum · six hours · fixed Git and structured-text gate · automatic reasoning only after each owner-approved write."
+                                            Text="Clean HEAD / four writes maximum / six hours / fixed repository gate / separate owner approval for pinned tests / reasoning only after a pass."
                                             TextWrapping="Wrap" />
                                         <Button
                                             Margin="0,12,0,0"
@@ -1060,6 +1096,27 @@
                                             IsEnabled="{Binding CanStartReviewedIteration}"
                                             Click="StartReviewedIterationButton_OnClick"
                                             Content="START REVIEWED LOOP" />
+                                        <Button
+                                            Margin="0,8,0,0"
+                                            AutomationProperties.Name="Run the exact pinned trusted tests once"
+                                            IsEnabled="{Binding CanRunTrustedValidation}"
+                                            Click="RunTrustedValidationButton_OnClick"
+                                            Content="RUN PINNED TESTS ONCE">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource ActionButton}">
+                                                    <Setter Property="Background" Value="{StaticResource AmberDimBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
+                                                    <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsEnabled" Value="False">
+                                                            <Setter Property="Background" Value="{StaticResource PanelAltBrush}" />
+                                                            <Setter Property="BorderBrush" Value="{StaticResource LineBrightBrush}" />
+                                                            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
                                         <Grid Margin="0,8,0,0">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
@@ -1105,7 +1162,7 @@
                                 <TextBlock Margin="0,9,0,0" Foreground="{StaticResource TextFaintBrush}" FontSize="10" Text="Permitted: read, grep, find, ls, propose_edit, propose_patch, propose_create_file" TextWrapping="Wrap" />
                                 <TextBlock Margin="0,4,0,0" Foreground="{StaticResource AmberBrush}" FontSize="10" Text="Writes: desktop-owner approval only" />
                                 <TextBlock Margin="0,4,0,0" Foreground="{StaticResource RedBrush}" FontSize="10" Text="Shell / direct edit / unattended approval: locked" TextWrapping="Wrap" />
-                                <TextBlock Margin="0,4,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Text="Loop continuation: desktop policy + passed repository gate" TextWrapping="Wrap" />
+                                <TextBlock Margin="0,4,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Text="Loop continuation: repository gate + owner-approved pinned tests" TextWrapping="Wrap" />
                             </StackPanel>
 
                             <Border Margin="0,20,0,0" Height="1" Background="{StaticResource LineBrush}" />

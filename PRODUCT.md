@@ -61,9 +61,13 @@ logic and explicit fail-closed platform adapters for native shell work.
   sentinel plus exclusive no-overwrite commit.
 - The desktop can arm a reviewed iteration from a clean Git HEAD for at most
   four owner-approved edits and six hours. Each approved write must pass the
-  fixed HEAD/path-set/hash/diff/structured-text gate before Pi is allowed to
-  reason about the next proposal; receipts are workspace-bound and protected
-  with Windows CurrentUser DPAPI.
+  fixed HEAD/path-set/hash/diff/structured-text gate, then pause for a separate
+  owner approval of the exact Node test profile pinned in that clean HEAD. The
+  desktop launches Node directly without a shell, bounds time and output, and
+  reruns the repository gate afterward; only a test pass plus an exact post-run
+  repository receipt may return reasoning control to Pi. Pi cannot invoke the
+  validator or its approval. Receipts are workspace-bound and protected with
+  Windows CurrentUser DPAPI.
 - Multi-file atomic transactions, deletes, renames, directory creation, VCS metadata mutation, generic
   `edit`/`write`, shell access, self-authored policy, unattended approval and
   ungated iteration remain outside the admitted capability set.
