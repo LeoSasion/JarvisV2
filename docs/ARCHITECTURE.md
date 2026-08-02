@@ -1,5 +1,21 @@
 # Architecture
 
+## Independent desktop agent boundary
+
+`Jarvis.ControlCenter` is an ordinary own-process WPF application. Its
+portable bootstrap resolves a bundled Node executable and exact Pi sidecar,
+then creates one current-user model broker, one root-confined in-memory Pi
+session and one immutable desktop conversation. Local diagnostic mode is the
+default; production mode is an explicit `OpenAiResponsesModelProvider`
+selection. The production key is stored with CurrentUser DPAPI and used only
+by desktop HTTPS. The broker pipe and offline sidecar never receive it.
+
+Both modes expose only `read`, `grep`, `find` and `ls`. This desktop agent
+boundary has no shell injection, Windhawk activation, Explorer lifecycle,
+registry or mutation capability. See
+`PI-AGENT-OPENAI-RESPONSES-PROVIDER.md` and
+`JARVIS-CONTROL-CENTER-PORTABLE-RUNTIME.md`.
+
 ## 原生优先边界
 
 JARVIS2 的“桌面”不是一个新的顶层窗口。下列 M1 链路描述的是模块进入目标进程后的内部安全契约，不再代表获准使用 Windhawk 服务作为传输宿主。2026-07-27 的受控会话证明该服务会把基础运行库注入 Explorer 和非目标进程，因此整个服务宿主已被 Phase 6 隔离。

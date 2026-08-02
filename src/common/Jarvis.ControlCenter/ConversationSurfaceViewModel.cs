@@ -24,6 +24,7 @@ public sealed class ConversationSurfaceViewModel :
         new(0, null, false, false, []);
 
     private readonly ConversationLaunchOptions? launchOptions;
+    private readonly OpenAiApiKeyCredentialStore credentialStore = new();
     private readonly bool preview;
     private PiAgentDesktopRuntime? runtime;
     private PiAgentConversationBinding? binding;
@@ -31,6 +32,7 @@ public sealed class ConversationSurfaceViewModel :
     private ConversationRuntimePhase phase;
     private string statusDetail;
     private string? uiError;
+    private bool providerCredentialReady;
     private int disposeStarted;
 
     private ConversationSurfaceViewModel(
@@ -80,7 +82,7 @@ public sealed class ConversationSurfaceViewModel :
     public string StatusDetail => uiError ?? statusDetail;
     public string ProviderLabel => preview
         ? "ILLUSTRATIVE // NO RUNTIME"
-        : LocalDiagnosticModelProvider.DisplayName;
+        : launchOptions?.ProviderDisplayName ?? "NO PROVIDER ADMITTED";
     public string AccessLabel => "READ ONLY";
     public string WorkspaceLabel => launchOptions?.WorkspaceRoot ??
         (preview
@@ -93,7 +95,13 @@ public sealed class ConversationSurfaceViewModel :
             : $"{runtime.CheckpointSaveCount} SAVED / " +
                 $"{runtime.RestoredCheckpointTurnCount} RESTORED";
     public string CredentialLabel => runtime?.CredentialEnvironmentClean == true
-        ? "SIDECAR CLEAN // PROD AUTH NOT CONFIGURED"
+        ? launchOptions?.Provider == ConversationProviderKind.OpenAiResponses
+            ? providerCredentialReady
+                ? "DESKTOP DPAPI READY // SIDECAR CLEAN"
+                : "OPENAI AUTH REQUIRED // SIDECAR CLEAN"
+            : providerCredentialReady
+                ? "OPENAI STORED // LOCAL PROVIDER ACTIVE"
+                : "SIDECAR CLEAN // OPENAI OPTIONAL"
         : preview
             ? "NOT CONFIGURED / NOT EVALUATED"
             : "NOT READY";
@@ -118,10 +126,15 @@ public sealed class ConversationSurfaceViewModel :
     public bool HandoffComplete =>
         snapshot.ActiveTurnId is null && snapshot.Turns.Count != 0;
     public bool CanSubmit =>
-        phase == ConversationRuntimePhase.Ready && snapshot.CanSubmit;
+        phase == ConversationRuntimePhase.Ready &&
+        snapshot.CanSubmit &&
+        (launchOptions?.Provider != ConversationProviderKind.OpenAiResponses ||
+            providerCredentialReady);
     public bool CanCancel =>
         phase == ConversationRuntimePhase.Ready && snapshot.CanCancel;
     public bool HasOwnedRuntime => runtime is not null && !runtime.IsShutdown;
+    public bool IsOpenAiProvider =>
+        launchOptions?.Provider == ConversationProviderKind.OpenAiResponses;
     public double HandoffProgress => DetermineHandoffProgress();
     public string HandoffLabel => HandoffProgress switch
     {
@@ -158,13 +171,25 @@ public sealed class ConversationSurfaceViewModel :
             PiAgentSidecarOptions sidecar = new(
                 Path.GetFullPath(launchOptions.NodeExecutablePath),
                 Path.GetFullPath(launchOptions.SidecarHostPath));
+            IDesktopModelProvider provider;
+            if (launchOptions.Provider == ConversationProviderKind.OpenAiResponses)
+            {
+                providerCredentialReady =
+                    await credentialStore.GetApiKeyAsync(cancellationToken) is not null;
+                provider = new OpenAiResponsesModelProvider(credentialStore);
+            }
+            else
+            {
+                providerCredentialReady = false;
+                provider = new LocalDiagnosticModelProvider();
+            }
             runtime = await PiAgentDesktopRuntime.StartAsync(
                 new PiAgentDesktopRuntimeOptions(
                     sidecar,
                     Path.GetFullPath(launchOptions.WorkspaceRoot),
                     ConversationCheckpointStore:
                         new PiAgentConversationCheckpointStore()),
-                new LocalDiagnosticModelProvider(),
+                provider,
                 SynchronizationContext.Current,
                 cancellationToken);
             binding = new PiAgentConversationBinding(runtime.Conversation);
@@ -172,8 +197,10 @@ public sealed class ConversationSurfaceViewModel :
             snapshot = binding.Snapshot;
             SetPhase(
                 ConversationRuntimePhase.Ready,
-                "Pi session admitted. Submit a request to exercise the " +
-                "root-confined read-only tool path.");
+                IsOpenAiProvider && !providerCredentialReady
+                    ? "Pi is ready. Configure OpenAI to enable authenticated turns."
+                    : "Pi session admitted. Submit a request through the " +
+                        "root-confined read-only tool path.");
             RaiseConversationProperties();
         }
         catch (Exception exception)
@@ -188,6 +215,29 @@ public sealed class ConversationSurfaceViewModel :
             }
         }
     }
+
+    public async Task RefreshCredentialAsync(
+        CancellationToken cancellationToken = default)
+    {
+        providerCredentialReady =
+            await credentialStore.GetApiKeyAsync(cancellationToken) is not null;
+        if (IsOpenAiProvider && phase == ConversationRuntimePhase.Ready)
+        {
+            statusDetail = providerCredentialReady
+                ? "OpenAI credential admitted by the desktop. Pi remains credential-free."
+                : "Configure OpenAI to enable authenticated turns.";
+        }
+        else if (phase == ConversationRuntimePhase.Ready && providerCredentialReady)
+        {
+            statusDetail =
+                "OpenAI credential protected. Relaunch with --provider openai to use it.";
+        }
+        RaisePropertyChanged(nameof(CredentialLabel));
+        RaisePropertyChanged(nameof(CanSubmit));
+        RaisePropertyChanged(nameof(StatusDetail));
+    }
+
+    public OpenAiApiKeyCredentialStore CredentialStore => credentialStore;
 
     public async Task SubmitAsync(
         string text,

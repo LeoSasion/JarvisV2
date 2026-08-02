@@ -1,9 +1,10 @@
 # Pi Agent desktop runtime ownership
 
 `PiAgentDesktopRuntime` is the non-visual composition root for an owned JARVIS
-desktop conversation. `Jarvis.ControlCenter` now starts this boundary after it
-receives explicit Node, sidecar and admitted-workspace paths and constructs the
-reviewed local diagnostic `IDesktopModelProvider`.
+desktop conversation. `Jarvis.ControlCenter` starts this boundary after its
+portable/developer bootstrap resolves Node and the sidecar for one admitted
+workspace. It then constructs either the default local diagnostic provider or
+the explicitly selected OpenAI Responses provider.
 
 ## Owned resources
 
@@ -61,9 +62,11 @@ prevents a closing WPF window from racing a new prompt against sidecar disposal.
 
 ## Current boundary
 
-The runtime accepts a provider-neutral `IDesktopModelProvider`; it does not
-select a production provider, read credentials or create a credential store.
-The Pi sidecar remains offline and has only `read`, `grep`, `find` and `ls`
+The runtime remains provider-neutral: its WPF composition root selects the
+provider and owns any provider credential source. Production mode uses the
+desktop-only `OpenAiResponsesModelProvider`; its CurrentUser-DPAPI key never
+enters the broker protocol or sidecar. The Pi sidecar remains offline and has
+only `read`, `grep`, `find` and `ls`
 inside one admitted workspace. Pi SDK session persistence remains disabled.
 The desktop can persist only the bounded completed-text checkpoint in its
 CurrentUser-DPAPI store; the sidecar never reads the store or encryption key.
@@ -97,4 +100,7 @@ The deterministic `runtime-probe` command proves:
 - zero broker faults and credential-free, diagnostic-only model traffic.
 
 Run it as part of `scripts/Test-PiAgentHost.ps1`. The envelope and lifecycle
-details are in `PI-AGENT-DESKTOP-CHECKPOINT-STORE.md`.
+details are in `PI-AGENT-DESKTOP-CHECKPOINT-STORE.md`. The separate offline
+Responses protocol/credential probe is documented in
+`PI-AGENT-OPENAI-RESPONSES-PROVIDER.md`, and portable discovery is documented
+in `JARVIS-CONTROL-CENTER-PORTABLE-RUNTIME.md`.

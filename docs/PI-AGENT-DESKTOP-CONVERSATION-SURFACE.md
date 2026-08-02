@@ -24,13 +24,19 @@ active turn, waits for its terminal event, flushes the CurrentUser-DPAPI
 checkpoint and releases the owned sidecar and broker. The window gives that
 orderly path 12 seconds. It never restarts or terminates Explorer.
 
-## Honest provider boundary
+## Provider boundary
 
-This slice deliberately uses `LocalDiagnosticModelProvider`. The provider is
-local, deterministic and credential-free. For every admitted user request it
-asks Pi for exactly one root-confined `ls` call, then streams a summary of the
-tool result. The visible response states that production model authentication
-is not configured.
+`LocalDiagnosticModelProvider` remains the default. It is local,
+deterministic and credential-free. For every admitted user request it asks Pi
+for exactly one root-confined `ls` call, then streams a summary of the tool
+result.
+
+The opt-in `OpenAiResponsesModelProvider` adds a real production API boundary
+inside the desktop process. The setup dialog protects one key with
+CurrentUser DPAPI, never shows the previous value and discloses the exact
+model, tools, retention and offline-sidecar posture before saving. Production
+mode uses `gpt-5.6-sol`, SSE and `store: false`; no live request is made unless
+the user explicitly launches with `--provider openai` and submits a prompt.
 
 This proves the real product route without claiming an online model:
 
@@ -39,7 +45,7 @@ WPF command
   -> conversation state
     -> Pi SDK session in the Node sidecar
       -> current-user model-broker pipe
-        -> local diagnostic provider
+        -> selected desktop provider
           -> validated ls tool event
             -> root-confined Pi tool
               -> streamed broker response
@@ -48,14 +54,34 @@ WPF command
 ```
 
 `read`, `grep`, `find` and `ls` remain the only Pi tools installed in the
-session. The diagnostic provider itself requests only `ls`. `bash`, `edit` and
-`write` are unavailable. No provider credential enters the sidecar and its
-model network remains disabled.
+session and admitted by the production provider. The diagnostic provider
+itself requests only `ls`. `bash`, `edit` and `write` are unavailable. No
+provider credential enters the sidecar and its model network remains disabled.
 
 ## Launch modes
 
 Launching without arguments opens an idle surface and admits no workspace or
-runtime. A diagnostic conversation requires explicit absolute paths:
+runtime. It also exposes `CONFIGURE OPENAI`. The normal portable/developer
+launch resolves Node and Pi automatically:
+
+```powershell
+jarvis-control-center.exe `
+  --conversation `
+  --workspace C:\JarvisV2-Windows10 `
+  --provider local
+```
+
+After the key is explicitly protected from the idle surface, production mode
+uses the same runtime path:
+
+```powershell
+jarvis-control-center.exe `
+  --conversation `
+  --workspace C:\JarvisV2-Windows10 `
+  --provider openai
+```
+
+The original diagnostic path override remains available for development:
 
 ```powershell
 jarvis-control-center.exe `
@@ -101,12 +127,13 @@ field is explicitly marked as illustrative, not started or not configured.
 
 ## Validation
 
-`scripts/Test-ControlCenter.ps1` runs ten checks. In addition to the ordinary
+`scripts/Test-ControlCenter.ps1` runs the ordinary
 window and no-shell-mutation source gates, it validates the bound transcript,
-keyboard and accessibility controls, runtime lifecycle, checkpoint shutdown
-and the visible credential/safety disclosures. A separate
-`Jarvis.ControlCenter.Diagnostics` executable runs the provider stream probe
-outside the WPF lifecycle and requires:
+keyboard and accessibility controls, provider setup, runtime lifecycle,
+checkpoint shutdown, portable bootstrap and the visible credential/safety
+disclosures. A separate `Jarvis.ControlCenter.Diagnostics` executable runs the
+local provider stream probe and runtime-bootstrap probe outside the WPF
+lifecycle.
 
 - one exact `ls` tool request;
 - multiple text deltas followed by `stop`;
@@ -114,6 +141,6 @@ outside the WPF lifecycle and requires:
 - `mutationPerformed=false`.
 
 The full Pi sidecar, broker, real read-tool round trip, cancellation, restore,
-tamper rejection and cleanup matrix remains in `scripts/Test-PiAgentHost.ps1`.
-An authenticated production provider is the next separate reviewed boundary;
-this surface does not imply that it exists.
+tamper rejection, offline OpenAI protocol/DPAPI probe and cleanup matrix
+remains in `scripts/Test-PiAgentHost.ps1`. The offline provider receipt does
+not claim a configured key or live model request.

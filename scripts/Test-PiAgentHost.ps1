@@ -36,6 +36,12 @@ $conversationProbeSourcePath = Join-Path $sourceRoot (
 $desktopRuntimeSourcePath = Join-Path $sourceRoot 'DesktopRuntime.cs'
 $desktopRuntimeProbeSourcePath = Join-Path $sourceRoot (
     'DiagnosticDesktopRuntime.cs')
+$openAiProviderSourcePath = Join-Path $sourceRoot (
+    'OpenAiResponsesModelProvider.cs')
+$openAiCredentialSourcePath = Join-Path $sourceRoot (
+    'OpenAiApiKeyCredentialStore.cs')
+$openAiProbeSourcePath = Join-Path $sourceRoot (
+    'DiagnosticOpenAiResponsesProvider.cs')
 $bridgeProgramPath = Join-Path $sourceRoot 'Program.cs'
 $bridgeFixtureRoot = Join-Path $sourceRoot 'test\fixtures'
 $controlCenterRoot = Join-Path $root (
@@ -225,6 +231,32 @@ Add-Check `
         'cannot mutate the Shell, Explorer or system.')
 
 Add-Check `
+    -Name 'contract.desktop-production-provider-boundary' `
+    -Passed (
+        $contract.desktopProvider.mode -eq 'opt-in' -and
+        $contract.desktopProvider.implementation -eq
+            'openai-responses-api' -and
+        $contract.desktopProvider.endpoint -eq
+            'https://api.openai.com/v1/responses' -and
+        $contract.desktopProvider.model -eq 'gpt-5.6-sol' -and
+        $contract.desktopProvider.reasoningEffort -eq 'medium' -and
+        $contract.desktopProvider.streaming -eq
+            'server-sent-events' -and
+        -not $contract.desktopProvider.responseStorage -and
+        $contract.desktopProvider.networkOwner -eq
+            'desktop-process-only' -and
+        $contract.desktopProvider.credentialStore -eq
+            'current-user-dpapi-atomic' -and
+        $contract.desktopProvider.credentialRoot -eq
+            'local-appdata-jarvis2-credentials' -and
+        -not $contract.desktopProvider.ambientCredentialAllowed -and
+        -not $contract.desktopProvider.credentialTransportToSidecar) `
+    -Detail (
+        'The opt-in production provider must keep HTTPS and DPAPI ' +
+        'credentials in the desktop process, disable response storage and ' +
+        'leave the Pi sidecar offline and credential-free.')
+
+Add-Check `
     -Name 'schema.fixed-safety-values' `
     -Passed (
         $schema.'$schema' -eq
@@ -300,6 +332,20 @@ Add-Check `
         $schema.properties.session.properties.desktopRuntimeShutdown.const `
             -eq 'quiesce-cancel-checkpoint-flush-sidecar-shutdown-broker-dispose' -and
         $schema.properties.session.properties.modelNetworkAllowed.const `
+            -eq $false -and
+        $schema.properties.desktopProvider.properties.mode.const `
+            -eq 'opt-in' -and
+        $schema.properties.desktopProvider.properties.endpoint.const `
+            -eq 'https://api.openai.com/v1/responses' -and
+        $schema.properties.desktopProvider.properties.model.const `
+            -eq 'gpt-5.6-sol' -and
+        $schema.properties.desktopProvider.properties.reasoningEffort.const `
+            -eq 'medium' -and
+        $schema.properties.desktopProvider.properties.responseStorage.const `
+            -eq $false -and
+        $schema.properties.desktopProvider.properties.ambientCredentialAllowed.const `
+            -eq $false -and
+        $schema.properties.desktopProvider.properties.credentialTransportToSidecar.const `
             -eq $false -and
         $schema.properties.transport.properties.credentialFieldsAllowed.const `
             -eq $false -and
@@ -379,6 +425,9 @@ $bridgeSourceText =
     [IO.File]::ReadAllText($desktopRuntimeProbeSourcePath) +
     [Environment]::NewLine +
     [IO.File]::ReadAllText($bridgeProgramPath)
+$openAiProviderText = [IO.File]::ReadAllText($openAiProviderSourcePath)
+$openAiCredentialText = [IO.File]::ReadAllText($openAiCredentialSourcePath)
+$openAiProbeText = [IO.File]::ReadAllText($openAiProbeSourcePath)
 $bridgeProjectText = [IO.File]::ReadAllText($bridgeProjectPath)
 $forbiddenBridgePattern = (
     '(?i)\b(?:DllImport|LibraryImport|OpenProcess|CreateRemoteThread|' +
@@ -495,6 +544,50 @@ Add-Check `
         'multi-request current-user model pipe and terminate only its owned ' +
         'processes and connections on cleanup.')
 
+$forbiddenProductionProviderPattern = (
+    '(?i)\b(?:DllImport|LibraryImport|OpenProcess|CreateRemoteThread|' +
+    'WriteProcessMemory|SetWindowsHookEx|Microsoft\.Win32\.Registry|' +
+    'ServiceController|ProcessStartInfo|OPENAI_API_KEY)\b'
+)
+Add-Check `
+    -Name 'desktop-provider.responses-dpapi-streaming-boundary' `
+    -Passed (
+        (Test-Path -LiteralPath $openAiProviderSourcePath -PathType Leaf) -and
+        (Test-Path -LiteralPath $openAiCredentialSourcePath -PathType Leaf) -and
+        (Test-Path -LiteralPath $openAiProbeSourcePath -PathType Leaf) -and
+        -not [regex]::IsMatch(
+            ($openAiProviderText + $openAiCredentialText),
+            $forbiddenProductionProviderPattern) -and
+        $openAiProviderText.Contains(
+            'https://api.openai.com/v1/responses') -and
+        $openAiProviderText.Contains('"gpt-5.6-sol"') -and
+        $openAiProviderText.Contains('"medium"') -and
+        $openAiProviderText.Contains('["store"] = false') -and
+        $openAiProviderText.Contains('response.output_text.delta') -and
+        $openAiProviderText.Contains(
+            'response.function_call_arguments.delta') -and
+        $openAiProviderText.Contains(
+            'MaximumFunctionArgumentsCharacters') -and
+        $openAiProviderText.Contains(
+            'did not return an SSE stream') -and
+        $openAiProviderText.Contains('AllowedToolNames.Contains') -and
+        $openAiProviderText.Contains(
+            '["read", "grep", "find", "ls"]') -and
+        $openAiCredentialText.Contains('ProtectedData.Protect') -and
+        $openAiCredentialText.Contains('ProtectedData.Unprotect') -and
+        $openAiCredentialText.Contains(
+            'DataProtectionScope.CurrentUser') -and
+        $openAiCredentialText.Contains('FileOptions.WriteThrough') -and
+        $openAiCredentialText.Contains('File.Move') -and
+        $openAiCredentialText.Contains('FileAttributes.ReparsePoint') -and
+        $openAiProbeText.Contains('LiveModelNetworkCalled') -and
+        $openAiProbeText.Contains('OversizedToolArgumentsRejected') -and
+        $openAiProbeText.Contains('CredentialTransportToSidecar')) `
+    -Detail (
+        'The production Provider may use only the exact Responses endpoint, ' +
+        'bounded SSE and four read-only tools; authentication must come from ' +
+        'an atomic CurrentUser DPAPI envelope, never the environment.')
+
 $controlCenterProjectText =
     [IO.File]::ReadAllText($controlCenterProjectPath)
 $controlCenterBindingText =
@@ -580,6 +673,52 @@ if (-not $StaticOnly) {
         -Detail (
             "Node exit $nodeExitCode; version " +
             "$($nodeVersionOutput -join '').")
+
+    $openAiProbeOutput = @(
+        & $DotnetPath run `
+            --project $bridgeProjectPath `
+            --configuration Release `
+            --no-build `
+            -- `
+            openai-provider-probe 2>&1
+    )
+    $openAiProbeExitCode = $LASTEXITCODE
+    $openAiProbeReceipt = $null
+    try {
+        $openAiProbeReceipt =
+            ($openAiProbeOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $openAiProbeReceipt = $null
+    }
+    Add-Check `
+        -Name 'runtime.openai-provider-offline-probe' `
+        -Passed (
+            $openAiProbeExitCode -eq 0 -and
+            $null -ne $openAiProbeReceipt -and
+            $openAiProbeReceipt.result -eq 'passed' -and
+            $openAiProbeReceipt.model -eq 'gpt-5.6-sol' -and
+            $openAiProbeReceipt.requestContractPassed -and
+            $openAiProbeReceipt.textStreamPassed -and
+            $openAiProbeReceipt.toolStreamPassed -and
+            $openAiProbeReceipt.usageMappingPassed -and
+            $openAiProbeReceipt.credentialHeaderOnly -and
+            $openAiProbeReceipt.credentialStoreRoundTripPassed -and
+            $openAiProbeReceipt.credentialCiphertextPassed -and
+            $openAiProbeReceipt.credentialCorruptionRejected -and
+            $openAiProbeReceipt.httpFailureRedacted -and
+            $openAiProbeReceipt.malformedStreamRejected -and
+            $openAiProbeReceipt.cancellationPassed -and
+            -not $openAiProbeReceipt.liveModelNetworkCalled -and
+            -not $openAiProbeReceipt.credentialTransportToSidecar -and
+            -not $openAiProbeReceipt.mutationPerformed -and
+            @($openAiProbeReceipt.failures).Count -eq 0) `
+        -Detail (
+            'The synthetic desktop Provider must prove request, streaming, ' +
+            'tool, credential, redaction, malformed-input and cancellation ' +
+            'paths without making a live model call. Output: ' +
+            (($openAiProbeOutput | Select-Object -Last 18) -join ' '))
 
     $inspectOutput = @(
         & $NodePath $hostPath inspect 2>&1
@@ -1099,6 +1238,10 @@ $passed = $failures.Count -eq 0
     sessionPersistence = 'in-memory'
     workspaceBinding = 'single-explicit-root'
     desktopLaunchImplemented = $true
+    productionProvider = 'openai-responses-opt-in'
+    productionModel = 'gpt-5.6-sol'
+    productionAuthenticationConfigured = $false
+    providerProbeLiveModelNetworkCalled = $false
     credentialTransportAllowed = $false
     shellMutationSupported = $false
     explorerMutationSupported = $false

@@ -110,13 +110,14 @@ attribute. Arbitrary caption color is not claimed. The shared
 `Jarvis.PiAgentHost` now creates a root-confined, in-memory SDK session and
 uses a desktop-owned, provider-neutral model broker across multiple turns. The
 offline provider proves two ordinary responses, one real `read` tool round trip
-and active generation cancellation. Each turn also exposes a bounded, ordered
-stream of text, tool and terminal events for future WPF binding. The default
-sidecar remains non-prompting unless that reviewed current-user named pipe is
-present; no authenticated production provider or credential is connected yet.
-The shared host now also folds the stream into bounded, immutable conversation
-snapshots, and `Jarvis.ControlCenter` compiles a non-visual WPF binding
-adapter. No conversation panel or XAML layout has been added.
+and active generation cancellation. Each turn exposes a bounded, ordered
+stream of text, tool and terminal events to the native WPF Control Center. The
+sidecar remains non-prompting unless the reviewed current-user named pipe is
+present. The desktop now also has an opt-in OpenAI Responses provider and an
+explicit CurrentUser-DPAPI setup flow; no credential crosses the pipe and no
+live model call is part of the offline receipts. `Jarvis.ControlCenter` owns a
+resizable conversation panel, orderly runtime shutdown and a portable
+self-contained Node/Pi package layout.
 
 See `WINDOWS10-HANDOFF.md`,
 `docs/WINDOWS10-NATIVE-STYLE-PROBE.md` and
@@ -128,8 +129,7 @@ runnable preview and reproducible screenshot.
 
 The Shell probe reads window structure but does not collect titles or modify
 Explorer. Neither probe uses Windhawk.
-The next visible slice may connect the admitted Pi bridge to an owned
-conversation panel and authenticated desktop model provider while real
-Explorer remains untouched.
+The next visible slice may expand authenticated conversation and supervised
+self-iteration capabilities while real Explorer remains untouched.
 Future projects continue to use `Jarvis.Win10.<Feature>` and must not reuse
 Win11 private symbols, selectors, DWM backdrops or module IDs.

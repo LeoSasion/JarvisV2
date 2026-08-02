@@ -1,21 +1,33 @@
 using System.Text.Json;
 using Jarvis.ControlCenter;
 
-if (args.Length != 1 ||
-    !string.Equals(
+bool providerProbe =
+    args.Length == 1 &&
+    string.Equals(
         args[0],
         "--provider-probe",
-        StringComparison.Ordinal))
+        StringComparison.Ordinal);
+bool bootstrapProbe =
+    args.Length == 1 &&
+    string.Equals(
+        args[0],
+        "--bootstrap-probe",
+        StringComparison.Ordinal);
+if (!providerProbe && !bootstrapProbe)
 {
-    Console.Error.WriteLine("Usage: --provider-probe");
+    Console.Error.WriteLine(
+        "Usage: <--provider-probe | --bootstrap-probe>");
     return 2;
 }
 
-LocalDiagnosticProviderProbeReceipt receipt =
-    await LocalDiagnosticProviderProbe.RunAsync();
+object receipt = providerProbe
+    ? await LocalDiagnosticProviderProbe.RunAsync()
+    : DesktopRuntimeBootstrapProbe.Run();
 Console.WriteLine(JsonSerializer.Serialize(
     receipt,
+    receipt.GetType(),
     new JsonSerializerOptions { WriteIndented = true }));
-return string.Equals(receipt.Result, "passed", StringComparison.Ordinal)
-    ? 0
-    : 1;
+string result = (string)(receipt.GetType()
+    .GetProperty("Result")?
+    .GetValue(receipt) ?? string.Empty);
+return string.Equals(result, "passed", StringComparison.Ordinal) ? 0 : 1;

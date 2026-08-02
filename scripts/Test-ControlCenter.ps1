@@ -17,6 +17,12 @@ $mainWindowPath = Join-Path $sourceRoot 'MainWindow.xaml'
 $mainWindowCodePath = Join-Path $sourceRoot 'MainWindow.xaml.cs'
 $viewModelPath = Join-Path $sourceRoot 'ConversationSurfaceViewModel.cs'
 $providerPath = Join-Path $sourceRoot 'LocalDiagnosticModelProvider.cs'
+$appPath = Join-Path $sourceRoot 'App.xaml.cs'
+$launchOptionsPath = Join-Path $sourceRoot 'ConversationLaunchOptions.cs'
+$bootstrapPath = Join-Path $sourceRoot 'DesktopRuntimeBootstrap.cs'
+$bootstrapProbePath = Join-Path $sourceRoot 'DesktopRuntimeBootstrapProbe.cs'
+$modelSetupPath = Join-Path $sourceRoot 'ModelSetupWindow.xaml'
+$modelSetupCodePath = Join-Path $sourceRoot 'ModelSetupWindow.xaml.cs'
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()
@@ -44,6 +50,12 @@ $mainWindowText = [IO.File]::ReadAllText($mainWindowPath)
 $mainWindowCodeText = [IO.File]::ReadAllText($mainWindowCodePath)
 $viewModelText = [IO.File]::ReadAllText($viewModelPath)
 $providerText = [IO.File]::ReadAllText($providerPath)
+$appText = [IO.File]::ReadAllText($appPath)
+$launchOptionsText = [IO.File]::ReadAllText($launchOptionsPath)
+$bootstrapText = [IO.File]::ReadAllText($bootstrapPath)
+$bootstrapProbeText = [IO.File]::ReadAllText($bootstrapProbePath)
+$modelSetupText = [IO.File]::ReadAllText($modelSetupPath)
+$modelSetupCodeText = [IO.File]::ReadAllText($modelSetupCodePath)
 $sourceText = @(
     Get-ChildItem -LiteralPath $sourceRoot -File -Recurse |
         Where-Object {
@@ -111,6 +123,7 @@ $requiredVisibleLabels = @(
     'Mutation tools: unavailable',
     'SHELL // LOCKED',
     'SAFE SHUTDOWN',
+    'CONFIGURE OPENAI',
     'production model ',
     'authentication is not configured'
 )
@@ -146,6 +159,33 @@ Add-Check `
         'retain keyboard operation and expose accessible action names.')
 
 Add-Check `
+    -Name 'surface.explicit-protected-provider-setup' `
+    -Passed (
+        $mainWindowText.Contains('Content="CONFIGURE OPENAI"') -and
+        $mainWindowCodeText.Contains('ModelSetupWindow') -and
+        $modelSetupText.Contains('x:Name="ApiKeyInput"') -and
+        $modelSetupText.Contains('PasswordBox') -and
+        $modelSetupText.Contains('gpt-5.6-sol') -and
+        $modelSetupText.Contains('READ / GREP / FIND / LS') -and
+        $modelSetupText.Contains('RETENTION // STORE FALSE') -and
+        $modelSetupText.Contains('SIDECAR // OFFLINE') -and
+        $modelSetupText.Contains(
+            'AutomationProperties.Name="OpenAI API key"') -and
+        $modelSetupText.Contains(
+            'AutomationProperties.Name="Protect and save OpenAI API key"') -and
+        $modelSetupCodeText.Contains(
+            'OpenAiApiKeyCredentialStore.ValidateApiKey') -and
+        $modelSetupCodeText.Contains(
+            'UNREADABLE / REPLACE REQUIRED') -and
+        $modelSetupCodeText.Contains('credentialStore.SaveAsync') -and
+        $modelSetupCodeText.Contains('ApiKeyInput.Clear()') -and
+        $mainWindowCodeText.Contains('replacementRequired = true')) `
+    -Detail (
+        'Provider setup must be an explicit keyboard-accessible PasswordBox ' +
+        'flow that discloses model, tools, retention and sidecar boundaries, ' +
+        'then protects the value without showing the previous key.')
+
+Add-Check `
     -Name 'runtime.owned-start-stream-cancel-checkpoint-shutdown' `
     -Passed (
         $viewModelText.Contains('PiAgentDesktopRuntime.StartAsync') -and
@@ -159,6 +199,37 @@ Add-Check `
     -Detail (
         'The view model must own the Pi runtime, stream bound snapshots, ' +
         'support cancellation and flush/release it on window close.')
+
+Add-Check `
+    -Name 'runtime.portable-bootstrap-and-opt-in-provider' `
+    -Passed (
+        $appText.Contains('"--conversation"') -and
+        $appText.Contains('"--provider"') -and
+        $appText.Contains('DesktopRuntimeBootstrap.Resolve') -and
+        $launchOptionsText.Contains('LocalDiagnostic') -and
+        $launchOptionsText.Contains('OpenAiResponses') -and
+        $bootstrapText.Contains(
+            'runtime\node\node.exe') -and
+        $bootstrapText.Contains(
+            'runtime\pi-agent\src\host.mjs') -and
+        $bootstrapText.Contains('JARVIS2_NODE_PATH') -and
+        $bootstrapText.Contains(
+            '@earendil-works\pi-ai\package.json') -and
+        $bootstrapText.Contains(
+            '@earendil-works\pi-coding-agent\package.json') -and
+        $bootstrapText.Contains(
+            'pi-agent-desktop-host-contract.json') -and
+        $bootstrapText.Contains('ValidatePackageManifest') -and
+        $bootstrapText.Contains('foreach ((string relativePath, string expected)') -and
+        $bootstrapProbeText.Contains('packaged-layout') -and
+        $bootstrapProbeText.Contains('developer-layout') -and
+        $viewModelText.Contains('OpenAiResponsesModelProvider') -and
+        $viewModelText.Contains('OpenAiApiKeyCredentialStore') -and
+        $viewModelText.Contains('providerCredentialReady')) `
+    -Detail (
+        'The ordinary desktop process must resolve a complete packaged ' +
+        'Node/Pi layout before developer fallback and expose production ' +
+        'Responses only through an explicit provider choice and protected key.')
 
 $forbiddenToolCallPattern =
     'DesktopModelToolCallStarted\s*\([^\)]*,\s*"(?:bash|edit|write)"'
@@ -223,6 +294,43 @@ Add-Check `
         'text, no production auth and no mutation. Output: ' +
         (($providerProbeOutput | Select-Object -Last 14) -join ' '))
 
+$bootstrapProbeOutput = @(
+    & $DotnetPath run `
+        --project $diagnosticsProjectPath `
+        --configuration Release `
+        -- `
+        --bootstrap-probe 2>&1
+)
+$bootstrapProbeExitCode = $LASTEXITCODE
+$bootstrapProbe = $null
+try {
+    $bootstrapProbe =
+        ($bootstrapProbeOutput -join [Environment]::NewLine) |
+            ConvertFrom-Json
+}
+catch {
+    $bootstrapProbe = $null
+}
+$bootstrapProbePassed =
+    $bootstrapProbeExitCode -eq 0 -and
+    $null -ne $bootstrapProbe -and
+    $bootstrapProbe.Result -eq 'passed' -and
+    $bootstrapProbe.PackagedLayoutPassed -and
+    $bootstrapProbe.DeveloperLayoutPassed -and
+    $bootstrapProbe.PackagedLayoutPrecedencePassed -and
+    $bootstrapProbe.TamperedPackageRejected -and
+    $bootstrapProbe.MissingRuntimeRejected -and
+    -not $bootstrapProbe.MutationPerformed -and
+    @($bootstrapProbe.Failures).Count -eq 0
+Add-Check `
+    -Name 'runtime.executable-bootstrap-probe' `
+    -Passed $bootstrapProbePassed `
+    -Detail (
+        'The executable bootstrap receipt must prove packaged and developer ' +
+        'resolution, packaged precedence, incomplete-runtime rejection and ' +
+        'no mutation. Output: ' +
+        (($bootstrapProbeOutput | Select-Object -Last 14) -join ' '))
+
 $buildOutput = @(
     & $DotnetPath build `
         $diagnosticsProjectPath `
@@ -244,6 +352,8 @@ $passed = $failures.Count -eq 0
     checkCount = $checks.Count
     passedCount = @($checks | Where-Object passed).Count
     conversationSupported = $true
+    portableRuntimeBootstrapImplemented = $true
+    productionProviderAvailable = $true
     productionAuthenticationConfigured = $false
     executionSupported = $false
     activationPermitted = $false

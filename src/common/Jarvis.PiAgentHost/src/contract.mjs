@@ -1,12 +1,29 @@
 import { readFile } from "node:fs/promises";
 
-const contractUrl = new URL(
-  "../../../../config/pi-agent-desktop-host-contract.json",
-  import.meta.url,
-);
+const contractUrls = [
+  new URL("../config/pi-agent-desktop-host-contract.json", import.meta.url),
+  new URL(
+    "../../../../config/pi-agent-desktop-host-contract.json",
+    import.meta.url,
+  ),
+];
 
 export async function loadContract() {
-  const contract = JSON.parse(await readFile(contractUrl, "utf8"));
+  let contractText;
+  for (const contractUrl of contractUrls) {
+    try {
+      contractText = await readFile(contractUrl, "utf8");
+      break;
+    } catch (error) {
+      if (error?.code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
+  if (contractText === undefined) {
+    throw new Error("The Pi Agent desktop host contract is missing.");
+  }
+  const contract = JSON.parse(contractText);
   validateContract(contract);
   return contract;
 }
@@ -102,6 +119,26 @@ export function validateContract(contract) {
     contract.session?.modelNetworkAllowed !== false
   ) {
     failures.push("session");
+  }
+  if (
+    contract.desktopProvider?.mode !== "opt-in" ||
+    contract.desktopProvider?.implementation !==
+      "openai-responses-api" ||
+    contract.desktopProvider?.endpoint !==
+      "https://api.openai.com/v1/responses" ||
+    contract.desktopProvider?.model !== "gpt-5.6-sol" ||
+    contract.desktopProvider?.reasoningEffort !== "medium" ||
+    contract.desktopProvider?.streaming !== "server-sent-events" ||
+    contract.desktopProvider?.responseStorage !== false ||
+    contract.desktopProvider?.networkOwner !== "desktop-process-only" ||
+    contract.desktopProvider?.credentialStore !==
+      "current-user-dpapi-atomic" ||
+    contract.desktopProvider?.credentialRoot !==
+      "local-appdata-jarvis2-credentials" ||
+    contract.desktopProvider?.ambientCredentialAllowed !== false ||
+    contract.desktopProvider?.credentialTransportToSidecar !== false
+  ) {
+    failures.push("desktopProvider");
   }
   if (
     contract.tools?.initialAllowlist?.join("|") !==

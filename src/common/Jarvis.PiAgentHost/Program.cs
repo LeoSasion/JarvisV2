@@ -39,11 +39,18 @@ bool faultCommand =
     string.Equals(args[0], "fault-tests", StringComparison.Ordinal) &&
     string.Equals(args[1], "--node", StringComparison.Ordinal) &&
     string.Equals(args[3], "--fixtures", StringComparison.Ordinal);
+bool openAiProviderProbeCommand =
+    args.Length == 1 &&
+    string.Equals(
+        args[0],
+        "openai-provider-probe",
+        StringComparison.Ordinal);
 if (
     !probeCommand &&
     !brokerProbeCommand &&
     !conversationProbeCommand &&
     !runtimeProbeCommand &&
+    !openAiProviderProbeCommand &&
     !faultCommand)
 {
     Console.Error.WriteLine(
@@ -55,6 +62,7 @@ if (
         "--sidecar <absolute-host.mjs> | " +
         "runtime-probe --node <absolute-node.exe> " +
         "--sidecar <absolute-host.mjs> | " +
+        "openai-provider-probe | " +
         "fault-tests --node <absolute-node.exe> " +
         "--fixtures <absolute-fixture-root>>");
     return 2;
@@ -63,6 +71,13 @@ if (
 try
 {
     using CancellationTokenSource timeout = new(TimeoutMilliseconds);
+    if (openAiProviderProbeCommand)
+    {
+        OpenAiResponsesProviderProbeReceipt receipt =
+            await OpenAiResponsesProviderProbe.RunAsync(timeout.Token);
+        Console.WriteLine(JsonSerializer.Serialize(receipt, serializerOptions));
+        return receipt.Result == "passed" ? 0 : 1;
+    }
     if (probeCommand)
     {
         PiAgentSidecarOptions options = new(

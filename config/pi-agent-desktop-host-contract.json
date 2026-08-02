@@ -66,6 +66,20 @@
     "resourceDiscovery": "disabled",
     "modelNetworkAllowed": false
   },
+  "desktopProvider": {
+    "mode": "opt-in",
+    "implementation": "openai-responses-api",
+    "endpoint": "https://api.openai.com/v1/responses",
+    "model": "gpt-5.6-sol",
+    "reasoningEffort": "medium",
+    "streaming": "server-sent-events",
+    "responseStorage": false,
+    "networkOwner": "desktop-process-only",
+    "credentialStore": "current-user-dpapi-atomic",
+    "credentialRoot": "local-appdata-jarvis2-credentials",
+    "ambientCredentialAllowed": false,
+    "credentialTransportToSidecar": false
+  },
   "tools": {
     "initialAllowlist": [
       "read",

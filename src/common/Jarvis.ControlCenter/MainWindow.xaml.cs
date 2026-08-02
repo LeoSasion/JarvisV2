@@ -98,6 +98,45 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void ModelSetupButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        try
+        {
+            bool configured = false;
+            bool replacementRequired = false;
+            try
+            {
+                configured =
+                    await conversation.CredentialStore.GetApiKeyAsync() is not null;
+            }
+            catch (Exception exception)
+                when (exception is
+                    System.IO.InvalidDataException or
+                    System.Security.Cryptography.CryptographicException)
+            {
+                replacementRequired = true;
+            }
+            ModelSetupWindow setup = new(
+                conversation.CredentialStore,
+                configured,
+                replacementRequired)
+            {
+                Owner = this,
+            };
+            if (setup.ShowDialog() == true)
+            {
+                await conversation.RefreshCredentialAsync();
+            }
+        }
+        catch (Exception exception)
+        {
+            conversation.ReportUiError(
+                $"Model setup failed closed: {exception.Message}");
+        }
+    }
+
     private async void PromptInput_OnPreviewKeyDown(
         object sender,
         KeyEventArgs eventArgs)

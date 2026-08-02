@@ -92,6 +92,15 @@ public partial class App : Application
         out ConversationLaunchOptions options)
     {
         options = null!;
+        if (
+            arguments.Count >= 3 &&
+            string.Equals(
+                arguments[0],
+                "--conversation",
+                StringComparison.Ordinal))
+        {
+            return TryParseBootstrappedConversation(arguments, out options);
+        }
         if (arguments.Count != 7 ||
             !string.Equals(
                 arguments[0],
@@ -128,6 +137,65 @@ public partial class App : Application
         return true;
     }
 
+    private static bool TryParseBootstrappedConversation(
+        IReadOnlyList<string> arguments,
+        out ConversationLaunchOptions options)
+    {
+        options = null!;
+        if (
+            arguments.Count is not 3 and not 5 ||
+            arguments.Count % 2 == 0)
+        {
+            return false;
+        }
+        Dictionary<string, string> values = new(StringComparer.Ordinal);
+        for (int index = 1; index < arguments.Count; index += 2)
+        {
+            if (
+                index + 1 >= arguments.Count ||
+                !values.TryAdd(arguments[index], arguments[index + 1]))
+            {
+                return false;
+            }
+        }
+        if (
+            !values.TryGetValue("--workspace", out string? workspace) ||
+            values.Count is < 1 or > 2)
+        {
+            return false;
+        }
+        ConversationProviderKind provider =
+            ConversationProviderKind.LocalDiagnostic;
+        if (values.TryGetValue("--provider", out string? providerName))
+        {
+            provider = providerName switch
+            {
+                "local" => ConversationProviderKind.LocalDiagnostic,
+                "openai" => ConversationProviderKind.OpenAiResponses,
+                _ => (ConversationProviderKind)(-1),
+            };
+            if (!Enum.IsDefined(provider))
+            {
+                return false;
+            }
+        }
+        DesktopRuntimeBootstrapReceipt bootstrap =
+            DesktopRuntimeBootstrap.Resolve(workspace);
+        if (
+            bootstrap.Result != "passed" ||
+            bootstrap.NodeExecutablePath is null ||
+            bootstrap.SidecarHostPath is null)
+        {
+            return false;
+        }
+        options = new ConversationLaunchOptions(
+            bootstrap.NodeExecutablePath,
+            bootstrap.SidecarHostPath,
+            bootstrap.WorkspaceRoot,
+            provider);
+        return true;
+    }
+
     private void CaptureAndClose(MainWindow preview, string outputPath)
     {
         try
@@ -158,5 +226,4 @@ public partial class App : Application
             Shutdown(3);
         }
     }
-
 }
