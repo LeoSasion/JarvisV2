@@ -16,6 +16,12 @@ stage one exact existing-text edit for [inline owner approval](docs/PI-AGENT-WOR
 the proposal itself never writes, and Approve Once is bound to the current
 file SHA-256.
 
+Returning users can select `VERIFY & RESUME` from the native launcher's
+[encrypted recent-work catalog](docs/PI-AGENT-DESKTOP-RECENT-SESSIONS.md).
+The CurrentUser-DPAPI catalog stores only workspace/provider/time hints, and
+every resume revalidates the path and full portable runtime before starting Pi
+or opening the separate encrypted conversation checkpoint.
+
 Open `jarvis-control-center.exe`, choose `START PI SESSION`, select one local
 workspace and keep the default local diagnostic provider for the fastest
 deterministic first turn. The launcher validates both the workspace boundary and

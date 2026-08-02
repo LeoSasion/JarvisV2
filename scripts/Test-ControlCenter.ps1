@@ -30,6 +30,10 @@ $sessionAdmissionPath = Join-Path $sourceRoot (
     'DesktopSessionLaunchAdmission.cs')
 $sessionAdmissionProbePath = Join-Path $sourceRoot (
     'DesktopSessionLaunchAdmissionProbe.cs')
+$recentSessionStorePath = Join-Path $sourceRoot (
+    'DesktopRecentSessionStore.cs')
+$recentSessionStoreProbePath = Join-Path $sourceRoot (
+    'DesktopRecentSessionStoreProbe.cs')
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()
@@ -68,6 +72,10 @@ $sessionLaunchCodeText = [IO.File]::ReadAllText($sessionLaunchCodePath)
 $sessionAdmissionText = [IO.File]::ReadAllText($sessionAdmissionPath)
 $sessionAdmissionProbeText = [IO.File]::ReadAllText(
     $sessionAdmissionProbePath)
+$recentSessionStoreText = [IO.File]::ReadAllText(
+    $recentSessionStorePath)
+$recentSessionStoreProbeText = [IO.File]::ReadAllText(
+    $recentSessionStoreProbePath)
 $sourceText = @(
     Get-ChildItem -LiteralPath $sourceRoot -File -Recurse |
         Where-Object {
@@ -316,7 +324,16 @@ Add-Check `
         $sessionLaunchText.Contains('TOOLS // READ + PROPOSE') -and
         $sessionLaunchText.Contains('WRITES // OWNER REVIEW') -and
         $sessionLaunchText.Contains('SHELL // LOCKED') -and
+        $sessionLaunchText.Contains('Text="Resume recent work"') -and
+        $sessionLaunchText.Contains('x:Name="RecentSessionsList"') -and
+        $sessionLaunchText.Contains('CURRENTUSER DPAPI') -and
+        $sessionLaunchText.Contains('{Binding ActionLabel}') -and
+        $sessionLaunchText.Contains(
+            'AutomationProperties.Name="{Binding AutomationName}"') -and
         $sessionLaunchCodeText.Contains('OpenFolderDialog') -and
+        $sessionLaunchCodeText.Contains('RecentSessionButton_OnClick') -and
+        $sessionLaunchCodeText.Contains('AdmitAndClose') -and
+        $sessionLaunchCodeText.Contains('"VERIFY & RESUME"') -and
         $sessionLaunchCodeText.Contains(
             'DesktopSessionLaunchAdmission.Admit') -and
         $sessionLaunchCodeText.Contains(
@@ -324,11 +341,22 @@ Add-Check `
         $sessionAdmissionText.Contains('RejectsWindowsPathShape') -and
         $sessionAdmissionText.Contains('EnsureNoReparsePoints') -and
         $sessionAdmissionText.Contains('DesktopRuntimeBootstrap.Resolve') -and
-        $sessionAdmissionProbeText.Contains('UnknownProviderRejected')) `
+        $sessionAdmissionProbeText.Contains('UnknownProviderRejected') -and
+        $mainWindowCodeText.Contains('recentStore.LoadAsync') -and
+        $mainWindowCodeText.Contains('recentStore.RememberAsync') -and
+        $recentSessionStoreText.Contains('DataProtectionScope.CurrentUser') -and
+        $recentSessionStoreText.Contains('FileOptions.WriteThrough') -and
+        $recentSessionStoreText.Contains(
+            'File.Move(temporaryPath, catalogPath, overwrite: true)') -and
+        $recentSessionStoreText.Contains('MaximumEntries = 8') -and
+        $recentSessionStoreText.Contains('EnsureNoReparsePoints') -and
+        $recentSessionStoreText.Contains(
+            'DesktopSessionLaunchAdmission.AdmitWorkspace') -and
+        -not $recentSessionStoreText.Contains('ApiKey')) `
     -Detail (
-        'The empty state must launch a keyboard-accessible native workspace ' +
-        'and provider flow, preflight protected/reparse paths, resolve the ' +
-        'portable runtime and transition the existing window in-process.')
+        'The empty state must launch or one-action resume a keyboard-accessible ' +
+        'native workspace/provider flow, keep the recent catalog encrypted, ' +
+        'revalidate paths and runtime, and transition the window in-process.')
 
 Add-Check `
     -Name 'runtime.portable-bootstrap-and-opt-in-provider' `
@@ -585,6 +613,45 @@ Add-Check `
     -Name 'runtime.in-process-session-lifecycle-probe' `
     -Passed $sessionLifecycleProbePassed `
     -Detail $sessionLifecycleDetail
+
+$recentSessionStoreProbeOutput = @(
+    & $DotnetPath run `
+        --project $diagnosticsProjectPath `
+        --configuration Release `
+        -- `
+        --recent-session-store-probe `
+        --workspace $root 2>&1
+)
+$recentSessionStoreProbeExitCode = $LASTEXITCODE
+$recentSessionStoreProbe = $null
+try {
+    $recentSessionStoreProbe =
+        ($recentSessionStoreProbeOutput -join [Environment]::NewLine) |
+            ConvertFrom-Json
+}
+catch {
+    $recentSessionStoreProbe = $null
+}
+$recentSessionStoreProbePassed =
+    $recentSessionStoreProbeExitCode -eq 0 -and
+    $null -ne $recentSessionStoreProbe -and
+    $recentSessionStoreProbe.Result -eq 'passed' -and
+    $recentSessionStoreProbe.CurrentUserRoundTripPassed -and
+    $recentSessionStoreProbe.ProviderAndRecencyPassed -and
+    $recentSessionStoreProbe.DuplicateWorkspaceCollapsed -and
+    $recentSessionStoreProbe.PlaintextWorkspaceAbsent -and
+    $recentSessionStoreProbe.CiphertextTamperRejected -and
+    $recentSessionStoreProbe.TemporaryStorageRemoved -and
+    -not $recentSessionStoreProbe.MutationPerformed -and
+    @($recentSessionStoreProbe.Failures).Count -eq 0
+Add-Check `
+    -Name 'runtime.encrypted-recent-session-store-probe' `
+    -Passed $recentSessionStoreProbePassed `
+    -Detail (
+        'The executable CurrentUser-DPAPI probe must prove atomic encrypted ' +
+        'round-trip, latest-provider replacement, no plaintext path, tamper ' +
+        'rejection and temporary cleanup. Output: ' +
+        (($recentSessionStoreProbeOutput | Select-Object -Last 16) -join ' '))
 
 $buildOutput = @(
     & $DotnetPath build `

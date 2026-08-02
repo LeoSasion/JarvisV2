@@ -46,7 +46,45 @@ public partial class App : Application
             preview.Show();
             _ = Dispatcher.BeginInvoke(
                 DispatcherPriority.ContextIdle,
-                () => CaptureAndClose(preview, outputPath));
+                () => CaptureAndClose(preview, outputPath, 1440, 900));
+            return;
+        }
+
+        if (TryParseSessionLauncherCapture(
+                arguments,
+                out outputPath,
+                out string? previewWorkspace))
+        {
+            DateTimeOffset previewTime = new(
+                2026,
+                8,
+                2,
+                9,
+                42,
+                0,
+                TimeSpan.Zero);
+            DesktopRecentSessionEntry[] recentSessions =
+            [
+                new(
+                    previewWorkspace,
+                    ConversationProviderKind.OpenAiResponses,
+                    previewTime),
+                new(
+                    Path.Combine(previewWorkspace, "archived-sandbox"),
+                    ConversationProviderKind.LocalDiagnostic,
+                    previewTime.AddDays(-1)),
+            ];
+            SessionLaunchWindow preview = new(
+                previewWorkspace,
+                recentSessions)
+            {
+                ShowInTaskbar = true,
+            };
+            MainWindow = preview;
+            preview.Show();
+            _ = Dispatcher.BeginInvoke(
+                DispatcherPriority.ContextIdle,
+                () => CaptureAndClose(preview, outputPath, 760, 730));
             return;
         }
 
@@ -85,6 +123,38 @@ public partial class App : Application
                 ".png",
                 StringComparison.OrdinalIgnoreCase) &&
             Directory.Exists(Path.GetDirectoryName(outputPath));
+    }
+
+    private static bool TryParseSessionLauncherCapture(
+        IReadOnlyList<string> arguments,
+        out string outputPath,
+        out string workspaceRoot)
+    {
+        outputPath = string.Empty;
+        workspaceRoot = string.Empty;
+        if (
+            arguments.Count != 4 ||
+            !string.Equals(
+                arguments[0],
+                "--capture-session-launcher-preview",
+                StringComparison.Ordinal) ||
+            !string.Equals(
+                arguments[2],
+                "--workspace",
+                StringComparison.Ordinal))
+        {
+            return false;
+        }
+        outputPath = Path.GetFullPath(arguments[1]);
+        workspaceRoot = Path.TrimEndingDirectorySeparator(
+            Path.GetFullPath(arguments[3]));
+        return string.Equals(
+                Path.GetExtension(outputPath),
+                ".png",
+                StringComparison.OrdinalIgnoreCase) &&
+            Directory.Exists(Path.GetDirectoryName(outputPath)) &&
+            DesktopSessionLaunchAdmission.AdmitWorkspace(workspaceRoot)
+                .Result == "passed";
     }
 
     private static bool TryParseConversation(
@@ -189,14 +259,18 @@ public partial class App : Application
         return true;
     }
 
-    private void CaptureAndClose(MainWindow preview, string outputPath)
+    private void CaptureAndClose(
+        Window preview,
+        string outputPath,
+        int width,
+        int height)
     {
         try
         {
             preview.UpdateLayout();
             RenderTargetBitmap bitmap = new(
-                1440,
-                900,
+                width,
+                height,
                 96,
                 96,
                 PixelFormats.Pbgra32);

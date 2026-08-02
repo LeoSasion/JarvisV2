@@ -29,16 +29,25 @@ bool sessionLaunchLifecycleProbe =
         StringComparison.Ordinal) &&
     string.Equals(args[1], "--node", StringComparison.Ordinal) &&
     string.Equals(args[3], "--workspace", StringComparison.Ordinal);
+bool recentSessionStoreProbe =
+    args.Length == 3 &&
+    string.Equals(
+        args[0],
+        "--recent-session-store-probe",
+        StringComparison.Ordinal) &&
+    string.Equals(args[1], "--workspace", StringComparison.Ordinal);
 if (
     !providerProbe &&
     !bootstrapProbe &&
     !sessionLaunchProbe &&
-    !sessionLaunchLifecycleProbe)
+    !sessionLaunchLifecycleProbe &&
+    !recentSessionStoreProbe)
 {
     Console.Error.WriteLine(
         "Usage: <--provider-probe | --bootstrap-probe | " +
         "--session-launch-probe --node <absolute-node.exe> " +
         "--session-launch-lifecycle-probe --node <absolute-node.exe> " +
+        "--recent-session-store-probe " +
         "--workspace <absolute-workspace>>");
     return 2;
 }
@@ -47,6 +56,9 @@ object receipt = providerProbe
     ? await LocalDiagnosticProviderProbe.RunAsync()
     : bootstrapProbe
         ? DesktopRuntimeBootstrapProbe.Run()
+        : recentSessionStoreProbe
+            ? await DesktopRecentSessionStoreProbe.RunAsync(
+                Path.GetFullPath(args[2]))
         : sessionLaunchProbe
             ? DesktopSessionLaunchAdmissionProbe.Run(
                 Path.GetFullPath(args[4]),

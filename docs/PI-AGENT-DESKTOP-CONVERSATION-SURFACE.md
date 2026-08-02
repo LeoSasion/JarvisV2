@@ -77,6 +77,15 @@ first turn. The modal validates the workspace and fixed portable/developer
 runtime before the same window transitions into the conversation. `CONFIGURE
 OPENAI` remains available from the idle surface.
 
+After a session reaches `Ready`, the desktop records its workspace, provider
+and open time in a separate CurrentUser-DPAPI recent-session catalog. The next
+launcher shows up to three entries with a one-action `VERIFY & RESUME` path.
+Every resume reruns workspace and fixed-runtime admission before any process
+starts; an available workspace may then restore its separate encrypted
+conversation checkpoint. API keys, prompts, tool data and approval
+capabilities are never stored in the launch catalog. See
+`PI-AGENT-DESKTOP-RECENT-SESSIONS.md`.
+
 The command-line equivalent remains available for automation and diagnostics:
 
 ```powershell
@@ -154,6 +163,9 @@ The reviewed-iteration extension is captured separately at
 `docs/screenshots/jarvis-control-center-reviewed-iteration.png`; its policy is
 visible in the incumbent inspector while the one-shot edit remains inside the
 producing turn.
+The returning-user launcher is captured at
+`docs/screenshots/jarvis-session-launcher-recent-work.png`; it shows available
+and unavailable recent-work states without starting a runtime.
 
 ## Validation
 
@@ -162,8 +174,8 @@ window and no-shell-mutation source gates, it validates the bound transcript,
 keyboard and accessibility controls, provider setup, runtime lifecycle,
 checkpoint shutdown, portable bootstrap and the visible credential/safety
 disclosures. A separate `Jarvis.ControlCenter.Diagnostics` executable runs the
-local provider stream probe and runtime-bootstrap probe outside the WPF
-lifecycle.
+local provider stream, runtime-bootstrap and real CurrentUser-DPAPI
+recent-session probes outside the WPF lifecycle.
 
 - one exact `ls` tool request;
 - multiple text deltas followed by `stop`;

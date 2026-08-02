@@ -45,6 +45,9 @@ logic and explicit fail-closed platform adapters for native shell work.
 
 - Pi Agent conversation history is bounded, workspace-bound and protected with
   Windows CurrentUser DPAPI.
+- The desktop may remember up to eight recent workspace/provider/time launch
+  hints in a separate CurrentUser-DPAPI catalog. A hint never carries model,
+  conversation or approval authority, and every resume reruns admission.
 - The sidecar remains offline and receives model work only through a
   desktop-owned current-user transport.
 - Pi can read the admitted workspace and stage one exact replacement in an

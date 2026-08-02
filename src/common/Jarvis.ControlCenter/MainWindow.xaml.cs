@@ -17,6 +17,7 @@ public partial class MainWindow : Window
         Interval = TimeSpan.FromSeconds(1),
     };
     private readonly ConversationSurfaceViewModel conversation;
+    private DesktopRecentSessionStore? recentSessionStore;
     private bool shutdownInProgress;
     private bool closeAuthorized;
 
@@ -198,7 +199,31 @@ public partial class MainWindow : Window
         }
         try
         {
-            SessionLaunchWindow launcher = new(ResolveInitialWorkspace())
+            DesktopRecentSessionCatalog recentSessions;
+            DesktopRecentSessionStore? recentStore = null;
+            try
+            {
+                recentStore = recentSessionStore ??=
+                    new DesktopRecentSessionStore();
+                recentSessions = await recentStore.LoadAsync();
+            }
+            catch (Exception exception)
+                when (exception is
+                    IOException or
+                    InvalidDataException or
+                    InvalidOperationException or
+                    NotSupportedException or
+                    System.Security.Cryptography.CryptographicException or
+                    UnauthorizedAccessException)
+            {
+                recentSessions = DesktopRecentSessionStore.EmptyCatalog();
+                conversation.ReportUiError(
+                    "Recent work could not be opened; a new session is still available: " +
+                    exception.Message);
+            }
+            SessionLaunchWindow launcher = new(
+                ResolveInitialWorkspace(recentSessions),
+                recentSessions.Entries)
             {
                 Owner = this,
             };
@@ -208,8 +233,34 @@ public partial class MainWindow : Window
             {
                 return;
             }
-            await conversation.LaunchAsync(launcher.Options);
+            ConversationLaunchOptions options = launcher.Options;
+            await conversation.LaunchAsync(options);
             UpdateConversationChrome();
+            if (
+                conversation.Phase == ConversationRuntimePhase.Ready &&
+                recentStore is not null)
+            {
+                try
+                {
+                    await recentStore.RememberAsync(
+                        options.WorkspaceRoot,
+                        options.Provider);
+                }
+                catch (Exception exception)
+                    when (exception is
+                        ArgumentException or
+                        IOException or
+                        InvalidDataException or
+                        InvalidOperationException or
+                        NotSupportedException or
+                        System.Security.Cryptography.CryptographicException or
+                        UnauthorizedAccessException)
+                {
+                    conversation.ReportUiError(
+                        "Session is ready, but recent-work persistence failed closed: " +
+                        exception.Message);
+                }
+            }
             if (conversation.Phase == ConversationRuntimePhase.Ready)
             {
                 PromptInput.Focus();
@@ -282,13 +333,20 @@ public partial class MainWindow : Window
         }
     }
 
-    private static string? ResolveInitialWorkspace()
+    private static string? ResolveInitialWorkspace(
+        DesktopRecentSessionCatalog recentSessions)
     {
         string currentDirectory = Environment.CurrentDirectory;
         string gitMarker = Path.Combine(currentDirectory, ".git");
-        return Directory.Exists(gitMarker) || File.Exists(gitMarker)
-            ? currentDirectory
-            : null;
+        if (Directory.Exists(gitMarker) || File.Exists(gitMarker))
+        {
+            return currentDirectory;
+        }
+        return recentSessions.Entries
+            .Select(entry => entry.WorkspaceRoot)
+            .FirstOrDefault(workspace =>
+                DesktopSessionLaunchAdmission.AdmitWorkspace(workspace)
+                    .Result == "passed");
     }
 
     private async void PromptInput_OnPreviewKeyDown(

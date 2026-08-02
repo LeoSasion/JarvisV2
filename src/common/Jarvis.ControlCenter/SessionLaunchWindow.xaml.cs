@@ -6,16 +6,42 @@ using Microsoft.Win32;
 
 namespace Jarvis.ControlCenter;
 
+public sealed record RecentSessionLaunchItem(
+    string WorkspaceRoot,
+    string WorkspaceName,
+    ConversationProviderKind Provider,
+    string ActionLabel,
+    string MetadataLabel,
+    string AutomationName,
+    bool CanResume);
+
 public partial class SessionLaunchWindow : Window
 {
     private bool admitting;
 
-    public SessionLaunchWindow(string? initialWorkspace = null)
+    public SessionLaunchWindow(
+        string? initialWorkspace = null,
+        IReadOnlyList<DesktopRecentSessionEntry>? recentSessions = null)
     {
         InitializeComponent();
+        IReadOnlyList<RecentSessionLaunchItem> recentItems =
+            CreateRecentItems(recentSessions ?? []);
+        RecentSessionsList.ItemsSource = recentItems;
+        RecentSessionEmpty.Visibility = recentItems.Count == 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         if (!string.IsNullOrWhiteSpace(initialWorkspace))
         {
             WorkspaceInput.Text = initialWorkspace;
+            RecentSessionLaunchItem? matching = recentItems.FirstOrDefault(
+                item => string.Equals(
+                    item.WorkspaceRoot,
+                    initialWorkspace,
+                    StringComparison.OrdinalIgnoreCase));
+            if (matching is not null)
+            {
+                SelectProvider(matching.Provider);
+            }
         }
         Loaded += (_, _) =>
         {
@@ -84,22 +110,52 @@ public partial class SessionLaunchWindow : Window
         object sender,
         RoutedEventArgs eventArgs)
     {
+        ConversationProviderKind provider =
+            OpenAiProviderOption.IsChecked == true
+                ? ConversationProviderKind.OpenAiResponses
+                : ConversationProviderKind.LocalDiagnostic;
+        AdmitAndClose(provider, resume: false);
+    }
+
+    private void RecentSessionButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        if (
+            admitting ||
+            sender is not System.Windows.Controls.Button
+            {
+                Tag: RecentSessionLaunchItem item,
+            } ||
+            !item.CanResume)
+        {
+            return;
+        }
+        WorkspaceInput.Text = item.WorkspaceRoot;
+        WorkspaceInput.CaretIndex = WorkspaceInput.Text.Length;
+        SelectProvider(item.Provider);
+        AdmitAndClose(item.Provider, resume: true);
+    }
+
+    private void AdmitAndClose(
+        ConversationProviderKind provider,
+        bool resume)
+    {
         if (admitting)
         {
             return;
         }
         admitting = true;
         StartButton.IsEnabled = false;
+        RecentSessionsList.IsEnabled = false;
         SetAdmissionState(
-            "VERIFYING RUNTIME",
-            "Checking workspace, packaged hashes and the desktop-owned Pi sidecar.",
+            resume ? "VERIFYING RECENT WORK" : "VERIFYING RUNTIME",
+            resume
+                ? "Rechecking the workspace and packaged runtime before restoring its encrypted checkpoint."
+                : "Checking workspace, packaged hashes and the desktop-owned Pi sidecar.",
             "CyanBrush");
         try
         {
-            ConversationProviderKind provider =
-                OpenAiProviderOption.IsChecked == true
-                    ? ConversationProviderKind.OpenAiResponses
-                    : ConversationProviderKind.LocalDiagnostic;
             DesktopSessionLaunchAdmissionReceipt admission =
                 DesktopSessionLaunchAdmission.Admit(
                     WorkspaceInput.Text,
@@ -129,10 +185,55 @@ public partial class SessionLaunchWindow : Window
         finally
         {
             admitting = false;
+            RecentSessionsList.IsEnabled = true;
             StartButton.IsEnabled =
                 DesktopSessionLaunchAdmission.AdmitWorkspace(
                     WorkspaceInput.Text).Result == "passed";
         }
+    }
+
+    private static IReadOnlyList<RecentSessionLaunchItem> CreateRecentItems(
+        IReadOnlyList<DesktopRecentSessionEntry> recentSessions)
+    {
+        List<RecentSessionLaunchItem> items = [];
+        foreach (DesktopRecentSessionEntry entry in recentSessions.Take(3))
+        {
+            DesktopWorkspaceAdmissionReceipt admission =
+                DesktopSessionLaunchAdmission.AdmitWorkspace(
+                    entry.WorkspaceRoot);
+            bool canResume = admission.Result == "passed";
+            string workspaceName = Path.GetFileName(entry.WorkspaceRoot);
+            if (string.IsNullOrWhiteSpace(workspaceName))
+            {
+                workspaceName = entry.WorkspaceRoot;
+            }
+            string provider = entry.Provider ==
+                    ConversationProviderKind.OpenAiResponses
+                ? "OPENAI RESPONSES"
+                : "LOCAL DIAGNOSTIC";
+            string opened = entry.LastOpenedAtUtc
+                .ToLocalTime()
+                .ToString("yyyy.MM.dd HH:mm");
+            items.Add(new RecentSessionLaunchItem(
+                entry.WorkspaceRoot,
+                workspaceName,
+                entry.Provider,
+                canResume ? "VERIFY & RESUME" : "UNAVAILABLE",
+                $"{provider} // {opened}",
+                canResume
+                    ? $"Verify and resume recent workspace {workspaceName} at {entry.WorkspaceRoot} with {provider}"
+                    : $"Recent workspace {workspaceName} at {entry.WorkspaceRoot} is unavailable",
+                canResume));
+        }
+        return items;
+    }
+
+    private void SelectProvider(ConversationProviderKind provider)
+    {
+        OpenAiProviderOption.IsChecked =
+            provider == ConversationProviderKind.OpenAiResponses;
+        LocalProviderOption.IsChecked =
+            provider != ConversationProviderKind.OpenAiResponses;
     }
 
     private void SetAdmissionState(

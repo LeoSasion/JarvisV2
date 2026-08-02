@@ -10,9 +10,12 @@ default; production mode is an explicit `OpenAiResponsesModelProvider`
 selection. The production key is stored with CurrentUser DPAPI and used only
 by desktop HTTPS. The broker pipe and offline sidecar never receive it.
 
-Both modes expose only `read`, `grep`, `find` and `ls`. This desktop agent
-boundary has no shell injection, Windhawk activation, Explorer lifecycle,
-registry or mutation capability. See
+Both modes expose only `read`, `grep`, `find`, `ls` and the non-writing
+`propose_edit`. Only the desktop owner can apply one exact existing-text
+replacement, and the optional reviewed loop requires a fresh one-shot approval
+plus fixed repository validation for every edit. This desktop agent boundary
+has no shell injection, Windhawk activation, Explorer lifecycle, registry or
+generic mutation capability. See
 `PI-AGENT-OPENAI-RESPONSES-PROVIDER.md` and
 `JARVIS-CONTROL-CENTER-PORTABLE-RUNTIME.md`.
 
@@ -22,6 +25,14 @@ portable/developer runtime before constructing the broker. Local diagnostic is
 the default and starts no network request. The same Control Center window then
 transitions from the idle command surface into the Pi conversation; no child
 shell, helper console or second desktop process is used.
+
+Successful in-app launches update a separate CurrentUser-DPAPI recent-session
+catalog containing at most eight workspace/provider/time hints and no model or
+conversation data. The launcher displays the three newest hints, re-admits the
+current path and complete portable runtime, and only then starts the same owned
+runtime. Conversation checkpoints and reviewed-iteration receipts remain
+separate workspace-bound stores; the launch catalog holds no approval
+capability.
 
 ## 原生优先边界
 

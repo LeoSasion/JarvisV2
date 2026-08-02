@@ -1503,8 +1503,8 @@ $phase7ControlCenterAuditPassed =
     $controlCenterAuditExitCode -eq 0 -and
     $null -ne $controlCenterAudit -and
     $controlCenterAudit.result -eq 'passed' -and
-    $controlCenterAudit.checkCount -eq 17 -and
-    $controlCenterAudit.passedCount -eq 17 -and
+    $controlCenterAudit.checkCount -eq 18 -and
+    $controlCenterAudit.passedCount -eq 18 -and
     $controlCenterAudit.conversationSupported -and
     -not $controlCenterAudit.productionAuthenticationConfigured -and
     -not $controlCenterAudit.executionSupported -and
@@ -1514,7 +1514,7 @@ $phase7ControlCenterAuditPassed =
 Add-Check `
     'phase7.control-center-executable-audit' `
     $phase7ControlCenterAuditPassed `
-    'The Control Center safety/build audit must pass all seventeen checks, including reviewed iteration, in-app admission, local runtime lifecycle and streamed-provider probes, without enabling shell execution.'
+    'The Control Center safety/build audit must pass all eighteen checks, including reviewed iteration, encrypted recent-session resume, in-app admission, local runtime lifecycle and streamed-provider probes, without enabling shell execution.'
 
 $phase7BridgeStaticContract =
     $explorerBridgeSource.Contains(

@@ -213,6 +213,13 @@ in the right inspector. The four-stage rail stays four stages wide: its compact
 owner decision is shown where the exact diff can be reviewed. Transcript and
 inspector scroll independently when vertical content grows.
 
+The session launcher is a focused 760-by-730 owned window. Returning work is
+shown first as a compact recent-work plane, followed by the numbered manual
+workspace and provider sequence. It may display three recent entries even
+though the encrypted catalog retains eight. The footer preserves one manual
+primary action; each recent row carries its own explicit `VERIFY & RESUME`
+action and never bypasses admission.
+
 This is desktop density for pointer and keyboard use. Do not enlarge it into a
 touch layout by stretching the same grid; platform adaptations should preserve
 the ownership story using native platform structure.
@@ -281,6 +288,26 @@ rounding softens an edge only enough to avoid brittle geometry.
   caret.
 - **Error / Disabled:** Pair Fault Coral or muted neutral treatment with explicit
   text. A disabled preview must state why submission is unavailable.
+
+### Recent-work launcher
+
+The returning-user path is a launch index, not a conversation preview. Each row
+shows the workspace name, canonical path, provider and last-opened time. An
+available row names the action `VERIFY & RESUME`; a missing, protected or
+reparse-pointed path remains visible but disabled and explicitly says
+`UNAVAILABLE`. The explanatory copy states that encrypted conversation context
+is restored only when present.
+
+Use the incumbent matte plane and one-pixel rule rather than introducing a new
+card language. Cyan belongs to the available action and keyboard focus; an
+unavailable row recedes through disabled opacity plus its text label. The
+manual Workspace / Model path flow stays fully usable when there is no catalog
+or its CurrentUser-DPAPI envelope cannot be opened.
+
+**The Hint Is Not Authority Rule.** A remembered path/provider/time entry is
+only a convenience hint. Every resume visibly revalidates the workspace and
+complete portable runtime before a process starts, and the catalog never
+contains credentials, prompts, tool results or approval capability.
 
 ### Navigation
 
@@ -378,6 +405,8 @@ primary actions.
 - **Do** expose the fixed pinned-HEAD, exact-path-set, hash, diff-check, strict
   JSON and safe XML/XAML/project parse gate before automatic reasoning may
   continue.
+- **Do** keep recent-work resume one action while naming its revalidation and
+  showing unavailable paths instead of silently dropping them.
 - **Do** render RE-ARM as a fresh owner action after repository revalidation,
   never as recovery of an earlier proposal.
 
@@ -403,5 +432,7 @@ primary actions.
 - **Don't** imply that the repository gate invokes a shell or repository-authored
   code: it starts the bundled `runtime\git\cmd\git.exe` directly and validates
   only the fixed Git/hash/diff/structured-text conditions.
+- **Don't** treat the recent-session catalog as path admission, checkpoint
+  authentication or permission to resume a pending proposal.
 - **Don't** expand reviewed iteration into Explorer, registry, service, device,
   Windows system mutation, Git commit/push/merge, or any other shell authority.

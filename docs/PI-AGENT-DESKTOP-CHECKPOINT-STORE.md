@@ -72,6 +72,13 @@ Completed turns are therefore durable without waiting for window close. A
 process or machine failure can still lose an active turn or a terminal save
 that had not reached its atomic replace.
 
+Workspace discovery is deliberately separate. The desktop recent-session
+catalog may remember a protected workspace/provider launch hint, but it does
+not contain checkpoint text or gain checkpoint entropy. Resume first reruns the
+normal launch admission, then this store independently authenticates and opens
+the workspace-bound checkpoint. See
+`PI-AGENT-DESKTOP-RECENT-SESSIONS.md`.
+
 ## Diagnostic boundary
 
 The deterministic runtime probe uses a unique directory under the Windows
