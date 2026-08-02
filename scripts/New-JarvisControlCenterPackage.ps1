@@ -217,13 +217,17 @@ JARVIS2 PORTABLE CONTROL CENTER
 This folder is a self-contained Windows x64 desktop build. It does not install,
 activate, inject, restart Explorer, or modify the registry.
 
-Local deterministic conversation:
-  jarvis-control-center.exe --conversation --workspace C:\absolute\workspace --provider local
+Native session launcher (recommended):
+  1. Open jarvis-control-center.exe.
+  2. Choose START PI SESSION and select one local workspace.
+  3. Keep LOCAL DIAGNOSTIC for the fastest deterministic read-only first turn.
 
 OpenAI Responses conversation:
   1. Open jarvis-control-center.exe and choose CONFIGURE OPENAI.
-  2. Close the idle surface.
-  3. Run jarvis-control-center.exe --conversation --workspace C:\absolute\workspace --provider openai
+  2. Choose START PI SESSION and select OPENAI RESPONSES.
+
+Automation equivalent:
+  jarvis-control-center.exe --conversation --workspace C:\absolute\workspace --provider local
 
 The API key is protected under the current Windows user with DPAPI. It is not
 stored in this package and is never sent to the offline Pi sidecar. Pi tools are

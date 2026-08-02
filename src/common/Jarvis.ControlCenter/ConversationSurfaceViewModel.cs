@@ -23,7 +23,7 @@ public sealed class ConversationSurfaceViewModel :
     private static readonly PiAgentConversationSnapshot EmptySnapshot =
         new(0, null, false, false, []);
 
-    private readonly ConversationLaunchOptions? launchOptions;
+    private ConversationLaunchOptions? launchOptions;
     private readonly OpenAiApiKeyCredentialStore credentialStore = new();
     private readonly bool preview;
     private PiAgentDesktopRuntime? runtime;
@@ -132,6 +132,11 @@ public sealed class ConversationSurfaceViewModel :
             providerCredentialReady);
     public bool CanCancel =>
         phase == ConversationRuntimePhase.Ready && snapshot.CanCancel;
+    public bool CanLaunchSession =>
+        !preview &&
+        runtime is null &&
+        phase is ConversationRuntimePhase.NotStarted or
+            ConversationRuntimePhase.Faulted;
     public bool HasOwnedRuntime => runtime is not null && !runtime.IsShutdown;
     public bool IsOpenAiProvider =>
         launchOptions?.Provider == ConversationProviderKind.OpenAiResponses;
@@ -145,6 +150,51 @@ public sealed class ConversationSurfaceViewModel :
             ? "TURN COMPLETE / CONTROL RETURNED"
             : "JARVIS IS STREAMING A RESPONSE",
     };
+    public string EmptyStateTitle => phase switch
+    {
+        ConversationRuntimePhase.NotStarted when launchOptions is null =>
+            "Start a workspace session",
+        ConversationRuntimePhase.Starting =>
+            "Pi is admitting the workspace",
+        ConversationRuntimePhase.Ready when
+            IsOpenAiProvider && !providerCredentialReady =>
+            "OpenAI authentication is required",
+        ConversationRuntimePhase.Ready =>
+            "Pi is ready for your first request",
+        ConversationRuntimePhase.Faulted =>
+            "Runtime admission needs attention",
+        ConversationRuntimePhase.Preview =>
+            "Illustrative handoff complete",
+        _ => "No turn has been handed to Pi",
+    };
+    public string EmptyStateDescription => phase switch
+    {
+        ConversationRuntimePhase.NotStarted when launchOptions is null =>
+            "Choose one workspace and start the local read-only Pi runtime. " +
+                "No command line is required.",
+        ConversationRuntimePhase.Starting =>
+            "The desktop is verifying the runtime, workspace and broker boundary.",
+        ConversationRuntimePhase.Ready when
+            IsOpenAiProvider && !providerCredentialReady =>
+            "Configure the protected OpenAI key in the inspector, then submit " +
+                "your first request.",
+        ConversationRuntimePhase.Ready =>
+            "Submit a request below. Only root-confined read tools are available.",
+        ConversationRuntimePhase.Faulted =>
+            "Review the status detail, then choose a different workspace or " +
+                "repair the portable runtime.",
+        ConversationRuntimePhase.Preview =>
+            "Preview data only; no runtime, workspace or tool was started.",
+        _ => "Start another admitted session to continue.",
+    };
+    public string SessionLaunchActionLabel => phase switch
+    {
+        ConversationRuntimePhase.Faulted => "CHOOSE ANOTHER SESSION",
+        ConversationRuntimePhase.Ready => "SESSION READY",
+        ConversationRuntimePhase.Starting => "ADMITTING SESSION",
+        ConversationRuntimePhase.Preview => "PREVIEW ONLY",
+        _ => "START PI SESSION",
+    };
 
     private PiAgentConversationTurnSnapshot? ActiveTurn =>
         snapshot.ActiveTurnId is null
@@ -154,6 +204,27 @@ public sealed class ConversationSurfaceViewModel :
                     turn.TurnId,
                     snapshot.ActiveTurnId,
                     StringComparison.Ordinal));
+
+    public async Task LaunchAsync(
+        ConversationLaunchOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        if (!CanLaunchSession)
+        {
+            throw new InvalidOperationException(
+                "A new Pi session cannot be launched in the current runtime phase.");
+        }
+        launchOptions = options;
+        snapshot = EmptySnapshot;
+        providerCredentialReady = false;
+        phase = ConversationRuntimePhase.NotStarted;
+        statusDetail = "Workspace selected. Starting the desktop-owned Pi runtime.";
+        uiError = null;
+        RaiseRuntimeProperties();
+        RaiseConversationProperties();
+        await InitializeAsync(cancellationToken);
+    }
 
     public async Task InitializeAsync(
         CancellationToken cancellationToken = default)
@@ -409,8 +480,12 @@ public sealed class ConversationSurfaceViewModel :
         RaisePropertyChanged(nameof(HandoffComplete));
         RaisePropertyChanged(nameof(CanSubmit));
         RaisePropertyChanged(nameof(CanCancel));
+        RaisePropertyChanged(nameof(CanLaunchSession));
         RaisePropertyChanged(nameof(HandoffProgress));
         RaisePropertyChanged(nameof(HandoffLabel));
+        RaisePropertyChanged(nameof(EmptyStateTitle));
+        RaisePropertyChanged(nameof(EmptyStateDescription));
+        RaisePropertyChanged(nameof(SessionLaunchActionLabel));
     }
 
     private void RaiseRuntimeProperties()
@@ -418,12 +493,17 @@ public sealed class ConversationSurfaceViewModel :
         RaisePropertyChanged(nameof(Phase));
         RaisePropertyChanged(nameof(PhaseLabel));
         RaisePropertyChanged(nameof(StatusDetail));
+        RaisePropertyChanged(nameof(ProviderLabel));
         RaisePropertyChanged(nameof(WorkspaceLabel));
         RaisePropertyChanged(nameof(CheckpointLabel));
         RaisePropertyChanged(nameof(CredentialLabel));
         RaisePropertyChanged(nameof(BrokerLabel));
         RaisePropertyChanged(nameof(ShutdownLabel));
         RaisePropertyChanged(nameof(HasOwnedRuntime));
+        RaisePropertyChanged(nameof(CanLaunchSession));
+        RaisePropertyChanged(nameof(EmptyStateTitle));
+        RaisePropertyChanged(nameof(EmptyStateDescription));
+        RaisePropertyChanged(nameof(SessionLaunchActionLabel));
     }
 
     private static PiAgentConversationSnapshot CreatePreviewSnapshot()

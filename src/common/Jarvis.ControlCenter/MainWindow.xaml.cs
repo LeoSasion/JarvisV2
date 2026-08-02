@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -135,6 +136,49 @@ public partial class MainWindow : Window
             conversation.ReportUiError(
                 $"Model setup failed closed: {exception.Message}");
         }
+    }
+
+    private async void SessionLaunchButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        if (!conversation.CanLaunchSession)
+        {
+            return;
+        }
+        try
+        {
+            SessionLaunchWindow launcher = new(ResolveInitialWorkspace())
+            {
+                Owner = this,
+            };
+            if (
+                launcher.ShowDialog() != true ||
+                launcher.Options is null)
+            {
+                return;
+            }
+            await conversation.LaunchAsync(launcher.Options);
+            UpdateConversationChrome();
+            if (conversation.Phase == ConversationRuntimePhase.Ready)
+            {
+                PromptInput.Focus();
+            }
+        }
+        catch (Exception exception)
+        {
+            conversation.ReportUiError(
+                $"Session launch failed closed: {exception.Message}");
+        }
+    }
+
+    private static string? ResolveInitialWorkspace()
+    {
+        string currentDirectory = Environment.CurrentDirectory;
+        string gitMarker = Path.Combine(currentDirectory, ".git");
+        return Directory.Exists(gitMarker) || File.Exists(gitMarker)
+            ? currentDirectory
+            : null;
     }
 
     private async void PromptInput_OnPreviewKeyDown(

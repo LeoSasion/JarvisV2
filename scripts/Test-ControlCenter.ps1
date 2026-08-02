@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$DotnetPath = 'dotnet'
+    [string]$DotnetPath = 'dotnet',
+    [string]$NodePath = 'node'
 )
 
 Set-StrictMode -Version Latest
@@ -23,6 +24,12 @@ $bootstrapPath = Join-Path $sourceRoot 'DesktopRuntimeBootstrap.cs'
 $bootstrapProbePath = Join-Path $sourceRoot 'DesktopRuntimeBootstrapProbe.cs'
 $modelSetupPath = Join-Path $sourceRoot 'ModelSetupWindow.xaml'
 $modelSetupCodePath = Join-Path $sourceRoot 'ModelSetupWindow.xaml.cs'
+$sessionLaunchPath = Join-Path $sourceRoot 'SessionLaunchWindow.xaml'
+$sessionLaunchCodePath = Join-Path $sourceRoot 'SessionLaunchWindow.xaml.cs'
+$sessionAdmissionPath = Join-Path $sourceRoot (
+    'DesktopSessionLaunchAdmission.cs')
+$sessionAdmissionProbePath = Join-Path $sourceRoot (
+    'DesktopSessionLaunchAdmissionProbe.cs')
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()
@@ -56,6 +63,11 @@ $bootstrapText = [IO.File]::ReadAllText($bootstrapPath)
 $bootstrapProbeText = [IO.File]::ReadAllText($bootstrapProbePath)
 $modelSetupText = [IO.File]::ReadAllText($modelSetupPath)
 $modelSetupCodeText = [IO.File]::ReadAllText($modelSetupCodePath)
+$sessionLaunchText = [IO.File]::ReadAllText($sessionLaunchPath)
+$sessionLaunchCodeText = [IO.File]::ReadAllText($sessionLaunchCodePath)
+$sessionAdmissionText = [IO.File]::ReadAllText($sessionAdmissionPath)
+$sessionAdmissionProbeText = [IO.File]::ReadAllText(
+    $sessionAdmissionProbePath)
 $sourceText = @(
     Get-ChildItem -LiteralPath $sourceRoot -File -Recurse |
         Where-Object {
@@ -124,10 +136,15 @@ $requiredVisibleLabels = @(
     'SHELL // LOCKED',
     'SAFE SHUTDOWN',
     'CONFIGURE OPENAI',
+    'START PI SESSION',
     'production model ',
     'authentication is not configured'
 )
-$visibleSource = $mainWindowText + [Environment]::NewLine + $providerText
+$visibleSource = @(
+    $mainWindowText,
+    $viewModelText,
+    $providerText
+) -join [Environment]::NewLine
 $missingVisibleLabels = @(
     $requiredVisibleLabels |
         Where-Object { -not $visibleSource.Contains($_) }
@@ -201,11 +218,48 @@ Add-Check `
         'support cancellation and flush/release it on window close.')
 
 Add-Check `
+    -Name 'surface.in-app-session-launch-and-admission' `
+    -Passed (
+        $mainWindowText.Contains(
+            'AutomationProperties.Name="Start Pi workspace session"') -and
+        $mainWindowText.Contains('IsEnabled="{Binding CanLaunchSession}"') -and
+        $mainWindowCodeText.Contains('SessionLaunchWindow') -and
+        $mainWindowCodeText.Contains('ResolveInitialWorkspace') -and
+        $mainWindowCodeText.Contains('conversation.LaunchAsync') -and
+        $viewModelText.Contains('public async Task LaunchAsync') -and
+        $viewModelText.Contains('No command line is required.') -and
+        $sessionLaunchText.Contains('Text="Start a workspace session"') -and
+        $sessionLaunchText.Contains('x:Name="WorkspaceInput"') -and
+        $sessionLaunchText.Contains('x:Name="LocalProviderOption"') -and
+        $sessionLaunchText.Contains('x:Name="OpenAiProviderOption"') -and
+        $sessionLaunchText.Contains(
+            'AutomationProperties.Name="Browse for workspace directory"') -and
+        $sessionLaunchText.Contains(
+            'AutomationProperties.Name="Admit workspace and start Pi session"') -and
+        $sessionLaunchText.Contains('IsDefault="True"') -and
+        $sessionLaunchText.Contains('IsEnabled="False"') -and
+        $sessionLaunchText.Contains('TOOLS // READ ONLY') -and
+        $sessionLaunchText.Contains('SHELL // LOCKED') -and
+        $sessionLaunchCodeText.Contains('OpenFolderDialog') -and
+        $sessionLaunchCodeText.Contains(
+            'DesktopSessionLaunchAdmission.Admit') -and
+        $sessionLaunchCodeText.Contains(
+            'workspace.Result == "passed"') -and
+        $sessionAdmissionText.Contains('RejectsWindowsPathShape') -and
+        $sessionAdmissionText.Contains('EnsureNoReparsePoints') -and
+        $sessionAdmissionText.Contains('DesktopRuntimeBootstrap.Resolve') -and
+        $sessionAdmissionProbeText.Contains('UnknownProviderRejected')) `
+    -Detail (
+        'The empty state must launch a keyboard-accessible native workspace ' +
+        'and provider flow, preflight protected/reparse paths, resolve the ' +
+        'portable runtime and transition the existing window in-process.')
+
+Add-Check `
     -Name 'runtime.portable-bootstrap-and-opt-in-provider' `
     -Passed (
         $appText.Contains('"--conversation"') -and
         $appText.Contains('"--provider"') -and
-        $appText.Contains('DesktopRuntimeBootstrap.Resolve') -and
+        $appText.Contains('DesktopSessionLaunchAdmission.Admit') -and
         $launchOptionsText.Contains('LocalDiagnostic') -and
         $launchOptionsText.Contains('OpenAiResponses') -and
         $bootstrapText.Contains(
@@ -330,6 +384,107 @@ Add-Check `
         'resolution, packaged precedence, incomplete-runtime rejection and ' +
         'no mutation. Output: ' +
         (($bootstrapProbeOutput | Select-Object -Last 14) -join ' '))
+
+$nodeCommand = Get-Command $NodePath -ErrorAction Stop
+$resolvedNodePath = [IO.Path]::GetFullPath($nodeCommand.Source)
+$sessionLaunchProbeOutput = @(
+    & $DotnetPath run `
+        --project $diagnosticsProjectPath `
+        --configuration Release `
+        -- `
+        --session-launch-probe `
+        --node $resolvedNodePath `
+        --workspace $root 2>&1
+)
+$sessionLaunchProbeExitCode = $LASTEXITCODE
+$sessionLaunchProbe = $null
+try {
+    $sessionLaunchProbe =
+        ($sessionLaunchProbeOutput -join [Environment]::NewLine) |
+            ConvertFrom-Json
+}
+catch {
+    $sessionLaunchProbe = $null
+}
+$sessionLaunchProbePassed =
+    $sessionLaunchProbeExitCode -eq 0 -and
+    $null -ne $sessionLaunchProbe -and
+    $sessionLaunchProbe.Result -eq 'passed' -and
+    $sessionLaunchProbe.WorkspaceAdmissionPassed -and
+    $sessionLaunchProbe.LocalLaunchPassed -and
+    $sessionLaunchProbe.OpenAiLaunchPassed -and
+    $sessionLaunchProbe.RelativeWorkspaceRejected -and
+    $sessionLaunchProbe.MissingWorkspaceRejected -and
+    $sessionLaunchProbe.DriveRootRejected -and
+    $sessionLaunchProbe.ProtectedWorkspaceRejected -and
+    $sessionLaunchProbe.UnknownProviderRejected -and
+    -not $sessionLaunchProbe.MutationPerformed -and
+    @($sessionLaunchProbe.Failures).Count -eq 0
+Add-Check `
+    -Name 'runtime.executable-session-launch-admission-probe' `
+    -Passed $sessionLaunchProbePassed `
+    -Detail (
+        'The executable launcher receipt must admit both providers for the ' +
+        'repository and reject relative, missing, drive-root, protected and ' +
+        'unknown-provider inputs without mutation. Output: ' +
+        (($sessionLaunchProbeOutput | Select-Object -Last 18) -join ' '))
+
+$piRuntimeDependency = Join-Path $root (
+    'src\common\Jarvis.PiAgentHost\node_modules\' +
+    '@earendil-works\pi-coding-agent\package.json')
+if (Test-Path -LiteralPath $piRuntimeDependency -PathType Leaf) {
+    $sessionLifecycleProbeOutput = @(
+        & $DotnetPath run `
+            --project $diagnosticsProjectPath `
+            --configuration Release `
+            -- `
+            --session-launch-lifecycle-probe `
+            --node $resolvedNodePath `
+            --workspace $root 2>&1
+    )
+    $sessionLifecycleProbeExitCode = $LASTEXITCODE
+    $sessionLifecycleProbe = $null
+    try {
+        $sessionLifecycleProbe =
+            ($sessionLifecycleProbeOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $sessionLifecycleProbe = $null
+    }
+    $sessionLifecycleProbePassed =
+        $sessionLifecycleProbeExitCode -eq 0 -and
+        $null -ne $sessionLifecycleProbe -and
+        $sessionLifecycleProbe.Result -eq 'passed' -and
+        $sessionLifecycleProbe.IdleLaunchAvailable -and
+        $sessionLifecycleProbe.RuntimeReady -and
+        $sessionLifecycleProbe.RuntimeStopped -and
+        $sessionLifecycleProbe.OwnedRuntimeReleased -and
+        -not $sessionLifecycleProbe.MutationPerformed -and
+        @($sessionLifecycleProbe.Failures).Count -eq 0
+    $sessionLifecycleDetail =
+        'The executable lifecycle receipt must transition the idle view ' +
+        'model through the GUI launch path to a ready local Pi runtime, ' +
+        'then stop and release the owned runtime. Output: ' +
+        (($sessionLifecycleProbeOutput | Select-Object -Last 14) -join ' ')
+}
+else {
+    $sessionLifecycleProbePassed =
+        $sessionAdmissionProbeText.Contains(
+            'RunLifecycleAsync') -and
+        $sessionAdmissionProbeText.Contains(
+            'ConversationSurfaceViewModel.CreateIdle') -and
+        $sessionAdmissionProbeText.Contains('viewModel.LaunchAsync') -and
+        $sessionAdmissionProbeText.Contains('viewModel.ShutdownAsync')
+    $sessionLifecycleDetail =
+        'The clean-checkout static boundary is present. The executable ' +
+        'lifecycle probe is deferred because optional local Pi node_modules ' +
+        'are not installed; release owners run it before packaging.'
+}
+Add-Check `
+    -Name 'runtime.in-process-session-lifecycle-probe' `
+    -Passed $sessionLifecycleProbePassed `
+    -Detail $sessionLifecycleDetail
 
 $buildOutput = @(
     & $DotnetPath build `

@@ -16,6 +16,13 @@ registry or mutation capability. See
 `PI-AGENT-OPENAI-RESPONSES-PROVIDER.md` and
 `JARVIS-CONTROL-CENTER-PORTABLE-RUNTIME.md`.
 
+The no-argument desktop entry point contains an in-process session launcher.
+It admits one canonical local workspace, one explicit provider and the fixed
+portable/developer runtime before constructing the broker. Local diagnostic is
+the default and starts no network request. The same Control Center window then
+transitions from the idle command surface into the Pi conversation; no child
+shell, helper console or second desktop process is used.
+
 ## 原生优先边界
 
 JARVIS2 的“桌面”不是一个新的顶层窗口。下列 M1 链路描述的是模块进入目标进程后的内部安全契约，不再代表获准使用 Windhawk 服务作为传输宿主。2026-07-27 的受控会话证明该服务会把基础运行库注入 Explorer 和非目标进程，因此整个服务宿主已被 Phase 6 隔离。

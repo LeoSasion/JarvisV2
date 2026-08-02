@@ -179,20 +179,13 @@ public partial class App : Application
                 return false;
             }
         }
-        DesktopRuntimeBootstrapReceipt bootstrap =
-            DesktopRuntimeBootstrap.Resolve(workspace);
-        if (
-            bootstrap.Result != "passed" ||
-            bootstrap.NodeExecutablePath is null ||
-            bootstrap.SidecarHostPath is null)
+        DesktopSessionLaunchAdmissionReceipt admission =
+            DesktopSessionLaunchAdmission.Admit(workspace, provider);
+        if (admission.Result != "passed" || admission.Options is null)
         {
             return false;
         }
-        options = new ConversationLaunchOptions(
-            bootstrap.NodeExecutablePath,
-            bootstrap.SidecarHostPath,
-            bootstrap.WorkspaceRoot,
-            provider);
+        options = admission.Options;
         return true;
     }
 

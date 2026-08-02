@@ -626,7 +626,7 @@
                                     <Ellipse Width="16" Height="16" Stroke="{StaticResource CyanBrush}" StrokeThickness="2" />
                                     <Rectangle Width="4" Height="4" Fill="{StaticResource CyanBrush}" />
                                 </Grid>
-                                <TextBlock Margin="0,15,0,0" HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="No turn has been handed to Pi" />
+                                <TextBlock Margin="0,15,0,0" HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="{Binding EmptyStateTitle}" />
                                 <TextBlock
                                     Width="420"
                                     Margin="0,7,0,0"
@@ -634,9 +634,22 @@
                                     Foreground="{StaticResource TextMutedBrush}"
                                     FontSize="12"
                                     LineHeight="18"
-                                    Text="Start the admitted local diagnostic runtime, then submit a request. Only root-confined read tools are available."
+                                    Text="{Binding EmptyStateDescription}"
                                     TextAlignment="Center"
                                     TextWrapping="Wrap" />
+                                <Button
+                                    x:Name="SessionLaunchButton"
+                                    Margin="0,18,0,0"
+                                    AutomationProperties.Name="Start Pi workspace session"
+                                    Style="{StaticResource PrimaryActionButton}"
+                                    IsEnabled="{Binding CanLaunchSession}"
+                                    Click="SessionLaunchButton_OnClick"
+                                    Content="{Binding SessionLaunchActionLabel}" />
+                                <TextBlock
+                                    Margin="0,10,0,0"
+                                    HorizontalAlignment="Center"
+                                    Style="{StaticResource MonoText}"
+                                    Text="1 WORKSPACE  /  2 PROVIDER  /  3 ADMISSION" />
                             </StackPanel>
                         </Grid>
                     </Border>

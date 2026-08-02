@@ -60,9 +60,14 @@ provider credential enters the sidecar and its model network remains disabled.
 
 ## Launch modes
 
-Launching without arguments opens an idle surface and admits no workspace or
-runtime. It also exposes `CONFIGURE OPENAI`. The normal portable/developer
-launch resolves Node and Pi automatically:
+Launching without arguments opens the idle Control Center and admits no
+workspace or runtime. Choose `START PI SESSION`, select one local workspace,
+and keep the default `LOCAL DIAGNOSTIC` provider for a deterministic read-only
+first turn. The modal validates the workspace and fixed portable/developer
+runtime before the same window transitions into the conversation. `CONFIGURE
+OPENAI` remains available from the idle surface.
+
+The command-line equivalent remains available for automation and diagnostics:
 
 ```powershell
 jarvis-control-center.exe `
@@ -72,7 +77,7 @@ jarvis-control-center.exe `
 ```
 
 After the key is explicitly protected from the idle surface, production mode
-uses the same runtime path:
+can be selected in the same launcher. Its command-line equivalent is:
 
 ```powershell
 jarvis-control-center.exe `
@@ -91,8 +96,9 @@ jarvis-control-center.exe `
   --workspace C:\JarvisV2-Windows10
 ```
 
-The workspace still passes the Pi host's canonical-root admission. Protected
-roots, drive roots, aliases, reparse points and workspace escapes fail closed.
+The launcher preflights the same boundary before any runtime starts, and the Pi
+host independently enforces it again. Protected roots, drive roots, aliases,
+reparse points and workspace escapes fail closed.
 
 The deterministic design-preview mode starts no Pi runtime:
 

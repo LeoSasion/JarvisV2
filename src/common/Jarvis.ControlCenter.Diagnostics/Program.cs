@@ -13,16 +13,47 @@ bool bootstrapProbe =
         args[0],
         "--bootstrap-probe",
         StringComparison.Ordinal);
-if (!providerProbe && !bootstrapProbe)
+bool sessionLaunchProbe =
+    args.Length == 5 &&
+    string.Equals(
+        args[0],
+        "--session-launch-probe",
+        StringComparison.Ordinal) &&
+    string.Equals(args[1], "--node", StringComparison.Ordinal) &&
+    string.Equals(args[3], "--workspace", StringComparison.Ordinal);
+bool sessionLaunchLifecycleProbe =
+    args.Length == 5 &&
+    string.Equals(
+        args[0],
+        "--session-launch-lifecycle-probe",
+        StringComparison.Ordinal) &&
+    string.Equals(args[1], "--node", StringComparison.Ordinal) &&
+    string.Equals(args[3], "--workspace", StringComparison.Ordinal);
+if (
+    !providerProbe &&
+    !bootstrapProbe &&
+    !sessionLaunchProbe &&
+    !sessionLaunchLifecycleProbe)
 {
     Console.Error.WriteLine(
-        "Usage: <--provider-probe | --bootstrap-probe>");
+        "Usage: <--provider-probe | --bootstrap-probe | " +
+        "--session-launch-probe --node <absolute-node.exe> " +
+        "--session-launch-lifecycle-probe --node <absolute-node.exe> " +
+        "--workspace <absolute-workspace>>");
     return 2;
 }
 
 object receipt = providerProbe
     ? await LocalDiagnosticProviderProbe.RunAsync()
-    : DesktopRuntimeBootstrapProbe.Run();
+    : bootstrapProbe
+        ? DesktopRuntimeBootstrapProbe.Run()
+        : sessionLaunchProbe
+            ? DesktopSessionLaunchAdmissionProbe.Run(
+                Path.GetFullPath(args[4]),
+                Path.GetFullPath(args[2]))
+            : await DesktopSessionLaunchAdmissionProbe.RunLifecycleAsync(
+                Path.GetFullPath(args[4]),
+                Path.GetFullPath(args[2]));
 Console.WriteLine(JsonSerializer.Serialize(
     receipt,
     receipt.GetType(),

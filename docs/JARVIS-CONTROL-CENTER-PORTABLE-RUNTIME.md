@@ -55,7 +55,12 @@ developer fallback can be considered.
 
 ## Launch
 
-The package README contains the same commands:
+Open `jarvis-control-center.exe`, choose `START PI SESSION`, select one local
+workspace and choose a provider. Local diagnostic is the safe default. The
+launcher verifies the workspace and the packaged receipt before the existing
+window transitions into the Pi conversation. No command line is required.
+
+The package README also retains the automation equivalent:
 
 ```powershell
 jarvis-control-center.exe --conversation `
@@ -63,9 +68,10 @@ jarvis-control-center.exe --conversation `
   --provider local
 ```
 
-For the opt-in Responses provider, first open the executable without arguments
-and choose `CONFIGURE OPENAI`; then relaunch with `--provider openai`. The key
-is stored under the current Windows user outside the portable directory.
+For the opt-in Responses provider, first choose `CONFIGURE OPENAI`, protect the
+key, then select `OPENAI RESPONSES` in `START PI SESSION`. The key is stored
+under the current Windows user outside the portable directory. The
+`--provider openai` command-line mode remains available for automation.
 
 ## Safety boundary
 
