@@ -42,13 +42,20 @@ bool handoffVfxProbe =
         args[0],
         "--handoff-vfx-probe",
         StringComparison.Ordinal);
+bool uiLanguageProbe =
+    args.Length == 1 &&
+    string.Equals(
+        args[0],
+        "--ui-language-probe",
+        StringComparison.Ordinal);
 if (
     !providerProbe &&
     !bootstrapProbe &&
     !sessionLaunchProbe &&
     !sessionLaunchLifecycleProbe &&
     !recentSessionStoreProbe &&
-    !handoffVfxProbe)
+    !handoffVfxProbe &&
+    !uiLanguageProbe)
 {
     Console.Error.WriteLine(
         "Usage: <--provider-probe | --bootstrap-probe | " +
@@ -56,26 +63,29 @@ if (
         "--session-launch-lifecycle-probe --node <absolute-node.exe> " +
         "--recent-session-store-probe " +
         "--handoff-vfx-probe " +
+        "--ui-language-probe " +
         "--workspace <absolute-workspace>>");
     return 2;
 }
 
 object receipt = providerProbe
     ? await LocalDiagnosticProviderProbe.RunAsync()
-    : bootstrapProbe
-        ? DesktopRuntimeBootstrapProbe.Run()
-        : handoffVfxProbe
-            ? HandoffConstellationProbe.Run()
-            : recentSessionStoreProbe
-                ? await DesktopRecentSessionStoreProbe.RunAsync(
-                    Path.GetFullPath(args[2]))
-                : sessionLaunchProbe
-                    ? DesktopSessionLaunchAdmissionProbe.Run(
-                        Path.GetFullPath(args[4]),
+    : uiLanguageProbe
+        ? UiLanguageProbe.Run()
+        : bootstrapProbe
+            ? DesktopRuntimeBootstrapProbe.Run()
+            : handoffVfxProbe
+                ? HandoffConstellationProbe.Run()
+                : recentSessionStoreProbe
+                    ? await DesktopRecentSessionStoreProbe.RunAsync(
                         Path.GetFullPath(args[2]))
-                    : await DesktopSessionLaunchAdmissionProbe.RunLifecycleAsync(
-                        Path.GetFullPath(args[4]),
-                        Path.GetFullPath(args[2]));
+                    : sessionLaunchProbe
+                        ? DesktopSessionLaunchAdmissionProbe.Run(
+                            Path.GetFullPath(args[4]),
+                            Path.GetFullPath(args[2]))
+                        : await DesktopSessionLaunchAdmissionProbe.RunLifecycleAsync(
+                            Path.GetFullPath(args[4]),
+                            Path.GetFullPath(args[2]));
 Console.WriteLine(JsonSerializer.Serialize(
     receipt,
     receipt.GetType(),

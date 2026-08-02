@@ -204,6 +204,13 @@ disclosures. A separate `Jarvis.ControlCenter.Diagnostics` executable runs the
 local provider stream, runtime-bootstrap and real CurrentUser-DPAPI
 recent-session probes outside the WPF lifecycle.
 
+The same audit runs the Windows-language probe. It verifies `zh-CN` and
+`en-US` resolution, deterministic fallback, complete resource coverage and the
+absence of a Jarvis language override, settings persistence, shell mutation or
+activation capability. The WPF process reads Windows `CurrentUICulture` once
+at startup; changing language remains a Windows Settings or Control Panel
+action.
+
 - one exact `ls` tool request;
 - multiple text deltas followed by `stop`;
 - an explicit missing-production-authentication disclosure;

@@ -19,10 +19,10 @@ public partial class ModelSetupWindow : Window
             throw new ArgumentNullException(nameof(credentialStore));
         InitializeComponent();
         CredentialState.Text = replacementRequired
-            ? "UNREADABLE / REPLACE REQUIRED"
+            ? UiText.Get("Loc.Setup.Unreadable")
             : credentialConfigured
-                ? "PROTECTED / REPLACE OPTIONAL"
-                : "NOT CONFIGURED";
+                ? UiText.Get("Loc.Setup.Protected")
+                : UiText.Get("Loc.Setup.NotConfigured");
         Loaded += (_, _) => ApiKeyInput.Focus();
     }
 
@@ -41,8 +41,7 @@ public partial class ModelSetupWindow : Window
         }
         catch (ArgumentException)
         {
-            ErrorMessage.Text =
-                "Enter the complete API key; spaces and partial values are rejected.";
+            ErrorMessage.Text = UiText.Get("Loc.Setup.ValidationError");
             ApiKeyInput.Focus();
             return;
         }
@@ -63,8 +62,9 @@ public partial class ModelSetupWindow : Window
                 UnauthorizedAccessException or
                 System.Security.Cryptography.CryptographicException)
         {
-            ErrorMessage.Text =
-                $"The key was not saved: {exception.Message}";
+            ErrorMessage.Text = UiText.Format(
+                "Loc.Setup.SaveError",
+                exception.Message);
         }
         finally
         {

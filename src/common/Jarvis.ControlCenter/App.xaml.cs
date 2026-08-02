@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Media;
@@ -22,6 +23,7 @@ public partial class App : Application
 
     protected override async void OnStartup(StartupEventArgs eventArgs)
     {
+        UiText.ApplyWindowsLanguage(this, CultureInfo.CurrentUICulture);
         base.OnStartup(eventArgs);
         IReadOnlyList<string> arguments = launchArguments;
 

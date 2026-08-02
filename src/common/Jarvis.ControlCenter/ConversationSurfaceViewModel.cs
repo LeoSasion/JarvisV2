@@ -47,8 +47,8 @@ public sealed class ConversationSurfaceViewModel :
             ? ConversationRuntimePhase.Preview
             : ConversationRuntimePhase.NotStarted;
         statusDetail = preview
-            ? "Illustrative conversation data; no runtime was started."
-            : "Launch with an admitted workspace and the packaged Pi runtime.";
+            ? UiText.Get("Loc.Runtime.Status.Preview")
+            : UiText.Get("Loc.Runtime.Status.Idle");
         if (preview)
         {
             snapshot = CreatePreviewSnapshot();
@@ -72,30 +72,34 @@ public sealed class ConversationSurfaceViewModel :
     public ConversationRuntimePhase Phase => phase;
     public string PhaseLabel => phase switch
     {
-        ConversationRuntimePhase.NotStarted => "NOT STARTED",
-        ConversationRuntimePhase.Preview => "DESIGN PREVIEW",
-        ConversationRuntimePhase.Starting => "STARTING",
-        ConversationRuntimePhase.Ready => "READY",
-        ConversationRuntimePhase.Stopping => "STOPPING",
-        ConversationRuntimePhase.Stopped => "STOPPED",
-        ConversationRuntimePhase.Faulted => "FAULTED",
-        _ => "UNKNOWN",
+        ConversationRuntimePhase.NotStarted => UiText.Get("Loc.Runtime.Phase.NotStarted"),
+        ConversationRuntimePhase.Preview => UiText.Get("Loc.Runtime.Phase.Preview"),
+        ConversationRuntimePhase.Starting => UiText.Get("Loc.Runtime.Phase.Starting"),
+        ConversationRuntimePhase.Ready => UiText.Get("Loc.Runtime.Phase.Ready"),
+        ConversationRuntimePhase.Stopping => UiText.Get("Loc.Runtime.Phase.Stopping"),
+        ConversationRuntimePhase.Stopped => UiText.Get("Loc.Runtime.Phase.Stopped"),
+        ConversationRuntimePhase.Faulted => UiText.Get("Loc.Runtime.Phase.Faulted"),
+        _ => UiText.Get("Loc.Runtime.Phase.Unknown"),
     };
     public string StatusDetail => uiError ?? statusDetail;
     public string ProviderLabel => preview
-        ? "ILLUSTRATIVE // NO RUNTIME"
-        : launchOptions?.ProviderDisplayName ?? "NO PROVIDER ADMITTED";
-    public string AccessLabel => "READ + OWNER-REVIEWED WRITES";
+        ? UiText.Get("Loc.Runtime.Provider.Preview")
+        : launchOptions?.ProviderDisplayName ?? UiText.Get("Loc.Runtime.Provider.None");
+    public string AccessLabel => UiText.Get("Loc.Runtime.Access");
     public string WorkspaceLabel => launchOptions?.WorkspaceRoot ??
         (preview
-            ? "ILLUSTRATIVE // NOT ADMITTED"
-            : "NO WORKSPACE ADMITTED");
+            ? UiText.Get("Loc.Runtime.Workspace.Preview")
+            : UiText.Get("Loc.Runtime.Workspace.None"));
     public string CheckpointLabel => runtime is null
-        ? preview ? "ILLUSTRATIVE // NOT SAVED" : "NOT LOADED"
+        ? preview
+            ? UiText.Get("Loc.Runtime.Checkpoint.Preview")
+            : UiText.Get("Loc.Runtime.Checkpoint.NotLoaded")
         : runtime.CheckpointPersistenceFaulted
-            ? "FAULTED / SUBMISSIONS CLOSED"
-            : $"{runtime.CheckpointSaveCount} SAVED / " +
-                $"{runtime.RestoredCheckpointTurnCount} RESTORED";
+            ? UiText.Get("Loc.Runtime.Checkpoint.Faulted")
+            : UiText.Format(
+                "Loc.Runtime.Checkpoint.Counts",
+                runtime.CheckpointSaveCount,
+                runtime.RestoredCheckpointTurnCount);
     public string CredentialLabel => runtime?.CredentialEnvironmentClean == true
         ? launchOptions?.Provider == ConversationProviderKind.OpenAiResponses
             ? providerCredentialReady
@@ -105,20 +109,24 @@ public sealed class ConversationSurfaceViewModel :
                 ? "OPENAI STORED // LOCAL PROVIDER ACTIVE"
                 : "SIDECAR CLEAN // OPENAI OPTIONAL"
         : preview
-            ? "NOT CONFIGURED / NOT EVALUATED"
-            : "NOT READY";
+            ? UiText.Get("Loc.Runtime.Credential.Preview")
+            : UiText.Get("Loc.Runtime.Credential.NotReady");
     public string BrokerLabel => runtime is null
-        ? preview ? "ILLUSTRATIVE // NOT STARTED" : "NO BROKER"
-        : $"{runtime.BrokerRequestCount} REQUESTS / " +
-            $"{runtime.BrokerFaultCount} FAULTS";
+        ? preview
+            ? UiText.Get("Loc.Runtime.Broker.Preview")
+            : UiText.Get("Loc.Runtime.Broker.None")
+        : UiText.Format(
+            "Loc.Runtime.Broker.Counts",
+            runtime.BrokerRequestCount,
+            runtime.BrokerFaultCount);
     public string ShutdownLabel => phase switch
     {
-        ConversationRuntimePhase.Stopping => "QUIESCING ACTIVE TURN",
-        ConversationRuntimePhase.Stopped => "OWNED RUNTIME RELEASED",
-        ConversationRuntimePhase.Ready => "ORDERLY SHUTDOWN ARMED",
+        ConversationRuntimePhase.Stopping => UiText.Get("Loc.Runtime.Shutdown.Stopping"),
+        ConversationRuntimePhase.Stopped => UiText.Get("Loc.Runtime.Shutdown.Stopped"),
+        ConversationRuntimePhase.Ready => UiText.Get("Loc.Runtime.Shutdown.Ready"),
         _ => preview
-            ? "ILLUSTRATIVE // NO OWNED RUNTIME"
-            : "NO OWNED RUNTIME",
+            ? UiText.Get("Loc.Runtime.Shutdown.Preview")
+            : UiText.Get("Loc.Runtime.Shutdown.None"),
     };
     public IReadOnlyList<PiAgentConversationTurnSnapshot> Turns =>
         snapshot.Turns;
@@ -186,38 +194,43 @@ public sealed class ConversationSurfaceViewModel :
         phase == ConversationRuntimePhase.Ready &&
         reviewedIterationSnapshot is { IsTerminal: false };
     public string ReviewedIterationStatusLabel =>
-        reviewedIterationSnapshot?.StatusLabel ?? "NOT ARMED";
+        reviewedIterationSnapshot?.StatusLabel ??
+        UiText.Get("Loc.Runtime.Review.NotArmed");
     public string ReviewedIterationDetail =>
         reviewedIterationSnapshot?.StatusDetail ??
-        "Type a mission in the composer, then arm a bounded reviewed loop.";
+        UiText.Get("Loc.Runtime.Review.Detail");
     public string ReviewedIterationProgressLabel =>
-        reviewedIterationSnapshot?.ProgressLabel ?? "0 / 4 APPROVED EDITS";
+        reviewedIterationSnapshot?.ProgressLabel ??
+        UiText.Get("Loc.Runtime.Review.Progress");
     public string ReviewedIterationReceiptLabel =>
-        reviewedIterationSnapshot?.ReceiptLabel ?? "NO DURABLE RECEIPT";
+        reviewedIterationSnapshot?.ReceiptLabel ??
+        UiText.Get("Loc.Runtime.Review.Receipt");
     public string ReviewedIterationHeadLabel =>
-        reviewedIterationSnapshot?.HeadLabel ?? "CLEAN GIT HEAD REQUIRED";
+        reviewedIterationSnapshot?.HeadLabel ??
+        UiText.Get("Loc.Runtime.Review.Head");
     public string ReviewedIterationExpiryLabel =>
-        reviewedIterationSnapshot?.ExpiryLabel ?? "6 HOUR OWNER POLICY";
+        reviewedIterationSnapshot?.ExpiryLabel ??
+        UiText.Get("Loc.Runtime.Review.Expiry");
     public string ReviewedIterationValidationProfileLabel =>
         reviewedIterationSnapshot?.TrustedValidationProfileId is string profile
-            ? $"PINNED TEST PROFILE / {profile}"
-            : "PINNED TEST PROFILE REQUIRED";
+            ? UiText.Format("Loc.Runtime.Review.ProfileValue", profile)
+            : UiText.Get("Loc.Runtime.Review.Profile");
     public string ReviewedIterationValidationCommand =>
         reviewedIterationSnapshot?.TrustedValidationCommand ??
-        "No trusted validation command admitted.";
+        UiText.Get("Loc.Runtime.Review.Command");
     public bool IsOpenAiProvider =>
         launchOptions?.Provider == ConversationProviderKind.OpenAiResponses;
     public double HandoffProgress => DetermineHandoffProgress();
     public string HandoffLabel => HandoffProgress switch
     {
         _ when PendingWorkspaceEdit is not null =>
-            "OWNER HOLDS A ONE-SHOT WORKSPACE WRITE DECISION",
-        <= 0 => "USER HOLDS THE NEXT TURN",
-        < 2 => "PI RUNTIME OWNS THE ACTIVE TURN",
-        < 3 => "BOUNDED TOOL OWNS THE ACTIVE TURN",
+            UiText.Get("Loc.Runtime.Handoff.Owner"),
+        <= 0 => UiText.Get("Loc.Runtime.Handoff.User"),
+        < 2 => UiText.Get("Loc.Runtime.Handoff.Pi"),
+        < 3 => UiText.Get("Loc.Runtime.Handoff.Tool"),
         _ => snapshot.ActiveTurnId is null
-            ? "TURN COMPLETE / CONTROL RETURNED"
-            : "JARVIS IS STREAMING A RESPONSE",
+            ? UiText.Get("Loc.Runtime.Handoff.Complete")
+            : UiText.Get("Loc.Runtime.Handoff.Streaming"),
     };
     public string EmptyStateTitle => phase switch
     {
@@ -871,9 +884,8 @@ public sealed class ConversationSurfaceViewModel :
     {
         PiAgentConversationTurnSnapshot completed = new(
             "preview-turn-1",
-            "[ILLUSTRATIVE] Inspect the workspace boundary.",
-            "Illustrative handoff complete. No workspace, broker, sidecar, " +
-                "or Pi tool was started in preview mode.",
+            UiText.Get("Loc.Runtime.Preview.User"),
+            UiText.Get("Loc.Runtime.Preview.Assistant"),
             PiAgentConversationTurnStatus.Completed,
             4,
             false,

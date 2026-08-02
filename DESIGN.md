@@ -447,6 +447,23 @@ places one-turn Send separately from START REVIEWED LOOP, keeps Reject before
 Approve Once, and prevents disabled preview controls from masquerading as active
 primary actions.
 
+### Windows-Owned Display Language
+
+The Windows display language is the only language authority. At process
+startup the Control Center reads `.NET CurrentUICulture`, resolves Simplified
+Chinese Windows cultures to the `zh-CN` catalog and English cultures to the
+`en-US` catalog, and uses English as the deterministic fallback for any
+unsupported culture. The Control Center, session launcher, model setup and
+their accessibility names all consume the same resource catalog.
+
+Jarvis must not expose or persist a separate language selector. The inspector
+shows the detected Windows language as read-only status and directs the owner
+to Windows Settings > Time & language > Language (or the corresponding Control
+Panel surface). A Windows language change is picked up after restarting
+Jarvis; Windows may require sign-out before it reports a newly installed
+display language. Jarvis never changes the Windows language, registry or
+Control Panel state itself.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -473,6 +490,8 @@ primary actions.
 - **Do** expose the fixed pinned-HEAD, exact-path-set, hash, diff-check, strict
   JSON and safe XML/XAML/project parse gate, then the exact pinned Node test
   command and its separate owner approval before reasoning may continue.
+- **Do** resolve copy and accessibility names from the Windows display language
+  at startup and keep that system-owned authority visible in the inspector.
 - **Do** keep recent-work resume one action while naming its revalidation and
   showing unavailable paths instead of silently dropping them.
 - **Do** render RE-ARM as a fresh owner action after repository revalidation,
@@ -507,5 +526,7 @@ primary actions.
   TESTS ONCE.
 - **Don't** treat the recent-session catalog as path admission, checkpoint
   authentication or permission to resume a pending proposal.
+- **Don't** add a Jarvis-only language preference or silently change Windows
+  language, region, registry or Control Panel state.
 - **Don't** expand reviewed iteration into Explorer, registry, service, device,
   Windows system mutation, Git commit/push/merge, or any other shell authority.

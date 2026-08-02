@@ -58,7 +58,7 @@ public partial class SessionLaunchWindow : Window
     {
         OpenFolderDialog dialog = new()
         {
-            Title = "Choose the single workspace Jarvis may read",
+            Title = UiText.Get("Loc.Launch.BrowseDialog"),
             Multiselect = false,
         };
         string candidate = WorkspaceInput.Text.Trim();
@@ -87,8 +87,8 @@ public partial class SessionLaunchWindow : Window
         {
             StartButton.IsEnabled = false;
             SetAdmissionState(
-                "AWAITING WORKSPACE",
-                "Browse to an existing project directory outside protected Windows locations.",
+                UiText.Get("Loc.Launch.Awaiting"),
+                UiText.Get("Loc.Launch.AwaitingDetail"),
                 "TextFaintBrush");
             return;
         }
@@ -98,11 +98,11 @@ public partial class SessionLaunchWindow : Window
             !admitting && workspace.Result == "passed";
         SetAdmissionState(
             workspace.Result == "passed"
-                ? "READY TO VERIFY RUNTIME"
-                : "WORKSPACE NOT ADMITTED",
+                ? UiText.Get("Loc.Launch.Ready")
+                : UiText.Get("Loc.Launch.NotAdmitted"),
             workspace.Result == "passed"
-                ? "The local path boundary passed. Start will verify the packaged Pi runtime."
-                : workspace.Failure ?? "Choose another workspace.",
+                ? UiText.Get("Loc.Launch.ReadyDetail")
+                : workspace.Failure ?? UiText.Get("Loc.Launch.ChooseAnother"),
             workspace.Result == "passed" ? "CyanBrush" : "RedBrush");
     }
 
@@ -149,10 +149,12 @@ public partial class SessionLaunchWindow : Window
         StartButton.IsEnabled = false;
         RecentSessionsList.IsEnabled = false;
         SetAdmissionState(
-            resume ? "VERIFYING RECENT WORK" : "VERIFYING RUNTIME",
             resume
-                ? "Rechecking the workspace and packaged runtime before restoring its encrypted checkpoint."
-                : "Checking workspace, packaged hashes and the desktop-owned Pi sidecar.",
+                ? UiText.Get("Loc.Launch.VerifyingRecent")
+                : UiText.Get("Loc.Launch.VerifyingRuntime"),
+            resume
+                ? UiText.Get("Loc.Launch.VerifyingRecentDetail")
+                : UiText.Get("Loc.Launch.VerifyingRuntimeDetail"),
             "CyanBrush");
         try
         {
@@ -163,9 +165,9 @@ public partial class SessionLaunchWindow : Window
             if (admission.Result != "passed" || admission.Options is null)
             {
                 SetAdmissionState(
-                    "SESSION NOT ADMITTED",
+                    UiText.Get("Loc.Launch.SessionNotAdmitted"),
                     admission.Failures.FirstOrDefault() ??
-                        "Choose another workspace or repair the portable runtime.",
+                        UiText.Get("Loc.Launch.Repair"),
                     "RedBrush");
                 WorkspaceInput.Focus();
                 return;
@@ -177,7 +179,7 @@ public partial class SessionLaunchWindow : Window
         {
             Options = null;
             SetAdmissionState(
-                "SESSION NOT ADMITTED",
+                UiText.Get("Loc.Launch.SessionNotAdmitted"),
                 $"Runtime verification failed closed: {exception.Message}",
                 "RedBrush");
             WorkspaceInput.Focus();
@@ -210,7 +212,7 @@ public partial class SessionLaunchWindow : Window
             string provider = entry.Provider ==
                     ConversationProviderKind.OpenAiResponses
                 ? "OPENAI RESPONSES"
-                : "LOCAL DIAGNOSTIC";
+                : UiText.Get("Loc.Launch.LocalProvider");
             string opened = entry.LastOpenedAtUtc
                 .ToLocalTime()
                 .ToString("yyyy.MM.dd HH:mm");
@@ -218,11 +220,20 @@ public partial class SessionLaunchWindow : Window
                 entry.WorkspaceRoot,
                 workspaceName,
                 entry.Provider,
-                canResume ? "VERIFY & RESUME" : "UNAVAILABLE",
+                canResume
+                    ? UiText.Get("Loc.Launch.VerifyResume")
+                    : UiText.Get("Loc.Launch.Unavailable"),
                 $"{provider} // {opened}",
                 canResume
-                    ? $"Verify and resume recent workspace {workspaceName} at {entry.WorkspaceRoot} with {provider}"
-                    : $"Recent workspace {workspaceName} at {entry.WorkspaceRoot} is unavailable",
+                    ? UiText.Format(
+                        "Loc.Launch.ResumeAutomation",
+                        workspaceName,
+                        entry.WorkspaceRoot,
+                        provider)
+                    : UiText.Format(
+                        "Loc.Launch.UnavailableAutomation",
+                        workspaceName,
+                        entry.WorkspaceRoot),
                 canResume));
         }
         return items;

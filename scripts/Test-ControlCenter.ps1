@@ -18,6 +18,7 @@ $mainWindowPath = Join-Path $sourceRoot 'MainWindow.xaml'
 $mainWindowCodePath = Join-Path $sourceRoot 'MainWindow.xaml.cs'
 $handoffVfxPath = Join-Path $sourceRoot 'HandoffConstellationLayer.cs'
 $viewModelPath = Join-Path $sourceRoot 'ConversationSurfaceViewModel.cs'
+$uiTextPath = Join-Path $sourceRoot 'UiText.cs'
 $conversationStatePath = Join-Path $root (
     'src\common\Jarvis.PiAgentHost\ConversationState.cs')
 $providerPath = Join-Path $sourceRoot 'LocalDiagnosticModelProvider.cs'
@@ -64,6 +65,7 @@ $mainWindowText = [IO.File]::ReadAllText($mainWindowPath)
 $mainWindowCodeText = [IO.File]::ReadAllText($mainWindowCodePath)
 $handoffVfxText = [IO.File]::ReadAllText($handoffVfxPath)
 $viewModelText = [IO.File]::ReadAllText($viewModelPath)
+$uiTextText = [IO.File]::ReadAllText($uiTextPath)
 $conversationStateText = [IO.File]::ReadAllText($conversationStatePath)
 $providerText = [IO.File]::ReadAllText($providerPath)
 $appText = [IO.File]::ReadAllText($appPath)
@@ -81,6 +83,28 @@ $recentSessionStoreText = [IO.File]::ReadAllText(
     $recentSessionStorePath)
 $recentSessionStoreProbeText = [IO.File]::ReadAllText(
     $recentSessionStoreProbePath)
+$localizedSurfaceText = @(
+    $mainWindowText,
+    $viewModelText,
+    $modelSetupText,
+    $modelSetupCodeText,
+    $sessionLaunchText,
+    $sessionLaunchCodeText
+) -join [Environment]::NewLine
+$declaredUiResourceKeys = @(
+    [regex]::Matches($uiTextText, '\["(Loc\.[A-Za-z0-9.]+)"\]') |
+        ForEach-Object { $_.Groups[1].Value } |
+        Sort-Object -Unique
+)
+$referencedUiResourceKeys = @(
+    [regex]::Matches($localizedSurfaceText, 'Loc\.[A-Za-z0-9.]+') |
+        ForEach-Object { $_.Value } |
+        Sort-Object -Unique
+)
+$missingUiResourceKeys = @(
+    $referencedUiResourceKeys |
+        Where-Object { $_ -notin $declaredUiResourceKeys }
+)
 $sourceText = @(
     Get-ChildItem -LiteralPath $sourceRoot -File -Recurse |
         Where-Object {
@@ -184,13 +208,13 @@ Add-Check `
         'and scrollbar Track behavior must remain intact.')
 
 $requiredVisibleLabels = @(
-    'Text="Conversation"',
-    'Text="USER"',
-    'Text="PI RUNTIME"',
-    'Text="BOUNDED TOOL"',
-    'Text="JARVIS"',
-    'Content="SEND ONCE"',
-    'Content="CANCEL"',
+    'Loc.Conversation.Title',
+    'Loc.Stage.User',
+    'Loc.Stage.Pi',
+    'Loc.Stage.Tool',
+    'Loc.Stage.Jarvis',
+    'Loc.Composer.Send',
+    'Loc.Common.Cancel',
     'Writes: desktop-owner approval only',
     'Shell / direct edit / unattended approval: locked',
     'NEW UTF-8 FILE PROPOSAL',
@@ -202,10 +226,10 @@ $requiredVisibleLabels = @(
     'APPROVE ONCE',
     'CREATE ONCE',
     'APPLY PATCH ONCE',
-    'Text="Reviewed iteration"',
-    'Content="START REVIEWED LOOP"',
-    'Content="RE-ARM"',
-    'Content="STOP LOOP"',
+    'Loc.Review.Section',
+    'Loc.Review.Start',
+    'Loc.Review.Rearm',
+    'Loc.Review.Stop',
     'four writes maximum',
     'SHELL // LOCKED',
     'SAFE SHUTDOWN',
@@ -217,6 +241,7 @@ $requiredVisibleLabels = @(
 $visibleSource = @(
     $mainWindowText,
     $viewModelText,
+    $uiTextText,
     $conversationStateText,
     $providerText
 ) -join [Environment]::NewLine
@@ -245,8 +270,9 @@ Add-Check `
         $mainWindowText.Contains('IsEnabled="{Binding CanCancel}"') -and
         $mainWindowText.Contains('PreviewKeyDown="PromptInput_OnPreviewKeyDown"') -and
         $mainWindowText.Contains(
-            'AutomationProperties.Name="Send one conversation message"') -and
-        $mainWindowText.Contains('AutomationProperties.Name="Cancel active turn"') -and
+            'AutomationProperties.Name="{DynamicResource Loc.Composer.SendAutomation}"') -and
+        $mainWindowText.Contains(
+            'AutomationProperties.Name="{DynamicResource Loc.Composer.CancelAutomation}"') -and
         $mainWindowText.Contains(
             'AutomationProperties.Name="{Binding OriginalAutomationName}"') -and
         $mainWindowText.Contains(
@@ -289,25 +315,26 @@ Add-Check `
 Add-Check `
     -Name 'surface.explicit-protected-provider-setup' `
     -Passed (
-        $mainWindowText.Contains('Content="CONFIGURE OPENAI"') -and
+        $mainWindowText.Contains(
+            'Content="{DynamicResource Loc.Model.Configure}"') -and
         $mainWindowCodeText.Contains('ModelSetupWindow') -and
         $modelSetupText.Contains('x:Name="ApiKeyInput"') -and
         $modelSetupText.Contains('PasswordBox') -and
         $modelSetupText.Contains('gpt-5.6-sol') -and
         $modelSetupText.Contains(
             'READ / GREP / FIND / LS / PROPOSE_EDIT / PROPOSE_PATCH / PROPOSE_CREATE_FILE / PROPOSE_CHANGE_SET') -and
-        $modelSetupText.Contains(
+        $uiTextText.Contains(
             'WRITE // DESKTOP OWNER APPROVAL ONLY') -and
-        $modelSetupText.Contains('RETENTION // STORE FALSE') -and
-        $modelSetupText.Contains('SIDECAR // OFFLINE') -and
+        $uiTextText.Contains('RETENTION // STORE FALSE') -and
+        $uiTextText.Contains('SIDECAR // OFFLINE') -and
         $modelSetupText.Contains(
-            'AutomationProperties.Name="OpenAI API key"') -and
+            'AutomationProperties.Name="{DynamicResource Loc.Setup.KeyAutomation}"') -and
         $modelSetupText.Contains(
-            'AutomationProperties.Name="Protect and save OpenAI API key"') -and
+            'AutomationProperties.Name="{DynamicResource Loc.Setup.SaveAutomation}"') -and
         $modelSetupCodeText.Contains(
             'OpenAiApiKeyCredentialStore.ValidateApiKey') -and
         $modelSetupCodeText.Contains(
-            'UNREADABLE / REPLACE REQUIRED') -and
+            'Loc.Setup.Unreadable') -and
         $modelSetupCodeText.Contains('credentialStore.SaveAsync') -and
         $modelSetupCodeText.Contains('ApiKeyInput.Clear()') -and
         $mainWindowCodeText.Contains('replacementRequired = true')) `
@@ -320,13 +347,13 @@ Add-Check `
     -Name 'surface.reviewed-iteration-owner-policy' `
     -Passed (
         $mainWindowText.Contains(
-            'AutomationProperties.Name="Start reviewed loop from composer mission"') -and
+            'AutomationProperties.Name="{DynamicResource Loc.Review.StartAutomation}"') -and
         $mainWindowText.Contains(
-            'AutomationProperties.Name="Re-arm interrupted reviewed iteration"') -and
+            'AutomationProperties.Name="{DynamicResource Loc.Review.RearmAutomation}"') -and
         $mainWindowText.Contains(
-            'AutomationProperties.Name="Stop reviewed iteration"') -and
+            'AutomationProperties.Name="{DynamicResource Loc.Review.StopAutomation}"') -and
         $mainWindowText.Contains(
-            'AutomationProperties.Name="Run the exact pinned trusted tests once"') -and
+            'AutomationProperties.Name="{DynamicResource Loc.Review.RunTestsAutomation}"') -and
         $mainWindowText.Contains(
             'IsEnabled="{Binding CanStartReviewedIteration}"') -and
         $mainWindowText.Contains(
@@ -338,7 +365,7 @@ Add-Check `
         $mainWindowText.Contains('ReviewedIterationStatusLabel') -and
         $mainWindowText.Contains('ReviewedIterationReceiptLabel') -and
         $mainWindowText.Contains(
-            'separate owner approval for pinned tests') -and
+            'Loc.Review.PolicySummary') -and
         $mainWindowCodeText.Contains(
             'StartReviewedIterationButton_OnClick') -and
         $mainWindowCodeText.Contains(
@@ -349,7 +376,7 @@ Add-Check `
             'RunTrustedValidationButton_OnClick') -and
         $mainWindowCodeText.Contains(
             'Type the reviewed iteration mission in the composer') -and
-        $mainWindowText.Contains('ONE-TURN COMPOSER / SEND ONCE HERE') -and
+        $mainWindowText.Contains('Loc.Composer.Mode') -and
         $mainWindowText.Contains('Style="{StaticResource ActionButton}"') -and
         $viewModelText.Contains(
             'PiAgentReviewedIterationCoordinator.OpenAsync') -and
@@ -390,36 +417,36 @@ Add-Check `
     -Name 'surface.in-app-session-launch-and-admission' `
     -Passed (
         $mainWindowText.Contains(
-            'AutomationProperties.Name="Start Pi workspace session"') -and
+            'AutomationProperties.Name="{DynamicResource Loc.Empty.StartAutomation}"') -and
         $mainWindowText.Contains('IsEnabled="{Binding CanLaunchSession}"') -and
         $mainWindowCodeText.Contains('SessionLaunchWindow') -and
         $mainWindowCodeText.Contains('ResolveInitialWorkspace') -and
         $mainWindowCodeText.Contains('conversation.LaunchAsync') -and
         $viewModelText.Contains('public async Task LaunchAsync') -and
         $viewModelText.Contains('No command line is required.') -and
-        $sessionLaunchText.Contains('Text="Start a workspace session"') -and
+        $sessionLaunchText.Contains('Loc.Launch.Heading') -and
         $sessionLaunchText.Contains('x:Name="WorkspaceInput"') -and
         $sessionLaunchText.Contains('x:Name="LocalProviderOption"') -and
         $sessionLaunchText.Contains('x:Name="OpenAiProviderOption"') -and
         $sessionLaunchText.Contains(
-            'AutomationProperties.Name="Browse for workspace directory"') -and
+            'AutomationProperties.Name="{DynamicResource Loc.Launch.BrowseAutomation}"') -and
         $sessionLaunchText.Contains(
-            'AutomationProperties.Name="Admit workspace and start Pi session"') -and
+            'AutomationProperties.Name="{DynamicResource Loc.Launch.StartAutomation}"') -and
         $sessionLaunchText.Contains('IsDefault="True"') -and
         $sessionLaunchText.Contains('IsEnabled="False"') -and
-        $sessionLaunchText.Contains('TOOLS // READ + PROPOSE') -and
-        $sessionLaunchText.Contains('WRITES // OWNER REVIEW') -and
-        $sessionLaunchText.Contains('SHELL // LOCKED') -and
-        $sessionLaunchText.Contains('Text="Resume recent work"') -and
+        $uiTextText.Contains('TOOLS // READ + PROPOSE') -and
+        $uiTextText.Contains('WRITES // OWNER REVIEW') -and
+        $uiTextText.Contains('SHELL // LOCKED') -and
+        $sessionLaunchText.Contains('Loc.Launch.Recent') -and
         $sessionLaunchText.Contains('x:Name="RecentSessionsList"') -and
-        $sessionLaunchText.Contains('CURRENTUSER DPAPI') -and
+        $uiTextText.Contains('CURRENTUSER DPAPI') -and
         $sessionLaunchText.Contains('{Binding ActionLabel}') -and
         $sessionLaunchText.Contains(
             'AutomationProperties.Name="{Binding AutomationName}"') -and
         $sessionLaunchCodeText.Contains('OpenFolderDialog') -and
         $sessionLaunchCodeText.Contains('RecentSessionButton_OnClick') -and
         $sessionLaunchCodeText.Contains('AdmitAndClose') -and
-        $sessionLaunchCodeText.Contains('"VERIFY & RESUME"') -and
+        $sessionLaunchCodeText.Contains('Loc.Launch.VerifyResume') -and
         $sessionLaunchCodeText.Contains(
             'DesktopSessionLaunchAdmission.Admit') -and
         $sessionLaunchCodeText.Contains(
@@ -508,6 +535,86 @@ Add-Check `
     -Detail (
         'Window chrome stays local, and closing gives the owned runtime a ' +
         'bounded orderly-shutdown interval.')
+
+Add-Check `
+    -Name 'surface.windows-owned-display-language' `
+    -Passed (
+        $appText.Contains(
+            'UiText.ApplyWindowsLanguage(this, CultureInfo.CurrentUICulture)') -and
+        $uiTextText.Contains(
+            'LanguageAuthority = "windows-current-ui-culture"') -and
+        $uiTextText.Contains('CultureInfo.GetCultureInfo("zh-CN")') -and
+        $uiTextText.Contains('CultureInfo.GetCultureInfo("en-US")') -and
+        $uiTextText.Contains('InternalOverrideSupported') -and
+        $uiTextText.Contains('SettingsPersisted') -and
+        $mainWindowText.Contains(
+            'Text="{DynamicResource Loc.Language.Authority}"') -and
+        $mainWindowText.Contains(
+            'Text="{DynamicResource Loc.Language.Current}"') -and
+        $mainWindowText.Contains(
+            'Text="{DynamicResource Loc.Language.Description}"') -and
+        $sessionLaunchText.Contains('DynamicResource Loc.Launch.') -and
+        $modelSetupText.Contains('DynamicResource Loc.Setup.') -and
+        $missingUiResourceKeys.Count -eq 0 -and
+        -not $uiTextText.Contains('language-settings.json') -and
+        -not $uiTextText.Contains('Set-WinUserLanguageList')) `
+    -Detail (
+        'The desktop must resolve Windows CurrentUICulture at startup, expose ' +
+        'that authority read-only, localize all native windows from one complete ' +
+        'catalog, and persist no competing language preference. Missing ' +
+        'resource keys: ' +
+        $(if ($missingUiResourceKeys.Count -eq 0) {
+            'none'
+        }
+        else {
+            $missingUiResourceKeys -join ', '
+        }))
+
+$uiLanguageProbeOutput = @(
+    & $DotnetPath run `
+        --project $diagnosticsProjectPath `
+        --configuration Release `
+        -- `
+        --ui-language-probe 2>&1
+)
+$uiLanguageProbeExitCode = $LASTEXITCODE
+$uiLanguageProbe = $null
+try {
+    $uiLanguageProbe =
+        ($uiLanguageProbeOutput -join [Environment]::NewLine) |
+            ConvertFrom-Json
+}
+catch {
+    $uiLanguageProbe = $null
+}
+$uiLanguageProbePassed =
+    $uiLanguageProbeExitCode -eq 0 -and
+    $null -ne $uiLanguageProbe -and
+    $uiLanguageProbe.Result -eq 'passed' -and
+    $uiLanguageProbe.WindowsAuthority -eq
+        'windows-current-ui-culture' -and
+    $uiLanguageProbe.SimplifiedChineseResource -eq 'zh-CN' -and
+    $uiLanguageProbe.SimplifiedChineseNeutralResource -eq 'zh-CN' -and
+    $uiLanguageProbe.SimplifiedChineseSingaporeResource -eq 'zh-CN' -and
+    $uiLanguageProbe.EnglishResource -eq 'en-US' -and
+    $uiLanguageProbe.UnsupportedFallbackResource -eq 'en-US' -and
+    $uiLanguageProbe.ResourceCatalogComplete -and
+    -not $uiLanguageProbe.InternalOverrideSupported -and
+    -not $uiLanguageProbe.SettingsPersisted -and
+    -not $uiLanguageProbe.ReadyForShellMutation -and
+    -not $uiLanguageProbe.ActivationPermitted -and
+    $uiLanguageProbe.LiveExplorer -eq 'not-run' -and
+    -not $uiLanguageProbe.MutationPerformed -and
+    @($uiLanguageProbe.Failures).Count -eq 0
+Add-Check `
+    -Name 'surface.executable-windows-language-probe' `
+    -Passed $uiLanguageProbePassed `
+    -Detail (
+        'The executable receipt must select Simplified Chinese and English ' +
+        'from Windows culture, fall back deterministically, prove complete ' +
+        'resources, and expose no local override, persistence, shell mutation ' +
+        'or activation path. Output: ' +
+        (($uiLanguageProbeOutput | Select-Object -Last 18) -join ' '))
 
 $handoffVfxProbeOutput = @(
     & $DotnetPath run `

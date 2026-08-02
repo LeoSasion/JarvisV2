@@ -2,7 +2,7 @@
     x:Class="Jarvis.ControlCenter.SessionLaunchWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="Start Pi Session"
+    Title="{DynamicResource Loc.Launch.Title}"
     Width="760"
     Height="730"
     MinWidth="760"
@@ -199,13 +199,13 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Ellipse Width="8" Height="8" Fill="{StaticResource CyanBrush}" />
-                        <TextBlock Margin="10,0,0,0" FontSize="12" FontWeight="SemiBold" Text="Pi workspace admission" />
+                        <TextBlock Margin="10,0,0,0" FontSize="12" FontWeight="SemiBold" Text="{DynamicResource Loc.Launch.Header}" />
                     </StackPanel>
                     <Button
                         Grid.Column="1"
                         Width="38"
                         Height="32"
-                        AutomationProperties.Name="Close session launcher"
+                        AutomationProperties.Name="{DynamicResource Loc.Launch.CloseAutomation}"
                         Foreground="{StaticResource TextMutedBrush}"
                         Background="Transparent"
                         BorderThickness="0"
@@ -219,13 +219,13 @@
 
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="28,24,28,22">
-                    <TextBlock FontSize="22" FontWeight="Light" Text="Start a workspace session" />
+                    <TextBlock FontSize="22" FontWeight="Light" Text="{DynamicResource Loc.Launch.Heading}" />
                     <TextBlock
                         Margin="0,9,0,0"
                         Foreground="{StaticResource TextMutedBrush}"
                         FontSize="12"
                         LineHeight="19"
-                        Text="Choose one local workspace and one model path. Jarvis verifies the boundary, starts the owned Pi runtime, then returns you to the conversation."
+                        Text="{DynamicResource Loc.Launch.Intro}"
                         TextWrapping="Wrap" />
 
                     <Grid Margin="0,22,0,0">
@@ -234,12 +234,12 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock FontSize="12" FontWeight="SemiBold" Text="Resume recent work" />
+                            <TextBlock FontSize="12" FontWeight="SemiBold" Text="{DynamicResource Loc.Launch.Recent}" />
                             <TextBlock
                                 Margin="0,4,0,0"
                                 Foreground="{StaticResource TextMutedBrush}"
                                 FontSize="10"
-                                Text="One action revalidates the workspace and runtime, then restores encrypted conversation context when present."
+                                Text="{DynamicResource Loc.Launch.RecentDescription}"
                                 TextWrapping="Wrap" />
                         </StackPanel>
                         <TextBlock
@@ -247,7 +247,7 @@
                             Margin="18,0,0,0"
                             VerticalAlignment="Top"
                             Style="{StaticResource MonoText}"
-                            Text="CURRENTUSER DPAPI" />
+                            Text="{DynamicResource Loc.Launch.Dpapi}" />
                     </Grid>
                     <Border
                         Margin="0,9,0,0"
@@ -262,7 +262,7 @@
                                 Padding="8,9"
                                 Foreground="{StaticResource TextMutedBrush}"
                                 FontSize="11"
-                                Text="No recent work yet. Your first successful session will appear here."
+                                Text="{DynamicResource Loc.Launch.NoRecent}"
                                 TextWrapping="Wrap" />
                             <ItemsControl x:Name="RecentSessionsList">
                                 <ItemsControl.ItemTemplate>
@@ -322,8 +322,8 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11" FontWeight="SemiBold" Text="1  Workspace" />
-                        <TextBlock Grid.Column="1" Style="{StaticResource MonoText}" Text="ONE CANONICAL ROOT" />
+                        <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11" FontWeight="SemiBold" Text="{DynamicResource Loc.Launch.WorkspaceStep}" />
+                        <TextBlock Grid.Column="1" Style="{StaticResource MonoText}" Text="{DynamicResource Loc.Launch.WorkspaceBoundary}" />
                     </Grid>
                     <Grid Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
@@ -334,7 +334,7 @@
                             x:Name="WorkspaceInput"
                             Height="42"
                             Padding="12,9"
-                            AutomationProperties.Name="Workspace directory"
+                            AutomationProperties.Name="{DynamicResource Loc.Launch.WorkspaceAutomation}"
                             Background="#081014"
                             BorderBrush="{StaticResource LineBrightBrush}"
                             BorderThickness="1"
@@ -346,11 +346,11 @@
                         <Button
                             Grid.Column="1"
                             Margin="10,0,0,0"
-                            AutomationProperties.Name="Browse for workspace directory"
+                            AutomationProperties.Name="{DynamicResource Loc.Launch.BrowseAutomation}"
                             Style="{StaticResource DialogButton}"
                             MinWidth="94"
                             Click="BrowseButton_OnClick"
-                            Content="BROWSE" />
+                            Content="{DynamicResource Loc.Launch.Browse}" />
                     </Grid>
 
                     <Grid Margin="0,20,0,0">
@@ -358,8 +358,8 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11" FontWeight="SemiBold" Text="2  Model path" />
-                        <TextBlock Grid.Column="1" Style="{StaticResource MonoText}" Text="LOCAL DEFAULT / OPENAI OPT-IN" />
+                        <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11" FontWeight="SemiBold" Text="{DynamicResource Loc.Launch.ModelStep}" />
+                        <TextBlock Grid.Column="1" Style="{StaticResource MonoText}" Text="{DynamicResource Loc.Launch.ModelBoundary}" />
                     </Grid>
                     <Grid Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
@@ -371,11 +371,11 @@
                             x:Name="LocalProviderOption"
                             GroupName="Provider"
                             Style="{StaticResource ProviderChoice}"
-                            AutomationProperties.Name="Use local diagnostic provider"
+                            AutomationProperties.Name="{DynamicResource Loc.Launch.LocalAutomation}"
                             IsChecked="True">
                             <StackPanel>
-                                <TextBlock FontSize="12" FontWeight="SemiBold" Text="Local diagnostic" />
-                                <TextBlock Margin="0,5,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="10" LineHeight="15" Text="Ready immediately. Deterministic first turn; no model network." TextWrapping="Wrap" />
+                                <TextBlock FontSize="12" FontWeight="SemiBold" Text="{DynamicResource Loc.Launch.Local}" />
+                                <TextBlock Margin="0,5,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="10" LineHeight="15" Text="{DynamicResource Loc.Launch.LocalDescription}" TextWrapping="Wrap" />
                             </StackPanel>
                         </RadioButton>
                         <RadioButton
@@ -383,10 +383,10 @@
                             Grid.Column="2"
                             GroupName="Provider"
                             Style="{StaticResource ProviderChoice}"
-                            AutomationProperties.Name="Use OpenAI Responses provider">
+                            AutomationProperties.Name="{DynamicResource Loc.Launch.OpenAiAutomation}">
                             <StackPanel>
                                 <TextBlock FontSize="12" FontWeight="SemiBold" Text="OpenAI Responses" />
-                                <TextBlock Margin="0,5,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="10" LineHeight="15" Text="Uses the desktop-only DPAPI key. Pi remains credential-free." TextWrapping="Wrap" />
+                                <TextBlock Margin="0,5,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="10" LineHeight="15" Text="{DynamicResource Loc.Launch.OpenAiDescription}" TextWrapping="Wrap" />
                             </StackPanel>
                         </RadioButton>
                     </Grid>
@@ -406,10 +406,10 @@
                             </Grid.ColumnDefinitions>
                             <Ellipse x:Name="AdmissionDot" Width="7" Height="7" VerticalAlignment="Top" Margin="0,4,0,0" Fill="{StaticResource TextFaintBrush}" />
                             <StackPanel Grid.Column="1" Margin="10,0,16,0">
-                                <TextBlock x:Name="AdmissionState" FontFamily="Consolas" FontSize="10" Foreground="{StaticResource TextMutedBrush}" Text="AWAITING WORKSPACE" />
-                                <TextBlock x:Name="AdmissionDetail" Margin="0,5,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Text="Browse to an existing project directory outside protected Windows locations." TextWrapping="Wrap" />
+                                <TextBlock x:Name="AdmissionState" FontFamily="Consolas" FontSize="10" Foreground="{StaticResource TextMutedBrush}" Text="{DynamicResource Loc.Launch.Awaiting}" />
+                                <TextBlock x:Name="AdmissionDetail" Margin="0,5,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Text="{DynamicResource Loc.Launch.AwaitingDetail}" TextWrapping="Wrap" />
                             </StackPanel>
-                            <TextBlock Grid.Column="2" HorizontalAlignment="Right" Style="{StaticResource MonoText}" Text="TOOLS // READ + PROPOSE&#x0a;WRITES // OWNER REVIEW&#x0a;SHELL // LOCKED" TextAlignment="Right" />
+                            <TextBlock Grid.Column="2" HorizontalAlignment="Right" Style="{StaticResource MonoText}" Text="{DynamicResource Loc.Launch.Safety}" TextAlignment="Right" />
                         </Grid>
                     </Border>
                 </StackPanel>
@@ -426,24 +426,24 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Text="No process starts until admission passes." />
+                    <TextBlock VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Text="{DynamicResource Loc.Launch.NoProcess}" />
                     <Button
                         Grid.Column="1"
                         Margin="0,0,10,0"
-                        AutomationProperties.Name="Cancel session launch"
+                        AutomationProperties.Name="{DynamicResource Loc.Launch.CancelAutomation}"
                         Style="{StaticResource DialogButton}"
                         IsCancel="True"
                         Click="CancelButton_OnClick"
-                        Content="CANCEL" />
+                        Content="{DynamicResource Loc.Common.Cancel}" />
                     <Button
                         x:Name="StartButton"
                         Grid.Column="2"
-                        AutomationProperties.Name="Admit workspace and start Pi session"
+                        AutomationProperties.Name="{DynamicResource Loc.Launch.StartAutomation}"
                         Style="{StaticResource PrimaryDialogButton}"
                         IsEnabled="False"
                         IsDefault="True"
                         Click="StartButton_OnClick"
-                        Content="ADMIT &amp; START" />
+                        Content="{DynamicResource Loc.Launch.Start}" />
                 </Grid>
             </Border>
         </Grid>
