@@ -500,6 +500,8 @@ $explorerHostPlanSchema =
     Get-Content -LiteralPath $explorerHostPlanSchemaPath -Raw |
         ConvertFrom-Json -Depth 100
 $phase7Task = [System.IO.File]::ReadAllText($phase7TaskPath)
+$controlCenterMainWindowSource = [System.IO.File]::ReadAllText(
+    (Join-Path $controlCenterSourceRoot 'MainWindow.xaml'))
 $controlCenterSource = @(
     Get-ChildItem -LiteralPath $controlCenterSourceRoot -File -Recurse |
         Where-Object Extension -In @('.cs', '.xaml', '.csproj') |
@@ -1453,7 +1455,11 @@ $phase7ControlCenterStaticContract =
     $controlCenterSource.Contains('SHELL // LOCKED') -and
     $controlCenterSource.Contains('Text="Conversation"') -and
     $controlCenterSource.Contains('Text="PI RUNTIME"') -and
-    $controlCenterSource.Contains('Mutation tools: unavailable') -and
+    $controlCenterSource.Contains(
+        'Writes: desktop-owner approval only') -and
+    $controlCenterSource.Contains('WORKSPACE EDIT PROPOSAL') -and
+    $controlCenterSource.Contains('Content="APPROVE ONCE"') -and
+    $controlCenterSource.Contains('Content="REJECT"') -and
     $controlCenterSource.Contains('PiAgentDesktopRuntime.StartAsync') -and
     $controlCenterSource.Contains('SAFE SHUTDOWN') -and
     $controlCenterSource.Contains('impeccable:surface-seed:32fb29e4') -and
@@ -1464,13 +1470,13 @@ $phase7ControlCenterStaticContract =
         'NtQueueApcThread|StartService|ServiceController|' +
         'Microsoft\.Win32\.Registry|System\.Diagnostics\.Process)\b') -and
     -not [regex]::IsMatch(
-        $controlCenterSource,
+        $controlCenterMainWindowSource,
         '(?i)(?:Topmost\s*=\s*"True"|AllowsTransparency\s*=\s*"True"|' +
         'WindowState\s*=\s*"Maximized"|ShowInTaskbar\s*=\s*"False")')
 Add-Check `
-    'phase7.control-center-static-readonly' `
+    'phase7.control-center-static-review-gated' `
     $phase7ControlCenterStaticContract `
-    'The visible Control Center must remain an ordinary read-only Pi conversation window with explicit shell lock, orderly shutdown and no shell mutation API.'
+    'The visible Control Center must remain an ordinary review-gated Pi conversation window with explicit owner-only edit decisions, shell lock, orderly shutdown and no shell mutation API.'
 
 $controlCenterAuditOutput = @(
     & pwsh `
@@ -7803,9 +7809,11 @@ $piAgentSidecarOnly =
 Add-Check `
     'architecture.pi-agent-isolated-nonweb-sidecar' `
     $piAgentSidecarOnly `
-    'The reviewed private Pi package may host only the bounded Node JSONL ' +
-    'sidecar and its exact local named-pipe client; browser, server, TCP/UDP ' +
-    'and WebView runtimes remain forbidden.'
+    (
+        'The reviewed private Pi package may host only the bounded Node JSONL ' +
+        'sidecar and its exact local named-pipe client; browser, server, TCP/UDP ' +
+        'and WebView runtimes remain forbidden.'
+    )
 
 $forbiddenFiles = @(
     Get-ChildItem -LiteralPath $root -Recurse -File -ErrorAction Stop |

@@ -19,6 +19,12 @@ tool lifecycle, runtime phase, broker counts, checkpoint state, credential
 posture and the admitted workspace. `Ctrl+Enter` submits, `Esc` requests
 cancellation, and the buttons expose accessible automation names.
 
+When Pi stages an edit, the same turn expands an inline review plane showing
+the normalized path, before SHA-256, exact removed text, exact replacement text
+and decision state. Reject comes first in keyboard order and performs no write.
+Approve Once rechecks the exact file immediately before commit. The composer is
+disabled until the owner decides, and Pi cannot operate either control.
+
 Closing a window with an owned runtime first quiesces submissions, cancels an
 active turn, waits for its terminal event, flushes the CurrentUser-DPAPI
 checkpoint and releases the owned sidecar and broker. The window gives that
@@ -46,23 +52,25 @@ WPF command
     -> Pi SDK session in the Node sidecar
       -> current-user model-broker pipe
         -> selected desktop provider
-          -> validated ls tool event
-            -> root-confined Pi tool
+          -> validated read or proposal tool event
+            -> root-confined Pi tool / structured proposal
               -> streamed broker response
                 -> immutable WPF snapshots
+                  -> optional desktop-owner one-shot edit decision
                   -> encrypted terminal checkpoint
 ```
 
-`read`, `grep`, `find` and `ls` remain the only Pi tools installed in the
-session and admitted by the production provider. The diagnostic provider
-itself requests only `ls`. `bash`, `edit` and `write` are unavailable. No
-provider credential enters the sidecar and its model network remains disabled.
+`read`, `grep`, `find`, `ls` and non-mutating `propose_edit` are the only Pi
+tools installed in the session and admitted by the production provider. The
+diagnostic provider itself requests only `ls`. `bash`, generic `edit` and
+`write` are unavailable. No provider credential enters the sidecar and its
+model network remains disabled.
 
 ## Launch modes
 
 Launching without arguments opens the idle Control Center and admits no
 workspace or runtime. Choose `START PI SESSION`, select one local workspace,
-and keep the default `LOCAL DIAGNOSTIC` provider for a deterministic read-only
+and keep the default `LOCAL DIAGNOSTIC` provider for a deterministic
 first turn. The modal validates the workspace and fixed portable/developer
 runtime before the same window transitions into the conversation. `CONFIGURE
 OPENAI` remains available from the idle surface.
@@ -99,6 +107,9 @@ jarvis-control-center.exe `
 The launcher preflights the same boundary before any runtime starts, and the Pi
 host independently enforces it again. Protected roots, drive roots, aliases,
 reparse points and workspace escapes fail closed.
+
+The proposal and decision contract is described in
+`PI-AGENT-WORKSPACE-EDIT-APPROVAL.md`.
 
 The deterministic design-preview mode starts no Pi runtime:
 

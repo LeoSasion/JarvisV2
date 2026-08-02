@@ -48,6 +48,28 @@ public sealed class PiAgentConversationBinding :
             cancellationToken);
     }
 
+    public async Task<PiAgentWorkspaceEditSnapshot>
+        ApplyWorkspaceEditAsync(
+            string proposalId,
+            CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+        return await conversation.ApplyWorkspaceEditAsync(
+            proposalId,
+            cancellationToken);
+    }
+
+    public async Task<PiAgentWorkspaceEditSnapshot>
+        RejectWorkspaceEditAsync(
+            string proposalId,
+            CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+        return await conversation.RejectWorkspaceEditAsync(
+            proposalId,
+            cancellationToken);
+    }
+
     public void Dispose()
     {
         if (disposed)

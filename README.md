@@ -11,13 +11,18 @@ the default. An opt-in OpenAI Responses provider uses `gpt-5.6-sol`, SSE,
 `store: false` and a CurrentUser-DPAPI key that never enters the offline
 sidecar. See [the conversation surface](docs/PI-AGENT-DESKTOP-CONVERSATION-SURFACE.md),
 [provider boundary](docs/PI-AGENT-OPENAI-RESPONSES-PROVIDER.md) and
-[portable runtime](docs/JARVIS-CONTROL-CENTER-PORTABLE-RUNTIME.md).
+[portable runtime](docs/JARVIS-CONTROL-CENTER-PORTABLE-RUNTIME.md). Pi can now
+stage one exact existing-text edit for [inline owner approval](docs/PI-AGENT-WORKSPACE-EDIT-APPROVAL.md);
+the proposal itself never writes, and Approve Once is bound to the current
+file SHA-256.
 
 Open `jarvis-control-center.exe`, choose `START PI SESSION`, select one local
 workspace and keep the default local diagnostic provider for the fastest
-read-only first turn. The launcher validates both the workspace boundary and
+deterministic first turn. The launcher validates both the workspace boundary and
 the fixed portable/developer runtime before the existing window becomes the Pi
-conversation surface; it never starts a shell or mutates the selected folder.
+conversation surface. Reads are root-confined. `propose_edit` can only stage a
+review card; new files, deletes, direct writes, shell access and unattended
+approval remain unavailable.
 
 JarvisV2 是一个独立于旧版 JARVIS 的 Windows 原生桌面改造实验。它不铺设全屏画布，不用 Electron/WebView 假装桌面，也不替换任务栏的交互模型；模块进入明确的 Windows 宿主进程，修改现有原生组件，并且必须可以失败关闭和撤销。仓库与公开展示名称为 **JarvisV2**，内部运行时安全标识仍为 `JARVIS2`；状态目录、命名状态门、模块 ID 和既有收据不做破坏性改名。
 

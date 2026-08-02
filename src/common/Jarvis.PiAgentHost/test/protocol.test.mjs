@@ -127,11 +127,31 @@ try {
   assert.equal(records[1].success, true);
   assert.deepEqual(
     records[2].data.initialTools,
-    ["read", "grep", "find", "ls"],
+    ["read", "grep", "find", "ls", "propose_edit"],
   );
   assert.equal(records[2].data.sessionCreationEnabled, true);
   assert.equal(records[2].data.promptingEnabled, false);
   assert.equal(records[2].data.credentialTransportAllowed, false);
+  assert.equal(
+    records[2].data.workspaceEditProposalSupported,
+    true,
+  );
+  assert.equal(
+    records[2].data.workspaceEditApprovalOwner,
+    "desktop-user-only",
+  );
+  assert.equal(
+    records[2].data.workspaceEditApprovalMode,
+    "one-shot-exact-before-sha256",
+  );
+  assert.equal(
+    records[2].data.workspaceEditExistingFilesOnly,
+    true,
+  );
+  assert.equal(
+    records[2].data.unattendedSelfIteration,
+    false,
+  );
   assert.equal(records[2].data.sessionPersistence, "in-memory");
   assert.equal(
     records[2].data.conversationCheckpoint,
@@ -165,7 +185,7 @@ try {
   assert.equal(records[4].success, true);
   assert.deepEqual(
     records[4].data.activeTools,
-    ["read", "grep", "find", "ls"],
+    ["read", "grep", "find", "ls", "propose_edit"],
   );
   assert.equal(records[4].data.sessionPersisted, false);
   assert.equal(records[4].data.promptingEnabled, false);
@@ -401,6 +421,12 @@ try {
       modelNetworkAllowed: false,
       credentialTransportAllowed: false,
       initialTools: records[2].data.initialTools,
+      workspaceEditProposalSupported: true,
+      workspaceEditApprovalOwner: "desktop-user-only",
+      workspaceEditApprovalMode:
+        "one-shot-exact-before-sha256",
+      workspaceEditExistingFilesOnly: true,
+      unattendedSelfIteration: false,
       shellMutationSupported: false,
       explorerMutationSupported: false,
       activationPermitted: false,

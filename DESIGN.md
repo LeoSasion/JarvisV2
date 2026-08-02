@@ -284,6 +284,17 @@ rows, the streamed Jarvis response and an explicit terminal state. Running turns
 use a cyan rule, failed turns use coral rule and plane, and aborted turns use an
 amber rule. Completed work returns to neutral structure and recedes into history.
 
+### Workspace Edit Review
+
+A staged edit stays inside the turn that produced it; it is not promoted to a
+modal or a separate approval application. The review plane uses amber while
+waiting, cyan after an exact commit, coral for drift or failure, and neutral
+structure after rejection. Every state is named in text. Show the normalized
+path, full before SHA-256, exact removed and replacement text, and the explicit
+one-shot boundary. Reject precedes Approve Once in keyboard order. Pi cannot
+operate either control, and the composer remains disabled until the owner
+decides.
+
 ### Runtime Inspector and Status Dock
 
 The inspector exposes provider, access, workspace, active tools, broker,
@@ -301,8 +312,8 @@ not optional diagnostics.
   preserve accessible automation names for Send, Cancel and window controls.
 - **Do** preserve `Ctrl+Enter` for submit and `Esc` for cancellation, with visible
   shortcut copy near the conversation title.
-- **Do** make preview, offline, unauthenticated and read-only states explicit in
-  plain language.
+- **Do** make preview, offline, unauthenticated, proposal-only and
+  owner-approved-write states explicit in plain language.
 - **Do** retain the `32fb29e4` seed in surface metadata when deriving variants of
   this handoff concept.
 
@@ -318,3 +329,5 @@ not optional diagnostics.
   color alone.
 - **Don't** imply a workspace, credential, network provider, mutation capability
   or running process that the runtime has not actually admitted.
+- **Don't** hide a proposed diff, turn approval into a generic confirmation, or
+  allow assistant prose to stand in for the structured edit capability.

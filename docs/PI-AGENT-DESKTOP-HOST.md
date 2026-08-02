@@ -39,7 +39,8 @@ Shell process.
   across multiple requests, admits at most four current-user connections and
   caps every broker frame at 1 MiB;
 - validates provider event order and permits only the session's `read`, `grep`,
-  `find` and `ls` tool identities before forwarding tool calls to Pi;
+  `find`, `ls` and non-mutating `propose_edit` identities before forwarding
+  tool calls to Pi;
 - rejects an offline provider attempt to emit `bash`, returns a closed failure
   to the Pi turn and proves the broker remains isolated from the Shell;
 - exposes conditional `start_turn` and `abort_turn` requests; assistant text,
@@ -55,7 +56,8 @@ Shell process.
   with one active turn, bounded history, tool lifecycle state, cancellation
   command state and captured synchronization-context notification dispatch;
 - composes the desktop-owned model broker, exact Node sidecar, admitted
-  read-only session and conversation state behind one `PiAgentDesktopRuntime`;
+  review-gated session and conversation state behind one
+  `PiAgentDesktopRuntime`;
 - exports only bounded completed text turns, restores those messages into a
   fresh Pi in-memory session and keeps the restored UI snapshot aligned with
   the model context;
@@ -66,7 +68,14 @@ Shell process.
 - quiesces submissions, cancels any active turn, flushes queued checkpoint
   saves and shuts down the owned sidecar before disposing the broker;
 - replaces the SDK file tools with root-confined `read`, `grep`, `find` and
-  `ls` definitions; `bash`, `edit` and `write` stay unavailable;
+  `ls` definitions and one `propose_edit` definition that only stages an exact
+  existing-text replacement; `bash`, generic `edit` and `write` stay
+  unavailable;
+- emits the proposal as a structured turn event, blocks new turns while one is
+  pending, and exposes desktop-only commit and discard requests;
+- binds approval to the exact proposal id and full before SHA-256, rechecks the
+  workspace, path, reparse, file identity, hash and unique match immediately
+  before atomic replacement, then rejects replay and drift;
 - rejects drive roots, protected OS/profile roots, relative paths, canonical
   aliases, junctions, symbolic links, workspace escapes and a second binding;
 - rejects credential-shaped fields and frames over 64 KiB while accepting
@@ -91,11 +100,13 @@ This is now a real desktop-owned Pi conversation transport with a first native
 product conversation surface in `Jarvis.ControlCenter`. With no broker pipe,
 readiness and capabilities continue
 to report `promptingEnabled: false`. With the reviewed pipe present, the bridge
-can bind one read-only workspace, run a real Pi prompt and receive incremental
+can bind one review-gated workspace, run a real Pi prompt and receive incremental
 assistant text across multiple turns. A turn runs in the background, so the
 desktop can issue `abort_turn` without waiting for generation to finish. No
 provider credential is inherited or transported, no resource is discovered
-from the workspace and no session file is created.
+from the workspace and no session file is created. The model cannot approve its
+own proposal; only the native desktop review controls can exercise the one-shot
+decision.
 
 The broker server and provider interface are production-facing boundaries; the
 provider used by the product slice and audit is still deterministic and
@@ -109,7 +120,8 @@ binding adapter and a visible handoff-rail surface. See
 `PI-AGENT-DESKTOP-CONVERSATION-STATE.md` and
 `PI-AGENT-DESKTOP-CONVERSATION-SURFACE.md`. The lifecycle composition root is
 documented in `PI-AGENT-DESKTOP-RUNTIME.md`; encrypted persistence is documented
-in `PI-AGENT-DESKTOP-CHECKPOINT-STORE.md`.
+in `PI-AGENT-DESKTOP-CHECKPOINT-STORE.md`; the exact edit authority split is
+documented in `PI-AGENT-WORKSPACE-EDIT-APPROVAL.md`.
 
 ## Prompting admission
 
@@ -127,7 +139,7 @@ WPF desktop
     |
     +-- managed sidecar lifecycle and bounded JSONL transport
             |
-            +-- single-root read-only Pi session admission (implemented)
+            +-- single-root review-gated Pi session admission (implemented)
                     |
                     +-- brokered streaming + active-turn abort (implemented)
                             |
@@ -145,9 +157,10 @@ WPF desktop
                                                     |
                                                     +-- authenticated production provider
                                                             |
-                                                            +-- per-session mutation capability
+                                                            +-- one-shot existing-text owner approval
+                                                                (implemented)
                                                                     |
-                                                                    +-- reviewed self-iteration workflow
+                                                                    +-- durable reviewed self-iteration workflow
 ```
 
 No stage grants Shell injection, Explorer mutation, registry writes or
@@ -179,9 +192,9 @@ It proves three ordered terminal saves, one resumed-turn save and a forced
 autosave failure that closes submissions while preserving sidecar shutdown.
 The third ordinary turn executes the real root-confined `read` tool and requires
 a second model request. A separate held request proves cancellation through the
-concurrent desktop response pump. The tool turn proves four ordered desktop
-events and the abort turn proves one terminal event. The valid path observes
-five model requests and zero broker faults; an isolated negative provider
-records exactly one rejected `bash` fault. No path contacts an online model,
-transports a provider credential, touches Explorer or writes the production
-LocalAppData checkpoint directory.
+concurrent desktop response pump. A dedicated isolated workspace fixture proves
+proposal, approval, replay rejection, drift rejection and explicit rejection
+through six additional broker requests and zero broker faults. The Node probe
+also covers exact-capability mismatch, missing files and ambiguous matches. No
+path contacts an online model, transports a provider credential, touches
+Explorer or writes a production workspace file.

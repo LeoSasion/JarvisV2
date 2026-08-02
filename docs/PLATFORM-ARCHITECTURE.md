@@ -44,9 +44,11 @@ sidecar and bounded LF-delimited JSONL. The managed desktop bridge now owns the
 no-shell child lifecycle, imports the real package, proves a clean child
 environment and creates one in-memory SDK session for one canonical workspace.
 Its custom `read`, `grep`, `find` and `ls` tools reject path escape and reparse
-points. Prompting is admitted only when the desktop owns a current-user local
+points. A non-mutating `propose_edit` tool can stage one exact existing-text
+replacement; only the native desktop owner can approve it once against the
+current full-file SHA-256. Prompting is admitted only when the desktop owns a current-user local
 model-broker pipe; resource discovery, sidecar provider network access,
-credential transport and mutation tools remain disabled. The desktop now owns
+credential transport and direct mutation tools remain disabled. The desktop now owns
 a provider-neutral, multi-request model broker with bounded current-user pipes,
 validated read-only tool events and a managed response pump. The pump now
 publishes a bounded, ordered, single-consumer turn stream for WPF binding. A
@@ -64,7 +66,8 @@ production authentication is absent. A future authenticated provider will
 consume the same admitted boundary; the agent runtime will never be loaded into
 Explorer. See `docs/PI-AGENT-DESKTOP-HOST.md`,
 `docs/PI-AGENT-DESKTOP-RUNTIME.md` and
-`docs/PI-AGENT-DESKTOP-CONVERSATION-SURFACE.md`.
+`docs/PI-AGENT-DESKTOP-CONVERSATION-SURFACE.md`, plus
+`docs/PI-AGENT-WORKSPACE-EDIT-APPROVAL.md` for the exact decision boundary.
 
 Neural Void visual effects use one platform-neutral
 `neural-void-global-vfx-v1` parameter contract for Win10 and Win11. It defines

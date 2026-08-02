@@ -28,7 +28,7 @@ public sealed class OpenAiResponsesModelProvider :
         UriKind.Absolute);
     private static readonly IReadOnlySet<string> AllowedToolNames =
         new HashSet<string>(
-            ["read", "grep", "find", "ls"],
+            ["read", "grep", "find", "ls", "propose_edit"],
             StringComparer.Ordinal);
     private static readonly IReadOnlySet<string> AllowedReasoningEfforts =
         new HashSet<string>(
@@ -714,7 +714,7 @@ public sealed class OpenAiResponsesModelProvider :
         if (!AllowedToolNames.Contains(name))
         {
             throw new InvalidDataException(
-                "The OpenAI provider received a tool outside the read-only allowlist.");
+                "The OpenAI provider received a tool outside the reviewed workspace allowlist.");
         }
     }
 

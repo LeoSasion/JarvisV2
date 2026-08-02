@@ -77,6 +77,9 @@ under the current Windows user outside the portable directory. The
 
 Packaging, auditing and conversation launch do not install software, inject a
 module, configure Windhawk, clear the JARVIS2 kill switch, modify the registry,
-restart Explorer or enable mutation tools. The portable receipt therefore
+restart Explorer or enable shell/direct mutation tools. It includes the
+review-gated existing-text workflow: `propose_edit` stages without writing and
+only the desktop owner can approve once against the current file SHA-256. The
+portable receipt therefore
 fixes `activationPermitted=false`, `liveExplorer=not-run` and
 `systemMutationPerformed=false`.

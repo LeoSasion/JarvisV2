@@ -9,7 +9,8 @@
   "scripts": {
     "inspect": "node ./src/host.mjs inspect",
     "protocol:test": "node ./test/protocol.test.mjs",
-    "broker:test": "node ./test/desktop-model-broker.test.mjs"
+    "broker:test": "node ./test/desktop-model-broker.test.mjs",
+    "workspace-edit:test": "node ./test/workspace-edit-approval.test.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-ai": "0.82.1",

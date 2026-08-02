@@ -12,7 +12,7 @@
     "nodeMinimumMajor": 22,
     "integrationMode": "sdk-sidecar-jsonl",
     "sdkImportModel": "pinned-package-core-module-adapter",
-    "launchState": "read-only-session-admission",
+    "launchState": "review-gated-workspace-session-admission",
     "piOfflineRequired": true,
     "sessionCreationEnabled": true,
     "desktopLaunchImplemented": true
@@ -27,6 +27,8 @@
       "start_session",
       "start_turn",
       "abort_turn",
+      "commit_workspace_edit",
+      "discard_workspace_edit",
       "shutdown"
     ],
     "credentialFieldsAllowed": false
@@ -85,14 +87,25 @@
       "read",
       "grep",
       "find",
-      "ls"
+      "ls",
+      "propose_edit"
     ],
     "initiallyDenied": [
       "bash",
       "edit",
       "write"
     ],
-    "mutationGrant": "future-per-session-supervisor-capability",
+    "proposalTool": "non-mutating-existing-utf8-exact-replacement",
+    "proposalMaxFileBytes": 1048576,
+    "proposalMaxSegmentBytes": 4096,
+    "pendingProposalLimit": 1,
+    "pendingProposalPolicy": "blocks-new-turns-and-clears-on-shutdown",
+    "approvalOwner": "desktop-user-only",
+    "approvalMode": "one-shot-exact-before-sha256",
+    "commitMode": "same-directory-atomic-replace-and-post-verify",
+    "newFileSupported": false,
+    "deleteSupported": false,
+    "mutationGrant": "desktop-owner-one-shot-existing-text-edit",
     "unattendedSelfIteration": false
   },
   "boundaries": {

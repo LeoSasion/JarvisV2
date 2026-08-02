@@ -279,7 +279,7 @@
                                 <TextBlock x:Name="AdmissionState" FontFamily="Consolas" FontSize="10" Foreground="{StaticResource TextMutedBrush}" Text="AWAITING WORKSPACE" />
                                 <TextBlock x:Name="AdmissionDetail" Margin="0,5,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Text="Browse to an existing project directory outside protected Windows locations." TextWrapping="Wrap" />
                             </StackPanel>
-                            <TextBlock Grid.Column="2" HorizontalAlignment="Right" Style="{StaticResource MonoText}" Text="TOOLS // READ ONLY&#x0a;SHELL // LOCKED" TextAlignment="Right" />
+                            <TextBlock Grid.Column="2" HorizontalAlignment="Right" Style="{StaticResource MonoText}" Text="TOOLS // READ + PROPOSE&#x0a;WRITES // OWNER REVIEW&#x0a;SHELL // LOCKED" TextAlignment="Right" />
                         </Grid>
                     </Border>
                 </StackPanel>

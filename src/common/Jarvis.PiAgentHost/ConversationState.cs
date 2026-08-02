@@ -20,12 +20,65 @@ public enum PiAgentConversationToolStatus
     Failed,
 }
 
+public enum PiAgentWorkspaceEditStatus
+{
+    Pending,
+    Applying,
+    Applied,
+    Rejecting,
+    Rejected,
+    Expired,
+    Drifted,
+    Failed,
+}
+
 public sealed record PiAgentConversationToolSnapshot(
     string ToolCallId,
     string ToolName,
     PiAgentConversationToolStatus Status,
     int StartedSequence,
     int? CompletedSequence);
+
+public sealed record PiAgentWorkspaceEditSnapshot(
+    int SchemaVersion,
+    string ProposalId,
+    string RelativePath,
+    string BeforeSha256,
+    string OldText,
+    string NewText,
+    PiAgentWorkspaceEditStatus Status,
+    string? AfterSha256,
+    string? ErrorCode)
+{
+    public bool CanDecide => Status == PiAgentWorkspaceEditStatus.Pending;
+    public string StatusLabel => Status switch
+    {
+        PiAgentWorkspaceEditStatus.Pending => "OWNER REVIEW REQUIRED",
+        PiAgentWorkspaceEditStatus.Applying => "APPLYING ONCE",
+        PiAgentWorkspaceEditStatus.Applied => "APPLIED",
+        PiAgentWorkspaceEditStatus.Rejecting => "REJECTING",
+        PiAgentWorkspaceEditStatus.Rejected => "REJECTED / NO WRITE",
+        PiAgentWorkspaceEditStatus.Expired => "EXPIRED ON SHUTDOWN / NO WRITE",
+        PiAgentWorkspaceEditStatus.Drifted => "DRIFTED / NO WRITE",
+        PiAgentWorkspaceEditStatus.Failed => "FAILED CLOSED",
+        _ => "UNKNOWN",
+    };
+    public string BeforeHashLabel => $"BEFORE  {BeforeSha256}";
+    public string AfterHashLabel => AfterSha256 is null
+        ? Status switch
+        {
+            PiAgentWorkspaceEditStatus.Pending =>
+                "AFTER   PENDING OWNER DECISION",
+            PiAgentWorkspaceEditStatus.Rejected =>
+                "AFTER   UNCHANGED BY JARVIS",
+            PiAgentWorkspaceEditStatus.Expired =>
+                "AFTER   SESSION CLOSED WITHOUT WRITE",
+            PiAgentWorkspaceEditStatus.Drifted =>
+                "AFTER   EXTERNAL DRIFT PRESERVED",
+            _ => "AFTER   NOT COMMITTED",
+        }
+        : $"AFTER   {AfterSha256}";
+}
 
 public sealed record PiAgentConversationTurnSnapshot(
     string TurnId,
@@ -35,6 +88,7 @@ public sealed record PiAgentConversationTurnSnapshot(
     int LastEventSequence,
     bool CancelRequested,
     IReadOnlyList<PiAgentConversationToolSnapshot> Tools,
+    IReadOnlyList<PiAgentWorkspaceEditSnapshot> WorkspaceEdits,
     string? ErrorCode);
 
 public sealed record PiAgentConversationSnapshot(
@@ -87,10 +141,25 @@ public sealed class PiAgentConversationState
         public required string UserText { get; init; }
         public StringBuilder AssistantText { get; } = new();
         public List<MutableTool> Tools { get; } = [];
+        public List<MutableWorkspaceEdit> WorkspaceEdits { get; } = [];
         public PiAgentConversationTurnStatus Status { get; set; } =
             PiAgentConversationTurnStatus.Starting;
         public int LastEventSequence { get; set; }
         public bool CancelRequested { get; set; }
+        public string? ErrorCode { get; set; }
+    }
+
+    private sealed class MutableWorkspaceEdit
+    {
+        public required int SchemaVersion { get; init; }
+        public required string ProposalId { get; init; }
+        public required string RelativePath { get; init; }
+        public required string BeforeSha256 { get; init; }
+        public required string OldText { get; init; }
+        public required string NewText { get; init; }
+        public PiAgentWorkspaceEditStatus Status { get; set; } =
+            PiAgentWorkspaceEditStatus.Pending;
+        public string? AfterSha256 { get; set; }
         public string? ErrorCode { get; set; }
     }
 
@@ -111,7 +180,10 @@ public sealed class PiAgentConversationState
     private int revision;
     private int generatedTurnSequence;
     private int abortRequestSequence;
+    private int workspaceEditDecisionSequence;
     private bool acceptingSubmissions = true;
+    private string? pendingWorkspaceEditId;
+    private Task workspaceEditDecisionTask = Task.CompletedTask;
     private TaskCompletionSource<bool> idleCompletion =
         CreateCompletedIdleSource();
 
@@ -401,19 +473,212 @@ public sealed class PiAgentConversationState
         }
     }
 
+    public async Task<PiAgentWorkspaceEditSnapshot>
+        ApplyWorkspaceEditAsync(
+            string proposalId,
+            CancellationToken cancellationToken = default)
+    {
+        MutableWorkspaceEdit proposal;
+        TaskCompletionSource<bool> decisionCompletion;
+        PiAgentConversationSnapshot applyingSnapshot;
+        lock (gate)
+        {
+            proposal = FindPendingWorkspaceEditLocked(proposalId);
+            decisionCompletion = new(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            workspaceEditDecisionTask = decisionCompletion.Task;
+            proposal.Status = PiAgentWorkspaceEditStatus.Applying;
+            applyingSnapshot = AdvanceSnapshotLocked();
+        }
+        try
+        {
+            try
+            {
+                Publish(applyingSnapshot);
+                int requestSequence = Interlocked.Increment(
+                    ref workspaceEditDecisionSequence);
+                PiAgentWorkspaceEditDecisionReceipt receipt =
+                    await controller.CommitWorkspaceEditAsync(
+                        proposal.ProposalId,
+                        proposal.BeforeSha256,
+                        $"desktop-apply-edit-{requestSequence:D8}",
+                        cancellationToken);
+                PiAgentConversationSnapshot appliedSnapshot;
+                PiAgentWorkspaceEditSnapshot result;
+                lock (gate)
+                {
+                    MutableWorkspaceEdit current =
+                        FindWorkspaceEditLocked(proposalId);
+                    if (
+                        current.Status !=
+                            PiAgentWorkspaceEditStatus.Applying ||
+                        receipt.RelativePath != current.RelativePath ||
+                        receipt.BeforeSha256 != current.BeforeSha256 ||
+                        receipt.Status != "applied" ||
+                        !receipt.MutationPerformed ||
+                        receipt.AfterSha256 is null)
+                    {
+                        throw new InvalidOperationException(
+                            "The applied workspace edit receipt diverged from conversation state.");
+                    }
+                    current.Status = PiAgentWorkspaceEditStatus.Applied;
+                    current.AfterSha256 = receipt.AfterSha256;
+                    pendingWorkspaceEditId = null;
+                    appliedSnapshot = AdvanceSnapshotLocked();
+                    result = ToSnapshot(current);
+                }
+                Publish(appliedSnapshot);
+                return result;
+            }
+            catch (Exception exception)
+            {
+                PiAgentConversationSnapshot failedSnapshot;
+                PiAgentWorkspaceEditSnapshot result;
+                lock (gate)
+                {
+                    MutableWorkspaceEdit current =
+                        FindWorkspaceEditLocked(proposalId);
+                    string errorCode = exception is
+                        PiAgentWorkspaceEditDecisionException decision
+                            ? decision.ErrorCode
+                            : "workspace-edit-approval-uncertain";
+                    current.Status = errorCode == "workspace-edit-drifted"
+                        ? PiAgentWorkspaceEditStatus.Drifted
+                        : PiAgentWorkspaceEditStatus.Failed;
+                    current.ErrorCode = errorCode;
+                    pendingWorkspaceEditId = null;
+                    if (current.Status == PiAgentWorkspaceEditStatus.Failed)
+                    {
+                        acceptingSubmissions = false;
+                    }
+                    failedSnapshot = AdvanceSnapshotLocked();
+                    result = ToSnapshot(current);
+                }
+                Publish(failedSnapshot);
+                return result;
+            }
+        }
+        finally
+        {
+            decisionCompletion.TrySetResult(true);
+        }
+    }
+
+    public async Task<PiAgentWorkspaceEditSnapshot>
+        RejectWorkspaceEditAsync(
+            string proposalId,
+            CancellationToken cancellationToken = default)
+    {
+        MutableWorkspaceEdit proposal;
+        TaskCompletionSource<bool> decisionCompletion;
+        PiAgentConversationSnapshot rejectingSnapshot;
+        lock (gate)
+        {
+            proposal = FindPendingWorkspaceEditLocked(proposalId);
+            decisionCompletion = new(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            workspaceEditDecisionTask = decisionCompletion.Task;
+            proposal.Status = PiAgentWorkspaceEditStatus.Rejecting;
+            rejectingSnapshot = AdvanceSnapshotLocked();
+        }
+        try
+        {
+            try
+            {
+                Publish(rejectingSnapshot);
+                int requestSequence = Interlocked.Increment(
+                    ref workspaceEditDecisionSequence);
+                PiAgentWorkspaceEditDecisionReceipt receipt =
+                    await controller.DiscardWorkspaceEditAsync(
+                        proposal.ProposalId,
+                        proposal.BeforeSha256,
+                        $"desktop-reject-edit-{requestSequence:D8}",
+                        cancellationToken);
+                PiAgentConversationSnapshot rejectedSnapshot;
+                PiAgentWorkspaceEditSnapshot result;
+                lock (gate)
+                {
+                    MutableWorkspaceEdit current =
+                        FindWorkspaceEditLocked(proposalId);
+                    if (
+                        current.Status !=
+                            PiAgentWorkspaceEditStatus.Rejecting ||
+                        receipt.RelativePath != current.RelativePath ||
+                        receipt.BeforeSha256 != current.BeforeSha256 ||
+                        receipt.Status != "rejected" ||
+                        receipt.MutationPerformed ||
+                        receipt.AfterSha256 is not null)
+                    {
+                        throw new InvalidOperationException(
+                            "The rejected workspace edit receipt diverged from conversation state.");
+                    }
+                    current.Status = PiAgentWorkspaceEditStatus.Rejected;
+                    pendingWorkspaceEditId = null;
+                    rejectedSnapshot = AdvanceSnapshotLocked();
+                    result = ToSnapshot(current);
+                }
+                Publish(rejectedSnapshot);
+                return result;
+            }
+            catch (Exception exception)
+            {
+                PiAgentConversationSnapshot failedSnapshot;
+                PiAgentWorkspaceEditSnapshot result;
+                lock (gate)
+                {
+                    MutableWorkspaceEdit current =
+                        FindWorkspaceEditLocked(proposalId);
+                    current.Status = PiAgentWorkspaceEditStatus.Failed;
+                    current.ErrorCode = exception is
+                        PiAgentWorkspaceEditDecisionException decision
+                            ? decision.ErrorCode
+                            : "workspace-edit-rejection-uncertain";
+                    pendingWorkspaceEditId = null;
+                    acceptingSubmissions = false;
+                    failedSnapshot = AdvanceSnapshotLocked();
+                    result = ToSnapshot(current);
+                }
+                Publish(failedSnapshot);
+                return result;
+            }
+        }
+        finally
+        {
+            decisionCompletion.TrySetResult(true);
+        }
+    }
+
     public async Task QuiesceAsync(
         CancellationToken cancellationToken = default)
     {
         PiAgentConversationSnapshot? quiescingSnapshot = null;
         Task idleTask;
+        Task decisionTask;
         lock (gate)
         {
+            bool snapshotChanged = false;
             if (acceptingSubmissions)
             {
                 acceptingSubmissions = false;
+                snapshotChanged = true;
+            }
+            if (pendingWorkspaceEditId is not null)
+            {
+                MutableWorkspaceEdit pending =
+                    FindWorkspaceEditLocked(pendingWorkspaceEditId);
+                if (pending.Status == PiAgentWorkspaceEditStatus.Pending)
+                {
+                    pending.Status = PiAgentWorkspaceEditStatus.Expired;
+                    pendingWorkspaceEditId = null;
+                    snapshotChanged = true;
+                }
+            }
+            if (snapshotChanged)
+            {
                 quiescingSnapshot = AdvanceSnapshotLocked();
             }
             idleTask = idleCompletion.Task;
+            decisionTask = workspaceEditDecisionTask;
         }
         if (quiescingSnapshot is not null)
         {
@@ -422,6 +687,7 @@ public sealed class PiAgentConversationState
 
         _ = await CancelActiveTurnAsync(cancellationToken);
         await idleTask.WaitAsync(cancellationToken);
+        await decisionTask.WaitAsync(cancellationToken);
     }
 
     private async Task<PiAgentConversationTurnSnapshot> ConsumeTurnAsync(
@@ -556,6 +822,42 @@ public sealed class PiAgentConversationState
                     tool.CompletedSequence = completed.Sequence;
                     break;
 
+                case PiAgentWorkspaceEditProposed proposed:
+                    if (
+                        pendingWorkspaceEditId is not null ||
+                        turns.SelectMany(candidate =>
+                                candidate.WorkspaceEdits)
+                            .Any(edit =>
+                                edit.ProposalId == proposed.ProposalId) ||
+                        !turn.Tools.Any(tool =>
+                            tool.ToolName == "propose_edit" &&
+                            tool.Status ==
+                                PiAgentConversationToolStatus.Completed))
+                    {
+                        throw new InvalidOperationException(
+                            "The desktop conversation workspace edit proposal was unmatched.");
+                    }
+                    MutableWorkspaceEdit workspaceEdit = new()
+                    {
+                        SchemaVersion = proposed.SchemaVersion,
+                        ProposalId = proposed.ProposalId,
+                        RelativePath = proposed.RelativePath,
+                        BeforeSha256 = proposed.BeforeSha256,
+                        OldText = proposed.OldText,
+                        NewText = proposed.NewText,
+                    };
+                    if (!acceptingSubmissions)
+                    {
+                        workspaceEdit.Status =
+                            PiAgentWorkspaceEditStatus.Expired;
+                    }
+                    turn.WorkspaceEdits.Add(workspaceEdit);
+                    if (acceptingSubmissions)
+                    {
+                        pendingWorkspaceEditId = proposed.ProposalId;
+                    }
+                    break;
+
                 case PiAgentTurnCompleted terminal:
                     if (turn.Tools.Any(tool =>
                             tool.Status ==
@@ -613,6 +915,35 @@ public sealed class PiAgentConversationState
         throw new InvalidOperationException(
             "The desktop conversation turn was not retained.");
 
+    private MutableWorkspaceEdit FindPendingWorkspaceEditLocked(
+        string proposalId)
+    {
+        if (
+            !acceptingSubmissions ||
+            activeTurnId is not null ||
+            pendingWorkspaceEditId != proposalId)
+        {
+            throw new InvalidOperationException(
+                "The workspace edit is not ready for owner review.");
+        }
+        MutableWorkspaceEdit proposal =
+            FindWorkspaceEditLocked(proposalId);
+        if (proposal.Status != PiAgentWorkspaceEditStatus.Pending)
+        {
+            throw new InvalidOperationException(
+                "The workspace edit proposal was already decided.");
+        }
+        return proposal;
+    }
+
+    private MutableWorkspaceEdit FindWorkspaceEditLocked(
+        string proposalId) =>
+        turns.SelectMany(turn => turn.WorkspaceEdits)
+            .SingleOrDefault(proposal =>
+                proposal.ProposalId == proposalId) ??
+        throw new InvalidOperationException(
+            "The workspace edit proposal was not retained.");
+
     private PiAgentConversationSnapshot AdvanceSnapshotLocked()
     {
         revision++;
@@ -627,7 +958,9 @@ public sealed class PiAgentConversationState
         return new PiAgentConversationSnapshot(
             revision,
             activeTurnId,
-            acceptingSubmissions && activeTurnId is null,
+            acceptingSubmissions &&
+                activeTurnId is null &&
+                pendingWorkspaceEditId is null,
             active is not null && !active.CancelRequested,
             turns.Select(ToSnapshot).ToArray());
     }
@@ -648,7 +981,21 @@ public sealed class PiAgentConversationState
                     tool.Status,
                     tool.StartedSequence,
                     tool.CompletedSequence)).ToArray(),
+            turn.WorkspaceEdits.Select(ToSnapshot).ToArray(),
             turn.ErrorCode);
+
+    private static PiAgentWorkspaceEditSnapshot ToSnapshot(
+        MutableWorkspaceEdit proposal) =>
+        new(
+            proposal.SchemaVersion,
+            proposal.ProposalId,
+            proposal.RelativePath,
+            proposal.BeforeSha256,
+            proposal.OldText,
+            proposal.NewText,
+            proposal.Status,
+            proposal.AfterSha256,
+            proposal.ErrorCode);
 
     private void Publish(PiAgentConversationSnapshot snapshot)
     {

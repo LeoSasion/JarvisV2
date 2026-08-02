@@ -21,7 +21,11 @@ $piSdkAdapterPath = Join-Path $sourceRoot 'src\pi-sdk-adapter.mjs'
 $runtimeInspectorPath = Join-Path $sourceRoot (
     'src\pi-runtime-inspector.mjs')
 $readOnlySessionPath = Join-Path $sourceRoot 'src\read-only-session.mjs'
+$workspaceEditProposalPath = Join-Path $sourceRoot (
+    'src\workspace-edit-proposal.mjs')
 $protocolTestPath = Join-Path $sourceRoot 'test\protocol.test.mjs'
+$workspaceEditTestPath = Join-Path $sourceRoot (
+    'test\workspace-edit-approval.test.mjs')
 $brokerTestPath = Join-Path $sourceRoot (
     'test\desktop-model-broker.test.mjs')
 $bridgeProjectPath = Join-Path $sourceRoot 'Jarvis.PiAgentHost.csproj'
@@ -89,6 +93,18 @@ $runtimeSourceText = @(
             [IO.File]::ReadAllText($_.FullName)
         }
 ) -join [Environment]::NewLine
+$nonMutationRuntimeSourceText = @(
+    Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'src') `
+        -File `
+        -Filter '*.mjs' |
+        Where-Object Name -ne 'workspace-edit-proposal.mjs' |
+        Sort-Object FullName |
+        ForEach-Object {
+            [IO.File]::ReadAllText($_.FullName)
+        }
+) -join [Environment]::NewLine
+$workspaceEditProposalText =
+    [IO.File]::ReadAllText($workspaceEditProposalPath)
 $piSdkAdapterText = [IO.File]::ReadAllText($piSdkAdapterPath)
 $runtimeInspectorText = [IO.File]::ReadAllText($runtimeInspectorPath)
 $readOnlySessionText = [IO.File]::ReadAllText($readOnlySessionPath)
@@ -141,12 +157,12 @@ Add-Check `
         'and sidecar readiness may load only the required core SDK modules.')
 
 Add-Check `
-    -Name 'contract.read-only-session-and-tools' `
+    -Name 'contract.review-gated-session-and-tools' `
     -Passed (
         $contract.runtime.sessionCreationEnabled -and
         $contract.runtime.desktopLaunchImplemented -and
         $contract.runtime.launchState -eq
-            'read-only-session-admission' -and
+            'review-gated-workspace-session-admission' -and
         $contract.session.enabled -and
         $contract.session.promptingEnabled -eq
             'desktop-broker-required' -and
@@ -204,14 +220,31 @@ Add-Check `
         $contract.session.resourceDiscovery -eq 'disabled' -and
         -not $contract.session.modelNetworkAllowed -and
         (@($contract.tools.initialAllowlist) -join '|') -eq
-            'read|grep|find|ls' -and
+            'read|grep|find|ls|propose_edit' -and
         (@($contract.tools.initiallyDenied) -join '|') -eq
             'bash|edit|write' -and
+        $contract.tools.proposalTool -eq
+            'non-mutating-existing-utf8-exact-replacement' -and
+        $contract.tools.proposalMaxFileBytes -eq 1048576 -and
+        $contract.tools.proposalMaxSegmentBytes -eq 4096 -and
+        $contract.tools.pendingProposalLimit -eq 1 -and
+        $contract.tools.pendingProposalPolicy -eq
+            'blocks-new-turns-and-clears-on-shutdown' -and
+        $contract.tools.approvalOwner -eq 'desktop-user-only' -and
+        $contract.tools.approvalMode -eq
+            'one-shot-exact-before-sha256' -and
+        $contract.tools.commitMode -eq
+            'same-directory-atomic-replace-and-post-verify' -and
+        -not $contract.tools.newFileSupported -and
+        -not $contract.tools.deleteSupported -and
+        $contract.tools.mutationGrant -eq
+            'desktop-owner-one-shot-existing-text-edit' -and
         -not $contract.tools.unattendedSelfIteration) `
     -Detail (
         'The managed desktop may create one real in-memory Pi session for ' +
         'one admitted workspace; prompting requires a desktop-owned named ' +
-        'pipe while credentials, discovery and mutation tools remain denied.')
+        'pipe while direct mutation stays denied and exact edits require a ' +
+        'desktop-owner one-shot before-hash decision.')
 
 Add-Check `
     -Name 'contract.jsonl-and-shell-boundary' `
@@ -270,7 +303,7 @@ Add-Check `
         $schema.properties.runtime.properties.sdkImportModel.const -eq
             'pinned-package-core-module-adapter' -and
         $schema.properties.runtime.properties.launchState.const -eq
-            'read-only-session-admission' -and
+            'review-gated-workspace-session-admission' -and
         $schema.properties.runtime.properties.desktopLaunchImplemented.const `
             -eq $true -and
         $schema.properties.transport.properties.maxFrameBytes.const -eq
@@ -349,6 +382,26 @@ Add-Check `
             -eq $false -and
         $schema.properties.transport.properties.credentialFieldsAllowed.const `
             -eq $false -and
+        (@($schema.properties.tools.properties.initialAllowlist.const) -join '|') `
+            -eq 'read|grep|find|ls|propose_edit' -and
+        $schema.properties.tools.properties.proposalTool.const -eq
+            'non-mutating-existing-utf8-exact-replacement' -and
+        $schema.properties.tools.properties.proposalMaxFileBytes.const -eq
+            1048576 -and
+        $schema.properties.tools.properties.proposalMaxSegmentBytes.const -eq
+            4096 -and
+        $schema.properties.tools.properties.pendingProposalLimit.const -eq
+            1 -and
+        $schema.properties.tools.properties.approvalOwner.const -eq
+            'desktop-user-only' -and
+        $schema.properties.tools.properties.approvalMode.const -eq
+            'one-shot-exact-before-sha256' -and
+        $schema.properties.tools.properties.newFileSupported.const -eq
+            $false -and
+        $schema.properties.tools.properties.deleteSupported.const -eq
+            $false -and
+        $schema.properties.tools.properties.unattendedSelfIteration.const -eq
+            $false -and
         $schema.properties.boundaries.properties.activationPermitted.const `
             -eq $false) `
     -Detail (
@@ -377,7 +430,7 @@ Add-Check `
     -Name 'source.root-confined-session-sidecar' `
     -Passed (
         -not [regex]::IsMatch(
-            $runtimeSourceText,
+            $nonMutationRuntimeSourceText,
             $forbiddenRuntimePattern) -and
         $sessionCreateCount -eq 1 -and
         $modelRuntimeCreateCount -eq 1 -and
@@ -401,11 +454,32 @@ Add-Check `
         $runtimeSourceText.Contains('Buffer.byteLength') -and
         $runtimeSourceText.Contains('Buffer.byteLength(line, "utf8")') -and
         $runtimeSourceText.Contains('buffer.indexOf("\n")') -and
-        $runtimeSourceText.Contains('credential-field-forbidden')) `
+        $runtimeSourceText.Contains('credential-field-forbidden') -and
+        (Test-Path -LiteralPath $workspaceEditProposalPath -PathType Leaf) -and
+        (Test-Path -LiteralPath $workspaceEditTestPath -PathType Leaf) -and
+        $workspaceEditProposalText.Contains('propose_edit') -and
+        $workspaceEditProposalText.Contains(
+            'maximumWorkspaceEditSegmentBytes = 4_096') -and
+        $workspaceEditProposalText.Contains(
+            'maximumWorkspaceEditFileBytes = 1_048_576') -and
+        $workspaceEditProposalText.Contains('isUtf8') -and
+        $workspaceEditProposalText.Contains('stats.nlink !== 1') -and
+        $workspaceEditProposalText.Contains(
+            'content.indexOf(search, first + 1)') -and
+        $workspaceEditProposalText.Contains(
+            'workspace-edit-drifted') -and
+        $workspaceEditProposalText.Contains(
+            'workspace-edit-proposal-mismatch') -and
+        $workspaceEditProposalText.Contains('await temporary.sync()') -and
+        $workspaceEditProposalText.Contains(
+            'await rename(temporaryPath, first.safePath)') -and
+        $workspaceEditProposalText.Contains(
+            'mutationPerformed: true')) `
     -Detail (
         'Runtime source must create exactly one root-confined in-memory SDK ' +
         'session and one broker-gated prompt path without credential files, ' +
-        'writes or child processes.')
+        'child processes or unreviewed writes; the isolated edit module must ' +
+        'bind one existing text replacement to an exact hash and atomic commit.')
 
 $bridgeSourceText =
     [IO.File]::ReadAllText($bridgeSourcePath) +
@@ -463,6 +537,14 @@ Add-Check `
         $bridgeSourceText.Contains('PromptAsync') -and
         $bridgeSourceText.Contains('StartTurnAsync') -and
         $bridgeSourceText.Contains('AbortTurnAsync') -and
+        $bridgeSourceText.Contains('CommitWorkspaceEditAsync') -and
+        $bridgeSourceText.Contains('DiscardWorkspaceEditAsync') -and
+        $bridgeSourceText.Contains('PiAgentWorkspaceEditProposed') -and
+        $bridgeSourceText.Contains('PiAgentWorkspaceEditStatus') -and
+        $bridgeSourceText.Contains(
+            'PiAgentWorkspaceEditStatus.Expired') -and
+        $bridgeSourceText.Contains('workspaceEditDecisionTask') -and
+        $bridgeSourceText.Contains('workspace-edit-drifted') -and
         $bridgeSourceText.Contains('PumpOutputAsync') -and
         $bridgeSourceText.Contains('ReadEventsAsync') -and
         $bridgeSourceText.Contains('Channel.CreateBounded') -and
@@ -540,7 +622,7 @@ Add-Check `
         ) -PathType Leaf)) `
     -Detail (
         'The managed bridge may own only the exact no-shell Node child, ' +
-        'scrub credential variables, bind one read-only session, admit one ' +
+        'scrub credential variables, bind one review-gated session, admit one ' +
         'multi-request current-user model pipe and terminate only its owned ' +
         'processes and connections on cleanup.')
 
@@ -572,7 +654,7 @@ Add-Check `
             'did not return an SSE stream') -and
         $openAiProviderText.Contains('AllowedToolNames.Contains') -and
         $openAiProviderText.Contains(
-            '["read", "grep", "find", "ls"]') -and
+            '["read", "grep", "find", "ls", "propose_edit"]') -and
         $openAiCredentialText.Contains('ProtectedData.Protect') -and
         $openAiCredentialText.Contains('ProtectedData.Unprotect') -and
         $openAiCredentialText.Contains(
@@ -585,7 +667,7 @@ Add-Check `
         $openAiProbeText.Contains('CredentialTransportToSidecar')) `
     -Detail (
         'The production Provider may use only the exact Responses endpoint, ' +
-        'bounded SSE and four read-only tools; authentication must come from ' +
+        'bounded SSE and the exact reviewed read/proposal tools; authentication must come from ' +
         'an atomic CurrentUser DPAPI envelope, never the environment.')
 
 $controlCenterProjectText =
@@ -605,6 +687,10 @@ Add-Check `
             'SubmitAsync') -and
         $controlCenterBindingText.Contains(
             'CancelAsync') -and
+        $controlCenterBindingText.Contains(
+            'ApplyWorkspaceEditAsync') -and
+        $controlCenterBindingText.Contains(
+            'RejectWorkspaceEditAsync') -and
         -not $controlCenterBindingText.Contains('System.Windows') -and
         -not $controlCenterBindingText.Contains('Process.') -and
         -not $controlCenterBindingText.Contains('Registry')) `
@@ -765,6 +851,13 @@ if (-not $StaticOnly) {
             -not $inspectReceipt.modelNetworkAllowed -and
             -not $inspectReceipt.resourceDiscoveryEnabled -and
             -not $inspectReceipt.credentialTransportAllowed -and
+            $inspectReceipt.workspaceEditProposalSupported -and
+            $inspectReceipt.workspaceEditApprovalOwner -eq
+                'desktop-user-only' -and
+            $inspectReceipt.workspaceEditApprovalMode -eq
+                'one-shot-exact-before-sha256' -and
+            $inspectReceipt.workspaceEditExistingFilesOnly -and
+            -not $inspectReceipt.unattendedSelfIteration -and
             -not $inspectReceipt.shellMutationSupported -and
             -not $inspectReceipt.explorerMutationSupported -and
             -not $inspectReceipt.activationPermitted -and
@@ -823,7 +916,14 @@ if (-not $StaticOnly) {
             -not $protocolReceipt.resourceDiscoveryEnabled -and
             -not $protocolReceipt.credentialTransportAllowed -and
             (@($protocolReceipt.initialTools) -join '|') -eq
-                'read|grep|find|ls' -and
+                'read|grep|find|ls|propose_edit' -and
+            $protocolReceipt.workspaceEditProposalSupported -and
+            $protocolReceipt.workspaceEditApprovalOwner -eq
+                'desktop-user-only' -and
+            $protocolReceipt.workspaceEditApprovalMode -eq
+                'one-shot-exact-before-sha256' -and
+            $protocolReceipt.workspaceEditExistingFilesOnly -and
+            -not $protocolReceipt.unattendedSelfIteration -and
             -not $protocolReceipt.shellMutationSupported -and
             -not $protocolReceipt.explorerMutationSupported -and
             -not $protocolReceipt.activationPermitted -and
@@ -831,6 +931,48 @@ if (-not $StaticOnly) {
         -Detail (
             "Protocol exit $protocolExitCode; result " +
             "$protocolResult; records $recordCount.")
+
+    $workspaceEditOutput = @(
+        & $NodePath $workspaceEditTestPath 2>&1
+    )
+    $workspaceEditExitCode = $LASTEXITCODE
+    $workspaceEditReceipt = $null
+    try {
+        $workspaceEditReceipt =
+            ($workspaceEditOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $workspaceEditReceipt = $null
+    }
+    $workspaceEditResult = if ($null -ne $workspaceEditReceipt) {
+        $workspaceEditReceipt.result
+    }
+    else {
+        'unparsed'
+    }
+    Add-Check `
+        -Name 'runtime.workspace-edit-approval-probe' `
+        -Passed (
+            $workspaceEditExitCode -eq 0 -and
+            $null -ne $workspaceEditReceipt -and
+            $workspaceEditReceipt.result -eq 'passed' -and
+            (@($workspaceEditReceipt.activeTools) -join '|') -eq
+                'read|grep|find|ls|propose_edit' -and
+            -not $workspaceEditReceipt.proposalToolMutates -and
+            $workspaceEditReceipt.existingTextFilesOnly -and
+            $workspaceEditReceipt.exactBeforeSha256Bound -and
+            $workspaceEditReceipt.oneShotApproval -and
+            $workspaceEditReceipt.replayRejected -and
+            $workspaceEditReceipt.driftRejected -and
+            -not $workspaceEditReceipt.rejectMutates -and
+            -not $workspaceEditReceipt.shellMutationSupported -and
+            -not $workspaceEditReceipt.explorerMutationSupported -and
+            -not $workspaceEditReceipt.unattendedSelfIteration -and
+            $workspaceEditReceipt.liveExplorer -eq 'not-run') `
+        -Detail (
+            "Workspace edit probe exit $workspaceEditExitCode; result " +
+            "$workspaceEditResult.")
 
     $brokerTestOutput = @(
         & $NodePath $brokerTestPath 2>&1
@@ -927,7 +1069,7 @@ if (-not $StaticOnly) {
             $bridgeReceipt.piOffline -and
             $bridgeReceipt.credentialEnvironmentScrubbed -and
             (@($bridgeReceipt.initialTools) -join '|') -eq
-                'read|grep|find|ls' -and
+                'read|grep|find|ls|propose_edit' -and
             (@($bridgeReceipt.deniedTools) -join '|') -eq
                 'bash|edit|write' -and
             $bridgeReceipt.sessionCreationEnabled -and
@@ -1104,6 +1246,13 @@ if (-not $StaticOnly) {
             $desktopRuntimeReceipt.runtimeCompositionPassed -and
             $desktopRuntimeReceipt.multiTurnPassed -and
             $desktopRuntimeReceipt.toolRoundTripPassed -and
+            $desktopRuntimeReceipt.workspaceEditProposalPassed -and
+            $desktopRuntimeReceipt.workspaceEditApprovalPassed -and
+            $desktopRuntimeReceipt.workspaceEditReplayRejected -and
+            $desktopRuntimeReceipt.workspaceEditDriftRejected -and
+            $desktopRuntimeReceipt.workspaceEditRejectionPassed -and
+            $desktopRuntimeReceipt.workspaceEditShutdownExpirationPassed -and
+            $desktopRuntimeReceipt.workspaceEditFixtureMutationPerformed -and
             $desktopRuntimeReceipt.checkpointExportPassed -and
             $desktopRuntimeReceipt.checkpointContextRestorePassed -and
             $desktopRuntimeReceipt.checkpointAdmissionPassed -and
@@ -1121,6 +1270,7 @@ if (-not $StaticOnly) {
             $desktopRuntimeReceipt.normalBrokerRequestCount -eq 4 -and
             $desktopRuntimeReceipt.resumeBrokerRequestCount -eq 1 -and
             $desktopRuntimeReceipt.abortBrokerRequestCount -eq 1 -and
+            $desktopRuntimeReceipt.workspaceEditBrokerRequestCount -eq 8 -and
             $desktopRuntimeReceipt.exportedCheckpointTurnCount -eq 3 -and
             $desktopRuntimeReceipt.restoredCheckpointTurnCount -eq 3 -and
             $desktopRuntimeReceipt.persistedCheckpointTurnCount -eq 4 -and
@@ -1237,6 +1387,16 @@ $passed = $failures.Count -eq 0
     activeTurnCancellationImplemented = $true
     sessionPersistence = 'in-memory'
     workspaceBinding = 'single-explicit-root'
+    workspaceEditProposalSupported = $true
+    workspaceEditProposalMutates = $false
+    workspaceEditExistingFilesOnly = $true
+    workspaceEditStrictUtf8 = $true
+    workspaceEditSingleLinkOnly = $true
+    workspaceEditApprovalOwner = 'desktop-user-only'
+    workspaceEditApprovalMode = 'one-shot-exact-before-sha256'
+    workspaceEditNewFileSupported = $false
+    workspaceEditDeleteSupported = $false
+    unattendedSelfIteration = $false
     desktopLaunchImplemented = $true
     productionProvider = 'openai-responses-opt-in'
     productionModel = 'gpt-5.6-sol'

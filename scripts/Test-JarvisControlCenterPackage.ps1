@@ -152,8 +152,14 @@ if ($null -eq $receipt -or
         ($expectedCriticalPaths -join '|') -or
     (@($receipt.portableNodePackages | ForEach-Object name) -join '|') -ne
         ($expectedPortablePackages -join '|') -or
-    (@($receipt.initialTools) -join '|') -ne 'read|grep|find|ls' -or
-    @($receipt.mutationTools).Count -ne 0) {
+    (@($receipt.initialTools) -join '|') -ne
+        'read|grep|find|ls|propose_edit' -or
+    @($receipt.mutationTools).Count -ne 0 -or
+    (@($receipt.desktopOwnerApprovedWorkspaceOperations) -join '|') -ne
+        'existing-utf8-exact-replacement' -or
+    $receipt.workspaceEditApprovalMode -ne
+        'one-shot-exact-before-sha256' -or
+    $receipt.unattendedSelfIteration) {
     $failures.Add('The portable package receipt failed its safety contract.')
 }
 
@@ -277,6 +283,13 @@ if ($runtimeProbeExitCode -ne 0 -or
     -not $runtimeProbeReceipt.runtimeCompositionPassed -or
     -not $runtimeProbeReceipt.multiTurnPassed -or
     -not $runtimeProbeReceipt.toolRoundTripPassed -or
+    -not $runtimeProbeReceipt.workspaceEditProposalPassed -or
+    -not $runtimeProbeReceipt.workspaceEditApprovalPassed -or
+    -not $runtimeProbeReceipt.workspaceEditReplayRejected -or
+    -not $runtimeProbeReceipt.workspaceEditDriftRejected -or
+    -not $runtimeProbeReceipt.workspaceEditRejectionPassed -or
+    -not $runtimeProbeReceipt.workspaceEditShutdownExpirationPassed -or
+    -not $runtimeProbeReceipt.workspaceEditFixtureMutationPerformed -or
     -not $runtimeProbeReceipt.checkpointStoreRoundTripPassed -or
     -not $runtimeProbeReceipt.checkpointStoreCiphertextPassed -or
     -not $runtimeProbeReceipt.quiesceClosedSubmission -or

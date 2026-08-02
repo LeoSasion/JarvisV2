@@ -132,7 +132,11 @@ $requiredVisibleLabels = @(
     'Text="JARVIS"',
     'Content="SEND"',
     'Content="CANCEL"',
-    'Mutation tools: unavailable',
+    'Writes: desktop-owner approval only',
+    'Shell / direct edit / unattended approval: locked',
+    'WORKSPACE EDIT PROPOSAL',
+    'Content="REJECT"',
+    'Content="APPROVE ONCE"',
     'SHELL // LOCKED',
     'SAFE SHUTDOWN',
     'CONFIGURE OPENAI',
@@ -170,7 +174,16 @@ Add-Check `
         $mainWindowText.Contains('IsEnabled="{Binding CanCancel}"') -and
         $mainWindowText.Contains('PreviewKeyDown="PromptInput_OnPreviewKeyDown"') -and
         $mainWindowText.Contains('AutomationProperties.Name="Send message"') -and
-        $mainWindowText.Contains('AutomationProperties.Name="Cancel active turn"')) `
+        $mainWindowText.Contains('AutomationProperties.Name="Cancel active turn"') -and
+        $mainWindowText.Contains('ItemsSource="{Binding WorkspaceEdits}"') -and
+        $mainWindowText.Contains(
+            'AutomationProperties.Name="Reject workspace edit without writing"') -and
+        $mainWindowText.Contains(
+            'AutomationProperties.Name="Approve workspace edit once"') -and
+        $mainWindowCodeText.Contains(
+            'ApproveWorkspaceEditButton_OnClick') -and
+        $mainWindowCodeText.Contains(
+            'RejectWorkspaceEditButton_OnClick')) `
     -Detail (
         'The selected handoff-rail surface must bind real turns and controls, ' +
         'retain keyboard operation and expose accessible action names.')
@@ -183,7 +196,10 @@ Add-Check `
         $modelSetupText.Contains('x:Name="ApiKeyInput"') -and
         $modelSetupText.Contains('PasswordBox') -and
         $modelSetupText.Contains('gpt-5.6-sol') -and
-        $modelSetupText.Contains('READ / GREP / FIND / LS') -and
+        $modelSetupText.Contains(
+            'READ / GREP / FIND / LS / PROPOSE_EDIT') -and
+        $modelSetupText.Contains(
+            'WRITE // DESKTOP OWNER APPROVAL ONLY') -and
         $modelSetupText.Contains('RETENTION // STORE FALSE') -and
         $modelSetupText.Contains('SIDECAR // OFFLINE') -and
         $modelSetupText.Contains(
@@ -210,6 +226,8 @@ Add-Check `
         $viewModelText.Contains('PiAgentConversationBinding') -and
         $viewModelText.Contains('SubmitAsync') -and
         $viewModelText.Contains('CancelAsync') -and
+        $viewModelText.Contains('ApplyWorkspaceEditAsync') -and
+        $viewModelText.Contains('RejectWorkspaceEditAsync') -and
         $viewModelText.Contains('runtime.ShutdownAsync') -and
         $mainWindowCodeText.Contains('OnWindowClosing') -and
         $mainWindowCodeText.Contains('ShutdownAsync')) `
@@ -238,7 +256,8 @@ Add-Check `
             'AutomationProperties.Name="Admit workspace and start Pi session"') -and
         $sessionLaunchText.Contains('IsDefault="True"') -and
         $sessionLaunchText.Contains('IsEnabled="False"') -and
-        $sessionLaunchText.Contains('TOOLS // READ ONLY') -and
+        $sessionLaunchText.Contains('TOOLS // READ + PROPOSE') -and
+        $sessionLaunchText.Contains('WRITES // OWNER REVIEW') -and
         $sessionLaunchText.Contains('SHELL // LOCKED') -and
         $sessionLaunchCodeText.Contains('OpenFolderDialog') -and
         $sessionLaunchCodeText.Contains(

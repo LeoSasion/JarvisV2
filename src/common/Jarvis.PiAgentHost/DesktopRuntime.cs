@@ -418,7 +418,8 @@ public sealed class PiAgentDesktopRuntime : IAsyncDisposable
         bool valid =
             Path.IsPathFullyQualified(canonicalWorkspaceRoot) &&
             Directory.Exists(canonicalWorkspaceRoot) &&
-            activeTools.SequenceEqual(["read", "grep", "find", "ls"]) &&
+            activeTools.SequenceEqual(
+                ["read", "grep", "find", "ls", "propose_edit"]) &&
             !data.GetProperty("sessionPersisted").GetBoolean() &&
             data.GetProperty("modelSelected").GetBoolean() &&
             data.GetProperty("promptingEnabled").GetBoolean() &&

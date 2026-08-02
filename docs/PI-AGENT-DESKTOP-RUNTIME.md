@@ -18,7 +18,8 @@ One runtime instance owns, in order:
 The caller supplies no pipe name. `PiAgentDesktopRuntime.StartAsync` creates the
 broker first, injects only its generated pipe capability into the sidecar, and
 admits the returned session receipt before publishing the runtime. The receipt
-must prove the exact four read-only tools, the desktop broker model identity,
+must prove the exact four read tools plus non-mutating `propose_edit`, the
+desktop broker model identity,
 in-memory session state, disabled resource discovery and disabled sidecar model
 network.
 
@@ -66,14 +67,16 @@ The runtime remains provider-neutral: its WPF composition root selects the
 provider and owns any provider credential source. Production mode uses the
 desktop-only `OpenAiResponsesModelProvider`; its CurrentUser-DPAPI key never
 enters the broker protocol or sidecar. The Pi sidecar remains offline and has
-only `read`, `grep`, `find` and `ls`
-inside one admitted workspace. Pi SDK session persistence remains disabled.
+only `read`, `grep`, `find`, `ls` and `propose_edit` inside one admitted
+workspace. Pi SDK session persistence remains disabled.
 The desktop can persist only the bounded completed-text checkpoint in its
 CurrentUser-DPAPI store; the sidecar never reads the store or encryption key.
 Each terminal turn is saved in order. A persistence failure closes further
 submissions and is surfaced during shutdown while sidecar cleanup still runs.
-The runtime does not enable mutation tools, contact Explorer, modify the
-registry or control physical RGB devices.
+The proposal tool does not write. Exact commit and discard requests remain
+desktop-only and are exposed through conversation-state owner decisions. The
+runtime does not enable shell or generic mutation tools, contact Explorer,
+modify the registry or control physical RGB devices.
 
 The current Control Center surface gives this shutdown path a 12-second
 window-close budget and keeps the user-visible phase in `STOPPING` while the
@@ -93,6 +96,8 @@ The deterministic `runtime-probe` command proves:
   submission shutdown after a forced commit failure;
 - fail-closed rejection of duplicate and over-limit checkpoints;
 - exact broker/session admission;
+- one structured existing-text proposal, approved fixture commit, replay
+  rejection, drift rejection and explicit no-write rejection;
 - rejection of submissions after quiesce;
 - active-turn cancellation during shutdown;
 - cleanup of the provider, broker and owned sidecar after a protected-root
@@ -104,3 +109,5 @@ details are in `PI-AGENT-DESKTOP-CHECKPOINT-STORE.md`. The separate offline
 Responses protocol/credential probe is documented in
 `PI-AGENT-OPENAI-RESPONSES-PROVIDER.md`, and portable discovery is documented
 in `JARVIS-CONTROL-CENTER-PORTABLE-RUNTIME.md`.
+The edit authority and commit sequence are documented in
+`PI-AGENT-WORKSPACE-EDIT-APPROVAL.md`.

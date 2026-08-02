@@ -99,6 +99,56 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void ApproveWorkspaceEditButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        if (sender is not Button { Tag: string proposalId })
+        {
+            conversation.ReportUiError(
+                "Workspace edit approval failed closed: proposal identity was missing.");
+            return;
+        }
+        try
+        {
+            await conversation.ApplyWorkspaceEditAsync(proposalId);
+            if (conversation.CanSubmit)
+            {
+                PromptInput.Focus();
+            }
+        }
+        catch (Exception exception)
+        {
+            conversation.ReportUiError(
+                $"Workspace edit approval failed closed: {exception.Message}");
+        }
+    }
+
+    private async void RejectWorkspaceEditButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        if (sender is not Button { Tag: string proposalId })
+        {
+            conversation.ReportUiError(
+                "Workspace edit rejection failed closed: proposal identity was missing.");
+            return;
+        }
+        try
+        {
+            await conversation.RejectWorkspaceEditAsync(proposalId);
+            if (conversation.CanSubmit)
+            {
+                PromptInput.Focus();
+            }
+        }
+        catch (Exception exception)
+        {
+            conversation.ReportUiError(
+                $"Workspace edit rejection failed closed: {exception.Message}");
+        }
+    }
+
     private async void ModelSetupButton_OnClick(
         object sender,
         RoutedEventArgs eventArgs)

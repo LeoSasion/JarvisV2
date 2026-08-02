@@ -29,6 +29,10 @@ import {
   brokerProviderId,
   registerDesktopBrokerProvider,
 } from "./desktop-model-broker.mjs";
+import {
+  createWorkspaceEditProposalTool,
+  WorkspaceEditProposalManager,
+} from "./workspace-edit-proposal.mjs";
 
 const maximumSearchFiles = 10_000;
 const maximumFileBytes = 1_048_576;
@@ -190,8 +194,9 @@ function createInertResourceLoader() {
     getThemes: () => ({ themes: [], diagnostics: [] }),
     getAgentsFiles: () => ({ agentsFiles: [] }),
     getSystemPrompt: () =>
-      "JARVIS desktop read-only workspace session. " +
-      "Mutation and paths outside the admitted root are unavailable.",
+      "JARVIS desktop review-gated workspace session. " +
+      "Read tools and a non-mutating edit proposal tool are available. " +
+      "Only the desktop owner can approve a staged proposal; shell, direct mutation, unattended approval, and paths outside the admitted root are unavailable.",
     getAppendSystemPrompt: () => [],
     extendResources: () => {
       throw new WorkspacePolicyError(
@@ -581,6 +586,8 @@ export async function createReadOnlyAgentSession(
   const sessionManager = SessionManager.inMemory(
     admission.canonicalRoot,
   );
+  const workspaceEditProposalManager =
+    new WorkspaceEditProposalManager(admission);
   seedConversationCheckpoint(
     sessionManager,
     checkpointTurns,
@@ -591,12 +598,16 @@ export async function createReadOnlyAgentSession(
     createGrepTool(admission),
     createFindTool(admission),
     createLsTool(admission),
+    createWorkspaceEditProposalTool(
+      admission,
+      workspaceEditProposalManager,
+    ),
   ];
   const result = await createAgentSession({
     cwd: admission.canonicalRoot,
     ...(model ? { model } : {}),
     modelRuntime,
-    tools: ["read", "grep", "find", "ls"],
+    tools: ["read", "grep", "find", "ls", "propose_edit"],
     excludeTools: ["bash", "edit", "write"],
     customTools: tools,
     resourceLoader: createInertResourceLoader(),
@@ -614,7 +625,8 @@ export async function createReadOnlyAgentSession(
     result.session.model?.id === brokerModelId
   );
   if (
-    activeTools.join("|") !== "read|grep|find|ls" ||
+    activeTools.join("|") !==
+      "read|grep|find|ls|propose_edit" ||
     persisted ||
     result.session.messages.length !==
       restoredContextMessageCount ||
@@ -637,6 +649,7 @@ export async function createReadOnlyAgentSession(
     modelId: result.session.model?.id ?? null,
     restoredTurnCount: checkpointTurns.length,
     restoredContextMessageCount,
+    workspaceEditProposalManager,
   };
 }
 

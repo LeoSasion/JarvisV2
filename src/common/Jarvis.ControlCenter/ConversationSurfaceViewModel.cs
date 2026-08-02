@@ -83,7 +83,7 @@ public sealed class ConversationSurfaceViewModel :
     public string ProviderLabel => preview
         ? "ILLUSTRATIVE // NO RUNTIME"
         : launchOptions?.ProviderDisplayName ?? "NO PROVIDER ADMITTED";
-    public string AccessLabel => "READ ONLY";
+    public string AccessLabel => "READ + REVIEWED EDIT";
     public string WorkspaceLabel => launchOptions?.WorkspaceRoot ??
         (preview
             ? "ILLUSTRATIVE // NOT ADMITTED"
@@ -122,6 +122,11 @@ public sealed class ConversationSurfaceViewModel :
         snapshot.Turns;
     public IReadOnlyList<PiAgentConversationToolSnapshot> ActiveTools =>
         ActiveTurn?.Tools ?? [];
+    public PiAgentWorkspaceEditSnapshot? PendingWorkspaceEdit =>
+        snapshot.Turns
+            .SelectMany(turn => turn.WorkspaceEdits)
+            .SingleOrDefault(edit =>
+                edit.Status == PiAgentWorkspaceEditStatus.Pending);
     public bool HasTurns => snapshot.Turns.Count != 0;
     public bool HandoffComplete =>
         snapshot.ActiveTurnId is null && snapshot.Turns.Count != 0;
@@ -132,6 +137,10 @@ public sealed class ConversationSurfaceViewModel :
             providerCredentialReady);
     public bool CanCancel =>
         phase == ConversationRuntimePhase.Ready && snapshot.CanCancel;
+    public bool CanReviewWorkspaceEdits =>
+        phase == ConversationRuntimePhase.Ready &&
+        snapshot.ActiveTurnId is null &&
+        PendingWorkspaceEdit?.CanDecide == true;
     public bool CanLaunchSession =>
         !preview &&
         runtime is null &&
@@ -143,6 +152,8 @@ public sealed class ConversationSurfaceViewModel :
     public double HandoffProgress => DetermineHandoffProgress();
     public string HandoffLabel => HandoffProgress switch
     {
+        _ when PendingWorkspaceEdit is not null =>
+            "OWNER HOLDS A ONE-SHOT EDIT DECISION",
         <= 0 => "USER HOLDS THE NEXT TURN",
         < 2 => "PI RUNTIME OWNS THE ACTIVE TURN",
         < 3 => "READ TOOL OWNS THE ACTIVE TURN",
@@ -170,7 +181,7 @@ public sealed class ConversationSurfaceViewModel :
     public string EmptyStateDescription => phase switch
     {
         ConversationRuntimePhase.NotStarted when launchOptions is null =>
-            "Choose one workspace and start the local read-only Pi runtime. " +
+            "Choose one workspace and start the local review-gated Pi runtime. " +
                 "No command line is required.",
         ConversationRuntimePhase.Starting =>
             "The desktop is verifying the runtime, workspace and broker boundary.",
@@ -179,7 +190,7 @@ public sealed class ConversationSurfaceViewModel :
             "Configure the protected OpenAI key in the inspector, then submit " +
                 "your first request.",
         ConversationRuntimePhase.Ready =>
-            "Submit a request below. Only root-confined read tools are available.",
+            "Submit a request below. Reads are root-confined; edits can only be staged for your explicit review.",
         ConversationRuntimePhase.Faulted =>
             "Review the status detail, then choose a different workspace or " +
                 "repair the portable runtime.",
@@ -270,8 +281,8 @@ public sealed class ConversationSurfaceViewModel :
                 ConversationRuntimePhase.Ready,
                 IsOpenAiProvider && !providerCredentialReady
                     ? "Pi is ready. Configure OpenAI to enable authenticated turns."
-                    : "Pi session admitted. Submit a request through the " +
-                        "root-confined read-only tool path.");
+                    : "Pi session admitted. Reads are root-confined and " +
+                        "edit proposals require a one-shot owner decision.");
             RaiseConversationProperties();
         }
         catch (Exception exception)
@@ -345,6 +356,58 @@ public sealed class ConversationSurfaceViewModel :
         RaisePropertyChanged(nameof(StatusDetail));
     }
 
+    public async Task ApplyWorkspaceEditAsync(
+        string proposalId,
+        CancellationToken cancellationToken = default)
+    {
+        uiError = null;
+        if (binding is null || !CanReviewWorkspaceEdits)
+        {
+            throw new InvalidOperationException(
+                "The workspace edit proposal is not ready for approval.");
+        }
+        PiAgentWorkspaceEditSnapshot result =
+            await binding.ApplyWorkspaceEditAsync(
+                proposalId,
+                cancellationToken);
+        statusDetail = result.Status switch
+        {
+            PiAgentWorkspaceEditStatus.Applied =>
+                $"Applied once: {result.RelativePath}. The exact before-hash capability is consumed.",
+            PiAgentWorkspaceEditStatus.Drifted =>
+                $"Edit not applied: {result.RelativePath} changed after proposal. Review a fresh proposal.",
+            _ =>
+                $"Edit approval failed closed: {result.ErrorCode ?? "unknown error"}. Restart the session before more work.",
+        };
+        RaisePropertyChanged(nameof(StatusDetail));
+        RaiseConversationProperties();
+    }
+
+    public async Task RejectWorkspaceEditAsync(
+        string proposalId,
+        CancellationToken cancellationToken = default)
+    {
+        uiError = null;
+        if (binding is null || !CanReviewWorkspaceEdits)
+        {
+            throw new InvalidOperationException(
+                "The workspace edit proposal is not ready for rejection.");
+        }
+        PiAgentWorkspaceEditSnapshot result =
+            await binding.RejectWorkspaceEditAsync(
+                proposalId,
+                cancellationToken);
+        statusDetail = result.Status switch
+        {
+            PiAgentWorkspaceEditStatus.Rejected =>
+                $"Rejected without writing: {result.RelativePath}. The proposal capability is consumed.",
+            _ =>
+                $"Edit rejection failed closed: {result.ErrorCode ?? "unknown error"}. Restart the session before more work.",
+        };
+        RaisePropertyChanged(nameof(StatusDetail));
+        RaiseConversationProperties();
+    }
+
     public void ReportUiError(string message)
     {
         uiError = message;
@@ -407,7 +470,11 @@ public sealed class ConversationSurfaceViewModel :
             statusDetail = terminal.Status switch
             {
                 PiAgentConversationTurnStatus.Completed =>
-                    "Turn completed and queued for encrypted checkpointing.",
+                    terminal.WorkspaceEdits.Any(edit =>
+                            edit.Status ==
+                                PiAgentWorkspaceEditStatus.Pending)
+                        ? "Turn complete. One edit proposal is waiting for your explicit owner decision."
+                        : "Turn completed and queued for encrypted checkpointing.",
                 PiAgentConversationTurnStatus.Aborted =>
                     "Turn aborted; no mutation capability was available.",
                 _ =>
@@ -476,10 +543,12 @@ public sealed class ConversationSurfaceViewModel :
     {
         RaisePropertyChanged(nameof(Turns));
         RaisePropertyChanged(nameof(ActiveTools));
+        RaisePropertyChanged(nameof(PendingWorkspaceEdit));
         RaisePropertyChanged(nameof(HasTurns));
         RaisePropertyChanged(nameof(HandoffComplete));
         RaisePropertyChanged(nameof(CanSubmit));
         RaisePropertyChanged(nameof(CanCancel));
+        RaisePropertyChanged(nameof(CanReviewWorkspaceEdits));
         RaisePropertyChanged(nameof(CanLaunchSession));
         RaisePropertyChanged(nameof(HandoffProgress));
         RaisePropertyChanged(nameof(HandoffLabel));
@@ -523,6 +592,18 @@ public sealed class ConversationSurfaceViewModel :
                     PiAgentConversationToolStatus.Completed,
                     1,
                     3),
+            ],
+            [
+                new PiAgentWorkspaceEditSnapshot(
+                    1,
+                    "workspace-edit-0123456789abcdef0123456789abcdef",
+                    "src/common/Jarvis.ControlCenter/ConversationSurfaceViewModel.cs",
+                    new string('a', 64),
+                    "public string AccessLabel => \"READ ONLY\";",
+                    "public string AccessLabel => \"READ + REVIEWED EDIT\";",
+                    PiAgentWorkspaceEditStatus.Pending,
+                    null,
+                    null),
             ],
             null);
         return new PiAgentConversationSnapshot(

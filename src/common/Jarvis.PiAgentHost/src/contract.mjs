@@ -49,7 +49,7 @@ export function validateContract(contract) {
     contract.runtime?.sdkImportModel !==
       "pinned-package-core-module-adapter" ||
     contract.runtime?.launchState !==
-      "read-only-session-admission" ||
+      "review-gated-workspace-session-admission" ||
     contract.runtime?.piOfflineRequired !== true ||
     contract.runtime?.sessionCreationEnabled !== true ||
     contract.runtime?.desktopLaunchImplemented !== true
@@ -62,7 +62,8 @@ export function validateContract(contract) {
     contract.transport?.maxFrameBytes !== 65_536 ||
     contract.transport?.requestTypes?.join("|") !==
       "hello|capabilities|start_session|start_turn|" +
-        "abort_turn|shutdown" ||
+        "abort_turn|commit_workspace_edit|discard_workspace_edit|" +
+        "shutdown" ||
     contract.transport?.credentialFieldsAllowed !== false
   ) {
     failures.push("transport");
@@ -142,9 +143,25 @@ export function validateContract(contract) {
   }
   if (
     contract.tools?.initialAllowlist?.join("|") !==
-      "read|grep|find|ls" ||
+      "read|grep|find|ls|propose_edit" ||
     contract.tools?.initiallyDenied?.join("|") !==
       "bash|edit|write" ||
+    contract.tools?.proposalTool !==
+      "non-mutating-existing-utf8-exact-replacement" ||
+    contract.tools?.proposalMaxFileBytes !== 1_048_576 ||
+    contract.tools?.proposalMaxSegmentBytes !== 4_096 ||
+    contract.tools?.pendingProposalLimit !== 1 ||
+    contract.tools?.pendingProposalPolicy !==
+      "blocks-new-turns-and-clears-on-shutdown" ||
+    contract.tools?.approvalOwner !== "desktop-user-only" ||
+    contract.tools?.approvalMode !==
+      "one-shot-exact-before-sha256" ||
+    contract.tools?.commitMode !==
+      "same-directory-atomic-replace-and-post-verify" ||
+    contract.tools?.newFileSupported !== false ||
+    contract.tools?.deleteSupported !== false ||
+    contract.tools?.mutationGrant !==
+      "desktop-owner-one-shot-existing-text-edit" ||
     contract.tools?.unattendedSelfIteration !== false
   ) {
     failures.push("tools");

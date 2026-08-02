@@ -7,6 +7,9 @@ import {
 import {
   validateDesktopBrokerPipe,
 } from "./desktop-model-broker.mjs";
+import {
+  extractWorkspaceEditProposal,
+} from "./workspace-edit-proposal.mjs";
 
 export function createReadyEvent(
   contract,
@@ -143,6 +146,12 @@ export async function handleRequest(
             resourceDiscoveryEnabled: false,
             modelNetworkAllowed: false,
             credentialTransportAllowed: false,
+            workspaceEditProposalSupported: true,
+            workspaceEditApprovalOwner: "desktop-user-only",
+            workspaceEditApprovalMode:
+              "one-shot-exact-before-sha256",
+            workspaceEditExistingFilesOnly: true,
+            unattendedSelfIteration: false,
             shellMutationSupported: false,
             explorerMutationSupported: false,
             activationPermitted: false,
@@ -240,6 +249,17 @@ export async function handleRequest(
         );
       }
       if (
+        state.sessionHandle.workspaceEditProposalManager
+          .hasPending
+      ) {
+        return failure(
+          id,
+          "start_turn",
+          "workspace-edit-review-pending",
+          "Approve or reject the pending workspace edit before starting another turn.",
+        );
+      }
+      if (
         typeof request.text !== "string" ||
         request.text.trim().length === 0 ||
         Buffer.byteLength(request.text, "utf8") > 16_384
@@ -291,6 +311,19 @@ export async function handleRequest(
                 toolName: event.toolName,
                 isError: event.isError === true,
               });
+              const proposal =
+                event.toolName === "propose_edit" &&
+                event.isError !== true
+                  ? extractWorkspaceEditProposal(event.result)
+                  : null;
+              if (proposal !== null) {
+                emitEvent({
+                  type: "event",
+                  event: "workspace_edit_proposed",
+                  requestId: turn.id,
+                  ...proposal,
+                });
+              }
             } else if (
               event.type === "message_end" &&
               event.message?.role === "assistant"
@@ -411,6 +444,98 @@ export async function handleRequest(
           );
         }
       }
+    case "commit_workspace_edit":
+      if (state.sessionHandle === null) {
+        return failure(
+          id,
+          "commit_workspace_edit",
+          "session-not-bound",
+          "A workspace session must be admitted before approving an edit.",
+        );
+      }
+      if (state.activeTurn !== null) {
+        return failure(
+          id,
+          "commit_workspace_edit",
+          "turn-still-active",
+          "The proposing turn must complete before an edit can be approved.",
+        );
+      }
+      try {
+        const receipt =
+          await state.sessionHandle
+            .workspaceEditProposalManager.commit(
+              request.proposalId,
+              request.beforeSha256,
+            );
+        return {
+          response: {
+            type: "response",
+            id,
+            command: "commit_workspace_edit",
+            success: true,
+            data: receipt,
+          },
+          shutdown: false,
+        };
+      } catch (error) {
+        return failure(
+          id,
+          "commit_workspace_edit",
+          error instanceof WorkspacePolicyError
+            ? error.code
+            : "workspace-edit-commit-failed",
+          error instanceof WorkspacePolicyError
+            ? error.message
+            : "The approved workspace edit failed closed.",
+        );
+      }
+    case "discard_workspace_edit":
+      if (state.sessionHandle === null) {
+        return failure(
+          id,
+          "discard_workspace_edit",
+          "session-not-bound",
+          "A workspace session must be admitted before rejecting an edit.",
+        );
+      }
+      if (state.activeTurn !== null) {
+        return failure(
+          id,
+          "discard_workspace_edit",
+          "turn-still-active",
+          "The proposing turn must complete before an edit can be rejected.",
+        );
+      }
+      try {
+        const receipt =
+          state.sessionHandle
+            .workspaceEditProposalManager.discard(
+              request.proposalId,
+              request.beforeSha256,
+            );
+        return {
+          response: {
+            type: "response",
+            id,
+            command: "discard_workspace_edit",
+            success: true,
+            data: receipt,
+          },
+          shutdown: false,
+        };
+      } catch (error) {
+        return failure(
+          id,
+          "discard_workspace_edit",
+          error instanceof WorkspacePolicyError
+            ? error.code
+            : "workspace-edit-discard-failed",
+          error instanceof WorkspacePolicyError
+            ? error.message
+            : "The workspace edit rejection failed closed.",
+        );
+      }
     case "shutdown":
       if (state.activeTurn !== null) {
         const activeTurn = state.activeTurn;
@@ -421,6 +546,7 @@ export async function handleRequest(
           // Shutdown still disposes the owned in-memory session below.
         }
       }
+      state.sessionHandle?.workspaceEditProposalManager.clear();
       return {
         response: {
           type: "response",
@@ -453,6 +579,7 @@ export async function disposeProtocolState(state) {
     }
   }
   state.sessionHandle?.session.dispose();
+  state.sessionHandle?.workspaceEditProposalManager.clear();
   state.sessionHandle = null;
   state.activeTurn = null;
 }

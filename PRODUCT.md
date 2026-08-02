@@ -47,8 +47,11 @@ logic and explicit fail-closed platform adapters for native shell work.
   Windows CurrentUser DPAPI.
 - The sidecar remains offline and receives model work only through a
   desktop-owned current-user transport.
-- Initial Pi tools are read-only; mutation capabilities require a later
-  reviewed capability design.
+- Pi can read the admitted workspace and stage one exact replacement in an
+  existing UTF-8 text file. The proposal performs no write; only the desktop
+  owner can select a one-shot approval bound to the current file SHA-256.
+- New files, deletes, renames, generic `edit`/`write`, shell access and
+  unattended self-iteration remain outside the admitted capability set.
 - Native shell changes remain locked behind exact compatibility, build receipt,
   recovery and one-shot approval gates.
 - Windows 10 and Windows 11 share product behavior and visual tokens where

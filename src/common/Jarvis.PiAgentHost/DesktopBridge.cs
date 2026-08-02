@@ -51,10 +51,36 @@ public sealed record PiAgentToolExecutionCompleted(
     string ToolName,
     bool IsError) : PiAgentTurnStreamEvent(TurnId, Sequence);
 
+public sealed record PiAgentWorkspaceEditProposed(
+    string TurnId,
+    int Sequence,
+    int SchemaVersion,
+    string ProposalId,
+    string RelativePath,
+    string BeforeSha256,
+    string OldText,
+    string NewText) : PiAgentTurnStreamEvent(TurnId, Sequence);
+
 public sealed record PiAgentTurnCompleted(
     string TurnId,
     int Sequence,
     PiAgentTurnResult Result) : PiAgentTurnStreamEvent(TurnId, Sequence);
+
+public sealed record PiAgentWorkspaceEditDecisionReceipt(
+    int SchemaVersion,
+    string ProposalId,
+    string RelativePath,
+    string BeforeSha256,
+    string? AfterSha256,
+    string Status,
+    bool MutationPerformed);
+
+public sealed class PiAgentWorkspaceEditDecisionException(
+    string errorCode,
+    string message) : InvalidOperationException(message)
+{
+    public string ErrorCode { get; } = errorCode;
+}
 
 public sealed class PiAgentTurnHandle
 {
@@ -157,6 +183,7 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         public int DeltaCount { get; set; }
         public int EventSequence { get; set; }
         public int ToolExecutionCount { get; set; }
+        public int AwaitingWorkspaceEditProposalCount { get; set; }
         public TaskCompletionSource<PiAgentTurnResult> Completion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
@@ -167,8 +194,15 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
 
     private static readonly IReadOnlySet<string> AllowedTurnToolNames =
         new HashSet<string>(
-            ["read", "grep", "find", "ls"],
+            ["read", "grep", "find", "ls", "propose_edit"],
             StringComparer.Ordinal);
+
+    private static readonly Regex WorkspaceEditProposalIdPattern = new(
+        @"\Aworkspace-edit-[0-9a-f]{32}\z",
+        RegexOptions.CultureInvariant);
+    private static readonly Regex Sha256Pattern = new(
+        @"\A[0-9a-f]{64}\z",
+        RegexOptions.CultureInvariant);
 
     private static readonly string[] RequiredChildEnvironmentVariables =
     [
@@ -509,6 +543,64 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
         }
     }
 
+    public async Task<PiAgentWorkspaceEditDecisionReceipt>
+        CommitWorkspaceEditAsync(
+            string proposalId,
+            string beforeSha256,
+            string id,
+            CancellationToken cancellationToken)
+    {
+        ValidateWorkspaceEditDecisionRequest(
+            proposalId,
+            beforeSha256);
+        using JsonDocument response = await SendRequestAsync(
+            new
+            {
+                type = "commit_workspace_edit",
+                id,
+                proposalId,
+                beforeSha256,
+            },
+            "commit_workspace_edit",
+            id,
+            cancellationToken);
+        return ParseWorkspaceEditDecisionResponse(
+            response.RootElement,
+            proposalId,
+            beforeSha256,
+            "applied",
+            mutationExpected: true);
+    }
+
+    public async Task<PiAgentWorkspaceEditDecisionReceipt>
+        DiscardWorkspaceEditAsync(
+            string proposalId,
+            string beforeSha256,
+            string id,
+            CancellationToken cancellationToken)
+    {
+        ValidateWorkspaceEditDecisionRequest(
+            proposalId,
+            beforeSha256);
+        using JsonDocument response = await SendRequestAsync(
+            new
+            {
+                type = "discard_workspace_edit",
+                id,
+                proposalId,
+                beforeSha256,
+            },
+            "discard_workspace_edit",
+            id,
+            cancellationToken);
+        return ParseWorkspaceEditDecisionResponse(
+            response.RootElement,
+            proposalId,
+            beforeSha256,
+            "rejected",
+            mutationExpected: false);
+    }
+
     private async Task<JsonDocument> SendRequestAsync<TRequest>(
         TRequest request,
         string type,
@@ -755,6 +847,10 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 throw new InvalidOperationException(
                     "The Pi Agent ended an inactive tool call.");
             }
+            if (toolName == "propose_edit" && !isError)
+            {
+                pending.AwaitingWorkspaceEditProposalCount++;
+            }
             await WriteTurnEventAsync(
                 pending,
                 new PiAgentToolExecutionCompleted(
@@ -763,6 +859,59 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                     toolCallId,
                     toolName,
                     isError),
+                cancellationToken);
+            return;
+        }
+        if (eventName == "workspace_edit_proposed")
+        {
+            int schemaVersion =
+                root.GetProperty("schemaVersion").GetInt32();
+            string proposalId =
+                root.GetProperty("proposalId").GetString()
+                ?? throw new InvalidOperationException(
+                    "The Pi Agent workspace edit proposal id was missing.");
+            string relativePath =
+                root.GetProperty("relativePath").GetString()
+                ?? throw new InvalidOperationException(
+                    "The Pi Agent workspace edit path was missing.");
+            string beforeSha256 =
+                root.GetProperty("beforeSha256").GetString()
+                ?? throw new InvalidOperationException(
+                    "The Pi Agent workspace edit hash was missing.");
+            string oldText =
+                root.GetProperty("oldText").GetString()
+                ?? throw new InvalidOperationException(
+                    "The Pi Agent workspace edit old text was missing.");
+            string newText =
+                root.GetProperty("newText").GetString()
+                ?? throw new InvalidOperationException(
+                    "The Pi Agent workspace edit new text was missing.");
+            if (
+                schemaVersion != 1 ||
+                !WorkspaceEditProposalIdPattern.IsMatch(proposalId) ||
+                !IsValidWorkspaceRelativePath(relativePath) ||
+                !Sha256Pattern.IsMatch(beforeSha256) ||
+                string.IsNullOrEmpty(oldText) ||
+                Encoding.UTF8.GetByteCount(oldText) > 4_096 ||
+                Encoding.UTF8.GetByteCount(newText) > 4_096 ||
+                oldText == newText ||
+                pending.AwaitingWorkspaceEditProposalCount != 1)
+            {
+                throw new InvalidOperationException(
+                    "The Pi Agent emitted an invalid workspace edit proposal.");
+            }
+            pending.AwaitingWorkspaceEditProposalCount = 0;
+            await WriteTurnEventAsync(
+                pending,
+                new PiAgentWorkspaceEditProposed(
+                    turnId,
+                    NextEventSequence(pending),
+                    schemaVersion,
+                    proposalId,
+                    relativePath,
+                    beforeSha256,
+                    oldText,
+                    newText),
                 cancellationToken);
             return;
         }
@@ -784,6 +933,7 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
             deltaCount != pending.DeltaCount ||
             toolExecutionCount != pending.ToolExecutionCount ||
             pending.ActiveTools.Count != 0 ||
+            pending.AwaitingWorkspaceEditProposalCount != 0 ||
             (success && status != "completed") ||
             (!success && status is not ("aborted" or "failed")))
         {
@@ -1078,6 +1228,104 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 "The Pi Agent response envelope did not match its request.");
         }
     }
+
+    private static void ValidateWorkspaceEditDecisionRequest(
+        string proposalId,
+        string beforeSha256)
+    {
+        if (
+            !WorkspaceEditProposalIdPattern.IsMatch(proposalId) ||
+            !Sha256Pattern.IsMatch(beforeSha256))
+        {
+            throw new ArgumentException(
+                "A workspace edit decision requires the exact proposal id and lowercase SHA-256.");
+        }
+    }
+
+    private static PiAgentWorkspaceEditDecisionReceipt
+        ParseWorkspaceEditDecisionResponse(
+            JsonElement root,
+            string expectedProposalId,
+            string expectedBeforeSha256,
+            string expectedStatus,
+            bool mutationExpected)
+    {
+        if (!root.GetProperty("success").GetBoolean())
+        {
+            JsonElement error = root.GetProperty("error");
+            string code = error.GetProperty("code").GetString()
+                ?? "workspace-edit-decision-failed";
+            string message = error.GetProperty("message").GetString()
+                ?? "The workspace edit decision failed closed.";
+            throw new PiAgentWorkspaceEditDecisionException(
+                code,
+                message);
+        }
+
+        JsonElement data = root.GetProperty("data");
+        int schemaVersion =
+            data.GetProperty("schemaVersion").GetInt32();
+        string proposalId =
+            data.GetProperty("proposalId").GetString() ?? string.Empty;
+        string relativePath =
+            data.GetProperty("relativePath").GetString() ?? string.Empty;
+        string beforeSha256 =
+            data.GetProperty("beforeSha256").GetString() ?? string.Empty;
+        JsonElement afterElement = data.GetProperty("afterSha256");
+        string? afterSha256 = afterElement.ValueKind == JsonValueKind.Null
+            ? null
+            : afterElement.GetString();
+        string status =
+            data.GetProperty("status").GetString() ?? string.Empty;
+        bool mutationPerformed =
+            data.GetProperty("mutationPerformed").GetBoolean();
+        bool valid =
+            schemaVersion == 1 &&
+            proposalId == expectedProposalId &&
+            beforeSha256 == expectedBeforeSha256 &&
+            IsValidWorkspaceRelativePath(relativePath) &&
+            status == expectedStatus &&
+            mutationPerformed == mutationExpected &&
+            (mutationExpected
+                ? afterSha256 is not null &&
+                    Sha256Pattern.IsMatch(afterSha256) &&
+                    afterSha256 != beforeSha256
+                : afterSha256 is null);
+        if (!valid)
+        {
+            throw new InvalidOperationException(
+                "The Pi Agent workspace edit decision receipt was invalid.");
+        }
+        return new PiAgentWorkspaceEditDecisionReceipt(
+            schemaVersion,
+            proposalId,
+            relativePath,
+            beforeSha256,
+            afterSha256,
+            status,
+            mutationPerformed);
+    }
+
+    private static bool IsValidWorkspaceRelativePath(
+        string relativePath)
+    {
+        if (
+            string.IsNullOrWhiteSpace(relativePath) ||
+            relativePath.Length > 512 ||
+            relativePath.Contains('\\') ||
+            relativePath.Contains(':') ||
+            relativePath.Contains("//", StringComparison.Ordinal) ||
+            relativePath.StartsWith('/') ||
+            relativePath.EndsWith('/') ||
+            relativePath.Any(char.IsControl) ||
+            Path.IsPathFullyQualified(relativePath))
+        {
+            return false;
+        }
+        return relativePath
+            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .All(segment => segment is not "." and not "..");
+    }
 }
 
 public static class PiAgentDesktopProbe
@@ -1120,7 +1368,8 @@ public static class PiAgentDesktopProbe
             .ToArray();
         bool capabilitiesPassed =
             capabilities.RootElement.GetProperty("success").GetBoolean() &&
-            initialTools.SequenceEqual(["read", "grep", "find", "ls"]) &&
+            initialTools.SequenceEqual(
+                ["read", "grep", "find", "ls", "propose_edit"]) &&
             deniedTools.SequenceEqual(["bash", "edit", "write"]) &&
             capabilityData
                 .GetProperty("sessionCreationEnabled")
@@ -1190,7 +1439,8 @@ public static class PiAgentDesktopProbe
             admittedSession.RootElement
                 .GetProperty("success")
                 .GetBoolean() &&
-            activeTools.SequenceEqual(["read", "grep", "find", "ls"]) &&
+            activeTools.SequenceEqual(
+                ["read", "grep", "find", "ls", "propose_edit"]) &&
             !sessionData
                 .GetProperty("sessionPersisted")
                 .GetBoolean() &&

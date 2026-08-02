@@ -22,7 +22,8 @@
     OWN-WORLD: Matte near-black planes, one-pixel blue-gray rules, cyan only for
     active state, amber for waiting, red for faults, Segoe UI plus measured mono.
     STORY: The operator admits a workspace, hands Pi one request, watches the
-    baton cross the read-only tool boundary, receives Jarvis, then regains control.
+    baton across the bounded tool boundary, reviews any staged edit, receives
+    Jarvis, then regains control.
     FIRST VIEWPORT: Navigation left, four-stage handoff rail above a dominant
     transcript and composer, runtime inspector right, owned-runtime status below.
     FORM: Assigned structure five with passed-baton staging; seed 32fb29e4.
@@ -244,7 +245,7 @@
                             Foreground="{StaticResource CyanBrush}"
                             FontFamily="Consolas"
                             FontSize="10"
-                            Text="READ-ONLY PI TOOLS" />
+                            Text="REVIEW-GATED PI TOOLS" />
                     </StackPanel>
 
                     <StackPanel Grid.Column="4" Orientation="Horizontal">
@@ -376,7 +377,7 @@
                                 Foreground="{StaticResource TextFaintBrush}"
                                 FontFamily="Consolas"
                                 FontSize="10"
-                                Text="PI AGENT // 0.82.1&#x0a;TOOLS // READ ONLY&#x0a;SHELL // LOCKED" />
+                                Text="PI AGENT // 0.82.1&#x0a;TOOLS // READ + PROPOSE&#x0a;SHELL // LOCKED" />
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -451,7 +452,7 @@
                                 <Border x:Name="ToolStage" Grid.Column="4" Style="{StaticResource PanelBorder}" Background="{StaticResource PanelAltBrush}" Padding="10">
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock HorizontalAlignment="Center" FontSize="12" FontWeight="SemiBold" Text="READ TOOL" />
-                                        <TextBlock Margin="0,4,0,0" HorizontalAlignment="Center" Style="{StaticResource MonoText}" Text="READ / GREP / FIND / LS" />
+                                        <TextBlock Margin="0,4,0,0" HorizontalAlignment="Center" Style="{StaticResource MonoText}" Text="READ / GREP / FIND / LS / PROPOSE_EDIT" />
                                     </StackPanel>
                                 </Border>
                                 <TextBlock Grid.Column="5" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource TextFaintBrush}" FontSize="18" Text="&#x203A;" />
@@ -527,6 +528,7 @@
                                                         <RowDefinition Height="Auto" />
                                                         <RowDefinition Height="Auto" />
                                                         <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
                                                     </Grid.RowDefinitions>
 
                                                     <Grid>
@@ -562,7 +564,7 @@
                                                                             <ColumnDefinition Width="*" />
                                                                             <ColumnDefinition Width="Auto" />
                                                                         </Grid.ColumnDefinitions>
-                                                                        <TextBlock Foreground="{StaticResource CyanBrush}" FontFamily="Consolas" FontSize="10" Text="READ TOOL" />
+                                                                        <TextBlock Foreground="{StaticResource CyanBrush}" FontFamily="Consolas" FontSize="10" Text="SESSION TOOL" />
                                                                         <StackPanel Grid.Column="1">
                                                                             <TextBlock Foreground="{StaticResource TextBrush}" FontFamily="Consolas" FontSize="11" Text="{Binding ToolName}" />
                                                                             <TextBlock Margin="0,3,0,0">
@@ -592,8 +594,184 @@
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
 
-                                                    <Border Grid.Row="3" Margin="0,8,0,0" Height="1" Background="{StaticResource LineBrush}" />
-                                                    <Grid Grid.Row="4" Margin="0,10,0,0">
+                                                    <ItemsControl Grid.Row="3" Margin="0,8,0,0" ItemsSource="{Binding WorkspaceEdits}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Border
+                                                                    Margin="0,0,0,8"
+                                                                    Padding="12"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="2">
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="Background" Value="{StaticResource AmberDimBrush}" />
+                                                                            <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding Status}" Value="Applied">
+                                                                                    <Setter Property="Background" Value="{StaticResource CyanDimBrush}" />
+                                                                                    <Setter Property="BorderBrush" Value="{StaticResource CyanBrush}" />
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding Status}" Value="Rejected">
+                                                                                    <Setter Property="Background" Value="{StaticResource PanelAltBrush}" />
+                                                                                    <Setter Property="BorderBrush" Value="{StaticResource LineBrightBrush}" />
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding Status}" Value="Expired">
+                                                                                    <Setter Property="Background" Value="{StaticResource PanelAltBrush}" />
+                                                                                    <Setter Property="BorderBrush" Value="{StaticResource LineBrightBrush}" />
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding Status}" Value="Drifted">
+                                                                                    <Setter Property="Background" Value="{StaticResource RedDimBrush}" />
+                                                                                    <Setter Property="BorderBrush" Value="{StaticResource RedBrush}" />
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding Status}" Value="Failed">
+                                                                                    <Setter Property="Background" Value="{StaticResource RedDimBrush}" />
+                                                                                    <Setter Property="BorderBrush" Value="{StaticResource RedBrush}" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
+                                                                    <StackPanel>
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="*" />
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Foreground="{StaticResource AmberBrush}" FontFamily="Consolas" FontSize="10" FontWeight="SemiBold" Text="WORKSPACE EDIT PROPOSAL" />
+                                                                            <TextBlock Grid.Column="1" Margin="16,0,0,0" FontFamily="Consolas" FontSize="10" FontWeight="SemiBold" Text="{Binding StatusLabel}">
+                                                                                <TextBlock.Style>
+                                                                                    <Style TargetType="TextBlock">
+                                                                                        <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger Binding="{Binding Status}" Value="Applied">
+                                                                                                <Setter Property="Foreground" Value="{StaticResource CyanBrush}" />
+                                                                                            </DataTrigger>
+                                                                                            <DataTrigger Binding="{Binding Status}" Value="Rejected">
+                                                                                                <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                                                                                            </DataTrigger>
+                                                                                            <DataTrigger Binding="{Binding Status}" Value="Expired">
+                                                                                                <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                                                                                            </DataTrigger>
+                                                                                            <DataTrigger Binding="{Binding Status}" Value="Drifted">
+                                                                                                <Setter Property="Foreground" Value="{StaticResource RedBrush}" />
+                                                                                            </DataTrigger>
+                                                                                            <DataTrigger Binding="{Binding Status}" Value="Failed">
+                                                                                                <Setter Property="Foreground" Value="{StaticResource RedBrush}" />
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </TextBlock.Style>
+                                                                            </TextBlock>
+                                                                        </Grid>
+
+                                                                        <TextBlock Margin="0,10,0,0" Foreground="{StaticResource TextBrush}" FontFamily="Consolas" FontSize="11" Text="{Binding RelativePath}" TextWrapping="Wrap" />
+                                                                        <TextBlock Margin="0,4,0,0" Foreground="{StaticResource TextMutedBrush}" FontFamily="Consolas" FontSize="9" Text="EXISTING UTF-8 FILE / EXACT UNIQUE MATCH / ONE-SHOT BEFORE HASH" />
+
+                                                                        <TextBlock Margin="0,9,0,0" Foreground="{StaticResource TextMutedBrush}" FontFamily="Consolas" FontSize="9" Text="{Binding BeforeHashLabel}" TextTrimming="CharacterEllipsis" />
+                                                                        <TextBlock Margin="0,3,0,0" Foreground="{StaticResource TextMutedBrush}" FontFamily="Consolas" FontSize="9" Text="{Binding AfterHashLabel}" TextTrimming="CharacterEllipsis" />
+
+                                                                        <Grid Margin="0,11,0,0">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="*" />
+                                                                                <ColumnDefinition Width="12" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <StackPanel>
+                                                                                <TextBlock Foreground="{StaticResource RedBrush}" FontFamily="Consolas" FontSize="9" Text="REMOVE / EXACT TEXT" />
+                                                                                <TextBox
+                                                                                    Margin="0,5,0,0"
+                                                                                    MinHeight="54"
+                                                                                    MaxHeight="130"
+                                                                                    Padding="8,6"
+                                                                                    IsReadOnly="True"
+                                                                                    AcceptsReturn="True"
+                                                                                    VerticalScrollBarVisibility="Auto"
+                                                                                    HorizontalScrollBarVisibility="Auto"
+                                                                                    Background="#090D10"
+                                                                                    BorderBrush="{StaticResource LineBrush}"
+                                                                                    BorderThickness="1"
+                                                                                    Foreground="{StaticResource TextBrush}"
+                                                                                    FontFamily="Consolas"
+                                                                                    FontSize="10"
+                                                                                    Text="{Binding OldText, Mode=OneWay}" />
+                                                                            </StackPanel>
+                                                                            <StackPanel Grid.Column="2">
+                                                                                <TextBlock Foreground="{StaticResource CyanBrush}" FontFamily="Consolas" FontSize="9" Text="ADD / REPLACEMENT TEXT" />
+                                                                                <TextBox
+                                                                                    Margin="0,5,0,0"
+                                                                                    MinHeight="54"
+                                                                                    MaxHeight="130"
+                                                                                    Padding="8,6"
+                                                                                    IsReadOnly="True"
+                                                                                    AcceptsReturn="True"
+                                                                                    VerticalScrollBarVisibility="Auto"
+                                                                                    HorizontalScrollBarVisibility="Auto"
+                                                                                    Background="#090D10"
+                                                                                    BorderBrush="{StaticResource LineBrush}"
+                                                                                    BorderThickness="1"
+                                                                                    Foreground="{StaticResource TextBrush}"
+                                                                                    FontFamily="Consolas"
+                                                                                    FontSize="10"
+                                                                                    Text="{Binding NewText, Mode=OneWay}" />
+                                                                            </StackPanel>
+                                                                        </Grid>
+
+                                                                        <Grid Margin="0,12,0,0">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="*" />
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock
+                                                                                MaxWidth="470"
+                                                                                VerticalAlignment="Center"
+                                                                                Foreground="{StaticResource TextMutedBrush}"
+                                                                                FontSize="10"
+                                                                                LineHeight="15"
+                                                                                Text="Pi cannot press these controls. Reject performs no write; Approve Once rechecks the exact file hash immediately before commit."
+                                                                                TextWrapping="Wrap" />
+                                                                            <StackPanel Grid.Column="1" Margin="18,0,0,0" Orientation="Horizontal">
+                                                                                <Button
+                                                                                    AutomationProperties.Name="Reject workspace edit without writing"
+                                                                                    Tag="{Binding ProposalId}"
+                                                                                    Click="RejectWorkspaceEditButton_OnClick"
+                                                                                    Content="REJECT">
+                                                                                    <Button.Style>
+                                                                                        <Style TargetType="Button" BasedOn="{StaticResource ActionButton}">
+                                                                                            <Setter Property="IsEnabled" Value="{Binding CanDecide}" />
+                                                                                            <Style.Triggers>
+                                                                                                <DataTrigger Binding="{Binding DataContext.CanReviewWorkspaceEdits, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}" Value="False">
+                                                                                                    <Setter Property="IsEnabled" Value="False" />
+                                                                                                </DataTrigger>
+                                                                                            </Style.Triggers>
+                                                                                        </Style>
+                                                                                    </Button.Style>
+                                                                                </Button>
+                                                                                <Button
+                                                                                    Margin="8,0,0,0"
+                                                                                    AutomationProperties.Name="Approve workspace edit once"
+                                                                                    Tag="{Binding ProposalId}"
+                                                                                    Click="ApproveWorkspaceEditButton_OnClick"
+                                                                                    Content="APPROVE ONCE">
+                                                                                    <Button.Style>
+                                                                                        <Style TargetType="Button" BasedOn="{StaticResource PrimaryActionButton}">
+                                                                                            <Setter Property="IsEnabled" Value="{Binding CanDecide}" />
+                                                                                            <Style.Triggers>
+                                                                                                <DataTrigger Binding="{Binding DataContext.CanReviewWorkspaceEdits, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}" Value="False">
+                                                                                                    <Setter Property="IsEnabled" Value="False" />
+                                                                                                </DataTrigger>
+                                                                                            </Style.Triggers>
+                                                                                        </Style>
+                                                                                    </Button.Style>
+                                                                                </Button>
+                                                                            </StackPanel>
+                                                                        </Grid>
+                                                                    </StackPanel>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+
+                                                    <Border Grid.Row="4" Margin="0,8,0,0" Height="1" Background="{StaticResource LineBrush}" />
+                                                    <Grid Grid.Row="5" Margin="0,10,0,0">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="54" />
                                                             <ColumnDefinition Width="*" />
@@ -777,8 +955,9 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <TextBlock Margin="0,9,0,0" Foreground="{StaticResource TextFaintBrush}" FontSize="10" Text="Permitted: read, grep, find, ls" />
-                                <TextBlock Margin="0,4,0,0" Foreground="{StaticResource RedBrush}" FontSize="10" Text="Mutation tools: unavailable" />
+                                <TextBlock Margin="0,9,0,0" Foreground="{StaticResource TextFaintBrush}" FontSize="10" Text="Permitted: read, grep, find, ls, propose_edit" TextWrapping="Wrap" />
+                                <TextBlock Margin="0,4,0,0" Foreground="{StaticResource AmberBrush}" FontSize="10" Text="Writes: desktop-owner approval only" />
+                                <TextBlock Margin="0,4,0,0" Foreground="{StaticResource RedBrush}" FontSize="10" Text="Shell / direct edit / unattended approval: locked" TextWrapping="Wrap" />
                             </StackPanel>
 
                             <Border Margin="0,20,0,0" Height="1" Background="{StaticResource LineBrush}" />
@@ -836,7 +1015,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Style="{StaticResource SectionLabel}" Text="Pi desktop runtime" />
-                        <TextBlock Margin="0,2,0,0" Style="{StaticResource MonoText}" FontSize="10" Text="NO SHELL INJECTION / NO MUTATION TOOLS" />
+                        <TextBlock Margin="0,2,0,0" Style="{StaticResource MonoText}" FontSize="10" Text="NO SHELL INJECTION / NO UNREVIEWED WRITES" />
                     </StackPanel>
                     <Border
                         Grid.Column="1"

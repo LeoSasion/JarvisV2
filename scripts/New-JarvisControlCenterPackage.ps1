@@ -220,7 +220,7 @@ activate, inject, restart Explorer, or modify the registry.
 Native session launcher (recommended):
   1. Open jarvis-control-center.exe.
   2. Choose START PI SESSION and select one local workspace.
-  3. Keep LOCAL DIAGNOSTIC for the fastest deterministic read-only first turn.
+  3. Keep LOCAL DIAGNOSTIC for the fastest deterministic first turn.
 
 OpenAI Responses conversation:
   1. Open jarvis-control-center.exe and choose CONFIGURE OPENAI.
@@ -231,7 +231,11 @@ Automation equivalent:
 
 The API key is protected under the current Windows user with DPAPI. It is not
 stored in this package and is never sent to the offline Pi sidecar. Pi tools are
-limited to read, grep, find, and ls.
+limited to read, grep, find, ls, and non-mutating propose_edit. An edit can only
+replace one exact match in an existing UTF-8 workspace file after the desktop
+owner selects APPROVE ONCE. The current file SHA-256 is rechecked immediately
+before commit. Shell, new-file, delete, direct-write, and unattended approval
+remain unavailable.
 '@
 [IO.File]::WriteAllText(
     (Join-Path $target 'README.txt'),
@@ -279,8 +283,12 @@ $receipt = [ordered]@{
         'desktop-current-user-dpapi-atomic-no-sidecar-transport'
     piSidecarNetworkAllowed = $false
     piSidecarCredentialTransportAllowed = $false
-    initialTools = @('read', 'grep', 'find', 'ls')
+    initialTools = @('read', 'grep', 'find', 'ls', 'propose_edit')
     mutationTools = @()
+    desktopOwnerApprovedWorkspaceOperations = @(
+        'existing-utf8-exact-replacement')
+    workspaceEditApprovalMode = 'one-shot-exact-before-sha256'
+    unattendedSelfIteration = $false
     activationPermitted = $false
     liveExplorer = 'not-run'
     systemMutationPerformed = $false

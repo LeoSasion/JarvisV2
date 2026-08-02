@@ -32,13 +32,15 @@ Only these Pi tools may be described to or invoked by the provider:
 - `read`;
 - `grep`;
 - `find`;
-- `ls`.
+- `ls`;
+- `propose_edit`, which can only stage a non-mutating existing-text proposal.
 
 `bash`, `edit`, `write` and every unknown tool are rejected before a request is
 sent. The provider maps Pi tool calls to Responses function tools and maps
 their results back through `function_call_output` using the original call ID.
 All file operations remain subject to Pi's single-workspace, reparse-point and
-escape checks.
+escape checks. The provider cannot call the desktop-only approve or reject
+requests, so the model cannot exercise mutation authority.
 
 ## Credential lifecycle
 

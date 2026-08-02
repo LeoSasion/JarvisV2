@@ -73,7 +73,7 @@
           "const": "pinned-package-core-module-adapter"
         },
         "launchState": {
-          "const": "read-only-session-admission"
+          "const": "review-gated-workspace-session-admission"
         },
         "piOfflineRequired": {
           "const": true
@@ -123,6 +123,12 @@
             },
             {
               "const": "abort_turn"
+            },
+            {
+              "const": "commit_workspace_edit"
+            },
+            {
+              "const": "discard_workspace_edit"
             },
             {
               "const": "shutdown"
@@ -337,6 +343,16 @@
       "required": [
         "initialAllowlist",
         "initiallyDenied",
+        "proposalTool",
+        "proposalMaxFileBytes",
+        "proposalMaxSegmentBytes",
+        "pendingProposalLimit",
+        "pendingProposalPolicy",
+        "approvalOwner",
+        "approvalMode",
+        "commitMode",
+        "newFileSupported",
+        "deleteSupported",
         "mutationGrant",
         "unattendedSelfIteration"
       ],
@@ -346,7 +362,8 @@
             "read",
             "grep",
             "find",
-            "ls"
+            "ls",
+            "propose_edit"
           ]
         },
         "initiallyDenied": {
@@ -356,8 +373,38 @@
             "write"
           ]
         },
+        "proposalTool": {
+          "const": "non-mutating-existing-utf8-exact-replacement"
+        },
+        "proposalMaxFileBytes": {
+          "const": 1048576
+        },
+        "proposalMaxSegmentBytes": {
+          "const": 4096
+        },
+        "pendingProposalLimit": {
+          "const": 1
+        },
+        "pendingProposalPolicy": {
+          "const": "blocks-new-turns-and-clears-on-shutdown"
+        },
+        "approvalOwner": {
+          "const": "desktop-user-only"
+        },
+        "approvalMode": {
+          "const": "one-shot-exact-before-sha256"
+        },
+        "commitMode": {
+          "const": "same-directory-atomic-replace-and-post-verify"
+        },
+        "newFileSupported": {
+          "const": false
+        },
+        "deleteSupported": {
+          "const": false
+        },
         "mutationGrant": {
-          "const": "future-per-session-supervisor-capability"
+          "const": "desktop-owner-one-shot-existing-text-edit"
         },
         "unattendedSelfIteration": {
           "const": false

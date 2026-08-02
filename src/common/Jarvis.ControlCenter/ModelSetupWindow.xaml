@@ -169,7 +169,8 @@
                         </StackPanel>
                         <StackPanel Grid.Column="1" HorizontalAlignment="Right">
                             <TextBlock HorizontalAlignment="Right" Style="{StaticResource MonoText}" Text="TOOLS" />
-                            <TextBlock Margin="0,5,0,0" Foreground="{StaticResource CyanBrush}" FontFamily="Consolas" FontSize="10" Text="READ / GREP / FIND / LS" />
+                            <TextBlock Margin="0,5,0,0" Foreground="{StaticResource CyanBrush}" FontFamily="Consolas" FontSize="10" Text="READ / GREP / FIND / LS / PROPOSE_EDIT" />
+                            <TextBlock Margin="0,3,0,0" Foreground="{StaticResource AmberBrush}" FontFamily="Consolas" FontSize="9" Text="WRITE // DESKTOP OWNER APPROVAL ONLY" />
                         </StackPanel>
                     </Grid>
                 </Border>

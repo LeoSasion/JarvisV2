@@ -15,11 +15,18 @@ snapshot contains:
 - `CanSubmit` and `CanCancel` command state;
 - retained user/assistant turns;
 - ordered tool calls and their running, completed or failed state;
+- structured workspace edit proposals and their pending, applying, applied,
+  rejecting, rejected, drifted or failed state;
 - the latest admitted event sequence and terminal error code.
 
 One conversation admits one active generation at a time. This preserves Pi
 session ordering while still allowing the underlying desktop response pump to
 process cancellation and broker traffic concurrently.
+
+One pending edit proposal closes `CanSubmit` even after its producing turn is
+terminal. Only an exact desktop apply or reject decision reopens submission.
+An uncertain decision outcome fails closed and permanently stops submissions
+for that session.
 
 ```text
 Starting -> Running -> Completed
@@ -48,7 +55,8 @@ process or event channel.
 `INotifyPropertyChanged` updates for `Snapshot`, `ActiveTurnId`, `CanSubmit`,
 `CanCancel` and `Turns`. `ConversationSurfaceViewModel` now composes that
 binding into the visible transcript, tool chips, ownership rail and command
-state while the binding remains transport-agnostic.
+state while the binding remains transport-agnostic. Apply and reject calls are
+forwarded explicitly; the binding does not invent proposal authority.
 
 ## Bounded retention
 
@@ -61,6 +69,7 @@ retention. It selects a newest-first contiguous suffix of completed turns, then
 returns them in conversational order. A checkpoint is limited to 32
 user/assistant pairs, 32,768 serialized UTF-8 bytes and 16,384 UTF-8 bytes per
 text field. Failed, aborted, active and tool-event payloads are never exported.
+Pending edit proposals and decision capabilities are also never exported.
 The turn IDs and final plain text are retained so restored UI state and restored
 Pi model context describe the same conversation.
 
@@ -81,6 +90,8 @@ The adapter also rejects:
 - skipped, repeated or cross-turn event sequences;
 - terminal responses that diverge from streamed text;
 - terminal events while a tool is still running.
+- duplicate, unpaired or out-of-order workspace proposal events;
+- an apply or reject request for a non-pending proposal.
 
 ## Current boundary
 
@@ -93,6 +104,7 @@ Pi sidecar has no model network, and Explorer is not touched.
 
 The first visible WPF panel now uses the same diagnostic boundary. Three layout
 proposals were reviewed, and the chosen handoff rail makes the single-active-
-turn invariant explicit. Production model authentication and mutation
-capabilities remain absent. See
+turn invariant explicit. Production model authentication is opt-in. The only
+workspace mutation is a one-shot owner-approved existing-text replacement; it
+is documented in `PI-AGENT-WORKSPACE-EDIT-APPROVAL.md`. See
 `PI-AGENT-DESKTOP-CONVERSATION-SURFACE.md`.

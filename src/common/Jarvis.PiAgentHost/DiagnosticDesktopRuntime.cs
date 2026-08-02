@@ -12,6 +12,13 @@ public sealed record PiAgentDesktopRuntimeProbeReceipt(
     bool RuntimeCompositionPassed,
     bool MultiTurnPassed,
     bool ToolRoundTripPassed,
+    bool WorkspaceEditProposalPassed,
+    bool WorkspaceEditApprovalPassed,
+    bool WorkspaceEditReplayRejected,
+    bool WorkspaceEditDriftRejected,
+    bool WorkspaceEditRejectionPassed,
+    bool WorkspaceEditShutdownExpirationPassed,
+    bool WorkspaceEditFixtureMutationPerformed,
     bool CheckpointExportPassed,
     bool CheckpointContextRestorePassed,
     bool CheckpointAdmissionPassed,
@@ -29,6 +36,7 @@ public sealed record PiAgentDesktopRuntimeProbeReceipt(
     int NormalBrokerRequestCount,
     int ResumeBrokerRequestCount,
     int AbortBrokerRequestCount,
+    int WorkspaceEditBrokerRequestCount,
     int ExportedCheckpointTurnCount,
     int RestoredCheckpointTurnCount,
     int PersistedCheckpointTurnCount,
@@ -91,6 +99,11 @@ public static class PiAgentDesktopRuntimeProbe
                     cancellationToken);
             PiAgentConversationTurnSnapshot firstFinal =
                 await first.Completion.WaitAsync(cancellationToken);
+            if (!runtime.Conversation.Snapshot.CanSubmit)
+            {
+                throw new InvalidOperationException(
+                    $"Runtime stopped accepting after first turn: {firstFinal.Status} / {firstFinal.ErrorCode ?? "no error"}; checkpoint faulted={runtime.CheckpointPersistenceFaulted}.");
+            }
             PiAgentConversationTurn second =
                 await runtime.Conversation.SubmitAsync(
                     "Continue the owned desktop runtime.",
@@ -302,6 +315,12 @@ public static class PiAgentDesktopRuntimeProbe
             normalCheckpointSaveCount == 3 &&
             resumeCheckpointSaveCount == 1;
 
+        WorkspaceEditApprovalProbe workspaceEditProbe =
+            await ProbeWorkspaceEditApprovalAsync(
+                sidecarOptions,
+                workspaceRoot,
+                cancellationToken);
+
         int abortBrokerRequestCount;
         int abortBrokerFaultCount;
         bool shutdownCancelledActiveTurn;
@@ -356,6 +375,7 @@ public static class PiAgentDesktopRuntimeProbe
             resumeBrokerFaultCount +
             abortBrokerFaultCount +
             storeFailureProbe.BrokerFaultCount;
+        brokerFaultCount += workspaceEditProbe.BrokerFaultCount;
         bool startupRollbackPassed =
             await ProbeStartupRollbackAsync(
                 sidecarOptions,
@@ -366,6 +386,13 @@ public static class PiAgentDesktopRuntimeProbe
             runtimeCompositionPassed &&
             multiTurnPassed &&
             toolRoundTripPassed &&
+            workspaceEditProbe.ProposalPassed &&
+            workspaceEditProbe.ApprovalPassed &&
+            workspaceEditProbe.ReplayRejected &&
+            workspaceEditProbe.DriftRejected &&
+            workspaceEditProbe.RejectionPassed &&
+            workspaceEditProbe.ShutdownExpirationPassed &&
+            workspaceEditProbe.FixtureMutationPerformed &&
             checkpointExportPassed &&
             checkpointContextRestorePassed &&
             checkpointAdmissionPassed &&
@@ -386,6 +413,7 @@ public static class PiAgentDesktopRuntimeProbe
             normalBrokerRequestCount == 4 &&
             resumeBrokerRequestCount == 1 &&
             abortBrokerRequestCount == 1 &&
+            workspaceEditProbe.BrokerRequestCount == 8 &&
             checkpoint.Turns.Count == 3 &&
             restoredCheckpointTurnCount == 3 &&
             brokerFaultCount == 0;
@@ -399,6 +427,13 @@ public static class PiAgentDesktopRuntimeProbe
             runtimeCompositionPassed,
             multiTurnPassed,
             toolRoundTripPassed,
+            workspaceEditProbe.ProposalPassed,
+            workspaceEditProbe.ApprovalPassed,
+            workspaceEditProbe.ReplayRejected,
+            workspaceEditProbe.DriftRejected,
+            workspaceEditProbe.RejectionPassed,
+            workspaceEditProbe.ShutdownExpirationPassed,
+            workspaceEditProbe.FixtureMutationPerformed,
             checkpointExportPassed,
             checkpointContextRestorePassed,
             checkpointAdmissionPassed,
@@ -418,6 +453,7 @@ public static class PiAgentDesktopRuntimeProbe
             normalBrokerRequestCount,
             resumeBrokerRequestCount,
             abortBrokerRequestCount,
+            workspaceEditProbe.BrokerRequestCount,
             checkpoint.Turns.Count,
             restoredCheckpointTurnCount,
             persistedCheckpointTurnCount,
@@ -429,6 +465,191 @@ public static class PiAgentDesktopRuntimeProbe
             "diagnostic-only",
             "not-run",
             false);
+    }
+
+    private sealed record WorkspaceEditApprovalProbe(
+        bool ProposalPassed,
+        bool ApprovalPassed,
+        bool ReplayRejected,
+        bool DriftRejected,
+        bool RejectionPassed,
+        bool ShutdownExpirationPassed,
+        bool FixtureMutationPerformed,
+        int BrokerRequestCount,
+        int BrokerFaultCount);
+
+    private static async Task<WorkspaceEditApprovalProbe>
+        ProbeWorkspaceEditApprovalAsync(
+            PiAgentSidecarOptions sidecarOptions,
+            string parentWorkspaceRoot,
+            CancellationToken cancellationToken)
+    {
+        string fixtureRoot = Path.Combine(
+            parentWorkspaceRoot,
+            $".jarvis-workspace-edit-{Guid.NewGuid():N}");
+        string fixturePath = Path.Combine(
+            fixtureRoot,
+            "review.txt");
+        Directory.CreateDirectory(fixtureRoot);
+        await File.WriteAllTextAsync(
+            fixturePath,
+            "alpha\nowner-reviewed\nomega\n",
+            cancellationToken);
+        int brokerRequestCount = 0;
+        int brokerFaultCount = 0;
+        try
+        {
+            DiagnosticWorkspaceEditModelProvider provider = new();
+            await using PiAgentDesktopRuntime runtime =
+                await PiAgentDesktopRuntime.StartAsync(
+                    new PiAgentDesktopRuntimeOptions(
+                        sidecarOptions,
+                        fixtureRoot),
+                    provider,
+                    cancellationToken: cancellationToken);
+
+            PiAgentConversationTurn approvalTurn =
+                await runtime.Conversation.SubmitAsync(
+                    "Stage the first reviewed text edit.",
+                    "workspace-edit-approval-turn",
+                    cancellationToken);
+            PiAgentConversationTurnSnapshot approvalFinal =
+                await approvalTurn.Completion.WaitAsync(
+                    cancellationToken);
+            PiAgentWorkspaceEditSnapshot approval =
+                approvalFinal.WorkspaceEdits.Single();
+            bool proposalPassed =
+                approval.Status == PiAgentWorkspaceEditStatus.Pending &&
+                approval.RelativePath == "review.txt" &&
+                !runtime.Conversation.Snapshot.CanSubmit &&
+                await File.ReadAllTextAsync(
+                    fixturePath,
+                    cancellationToken) ==
+                    "alpha\nowner-reviewed\nomega\n";
+
+            PiAgentWorkspaceEditSnapshot applied =
+                await runtime.Conversation.ApplyWorkspaceEditAsync(
+                    approval.ProposalId,
+                    cancellationToken);
+            bool approvalPassed =
+                applied.Status == PiAgentWorkspaceEditStatus.Applied &&
+                applied.AfterSha256 is not null &&
+                runtime.Conversation.Snapshot.CanSubmit &&
+                await File.ReadAllTextAsync(
+                    fixturePath,
+                    cancellationToken) ==
+                    "alpha\nowner-approved\nomega\n";
+            if (!approvalPassed)
+            {
+                throw new InvalidOperationException(
+                    $"Workspace edit approval probe failed: {applied.Status} / {applied.ErrorCode ?? "no error"}.");
+            }
+            bool replayRejected = false;
+            try
+            {
+                _ = await runtime.Conversation.ApplyWorkspaceEditAsync(
+                    approval.ProposalId,
+                    cancellationToken);
+            }
+            catch (InvalidOperationException)
+            {
+                replayRejected = true;
+            }
+
+            PiAgentConversationTurn driftTurn =
+                await runtime.Conversation.SubmitAsync(
+                    "Stage an edit that will be invalidated by drift.",
+                    "workspace-edit-drift-turn",
+                    cancellationToken);
+            PiAgentConversationTurnSnapshot driftFinal =
+                await driftTurn.Completion.WaitAsync(
+                    cancellationToken);
+            PiAgentWorkspaceEditSnapshot drift =
+                driftFinal.WorkspaceEdits.Single();
+            await File.WriteAllTextAsync(
+                fixturePath,
+                "alpha\nowner-updated-elsewhere\nomega\n",
+                cancellationToken);
+            PiAgentWorkspaceEditSnapshot drifted =
+                await runtime.Conversation.ApplyWorkspaceEditAsync(
+                    drift.ProposalId,
+                    cancellationToken);
+            bool driftRejected =
+                drifted.Status == PiAgentWorkspaceEditStatus.Drifted &&
+                drifted.ErrorCode == "workspace-edit-drifted" &&
+                runtime.Conversation.Snapshot.CanSubmit &&
+                await File.ReadAllTextAsync(
+                    fixturePath,
+                    cancellationToken) ==
+                    "alpha\nowner-updated-elsewhere\nomega\n";
+
+            PiAgentConversationTurn rejectionTurn =
+                await runtime.Conversation.SubmitAsync(
+                    "Stage an edit for explicit rejection.",
+                    "workspace-edit-rejection-turn",
+                    cancellationToken);
+            PiAgentConversationTurnSnapshot rejectionFinal =
+                await rejectionTurn.Completion.WaitAsync(
+                    cancellationToken);
+            PiAgentWorkspaceEditSnapshot rejection =
+                rejectionFinal.WorkspaceEdits.Single();
+            PiAgentWorkspaceEditSnapshot rejected =
+                await runtime.Conversation.RejectWorkspaceEditAsync(
+                    rejection.ProposalId,
+                    cancellationToken);
+            bool rejectionPassed =
+                rejected.Status == PiAgentWorkspaceEditStatus.Rejected &&
+                rejected.AfterSha256 is null &&
+                runtime.Conversation.Snapshot.CanSubmit &&
+                await File.ReadAllTextAsync(
+                    fixturePath,
+                    cancellationToken) ==
+                    "alpha\nowner-updated-elsewhere\nomega\n";
+
+            PiAgentConversationTurn expirationTurn =
+                await runtime.Conversation.SubmitAsync(
+                    "Stage an edit that expires when the desktop closes.",
+                    "workspace-edit-expiration-turn",
+                    cancellationToken);
+            PiAgentConversationTurnSnapshot expirationFinal =
+                await expirationTurn.Completion.WaitAsync(
+                    cancellationToken);
+            PiAgentWorkspaceEditSnapshot pendingExpiration =
+                expirationFinal.WorkspaceEdits.Single();
+            await runtime.ShutdownAsync(cancellationToken);
+            PiAgentWorkspaceEditSnapshot expired =
+                runtime.Conversation.Snapshot.Turns.Single(turn =>
+                        turn.TurnId == expirationTurn.TurnId)
+                    .WorkspaceEdits.Single();
+            bool shutdownExpirationPassed =
+                pendingExpiration.Status ==
+                    PiAgentWorkspaceEditStatus.Pending &&
+                expired.Status == PiAgentWorkspaceEditStatus.Expired &&
+                !expired.CanDecide &&
+                expired.AfterSha256 is null &&
+                runtime.IsShutdown &&
+                !runtime.Conversation.Snapshot.CanSubmit &&
+                await File.ReadAllTextAsync(
+                    fixturePath,
+                    cancellationToken) ==
+                    "alpha\nowner-updated-elsewhere\nomega\n";
+            brokerRequestCount = runtime.BrokerRequestCount;
+            brokerFaultCount = runtime.BrokerFaultCount;
+            return new WorkspaceEditApprovalProbe(
+                proposalPassed,
+                approvalPassed,
+                replayRejected,
+                driftRejected,
+                rejectionPassed,
+                shutdownExpirationPassed,
+                approvalPassed,
+                brokerRequestCount,
+                brokerFaultCount);
+        }
+        finally
+        {
+            Directory.Delete(fixtureRoot, recursive: true);
+        }
     }
 
     private sealed record CheckpointStoreFailureProbe(
@@ -851,6 +1072,58 @@ public static class PiAgentDesktopRuntimeProbe
         {
             Interlocked.Exchange(ref disposed, 1);
             return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class DiagnosticWorkspaceEditModelProvider :
+        IDesktopModelProvider
+    {
+        private int requestSequence;
+
+        public async IAsyncEnumerable<DesktopModelStreamEvent> StreamAsync(
+            DesktopModelBrokerRequest request,
+            [EnumeratorCancellation]
+            CancellationToken cancellationToken)
+        {
+            await Task.Yield();
+            cancellationToken.ThrowIfCancellationRequested();
+            int sequence = Interlocked.Increment(
+                ref requestSequence);
+            if (sequence % 2 == 0)
+            {
+                yield return new DesktopModelTextDelta(
+                    "JARVIS staged one exact edit for owner review.");
+                yield return new DesktopModelCompleted(
+                    "stop",
+                    new DesktopModelUsage(12, 8, 0, 0));
+                yield break;
+            }
+
+            (string oldText, string newText) = sequence switch
+            {
+                1 => ("owner-reviewed", "owner-approved"),
+                3 => ("owner-approved", "model-second"),
+                5 => ("owner-updated-elsewhere", "model-third"),
+                7 => ("owner-updated-elsewhere", "model-expired"),
+                _ => throw new InvalidOperationException(
+                    "The diagnostic workspace edit sequence exceeded its fixture."),
+            };
+            string toolCallId = $"diagnostic-propose-edit-{sequence}";
+            yield return new DesktopModelToolCallStarted(
+                toolCallId,
+                "propose_edit");
+            yield return new DesktopModelToolCallDelta(
+                toolCallId,
+                JsonSerializer.Serialize(new
+                {
+                    path = "review.txt",
+                    oldText,
+                    newText,
+                }));
+            yield return new DesktopModelToolCallCompleted(toolCallId);
+            yield return new DesktopModelCompleted(
+                "toolUse",
+                new DesktopModelUsage(14, 10, 0, 0));
         }
     }
 }

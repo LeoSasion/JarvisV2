@@ -86,7 +86,7 @@ jobs:
           --nologo
           --warnaserror
 
-      - name: Audit and build read-only control center
+      - name: Audit and build review-gated control center
         shell: pwsh
         run: >-
           pwsh -NoLogo -NoProfile -File

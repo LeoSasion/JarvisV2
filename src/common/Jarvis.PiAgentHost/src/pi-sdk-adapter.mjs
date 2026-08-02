@@ -1,6 +1,10 @@
 const packageName = "@earendil-works/pi-coding-agent";
 const packageEntry = import.meta.resolve(packageName);
 const packageEntryUrl = new URL(packageEntry);
+const typeboxEntryUrl = new URL(
+  "../../../typebox/build/index.mjs",
+  packageEntryUrl,
+);
 
 if (
   packageEntryUrl.protocol !== "file:" ||
@@ -18,6 +22,7 @@ const [
   sessionManager,
   settingsManager,
   tools,
+  typebox,
 ] = await Promise.all([
   import(new URL("./core/sdk.js", packageEntryUrl)),
   import(new URL("./core/extensions/index.js", packageEntryUrl)),
@@ -25,6 +30,7 @@ const [
   import(new URL("./core/session-manager.js", packageEntryUrl)),
   import(new URL("./core/settings-manager.js", packageEntryUrl)),
   import(new URL("./core/tools/index.js", packageEntryUrl)),
+  import(typeboxEntryUrl),
 ]);
 
 export const createAgentSession = sdk.createAgentSession;
@@ -43,6 +49,7 @@ export const createLsToolDefinition =
   tools.createLsToolDefinition;
 export const createReadToolDefinition =
   tools.createReadToolDefinition;
+export const Type = typebox.Type;
 
 for (const [name, value] of Object.entries({
   createAgentSession,
@@ -61,4 +68,10 @@ for (const [name, value] of Object.entries({
       `The pinned Pi SDK core adapter is missing ${name}.`,
     );
   }
+}
+
+if (typeof Type?.Object !== "function") {
+  throw new Error(
+    "The pinned Pi SDK core adapter is missing TypeBox.",
+  );
 }
