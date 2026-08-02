@@ -1062,6 +1062,7 @@ $publicCiContract =
     $publicCi.Contains('Test-ExplorerBridgeModel.ps1') -and
     $publicCi.Contains('Test-ExplorerBridgeCore.ps1') -and
     $publicCi.Contains('Test-ExplorerExactThreadTransport.ps1') -and
+    $publicCi.Contains('Test-ExplorerCallWndProcBridge.ps1') -and
     $publicCi.Contains('Test-ExplorerFrameModel.ps1') -and
     $publicCi.Contains('Test-ExplorerPreviewModel.ps1') -and
     $publicCi.Contains('Test-ExplorerSurfaceProbe.ps1') -and

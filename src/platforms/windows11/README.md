@@ -21,3 +21,11 @@ tuple. The adapter calls only `GetWindowThreadProcessId`, thread-scoped
 portable fault harness; there is still no loader, controller, exported Hook
 procedure or live Explorer connection. See
 `docs/PHASE-19-EXACT-THREAD-EXPLORER-TRANSPORT-TASK.md`.
+
+`Jarvis.ExplorerCallWndProcBridge` supplies the missing disk-only callback DLL
+shape. In that build only, the pointer-free bridge instance occupies a shared,
+read/write, non-executable PE section so controller-side initialization and
+target-side callback ownership refer to the same state. The exported callback
+reads only its current PID/TID, performs no message or visual work, releases
+ownership, and always returns `CallNextHookEx`. There is no collector or loader.
+See `docs/PHASE-20-DISK-ONLY-CALLWNDPROC-BRIDGE-TASK.md`.

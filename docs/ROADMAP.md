@@ -35,7 +35,7 @@ Phase 5 把恢复终端从启动瞬间的 PID 快照升级为一秒心跳、四�
 
 2026-07-27 的受控会话随后证明：即使 M2 保持禁用，Windhawk 服务仍会把基础运行库映射进 Explorer 和大量非目标进程。会话在清除急停前终止，正常恢复保持 Explorer PID 稳定且 M2 映射为 0。Phase 6 因此隔离整个 Windhawk 服务宿主：readiness 固定失败，控制器不再具备启动服务或把 M2 设为启用的可达路径，Supervisor 也在状态锁之前拒绝 `clear-kill-switch`。
 
-[ADR-0001](ADR-0001-EXPLORER-ONLY-HOST.md) 已从 Windhawk 官方源码确认 service → engine → all-process injector 链路，并把未来候选收窄为 Shell 窗口绑定的单一非零线程 ID；它不是实机授权。Phase 18 已交付独立 bridge ABI 与 callback ownership/quiesce 核心；Phase 19 再把一个预先审查的 HWND/PID/非零 TID 绑定到 `WH_CALLWNDPROC` 传输状态机，真实 Win32 适配器仅编译为未链接对象。当前仍无 loader、可执行 controller、导出 Hook procedure 或 Explorer 连接。下一步必须实现会始终调用 `CallNextHookEx` 的最小 bridge callback 模块，并把 collector、模块哈希、恢复终端与一次性许可组合成新的精确审批包；在此之前继续固定 `activationPermitted=false`、`liveExplorer=not-run`、`mutationPerformed=false`。
+[ADR-0001](ADR-0001-EXPLORER-ONLY-HOST.md) 已从 Windhawk 官方源码确认 service → engine → all-process injector 链路，并把未来候选收窄为 Shell 窗口绑定的单一非零线程 ID；它不是实机授权。Phase 18 已交付独立 bridge ABI 与 callback ownership/quiesce 核心；Phase 19 把一个预先审查的 HWND/PID/非零 TID 绑定到 `WH_CALLWNDPROC` 传输状态机；Phase 20 进一步交付磁盘态空 body callback DLL，并用共享、非执行 PE 数据段让 controller 与目标回调看到同一 bridge 状态。当前仍无 collector、loader、消息/视觉处理或 Explorer 连接。下一步必须把 exact-target collector admission、私有模块路径/DACL、模块哈希、恢复终端与一次性许可组合成新的精确审批包；在此之前继续固定 `activationPermitted=false`、`liveExplorer=not-run`、`mutationPerformed=false`。
 
 在单符号切片完成独立实机稳定性验证之前，不增加任务栏高度、按钮宽度、badge、overflow、托盘或搜索联动。验收必须一次只加载一个 Explorer 模块，并覆盖 100%-200% DPI、双屏、自动隐藏、应用启动/关闭、睡眠唤醒、卸载与急停恢复。任何一项异常都回到 pass-through，不把第二项功能叠上去。
 

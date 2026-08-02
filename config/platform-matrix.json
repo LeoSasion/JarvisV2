@@ -33,11 +33,11 @@
       "modRoot": "mods/windows11",
       "nativeTestRoot": "tests/native/windows11",
       "entryDocument": "docs/PLATFORM-ARCHITECTURE.md",
-      "status": "standalone-bridge-and-exact-thread-transport-offline-built",
+      "status": "standalone-bridge-exact-thread-transport-and-empty-callback-dll-offline-built",
       "compatibilityProfile": "win11-25h2-26200.8875-x64",
       "activationPermitted": false,
       "liveExplorer": "not-run",
-      "nextVisibleSlice": "disk-only exact-thread callback module before any collector or live Explorer connection"
+      "nextVisibleSlice": "exact-target collector admission and session-bound module package before any live Explorer connection"
     }
   ],
   "invariants": {

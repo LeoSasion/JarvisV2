@@ -26,6 +26,9 @@ struct jarvis_bridge_core_instance final {
     std::uint8_t settings_sha256[32]{};
 };
 
+[[nodiscard]] jarvis_bridge_core_instance*
+jarvis_bridge_core_global_instance() noexcept;
+
 void jarvis_bridge_core_reset_for_test(
     jarvis_bridge_core_instance* instance) noexcept;
 

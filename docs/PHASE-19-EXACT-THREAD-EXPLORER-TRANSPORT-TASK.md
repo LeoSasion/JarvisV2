@@ -99,14 +99,13 @@ The harness uses injected fake platform calls. Its receipt always reports
 
 ## Boundary that remains closed
 
-This phase does not provide the DLL callback required by Windows, because that
-callback must always call `CallNextHookEx`, enter and leave the Phase 18 token
-protocol, and remain valid for the Explorer lifetime. It also does not provide
-a collector that resolves module/procedure addresses or calls the adapter.
+Phase 20 now provides the required DLL callback as a disk-only, empty-body
+module and makes the bridge state optionally cross-process in that build. It
+does not provide a collector that resolves module/procedure addresses or calls
+the adapter.
 
-The next development gate is a minimal callback module compiled with the
-bridge and transport cores, still disk-only. A later collector must remain a
-separate binary and accept one already verified target. Any first live use will
-still require a fresh compatibility report, armed kill switch, exact source
-and binary hashes, one active module, visible recovery terminal and explicit
-approval of the exact one-shot command.
+The next development gate is a separate exact-target collector admission and
+session-bound module package. Any first live use will still require a fresh
+compatibility report, armed kill switch, exact source and binary hashes, one
+active module, visible recovery terminal and explicit approval of the exact
+one-shot command.

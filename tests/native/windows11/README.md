@@ -13,3 +13,9 @@ to a fake exact-thread platform. It covers target-validation and install
 failure, duplicate calls, callback drain, unhook failure, truthful live-state
 propagation and an install/quiesce race. The real Win32 adapter is compiled
 separately and never linked or executed by the harness.
+
+`jarvis_explorer_callwndproc_bridge_harness.cpp` verifies the final callback
+envelope: negative hook codes chain directly, wrong identity and pass-through
+states perform no body work, admitted callbacks leave ownership before
+chaining, and quiesce drains a blocked callback plus 4,000 concurrent dispatch
+attempts. CI builds the real DLL for PE inspection but never loads it.

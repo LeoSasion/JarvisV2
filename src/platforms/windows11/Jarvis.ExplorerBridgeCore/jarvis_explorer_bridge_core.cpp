@@ -8,7 +8,16 @@
 
 namespace {
 
-jarvis_bridge_core_instance global_instance{};
+#if defined(_MSC_VER) && defined(_WIN32) && \
+    defined(JARVIS_BRIDGE_CORE_SHARED_INSTANCE)
+static_assert(std::atomic<std::uint32_t>::is_always_lock_free);
+#pragma section(".jvbrdg", read, write, shared)
+__declspec(allocate(".jvbrdg"))
+constinit jarvis_bridge_core_instance global_instance{};
+#pragma comment(linker, "/SECTION:.jvbrdg,RWS")
+#else
+constinit jarvis_bridge_core_instance global_instance{};
+#endif
 
 [[nodiscard]] bool IsDigestNonZero(const std::uint8_t* const digest) noexcept {
     if (digest == nullptr) {
@@ -142,6 +151,10 @@ void Block(
 }
 
 }  // namespace
+
+jarvis_bridge_core_instance* jarvis_bridge_core_global_instance() noexcept {
+    return &global_instance;
+}
 
 void jarvis_bridge_core_reset_for_test(
     jarvis_bridge_core_instance* const instance) noexcept {
