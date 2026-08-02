@@ -3,8 +3,9 @@
 ## Status
 
 This brief records the direction confirmed by the owner. It does not authorize
-a visible implementation. Any future slice that changes the rendered product
-must first present four visual proposals and receive explicit selection.
+a visible implementation. Four Control Center compositions are now recorded at
+`docs/design/neural-void-vfx/README.md`; product implementation remains blocked
+until the owner explicitly selects one of those proposals.
 
 ## Job and audience
 
@@ -176,9 +177,11 @@ not:
 
 ## Open decisions for the first rendered slice
 
+- owner selection of proposal A, B, C or D under
+  `docs/design/neural-void-vfx/README.md`;
 - CPU vector renderer versus GPU-backed renderer after Win10 profiling;
 - realistic minimum, typical and maximum particle counts;
-- the first four approved motion/effect compositions;
+- later particle/post compositions beyond the selected vector-only first slice;
 - modulation UI depth for ordinary versus expert operation;
 - accessibility controls for motion reduction, flash limits and contrast;
 - hardware protocol and device-zone mapping.
