@@ -1060,6 +1060,7 @@ $publicCiContract =
     $publicCi.Contains('Test-DesktopStyleSession.ps1') -and
     $publicCi.Contains('Test-NativeWindowStyleSession.ps1') -and
     $publicCi.Contains('Test-ExplorerBridgeModel.ps1') -and
+    $publicCi.Contains('Test-ExplorerBridgeCore.ps1') -and
     $publicCi.Contains('Test-ExplorerFrameModel.ps1') -and
     $publicCi.Contains('Test-ExplorerPreviewModel.ps1') -and
     $publicCi.Contains('Test-ExplorerSurfaceProbe.ps1') -and
