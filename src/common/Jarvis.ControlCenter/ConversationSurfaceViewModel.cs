@@ -130,6 +130,7 @@ public sealed class ConversationSurfaceViewModel :
             .SingleOrDefault(edit =>
                 edit.Status == PiAgentWorkspaceEditStatus.Pending);
     public bool HasTurns => snapshot.Turns.Count != 0;
+    public bool HasActiveTurn => snapshot.ActiveTurnId is not null;
     public bool HandoffComplete =>
         snapshot.ActiveTurnId is null && snapshot.Turns.Count != 0;
     public bool CanSubmit =>
@@ -813,6 +814,7 @@ public sealed class ConversationSurfaceViewModel :
         RaisePropertyChanged(nameof(ActiveTools));
         RaisePropertyChanged(nameof(PendingWorkspaceEdit));
         RaisePropertyChanged(nameof(HasTurns));
+        RaisePropertyChanged(nameof(HasActiveTurn));
         RaisePropertyChanged(nameof(HandoffComplete));
         RaisePropertyChanged(nameof(CanSubmit));
         RaisePropertyChanged(nameof(CanCancel));

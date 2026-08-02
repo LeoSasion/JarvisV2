@@ -109,17 +109,19 @@ continuation advances reasoning only and never advances approval.
 
 The implemented visual world is evidenced by
 `src/common/Jarvis.ControlCenter/MainWindow.xaml` and the final reviewed render
-at `docs/screenshots/jarvis-control-center-reviewed-multi-hunk-patch.png`. Its selected
-surface concept is `docs/design/jarvis-conversation-handoff-rail.png`; the
-durable concept seed is `32fb29e4`. The bounded finish-review verdict is PASS:
-the accessibility, owner-action hierarchy and handoff-label clipping findings
-are resolved. This is not a claim of an independent accessibility study or live
+at `docs/screenshots/jarvis-control-center-handoff-constellation-vfx.png`. Its
+selected surface concept is `docs/design/jarvis-conversation-handoff-rail.png`;
+the global effect selection is recorded under
+`docs/design/neural-void-vfx/README.md`; the durable concept seed is `32fb29e4`.
+The bounded finish-review verdict is PASS: the accessibility, owner-action
+hierarchy, handoff-label clipping and default white-scrollbar findings are
+resolved. This is not a claim of an independent accessibility study or live
 shell activation.
 
 **Key Characteristics:**
 
 - Native Windows geometry with an ordinary, resizable application boundary.
-- Matte tonal depth, one-pixel rules and almost no decorative effects.
+- Matte tonal depth, one-pixel rules and one bounded global handoff effect.
 - One global accent relationship; semantic amber and coral appear only for
   waiting/aborted and fault/blocked states.
 - Human-readable labels paired with compact monospaced operational metadata.
@@ -129,6 +131,9 @@ shell activation.
   bounded iteration policy remains visible in the runtime inspector.
 - Durable receipts and ephemeral proposal authority are visually distinct:
   restart can offer RE-ARM, but it never restores a pending proposal.
+- The retained B / Handoff Constellation uses one shared RGB signal; A's
+  lower-right focus follows only the current owner and never becomes a local
+  card glow.
 
 ## Colors
 
@@ -215,6 +220,12 @@ in the right inspector. The four-stage rail stays four stages wide: its compact
 owner decision is shown where the exact diff can be reviewed. Transcript and
 inspector scroll independently when vertical content grows.
 
+Both vertical scrollers use a ten-pixel owned track with a four-pixel muted
+thumb. Arrow chrome is absent; the native `Track`, paging regions and draggable
+thumb remain intact. The thumb uses Faint Text at rest for sufficient component
+contrast, then shared Live Cyan on hover or drag. It never returns to the bright
+default WPF scrollbar used by the pre-effect surface.
+
 The session launcher is a focused 760-by-730 owned window. Returning work is
 shown first as a compact recent-work plane, followed by the numbered manual
 workspace and provider sequence. It may display three recent entries even
@@ -236,8 +247,10 @@ drop shadows. Canvas, chrome, surface, panel and raised-plane neutrals establish
 containment. A brighter rule or dim state plane indicates activity without making
 the UI float above Windows.
 
-Glow is reserved for a future global effects layer. It is not a component-level
-shadow token and must not be baked into cards, buttons or text.
+The first global effects layer is now the selected B / Handoff Constellation
+with A's lower-right active-stage focus. It is retained mathematical geometry,
+not a component-level shadow token, and it must not be baked into cards, buttons
+or text. Bloom and other post-processing remain future capabilities.
 
 **The Plane, Not Card Rule.** Create hierarchy by changing a matte plane and its
 structural rule. Do not stack soft shadows or glass panels.
@@ -252,6 +265,25 @@ language.
 
 **The Near-Square Rule.** Operational surfaces should feel machined and bounded;
 rounding softens an edge only enough to avoid brittle geometry.
+
+## Global Handoff Effect
+
+The ordinary Control Center window owns one hit-test-invisible retained layer.
+Twenty-three static point/line commands form a sparse header constellation, a
+quiet navigation-gutter route and four rail nodes. Eight per-frame commands draw
+one focus at the active stage's lower-right corner and one matching rail pulse.
+The same focus follows `USER -> PI RUNTIME -> BOUNDED TOOL -> JARVIS`; an owner
+review returns it to USER and freezes it there.
+
+The signal contract remains fixed-step at 60 Hz and the WPF layer samples 30
+frozen frames per second. No brush, pen or geometry is allocated on the steady
+frame path. Hidden or minimized windows detach the timer; high contrast removes
+the optional layer; disabled client-area animation and WPF rendering tier zero
+retain a static frame only. Fault state removes the active cyan focus so the
+existing coral disclosure remains authoritative.
+
+Particles, trails, shaders, bloom, component-local glow and physical-device I/O
+are not part of this layer.
 
 ## Components
 

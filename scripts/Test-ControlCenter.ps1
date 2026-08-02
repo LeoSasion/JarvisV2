@@ -16,6 +16,7 @@ $diagnosticsProjectPath = Join-Path $diagnosticsRoot (
     'Jarvis.ControlCenter.Diagnostics.csproj')
 $mainWindowPath = Join-Path $sourceRoot 'MainWindow.xaml'
 $mainWindowCodePath = Join-Path $sourceRoot 'MainWindow.xaml.cs'
+$handoffVfxPath = Join-Path $sourceRoot 'HandoffConstellationLayer.cs'
 $viewModelPath = Join-Path $sourceRoot 'ConversationSurfaceViewModel.cs'
 $conversationStatePath = Join-Path $root (
     'src\common\Jarvis.PiAgentHost\ConversationState.cs')
@@ -61,6 +62,7 @@ $projectText = [IO.File]::ReadAllText($projectPath)
 $diagnosticsProjectText = [IO.File]::ReadAllText($diagnosticsProjectPath)
 $mainWindowText = [IO.File]::ReadAllText($mainWindowPath)
 $mainWindowCodeText = [IO.File]::ReadAllText($mainWindowCodePath)
+$handoffVfxText = [IO.File]::ReadAllText($handoffVfxPath)
 $viewModelText = [IO.File]::ReadAllText($viewModelPath)
 $conversationStateText = [IO.File]::ReadAllText($conversationStatePath)
 $providerText = [IO.File]::ReadAllText($providerPath)
@@ -129,11 +131,47 @@ Add-Check `
         $projectText.Contains('<StartupObject>Jarvis.ControlCenter.Program</StartupObject>') -and
         $projectText.Contains('<TreatWarningsAsErrors>true</TreatWarningsAsErrors>') -and
         $projectText.Contains('Jarvis.PiAgentHost.csproj') -and
+        $projectText.Contains('Jarvis.VisualEffects.csproj') -and
         $diagnosticsProjectText.Contains('<OutputType>Exe</OutputType>') -and
         $diagnosticsProjectText.Contains('Jarvis.ControlCenter.csproj')) `
     -Detail (
         'The deterministic WPF product must reference the reviewed Pi host, ' +
         'while the provider probe remains a separate console diagnostic.')
+
+Add-Check `
+    -Name 'surface.retained-handoff-vfx-and-neural-scrollbar' `
+    -Passed (
+        $mainWindowText.Contains('x:Name="HandoffConstellationVfx"') -and
+        $mainWindowText.Contains('IsHitTestVisible="False"') -and
+        $handoffVfxText.Contains(
+            'OnCreateAutomationPeer() => null') -and
+        $mainWindowText.Contains('x:Name="NeuralScrollTrack"') -and
+        $mainWindowText.Contains('x:Name="NeuralScrollThumb"') -and
+        $mainWindowText.Contains('ScrollBar.PageUpCommand') -and
+        $mainWindowText.Contains('ScrollBar.PageDownCommand') -and
+        $mainWindowText.Contains('<Trigger Property="IsDragging" Value="True">') -and
+        $mainWindowText.Contains('<Trigger Property="Orientation" Value="Horizontal">') -and
+        $mainWindowText.Contains('SystemColors.HighlightBrushKey') -and
+        $mainWindowCodeText.Contains('HandoffConstellationVfx.Attach') -and
+        $mainWindowCodeText.Contains('HandoffConstellationVfx.SetState') -and
+        $mainWindowCodeText.Contains('HandoffConstellationVfx.Detach') -and
+        $handoffVfxText.Contains(
+            'handoff-constellation-with-active-corner-focus-v1') -and
+        $handoffVfxText.Contains('MaxStaticCommands = 96') -and
+        $handoffVfxText.Contains('MaxPerFrameCommands = 24') -and
+        $handoffVfxText.Contains('RenderSampleHz = 30') -and
+        $handoffVfxText.Contains('RgbEffectEngine.Sample') -and
+        $handoffVfxText.Contains('RetainedVectorSceneCompiler.Compile') -and
+        $handoffVfxText.Contains('SystemParameters.HighContrast') -and
+        $handoffVfxText.Contains('SystemParameters.ClientAreaAnimation') -and
+        $handoffVfxText.Contains('RenderCapability.Tier') -and
+        $handoffVfxText.Contains('WindowState.Minimized') -and
+        -not $handoffVfxText.Contains('CompositionTarget.Rendering')) `
+    -Detail (
+        'The selected B constellation plus A active-corner focus must use ' +
+        'the shared retained-vector/RGB boundary, stop or degrade with native ' +
+        'accessibility and visibility state, and keep the arrowless scrollbar ' +
+        'functional through native Track commands.')
 
 $requiredVisibleLabels = @(
     'Text="Conversation"',
@@ -460,6 +498,52 @@ Add-Check `
     -Detail (
         'Window chrome stays local, and closing gives the owned runtime a ' +
         'bounded orderly-shutdown interval.')
+
+$handoffVfxProbeOutput = @(
+    & $DotnetPath run `
+        --project $diagnosticsProjectPath `
+        --configuration Release `
+        -- `
+        --handoff-vfx-probe 2>&1
+)
+$handoffVfxProbeExitCode = $LASTEXITCODE
+$handoffVfxProbe = $null
+try {
+    $handoffVfxProbe =
+        ($handoffVfxProbeOutput -join [Environment]::NewLine) |
+            ConvertFrom-Json
+}
+catch {
+    $handoffVfxProbe = $null
+}
+$handoffVfxProbePassed =
+    $handoffVfxProbeExitCode -eq 0 -and
+    $null -ne $handoffVfxProbe -and
+    $handoffVfxProbe.Result -eq 'passed' -and
+    $handoffVfxProbe.CompositionId -eq
+        'handoff-constellation-with-active-corner-focus-v1' -and
+    $handoffVfxProbe.StaticCommandCount -le 96 -and
+    $handoffVfxProbe.MaximumPerFrameCommandCount -le 24 -and
+    $handoffVfxProbe.StageCount -eq 4 -and
+    $handoffVfxProbe.SignalFixedStepHz -eq 60 -and
+    $handoffVfxProbe.RenderSampleHz -eq 30 -and
+    $handoffVfxProbe.RetainedScenesCompiled -and
+    $handoffVfxProbe.SharedRgbBound -and
+    -not $handoffVfxProbe.ParticlesEnabled -and
+    -not $handoffVfxProbe.PostProcessingEnabled -and
+    -not $handoffVfxProbe.ReadyForShellMutation -and
+    -not $handoffVfxProbe.ActivationPermitted -and
+    $handoffVfxProbe.LiveExplorer -eq 'not-run' -and
+    -not $handoffVfxProbe.MutationPerformed -and
+    @($handoffVfxProbe.Failures).Count -eq 0
+Add-Check `
+    -Name 'vfx.executable-retained-handoff-probe' `
+    -Passed $handoffVfxProbePassed `
+    -Detail (
+        'The executable probe must compile every selected-stage/frame scene, ' +
+        'remain within the 96/24 command caps, bind shared RGB, and expose no ' +
+        'particle, post-process, Shell or activation capability. Output: ' +
+        (($handoffVfxProbeOutput | Select-Object -Last 18) -join ' '))
 
 $providerProbeOutput = @(
     & $DotnetPath run `

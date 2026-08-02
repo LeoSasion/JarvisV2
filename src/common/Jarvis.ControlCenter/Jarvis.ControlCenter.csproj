@@ -16,6 +16,8 @@
   <ItemGroup>
     <ProjectReference
       Include="..\Jarvis.PiAgentHost\Jarvis.PiAgentHost.csproj" />
+    <ProjectReference
+      Include="..\Jarvis.VisualEffects\Jarvis.VisualEffects.csproj" />
   </ItemGroup>
 
 </Project>

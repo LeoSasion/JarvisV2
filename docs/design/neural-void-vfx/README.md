@@ -4,12 +4,24 @@
 - Surface: `Jarvis.ControlCenter` owned WPF window
 - Mode: Operate
 - Source frame: `docs/screenshots/jarvis-control-center-reviewed-multi-hunk-patch.png`
-- Review state: **AWAITING OWNER SELECTION**
-- Product implementation: **NOT AUTHORIZED BY THIS RECORD**
+- Review state: **IMPLEMENTED / LOCAL FINISH REVIEW PASS**
+- Product implementation: **B + A FOCUS + NEURAL SCROLLBAR**
 
-## Decision requested
+## Owner decision
 
-Choose one global motion composition for the first Control Center renderer:
+On 2026-08-03 the owner selected a deliberate hybrid:
+
+- use **B / Handoff Constellation** as the global composition;
+- retain A's bright lower-right focus on the active `USER` stage, and let that
+  focus follow the current owner across all four handoff stages;
+- replace the default white WPF scrollbar chrome with a narrow Neural Void
+  track and graphite thumb that uses shared cyan only on hover or drag.
+
+This is the complete visible authorization for the first Control Center slice.
+It does not select A's perimeter current, C's evidence wake, D's aperture frame,
+particles, bloom or another post-process.
+
+## Reviewed proposals
 
 ![A-D comparison sheet](contact-sheet.png)
 
@@ -90,9 +102,10 @@ expressed with:
 - no allocation of brushes, pens or geometry on the steady-state frame path;
 - deterministic capture output for a fixed phase and window size.
 
-The exact render cadence is not chosen by these images. It must be established by
-profiling the target Windows 10 VM and may never silently exceed the authored
-quality tier.
+The implemented layer keeps the deterministic signal contract at 60 Hz and
+samples 30 prebuilt frozen drawings per second. The timer runs only for an active
+ready turn; hidden, minimized, reduced-motion, rendering-tier-zero and fault
+states stop or statically degrade it.
 
 ## Proposal notes
 
@@ -133,11 +146,30 @@ the compound contour must remain incomplete and subordinate to the transcript.
 
 ![D / Dual-Focus Aperture](proposal-d-dual-focus-aperture.png)
 
-## Admission gate after selection
+## Selected implementation boundary
 
-Owner selection authorizes implementation of only the selected vector
-composition in the owned Control Center window. It does not authorize particles,
-post-processing, Shell rendering, Explorer mutation, a physical RGB adapter or a
-live module. The product slice still requires source tests, deterministic visual
-evidence, performance evidence on the target VM and the repository's ordinary
-publication review before it can ship.
+The owner selection authorizes only the B constellation, travelling active-stage
+focus and scrollbar restyle in the owned Control Center window. It does not
+authorize particles, post-processing, Shell rendering, Explorer mutation, a
+physical RGB adapter or a live module.
+
+## Finish review
+
+The bounded owned-window review is **PASS**:
+
+- actual WPF evidence at 1440 x 900:
+  `docs/screenshots/jarvis-control-center-handoff-constellation-vfx.png`;
+- compact 1180 x 760 evidence:
+  `docs/screenshots/jarvis-control-center-handoff-constellation-vfx-compact.png`;
+- 23 retained static commands and eight commands in each prebuilt dynamic frame,
+  below the reviewed 96 / 24 caps;
+- the native scrollbar `Track`, paging commands and draggable thumb are retained
+  for both orientations; high contrast switches it to system colors;
+- the executable Control Center audit passes all 20 checks and the shared RGB
+  model audit passes all 19 checks;
+- publication boundary and cross-platform layout audits pass;
+- activation remains false, live Explorer validation remains `not-run`, and no
+  mutation was performed.
+
+The evidence is an ordinary Control Center process capture. No Pi runtime,
+Shell surface, device adapter or live module was started to produce it.

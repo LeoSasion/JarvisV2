@@ -33,20 +33,28 @@ public partial class App : Application
             return;
         }
 
-        if (TryParseCapture(arguments, out string? outputPath))
+        if (TryParseCapture(
+                arguments,
+                out string? outputPath,
+                out int captureWidth,
+                out int captureHeight))
         {
             MainWindow preview = new MainWindow(
                 ConversationSurfaceViewModel.CreatePreview())
             {
-                Width = 1440,
-                Height = 900,
+                Width = captureWidth,
+                Height = captureHeight,
                 ResizeMode = ResizeMode.NoResize,
             };
             MainWindow = preview;
             preview.Show();
             _ = Dispatcher.BeginInvoke(
                 DispatcherPriority.ContextIdle,
-                () => CaptureAndClose(preview, outputPath, 1440, 900));
+                () => CaptureAndClose(
+                    preview,
+                    outputPath,
+                    captureWidth,
+                    captureHeight));
             return;
         }
 
@@ -105,16 +113,38 @@ public partial class App : Application
 
     private static bool TryParseCapture(
         IReadOnlyList<string> arguments,
-        out string outputPath)
+        out string outputPath,
+        out int width,
+        out int height)
     {
         outputPath = string.Empty;
-        if (arguments.Count != 2 ||
+        width = 1440;
+        height = 900;
+        if ((arguments.Count != 2 && arguments.Count != 4) ||
             !string.Equals(
                 arguments[0],
                 "--capture-preview",
                 StringComparison.Ordinal))
         {
             return false;
+        }
+
+        if (arguments.Count == 4)
+        {
+            if (
+                !string.Equals(
+                    arguments[2],
+                    "--size",
+                    StringComparison.Ordinal) ||
+                !string.Equals(
+                    arguments[3],
+                    "compact",
+                    StringComparison.Ordinal))
+            {
+                return false;
+            }
+            width = 1180;
+            height = 760;
         }
 
         outputPath = Path.GetFullPath(arguments[1]);

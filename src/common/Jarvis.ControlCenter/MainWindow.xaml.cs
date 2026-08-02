@@ -32,6 +32,12 @@ public partial class MainWindow : Window
             throw new ArgumentNullException(nameof(conversation));
         InitializeComponent();
         DataContext = conversation;
+        HandoffConstellationVfx.Attach(
+            this,
+            UserStage,
+            PiStage,
+            ToolStage,
+            JarvisStage);
         conversation.PropertyChanged += OnConversationPropertyChanged;
         clockTimer.Tick += (_, _) => UpdateClock();
         clockTimer.Start();
@@ -468,6 +474,12 @@ public partial class MainWindow : Window
                 (Brush)FindResource("RedBrush"),
             _ => (Brush)FindResource("TextFaintBrush"),
         };
+        HandoffConstellationVfx.SetState(
+            conversation.HandoffProgress,
+            conversation.HandoffComplete,
+            conversation.PendingWorkspaceEdit is not null,
+            conversation.HasActiveTurn,
+            conversation.Phase);
     }
 
     private void SetStageState(
@@ -519,6 +531,7 @@ public partial class MainWindow : Window
     {
         Closing -= OnWindowClosing;
         conversation.PropertyChanged -= OnConversationPropertyChanged;
+        HandoffConstellationVfx.Detach();
         clockTimer.Stop();
         base.OnClosed(eventArgs);
     }

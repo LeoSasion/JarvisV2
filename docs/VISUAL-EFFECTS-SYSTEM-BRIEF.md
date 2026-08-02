@@ -2,10 +2,12 @@
 
 ## Status
 
-This brief records the direction confirmed by the owner. It does not authorize
-a visible implementation. Four Control Center compositions are now recorded at
-`docs/design/neural-void-vfx/README.md`; product implementation remains blocked
-until the owner explicitly selects one of those proposals.
+This brief records the direction confirmed by the owner. Four Control Center
+compositions are recorded at `docs/design/neural-void-vfx/README.md`. On
+2026-08-03 the owner selected B / Handoff Constellation with A's active-stage
+lower-right focus plus a Neural Void scrollbar restyle. That exact retained-
+vector owned-window slice is authorized; particles, post-processing, Shell
+rendering and device integration remain blocked.
 
 ## Job and audience
 
@@ -177,8 +179,6 @@ not:
 
 ## Open decisions for the first rendered slice
 
-- owner selection of proposal A, B, C or D under
-  `docs/design/neural-void-vfx/README.md`;
 - CPU vector renderer versus GPU-backed renderer after Win10 profiling;
 - realistic minimum, typical and maximum particle counts;
 - later particle/post compositions beyond the selected vector-only first slice;
