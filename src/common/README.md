@@ -34,3 +34,10 @@ disposes them in reviewed order. A caller-supplied
 one workspace, protects it with Windows CurrentUser DPAPI, commits it
 atomically after each terminal turn, closes submissions on persistence failure
 and restores it before a new sidecar session.
+
+`Jarvis.DesktopPresence` owns the narrow Windows-session integration around the
+Control Center. It admits one process per current user/session through a named
+auto-reset event and can register one exact `REG_SZ` command under the current
+user's Run key only after an explicit desktop action. The command resumes the
+latest catalog hint through normal workspace/runtime admission and starts
+minimized. It never invokes a shell or grants Pi access to the registration.

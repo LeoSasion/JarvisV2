@@ -14,6 +14,8 @@
   <ItemGroup>
     <ProjectReference
       Include="..\Jarvis.ControlCenter\Jarvis.ControlCenter.csproj" />
+    <ProjectReference
+      Include="..\Jarvis.DesktopPresence\Jarvis.DesktopPresence.csproj" />
   </ItemGroup>
 
 </Project>

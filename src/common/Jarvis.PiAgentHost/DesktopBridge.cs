@@ -12,7 +12,7 @@ public sealed record PiAgentSidecarOptions(
     string NodeExecutablePath,
     string HostScriptPath,
     int MaximumFrameBytes = 131_072,
-    int RequestTimeoutMilliseconds = 10_000,
+    int RequestTimeoutMilliseconds = 25_000,
     int ShutdownTimeoutMilliseconds = 3_000,
     string? ModelBrokerPipePath = null);
 
@@ -1263,7 +1263,7 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
                 "HostScriptPath must name an existing absolute host.mjs.");
         }
         if (options.MaximumFrameBytes != 131_072 ||
-            options.RequestTimeoutMilliseconds is < 1_000 or > 15_000 ||
+            options.RequestTimeoutMilliseconds is < 1_000 or > 30_000 ||
             options.ShutdownTimeoutMilliseconds is < 1_000 or > 10_000)
         {
             throw new ArgumentOutOfRangeException(

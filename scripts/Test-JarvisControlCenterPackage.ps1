@@ -53,6 +53,7 @@ $receiptPath = Join-Path $package 'package-receipt.json'
 $expectedCriticalPaths = @(
     'jarvis-control-center.exe',
     'jarvis-control-center.dll',
+    'jarvis-desktop-presence.dll',
     'jarvis-control-center.deps.json',
     'jarvis-control-center.runtimeconfig.json',
     'jarvis-pi-agent-desktop-bridge.exe',
@@ -71,6 +72,7 @@ $expectedCriticalPaths = @(
 $requiredFiles = @(
     'jarvis-control-center.exe',
     'jarvis-control-center.dll',
+    'jarvis-desktop-presence.dll',
     'jarvis-control-center.deps.json',
     'jarvis-control-center.runtimeconfig.json',
     'jarvis-pi-agent-desktop-bridge.exe',
@@ -167,6 +169,13 @@ if ($null -eq $receipt -or
         'self-contained-wpf-plus-bundled-node-pi-sidecar-and-fixed-git' -or
     $receipt.productionProvider -ne 'openai-responses-opt-in' -or
     $receipt.productionModel -ne 'gpt-5.6-sol' -or
+    $receipt.desktopPresence -ne
+        'current-user-explicit-sign-in-startup-exact-reg-sz' -or
+    $receipt.desktopPresenceCommand -ne
+        'jarvis-control-center.exe --resume-latest --minimized' -or
+    $receipt.desktopSingleInstance -ne
+        'current-user-session-named-auto-reset-activation' -or
+    $receipt.desktopStartupAvailableToPi -or
     $receipt.piSidecarNetworkAllowed -or
     $receipt.piSidecarCredentialTransportAllowed -or
     $receipt.activationPermitted -or

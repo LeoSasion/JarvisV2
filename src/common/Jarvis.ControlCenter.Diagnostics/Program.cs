@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Jarvis.ControlCenter;
+using Jarvis.DesktopPresence;
 
 bool providerProbe =
     args.Length == 1 &&
@@ -48,6 +49,12 @@ bool uiLanguageProbe =
         args[0],
         "--ui-language-probe",
         StringComparison.Ordinal);
+bool desktopPresenceProbe =
+    args.Length == 1 &&
+    string.Equals(
+        args[0],
+        "--desktop-presence-probe",
+        StringComparison.Ordinal);
 if (
     !providerProbe &&
     !bootstrapProbe &&
@@ -55,7 +62,8 @@ if (
     !sessionLaunchLifecycleProbe &&
     !recentSessionStoreProbe &&
     !handoffVfxProbe &&
-    !uiLanguageProbe)
+    !uiLanguageProbe &&
+    !desktopPresenceProbe)
 {
     Console.Error.WriteLine(
         "Usage: <--provider-probe | --bootstrap-probe | " +
@@ -64,12 +72,15 @@ if (
         "--recent-session-store-probe " +
         "--handoff-vfx-probe " +
         "--ui-language-probe " +
+        "--desktop-presence-probe " +
         "--workspace <absolute-workspace>>");
     return 2;
 }
 
 object receipt = providerProbe
     ? await LocalDiagnosticProviderProbe.RunAsync()
+    : desktopPresenceProbe
+        ? await DesktopPresenceProbe.RunAsync()
     : uiLanguageProbe
         ? UiLanguageProbe.Run()
         : bootstrapProbe

@@ -176,6 +176,31 @@ public static class UiText
             ["Loc.Runtime.Review.ProfileValue"] = "PINNED TEST PROFILE / {0}",
             ["Loc.Runtime.Review.Command"] =
                 "No trusted validation command admitted.",
+            ["Loc.Presence.Section"] = "Windows presence",
+            ["Loc.Presence.Enabled"] = "START WITH WINDOWS // ENABLED",
+            ["Loc.Presence.EnabledElsewhere"] =
+                "START WITH WINDOWS // ANOTHER JARVIS LOCATION",
+            ["Loc.Presence.Disabled"] = "START WITH WINDOWS // OFF",
+            ["Loc.Presence.Unknown"] = "START WITH WINDOWS // CHECKING",
+            ["Loc.Presence.Description"] =
+                "After sign-in, resume the latest revalidated workspace in one minimized Control Center. The setting is current-user only and reversible.",
+            ["Loc.Presence.Enable"] = "ENABLE AT SIGN-IN",
+            ["Loc.Presence.Disable"] = "DISABLE AT SIGN-IN",
+            ["Loc.Presence.ToggleAutomation"] =
+                "Enable or disable JarvisV2 startup for the current Windows user",
+            ["Loc.Presence.Resume"] = "RESUME LATEST",
+            ["Loc.Presence.ResumeAutomation"] =
+                "Revalidate and resume the latest Jarvis workspace",
+            ["Loc.Presence.NoRecent"] =
+                "No available recent workspace can be resumed. Start a workspace session first.",
+            ["Loc.Presence.ResumeFailed"] =
+                "The latest workspace could not be resumed.",
+            ["Loc.Presence.RegistrationFailed"] =
+                "The Windows startup setting was not changed.",
+            ["Loc.Presence.InspectFailed"] =
+                "The Windows startup setting could not be inspected.",
+            ["Loc.Presence.RecentInspectFailed"] =
+                "Recent work could not be inspected.",
             ["Loc.Language.Section"] = "Display language",
             ["Loc.Language.Authority"] = "FOLLOWS WINDOWS",
             ["Loc.Language.Current"] = "CURRENT WINDOWS LANGUAGE",
@@ -404,6 +429,29 @@ public static class UiText
             ["Loc.Runtime.Review.Profile"] = "需要固定测试配置",
             ["Loc.Runtime.Review.ProfileValue"] = "固定测试配置 / {0}",
             ["Loc.Runtime.Review.Command"] = "未准入可信验证命令。",
+            ["Loc.Presence.Section"] = "Windows 常驻",
+            ["Loc.Presence.Enabled"] = "随 WINDOWS 启动 // 已启用",
+            ["Loc.Presence.EnabledElsewhere"] =
+                "随 WINDOWS 启动 // 指向另一 JARVIS 位置",
+            ["Loc.Presence.Disabled"] = "随 WINDOWS 启动 // 关闭",
+            ["Loc.Presence.Unknown"] = "随 WINDOWS 启动 // 正在检查",
+            ["Loc.Presence.Description"] =
+                "登录后在一个最小化的控制中心中重新验证并继续最近工作区。设置仅属于当前用户，可随时撤销。",
+            ["Loc.Presence.Enable"] = "登录时启动",
+            ["Loc.Presence.Disable"] = "关闭登录时启动",
+            ["Loc.Presence.ToggleAutomation"] =
+                "为当前 Windows 用户启用或停用 JarvisV2 登录启动",
+            ["Loc.Presence.Resume"] = "继续最近工作",
+            ["Loc.Presence.ResumeAutomation"] =
+                "重新验证并继续最近的 Jarvis 工作区",
+            ["Loc.Presence.NoRecent"] =
+                "没有可继续的最近工作区。请先启动一个工作区会话。",
+            ["Loc.Presence.ResumeFailed"] = "无法继续最近工作区。",
+            ["Loc.Presence.RegistrationFailed"] =
+                "未更改 Windows 启动设置。",
+            ["Loc.Presence.InspectFailed"] =
+                "无法检查 Windows 启动设置。",
+            ["Loc.Presence.RecentInspectFailed"] = "无法检查最近工作。",
             ["Loc.Language.Section"] = "显示语言",
             ["Loc.Language.Authority"] = "跟随 WINDOWS",
             ["Loc.Language.Current"] = "当前 WINDOWS 语言",

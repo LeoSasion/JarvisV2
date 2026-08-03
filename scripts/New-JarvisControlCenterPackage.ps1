@@ -291,6 +291,15 @@ OpenAI Responses conversation:
 Automation equivalent:
   jarvis-control-center.exe --conversation --workspace C:\absolute\workspace --provider local
 
+Resume latest admitted work:
+  jarvis-control-center.exe --resume-latest
+
+Windows presence:
+  Use WINDOWS PRESENCE in the runtime inspector to enable current-user sign-in
+  startup. Jarvis registers one exact REG_SZ command and starts minimized. A
+  second launch activates the existing Control Center instead of starting a
+  second Pi runtime. The setting is explicit, current-user only and reversible.
+
 The API key is protected under the current Windows user with DPAPI. It is not
 stored in this package and is never sent to the offline Pi sidecar. Pi tools are
 limited to read, grep, find, ls, and the non-mutating propose_edit,
@@ -321,6 +330,7 @@ authority and requires explicit re-arm.
 $criticalRelativePaths = @(
     'jarvis-control-center.exe',
     'jarvis-control-center.dll',
+    'jarvis-desktop-presence.dll',
     'jarvis-control-center.deps.json',
     'jarvis-control-center.runtimeconfig.json',
     'jarvis-pi-agent-desktop-bridge.exe',
@@ -361,6 +371,13 @@ $receipt = [ordered]@{
     providerDefault = 'local-diagnostic'
     productionProvider = 'openai-responses-opt-in'
     productionModel = 'gpt-5.6-sol'
+    desktopPresence =
+        'current-user-explicit-sign-in-startup-exact-reg-sz'
+    desktopPresenceCommand =
+        'jarvis-control-center.exe --resume-latest --minimized'
+    desktopSingleInstance =
+        'current-user-session-named-auto-reset-activation'
+    desktopStartupAvailableToPi = $false
     credentialStore =
         'desktop-current-user-dpapi-atomic-no-sidecar-transport'
     piSidecarNetworkAllowed = $false

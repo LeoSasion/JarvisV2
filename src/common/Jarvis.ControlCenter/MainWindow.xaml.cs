@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Jarvis.DesktopPresence;
 
 namespace Jarvis.ControlCenter;
 
@@ -17,7 +18,10 @@ public partial class MainWindow : Window
         Interval = TimeSpan.FromSeconds(1),
     };
     private readonly ConversationSurfaceViewModel conversation;
+    private readonly DesktopStartupRegistration startupRegistration = new();
     private DesktopRecentSessionStore? recentSessionStore;
+    private DesktopStartupRegistrationReceipt? startupRegistrationReceipt;
+    private DesktopRecentSessionEntry? latestRecentSession;
     private IInputElement? focusBeforeImmersive;
     private WindowState windowStateBeforeImmersive;
     private GridLength headerHeightBeforeImmersive;
@@ -28,6 +32,7 @@ public partial class MainWindow : Window
     private bool immersiveMode;
     private bool shutdownInProgress;
     private bool closeAuthorized;
+    private bool desktopPresenceBusy;
 
     public MainWindow()
         : this(ConversationSurfaceViewModel.CreateIdle())
@@ -51,6 +56,7 @@ public partial class MainWindow : Window
         clockTimer.Start();
         UpdateClock();
         UpdateConversationChrome();
+        Loaded += OnWindowLoaded;
         Closing += OnWindowClosing;
     }
 
@@ -60,6 +66,77 @@ public partial class MainWindow : Window
         await conversation.InitializeAsync(cancellationToken);
         UpdateConversationChrome();
         PromptInput.Focus();
+    }
+
+    public async Task<bool> ResumeLatestSessionAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (!conversation.CanLaunchSession || desktopPresenceBusy)
+        {
+            return false;
+        }
+        desktopPresenceBusy = true;
+        UpdateDesktopPresenceControls();
+        try
+        {
+            DesktopRecentSessionStore store = recentSessionStore ??=
+                new DesktopRecentSessionStore();
+            DesktopRecentSessionCatalog catalog =
+                await store.LoadAsync(cancellationToken);
+            DesktopRecentSessionEntry? entry = FindLatestAvailable(catalog);
+            latestRecentSession = entry;
+            if (entry is null)
+            {
+                conversation.ReportUiError(
+                    UiText.Get("Loc.Presence.NoRecent"));
+                return false;
+            }
+
+            DesktopSessionLaunchAdmissionReceipt admission =
+                DesktopSessionLaunchAdmission.Admit(
+                    entry.WorkspaceRoot,
+                    entry.Provider);
+            if (admission.Result != "passed" || admission.Options is null)
+            {
+                conversation.ReportUiError(
+                    UiText.Get("Loc.Presence.ResumeFailed") + " " +
+                    string.Join(" ", admission.Failures));
+                return false;
+            }
+            await LaunchAdmittedSessionAsync(
+                admission.Options,
+                store,
+                cancellationToken);
+            return conversation.Phase == ConversationRuntimePhase.Ready;
+        }
+        catch (Exception exception)
+            when (exception is
+                ArgumentException or
+                IOException or
+                InvalidDataException or
+                InvalidOperationException or
+                NotSupportedException or
+                System.Security.Cryptography.CryptographicException or
+                UnauthorizedAccessException)
+        {
+            conversation.ReportUiError(
+                UiText.Get("Loc.Presence.ResumeFailed") + " " +
+                exception.Message);
+            return false;
+        }
+        finally
+        {
+            desktopPresenceBusy = false;
+            UpdateDesktopPresenceControls();
+        }
+    }
+
+    private async void OnWindowLoaded(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        Loaded -= OnWindowLoaded;
+        await RefreshDesktopPresenceAsync();
     }
 
     private void UpdateClock()
@@ -361,37 +438,7 @@ public partial class MainWindow : Window
                 return;
             }
             ConversationLaunchOptions options = launcher.Options;
-            await conversation.LaunchAsync(options);
-            UpdateConversationChrome();
-            if (
-                conversation.Phase == ConversationRuntimePhase.Ready &&
-                recentStore is not null)
-            {
-                try
-                {
-                    await recentStore.RememberAsync(
-                        options.WorkspaceRoot,
-                        options.Provider);
-                }
-                catch (Exception exception)
-                    when (exception is
-                        ArgumentException or
-                        IOException or
-                        InvalidDataException or
-                        InvalidOperationException or
-                        NotSupportedException or
-                        System.Security.Cryptography.CryptographicException or
-                        UnauthorizedAccessException)
-                {
-                    conversation.ReportUiError(
-                        "Session is ready, but recent-work persistence failed closed: " +
-                        exception.Message);
-                }
-            }
-            if (conversation.Phase == ConversationRuntimePhase.Ready)
-            {
-                PromptInput.Focus();
-            }
+            await LaunchAdmittedSessionAsync(options, recentStore);
         }
         catch (Exception exception)
         {
@@ -399,6 +446,196 @@ public partial class MainWindow : Window
                 $"Session launch failed closed: {exception.Message}");
         }
     }
+
+    private async void ResumeLatestButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        await ResumeLatestSessionAsync();
+    }
+
+    private void StartupRegistrationButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        if (desktopPresenceBusy)
+        {
+            return;
+        }
+        desktopPresenceBusy = true;
+        UpdateDesktopPresenceControls();
+        try
+        {
+            string executablePath = Environment.ProcessPath ??
+                throw new InvalidOperationException(
+                    "The current desktop executable path is unavailable.");
+            DesktopStartupRegistrationReceipt current =
+                startupRegistrationReceipt ??
+                startupRegistration.Inspect(executablePath);
+            startupRegistrationReceipt = startupRegistration.SetEnabled(
+                executablePath,
+                enabled: !current.Enabled);
+        }
+        catch (Exception exception)
+            when (exception is
+                ArgumentException or
+                IOException or
+                InvalidDataException or
+                InvalidOperationException or
+                NotSupportedException or
+                UnauthorizedAccessException or
+                System.Security.SecurityException)
+        {
+            conversation.ReportUiError(
+                UiText.Get("Loc.Presence.RegistrationFailed") + " " +
+                exception.Message);
+        }
+        finally
+        {
+            desktopPresenceBusy = false;
+            UpdateDesktopPresenceControls();
+        }
+    }
+
+    private async Task LaunchAdmittedSessionAsync(
+        ConversationLaunchOptions options,
+        DesktopRecentSessionStore? recentStore,
+        CancellationToken cancellationToken = default)
+    {
+        await conversation.LaunchAsync(options, cancellationToken);
+        UpdateConversationChrome();
+        if (
+            conversation.Phase == ConversationRuntimePhase.Ready &&
+            recentStore is not null)
+        {
+            try
+            {
+                await recentStore.RememberAsync(
+                    options.WorkspaceRoot,
+                    options.Provider,
+                    cancellationToken);
+            }
+            catch (Exception exception)
+                when (exception is
+                    ArgumentException or
+                    IOException or
+                    InvalidDataException or
+                    InvalidOperationException or
+                    NotSupportedException or
+                    System.Security.Cryptography.CryptographicException or
+                    UnauthorizedAccessException)
+            {
+                conversation.ReportUiError(
+                    "Session is ready, but recent-work persistence failed closed: " +
+                    exception.Message);
+            }
+        }
+        if (conversation.Phase == ConversationRuntimePhase.Ready)
+        {
+            PromptInput.Focus();
+        }
+        await RefreshDesktopPresenceAsync(loadRecentSessions: false);
+    }
+
+    private async Task RefreshDesktopPresenceAsync(
+        bool loadRecentSessions = true)
+    {
+        try
+        {
+            string executablePath = Environment.ProcessPath ??
+                throw new InvalidOperationException(
+                    "The current desktop executable path is unavailable.");
+            startupRegistrationReceipt =
+                startupRegistration.Inspect(executablePath);
+        }
+        catch (Exception exception)
+            when (exception is
+                ArgumentException or
+                IOException or
+                InvalidDataException or
+                InvalidOperationException or
+                NotSupportedException or
+                UnauthorizedAccessException or
+                System.Security.SecurityException)
+        {
+            startupRegistrationReceipt = null;
+            conversation.ReportUiError(
+                UiText.Get("Loc.Presence.InspectFailed") + " " +
+                exception.Message);
+        }
+
+        if (loadRecentSessions)
+        {
+            try
+            {
+                DesktopRecentSessionStore store = recentSessionStore ??=
+                    new DesktopRecentSessionStore();
+                DesktopRecentSessionCatalog catalog = await store.LoadAsync();
+                latestRecentSession = FindLatestAvailable(catalog);
+            }
+            catch (Exception exception)
+                when (exception is
+                    IOException or
+                    InvalidDataException or
+                    InvalidOperationException or
+                    NotSupportedException or
+                    System.Security.Cryptography.CryptographicException or
+                    UnauthorizedAccessException)
+            {
+                latestRecentSession = null;
+                conversation.ReportUiError(
+                    UiText.Get("Loc.Presence.RecentInspectFailed") + " " +
+                    exception.Message);
+            }
+        }
+        UpdateDesktopPresenceControls();
+    }
+
+    private void UpdateDesktopPresenceControls()
+    {
+        bool canLaunchLatest =
+            !desktopPresenceBusy &&
+            latestRecentSession is not null &&
+            conversation.CanLaunchSession;
+        ResumeLatestButton.Visibility = latestRecentSession is null
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        ResumeLatestButton.IsEnabled = canLaunchLatest;
+        SessionLaunchButton.SetResourceReference(
+            StyleProperty,
+            latestRecentSession is null
+                ? "PrimaryActionButton"
+                : "ActionButton");
+
+        DesktopStartupRegistrationReceipt? receipt =
+            startupRegistrationReceipt;
+        StartupPresenceStatus.Text = receipt?.State switch
+        {
+            DesktopStartupRegistrationState.EnabledForCurrentExecutable =>
+                UiText.Get("Loc.Presence.Enabled"),
+            DesktopStartupRegistrationState.EnabledForDifferentExecutable =>
+                UiText.Get("Loc.Presence.EnabledElsewhere"),
+            DesktopStartupRegistrationState.Disabled =>
+                UiText.Get("Loc.Presence.Disabled"),
+            _ => UiText.Get("Loc.Presence.Unknown"),
+        };
+        StartupPresenceStatus.Foreground = receipt?.Enabled == true
+            ? (Brush)FindResource("CyanBrush")
+            : (Brush)FindResource("TextMutedBrush");
+        StartupRegistrationButton.Content = receipt?.Enabled == true
+            ? UiText.Get("Loc.Presence.Disable")
+            : UiText.Get("Loc.Presence.Enable");
+        StartupRegistrationButton.IsEnabled =
+            !desktopPresenceBusy &&
+            receipt is not null &&
+            conversation.Phase != ConversationRuntimePhase.Preview;
+    }
+
+    private static DesktopRecentSessionEntry? FindLatestAvailable(
+        DesktopRecentSessionCatalog catalog) =>
+        catalog.Entries.FirstOrDefault(entry =>
+            DesktopSessionLaunchAdmission.AdmitWorkspace(entry.WorkspaceRoot)
+                .Result == "passed");
 
     private async void StartReviewedIterationButton_OnClick(
         object sender,
@@ -547,6 +784,12 @@ public partial class MainWindow : Window
         PropertyChangedEventArgs eventArgs)
     {
         UpdateConversationChrome();
+        if (
+            eventArgs.PropertyName == nameof(conversation.CanLaunchSession) ||
+            eventArgs.PropertyName == nameof(conversation.Phase))
+        {
+            UpdateDesktopPresenceControls();
+        }
         if (eventArgs.PropertyName == nameof(conversation.Turns))
         {
             _ = Dispatcher.BeginInvoke(
@@ -651,6 +894,7 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs eventArgs)
     {
         Closing -= OnWindowClosing;
+        Loaded -= OnWindowLoaded;
         conversation.PropertyChanged -= OnConversationPropertyChanged;
         HandoffConstellationVfx.Detach();
         clockTimer.Stop();

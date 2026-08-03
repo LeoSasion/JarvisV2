@@ -198,10 +198,20 @@ public static class DesktopSessionLaunchAdmissionProbe
                 viewModel.Phase == ConversationRuntimePhase.Ready &&
                 viewModel.HasOwnedRuntime &&
                 !viewModel.CanLaunchSession;
+            if (!runtimeReady)
+            {
+                failures.Add(
+                    "Runtime launch detail: " + viewModel.StatusDetail);
+            }
             await viewModel.ShutdownAsync(cancellationToken);
             runtimeStopped =
                 viewModel.Phase == ConversationRuntimePhase.Stopped &&
                 !viewModel.HasOwnedRuntime;
+            if (!runtimeStopped)
+            {
+                failures.Add(
+                    "Runtime shutdown detail: " + viewModel.StatusDetail);
+            }
         }
         catch (Exception exception)
         {

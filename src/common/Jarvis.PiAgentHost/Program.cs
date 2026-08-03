@@ -129,7 +129,7 @@ try
         PiAgentSidecarOptions options = new(
             Path.GetFullPath(args[2]),
             Path.GetFullPath(args[4]),
-            RequestTimeoutMilliseconds: 15_000);
+            RequestTimeoutMilliseconds: 25_000);
         PiAgentDesktopRuntimeProbeReceipt receipt =
             await PiAgentDesktopRuntimeProbe.RunAsync(
                 options,

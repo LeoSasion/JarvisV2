@@ -38,6 +38,16 @@ $recentSessionStorePath = Join-Path $sourceRoot (
     'DesktopRecentSessionStore.cs')
 $recentSessionStoreProbePath = Join-Path $sourceRoot (
     'DesktopRecentSessionStoreProbe.cs')
+$desktopPresenceRoot = Join-Path $root (
+    'src\common\Jarvis.DesktopPresence')
+$desktopPresenceProjectPath = Join-Path $desktopPresenceRoot (
+    'Jarvis.DesktopPresence.csproj')
+$desktopStartupRegistrationPath = Join-Path $desktopPresenceRoot (
+    'DesktopStartupRegistration.cs')
+$singleInstancePath = Join-Path $desktopPresenceRoot (
+    'ControlCenterSingleInstance.cs')
+$desktopPresenceProbePath = Join-Path $desktopPresenceRoot (
+    'DesktopPresenceProbe.cs')
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()
@@ -83,6 +93,13 @@ $recentSessionStoreText = [IO.File]::ReadAllText(
     $recentSessionStorePath)
 $recentSessionStoreProbeText = [IO.File]::ReadAllText(
     $recentSessionStoreProbePath)
+$desktopPresenceProjectText = [IO.File]::ReadAllText(
+    $desktopPresenceProjectPath)
+$desktopStartupRegistrationText = [IO.File]::ReadAllText(
+    $desktopStartupRegistrationPath)
+$singleInstanceText = [IO.File]::ReadAllText($singleInstancePath)
+$desktopPresenceProbeText = [IO.File]::ReadAllText(
+    $desktopPresenceProbePath)
 $localizedSurfaceText = @(
     $mainWindowText,
     $viewModelText,
@@ -200,13 +217,58 @@ Add-Check `
         $projectText.Contains('<UseWPF>true</UseWPF>') -and
         $projectText.Contains('<StartupObject>Jarvis.ControlCenter.Program</StartupObject>') -and
         $projectText.Contains('<TreatWarningsAsErrors>true</TreatWarningsAsErrors>') -and
+        $projectText.Contains('Jarvis.DesktopPresence.csproj') -and
         $projectText.Contains('Jarvis.PiAgentHost.csproj') -and
         $projectText.Contains('Jarvis.VisualEffects.csproj') -and
         $diagnosticsProjectText.Contains('<OutputType>Exe</OutputType>') -and
-        $diagnosticsProjectText.Contains('Jarvis.ControlCenter.csproj')) `
+        $diagnosticsProjectText.Contains('Jarvis.ControlCenter.csproj') -and
+        $diagnosticsProjectText.Contains('Jarvis.DesktopPresence.csproj') -and
+        $desktopPresenceProjectText.Contains('<TargetFramework>net8.0-windows</TargetFramework>') -and
+        $desktopPresenceProjectText.Contains('<TreatWarningsAsErrors>true</TreatWarningsAsErrors>')) `
     -Detail (
         'The deterministic WPF product must reference the reviewed Pi host, ' +
         'while the provider probe remains a separate console diagnostic.')
+
+$desktopPresenceStaticBoundary =
+    $desktopStartupRegistrationText.Contains(
+        'current-user-run-key-exact-reg-sz-no-shell') -and
+    $desktopStartupRegistrationText.Contains(
+        'Software\Microsoft\Windows\CurrentVersion\Run') -and
+    $desktopStartupRegistrationText.Contains(
+        'RegistryValueKind.String') -and
+    $desktopStartupRegistrationText.Contains(
+        '--resume-latest --minimized') -and
+    $desktopStartupRegistrationText.Contains(
+        'RegistryValueOptions.DoNotExpandEnvironmentNames') -and
+    $desktopStartupRegistrationText.Contains('FileAttributes.ReparsePoint') -and
+    $singleInstanceText.Contains('EventResetMode.AutoReset') -and
+    $singleInstanceText.Contains('WindowsIdentity.GetCurrent') -and
+    $singleInstanceText.Contains('RegisterWaitForSingleObject') -and
+    $singleInstanceText.Contains('SignalPrimary') -and
+    $desktopPresenceProbeText.Contains('MemoryStartupValueStore') -and
+    $desktopPresenceProbeText.Contains(
+        'ProductionStartupStateTouched: false') -and
+    $appText.Contains('ControlCenterSingleInstance') -and
+    $appText.Contains('TryParseResumeLatest') -and
+    $appText.Contains('"--resume-latest"') -and
+    $appText.Contains('"--minimized"') -and
+    $mainWindowText.Contains('x:Name="ResumeLatestButton"') -and
+    $mainWindowText.Contains('x:Name="StartupRegistrationButton"') -and
+    $mainWindowCodeText.Contains('ResumeLatestSessionAsync') -and
+    $mainWindowCodeText.Contains('FindLatestAvailable') -and
+    $mainWindowCodeText.Contains('startupRegistration.SetEnabled') -and
+    -not [regex]::IsMatch(
+        ($desktopStartupRegistrationText + $singleInstanceText),
+        '(?i)\b(?:cmd\.exe|powershell|pwsh|ProcessStartInfo|' +
+        'System\.Diagnostics\.Process|DllImport|LibraryImport|' +
+        'CreateRemoteThread|WriteProcessMemory|SetWindowsHookEx)\b')
+Add-Check `
+    -Name 'desktop-presence.exact-current-user-startup-and-single-instance' `
+    -Passed $desktopPresenceStaticBoundary `
+    -Detail (
+        'Desktop presence must use one exact current-user REG_SZ command, ' +
+        'revalidate the latest workspace, coordinate one per-user process, ' +
+        'and expose no shell, child-process or injection path.')
 
 Add-Check `
     -Name 'surface.retained-handoff-vfx-and-neural-scrollbar' `
@@ -281,6 +343,9 @@ $requiredVisibleLabels = @(
     'SAFE SHUTDOWN',
     'CONFIGURE OPENAI',
     'START PI SESSION',
+    'Loc.Presence.Section',
+    'Loc.Presence.Resume',
+    'Loc.Presence.Enable',
     'production model ',
     'authentication is not configured'
 )
@@ -661,6 +726,46 @@ Add-Check `
         'resources, and expose no local override, persistence, shell mutation ' +
         'or activation path. Output: ' +
         (($uiLanguageProbeOutput | Select-Object -Last 18) -join ' '))
+
+$desktopPresenceProbeOutput = @(
+    & $DotnetPath run `
+        --project $diagnosticsProjectPath `
+        --configuration Release `
+        -- `
+        --desktop-presence-probe 2>&1
+)
+$desktopPresenceProbeExitCode = $LASTEXITCODE
+$desktopPresenceProbe = $null
+try {
+    $desktopPresenceProbe =
+        ($desktopPresenceProbeOutput -join [Environment]::NewLine) |
+            ConvertFrom-Json
+}
+catch {
+    $desktopPresenceProbe = $null
+}
+$desktopPresenceProbePassed =
+    $desktopPresenceProbeExitCode -eq 0 -and
+    $null -ne $desktopPresenceProbe -and
+    $desktopPresenceProbe.Result -eq 'passed' -and
+    $desktopPresenceProbe.RegistrationEnablePassed -and
+    $desktopPresenceProbe.RegistrationIdempotencePassed -and
+    $desktopPresenceProbe.RegistrationDriftVisible -and
+    $desktopPresenceProbe.RegistrationDisablePassed -and
+    $desktopPresenceProbe.ExactResumeCommandPassed -and
+    $desktopPresenceProbe.SingleInstanceAdmissionPassed -and
+    $desktopPresenceProbe.SecondaryActivationPassed -and
+    $desktopPresenceProbe.PrimaryReacquirePassed -and
+    -not $desktopPresenceProbe.ProductionStartupStateTouched -and
+    @($desktopPresenceProbe.Failures).Count -eq 0
+Add-Check `
+    -Name 'desktop-presence.executable-registration-and-instance-probe' `
+    -Passed $desktopPresenceProbePassed `
+    -Detail (
+        'The executable probe must prove exact enable/idempotence/drift/' +
+        'disable behavior, one primary instance, secondary activation, clean ' +
+        'reacquire and zero production startup-state mutation. Output: ' +
+        (($desktopPresenceProbeOutput | Select-Object -Last 18) -join ' '))
 
 $handoffVfxProbeOutput = @(
     & $DotnetPath run `

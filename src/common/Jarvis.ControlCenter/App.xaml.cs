@@ -4,12 +4,15 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Jarvis.DesktopPresence;
 
 namespace Jarvis.ControlCenter;
 
 public partial class App : Application
 {
     private readonly IReadOnlyList<string> launchArguments;
+    private readonly ControlCenterSingleInstance? singleInstance;
+    private int activationListenerStarted;
 
     public App()
         : this(Environment.GetCommandLineArgs().Skip(1).ToArray())
@@ -17,8 +20,16 @@ public partial class App : Application
     }
 
     internal App(IReadOnlyList<string> launchArguments)
+        : this(launchArguments, singleInstance: null)
+    {
+    }
+
+    internal App(
+        IReadOnlyList<string> launchArguments,
+        ControlCenterSingleInstance? singleInstance)
     {
         this.launchArguments = launchArguments;
+        this.singleInstance = singleInstance;
     }
 
     protected override async void OnStartup(StartupEventArgs eventArgs)
@@ -32,6 +43,7 @@ public partial class App : Application
             MainWindow = new MainWindow(
                 ConversationSurfaceViewModel.CreateIdle());
             MainWindow.Show();
+            StartActivationListener();
             return;
         }
 
@@ -98,6 +110,23 @@ public partial class App : Application
             return;
         }
 
+        if (TryParseResumeLatest(arguments, out bool startMinimized))
+        {
+            MainWindow window = new(
+                ConversationSurfaceViewModel.CreateIdle())
+            {
+                ShowActivated = !startMinimized,
+                WindowState = startMinimized
+                    ? WindowState.Minimized
+                    : WindowState.Normal,
+            };
+            MainWindow = window;
+            window.Show();
+            StartActivationListener();
+            await window.ResumeLatestSessionAsync();
+            return;
+        }
+
         if (TryParseConversation(
                 arguments,
                 out ConversationLaunchOptions? options))
@@ -106,11 +135,57 @@ public partial class App : Application
                 ConversationSurfaceViewModel.Create(options));
             MainWindow = window;
             window.Show();
+            StartActivationListener();
             await window.InitializeConversationAsync();
             return;
         }
 
         Shutdown(2);
+    }
+
+    internal static bool IsCaptureLaunch(IReadOnlyList<string> arguments) =>
+        arguments.Count > 0 &&
+        (string.Equals(
+             arguments[0],
+             "--capture-preview",
+             StringComparison.Ordinal) ||
+         string.Equals(
+             arguments[0],
+             "--capture-session-launcher-preview",
+             StringComparison.Ordinal));
+
+    private void StartActivationListener()
+    {
+        if (
+            singleInstance is null ||
+            Interlocked.Exchange(ref activationListenerStarted, 1) != 0)
+        {
+            return;
+        }
+        singleInstance.StartListening(() =>
+        {
+            _ = Dispatcher.BeginInvoke(
+                DispatcherPriority.Normal,
+                new Action(ActivateMainWindow));
+        });
+    }
+
+    private void ActivateMainWindow()
+    {
+        if (MainWindow is not Window window)
+        {
+            return;
+        }
+        if (window.WindowState == WindowState.Minimized)
+        {
+            window.WindowState = WindowState.Normal;
+        }
+        if (!window.IsVisible)
+        {
+            window.Show();
+        }
+        _ = window.Activate();
+        window.Focus();
     }
 
     private static bool TryParseCapture(
@@ -236,6 +311,34 @@ public partial class App : Application
             Path.GetFullPath(node),
             Path.GetFullPath(sidecar),
             Path.GetFullPath(workspace));
+        return true;
+    }
+
+    private static bool TryParseResumeLatest(
+        IReadOnlyList<string> arguments,
+        out bool startMinimized)
+    {
+        startMinimized = false;
+        if (
+            arguments.Count is not 1 and not 2 ||
+            !string.Equals(
+                arguments[0],
+                "--resume-latest",
+                StringComparison.Ordinal))
+        {
+            return false;
+        }
+        if (arguments.Count == 2)
+        {
+            if (!string.Equals(
+                    arguments[1],
+                    "--minimized",
+                    StringComparison.Ordinal))
+            {
+                return false;
+            }
+            startMinimized = true;
+        }
         return true;
     }
 
