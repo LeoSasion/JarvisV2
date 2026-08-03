@@ -46,6 +46,10 @@ $desktopStartupRegistrationPath = Join-Path $desktopPresenceRoot (
     'DesktopStartupRegistration.cs')
 $singleInstancePath = Join-Path $desktopPresenceRoot (
     'ControlCenterSingleInstance.cs')
+$desktopSummonHotKeyPath = Join-Path $desktopPresenceRoot (
+    'DesktopSummonHotKey.cs')
+$desktopPresenceCoordinatorPath = Join-Path $sourceRoot (
+    'DesktopPresenceCoordinator.cs')
 $desktopPresenceProbePath = Join-Path $desktopPresenceRoot (
     'DesktopPresenceProbe.cs')
 
@@ -98,6 +102,10 @@ $desktopPresenceProjectText = [IO.File]::ReadAllText(
 $desktopStartupRegistrationText = [IO.File]::ReadAllText(
     $desktopStartupRegistrationPath)
 $singleInstanceText = [IO.File]::ReadAllText($singleInstancePath)
+$desktopSummonHotKeyText = [IO.File]::ReadAllText(
+    $desktopSummonHotKeyPath)
+$desktopPresenceCoordinatorText = [IO.File]::ReadAllText(
+    $desktopPresenceCoordinatorPath)
 $desktopPresenceProbeText = [IO.File]::ReadAllText(
     $desktopPresenceProbePath)
 $localizedSurfaceText = @(
@@ -215,6 +223,9 @@ Add-Check `
     -Passed (
         $projectText.Contains('<OutputType>WinExe</OutputType>') -and
         $projectText.Contains('<UseWPF>true</UseWPF>') -and
+        $projectText.Contains('<UseWindowsForms>true</UseWindowsForms>') -and
+        $projectText.Contains('<Using Remove="System.Windows.Forms" />') -and
+        $projectText.Contains('<Using Remove="System.Drawing" />') -and
         $projectText.Contains('<StartupObject>Jarvis.ControlCenter.Program</StartupObject>') -and
         $projectText.Contains('<TreatWarningsAsErrors>true</TreatWarningsAsErrors>') -and
         $projectText.Contains('Jarvis.DesktopPresence.csproj') -and
@@ -245,15 +256,39 @@ $desktopPresenceStaticBoundary =
     $singleInstanceText.Contains('WindowsIdentity.GetCurrent') -and
     $singleInstanceText.Contains('RegisterWaitForSingleObject') -and
     $singleInstanceText.Contains('SignalPrimary') -and
+    $desktopSummonHotKeyText.Contains('RegisterHotKey') -and
+    $desktopSummonHotKeyText.Contains('ModifierNoRepeat') -and
+    $desktopSummonHotKeyText.Contains('VirtualKeyJ') -and
+    $desktopSummonHotKeyText.Contains(
+        'summon-chord-already-registered') -and
     $desktopPresenceProbeText.Contains('MemoryStartupValueStore') -and
+    $desktopPresenceProbeText.Contains('MemoryDesktopHotKeyNative') -and
     $desktopPresenceProbeText.Contains(
         'ProductionStartupStateTouched: false') -and
     $appText.Contains('ControlCenterSingleInstance') -and
     $appText.Contains('TryParseResumeLatest') -and
+    $appText.Contains('AttachDesktopPresence') -and
     $appText.Contains('"--resume-latest"') -and
     $appText.Contains('"--minimized"') -and
     $mainWindowText.Contains('x:Name="ResumeLatestButton"') -and
     $mainWindowText.Contains('x:Name="StartupRegistrationButton"') -and
+    $mainWindowText.Contains('x:Name="SummonHotKeyStatus"') -and
+    $mainWindowText.Contains('Click="ExitJarvisButton_OnClick"') -and
+    $mainWindowCodeText.Contains('DesktopHideRequested') -and
+    $mainWindowCodeText.Contains('RequestApplicationExit') -and
+    $desktopPresenceCoordinatorText.Contains('Forms.NotifyIcon') -and
+    $desktopPresenceCoordinatorText.Contains('ContextMenuStrip') -and
+    $desktopPresenceCoordinatorText.Contains(
+        'DesktopSummonHotKey.IsSummonMessage') -and
+    $desktopPresenceCoordinatorText.Contains(
+        'CanHideToNotificationArea') -and
+    $desktopPresenceCoordinatorText.Contains(
+        'ReportDesktopPresenceUnavailable') -and
+    $desktopPresenceCoordinatorText.Contains(
+        'IsRecoverableIntegrationFailure') -and
+    $desktopPresenceCoordinatorText.Contains(
+        'DesktopSummonHotKey.TrySetForegroundWindow') -and
+    $desktopPresenceCoordinatorText.Contains('window.ShowInTaskbar = false') -and
     $mainWindowCodeText.Contains('ResumeLatestSessionAsync') -and
     $mainWindowCodeText.Contains('FindLatestAvailable') -and
     $mainWindowCodeText.Contains('startupRegistration.SetEnabled') -and
@@ -268,7 +303,9 @@ Add-Check `
     -Detail (
         'Desktop presence must use one exact current-user REG_SZ command, ' +
         'revalidate the latest workspace, coordinate one per-user process, ' +
-        'and expose no shell, child-process or injection path.')
+        'expose a fail-soft tray-owned Ctrl+Alt+J summon path, explicit ' +
+        'orderly exit and foreground restoration, and expose no shell, ' +
+        'child-process or injection path.')
 
 Add-Check `
     -Name 'surface.retained-handoff-vfx-and-neural-scrollbar' `
@@ -635,17 +672,21 @@ Add-Check `
         'must stream a bounded response and must disclose absent production auth.')
 
 Add-Check `
-    -Name 'window.local-behavior-and-orderly-close' `
+    -Name 'window.local-hide-and-explicit-orderly-exit' `
     -Passed (
         $mainWindowCodeText.Contains('DispatcherTimer') -and
         $mainWindowCodeText.Contains('DragMove()') -and
         $mainWindowCodeText.Contains('WindowState = WindowState.Minimized') -and
         $mainWindowCodeText.Contains('CancellationTokenSource timeout') -and
         $mainWindowCodeText.Contains('TimeSpan.FromSeconds(12)') -and
-        $mainWindowCodeText.Contains('shutdownInProgress')) `
+        $mainWindowCodeText.Contains('shutdownInProgress') -and
+        $mainWindowCodeText.Contains('if (!exitRequested)') -and
+        $mainWindowCodeText.Contains('DesktopHideRequested?.Invoke') -and
+        $mainWindowCodeText.Contains('RequestApplicationExit()')) `
     -Detail (
-        'Window chrome stays local, and closing gives the owned runtime a ' +
-        'bounded orderly-shutdown interval.')
+        'Window chrome stays local, ordinary close hides the primary instance, ' +
+        'and explicit Exit gives the owned runtime a bounded orderly-shutdown ' +
+        'interval.')
 
 Add-Check `
     -Name 'surface.windows-owned-display-language' `
@@ -756,6 +797,9 @@ $desktopPresenceProbePassed =
     $desktopPresenceProbe.SingleInstanceAdmissionPassed -and
     $desktopPresenceProbe.SecondaryActivationPassed -and
     $desktopPresenceProbe.PrimaryReacquirePassed -and
+    $desktopPresenceProbe.SummonHotKeyContractPassed -and
+    $desktopPresenceProbe.SummonHotKeyConflictVisible -and
+    $desktopPresenceProbe.SummonHotKeyReleased -and
     -not $desktopPresenceProbe.ProductionStartupStateTouched -and
     @($desktopPresenceProbe.Failures).Count -eq 0
 Add-Check `
@@ -764,7 +808,8 @@ Add-Check `
     -Detail (
         'The executable probe must prove exact enable/idempotence/drift/' +
         'disable behavior, one primary instance, secondary activation, clean ' +
-        'reacquire and zero production startup-state mutation. Output: ' +
+        'reacquire, exact no-repeat Ctrl+Alt+J registration, visible conflict, ' +
+        'release and zero production startup-state mutation. Output: ' +
         (($desktopPresenceProbeOutput | Select-Object -Last 18) -join ' '))
 
 $handoffVfxProbeOutput = @(

@@ -12,6 +12,9 @@ public sealed record DesktopPresenceProbeReceipt(
     bool SingleInstanceAdmissionPassed,
     bool SecondaryActivationPassed,
     bool PrimaryReacquirePassed,
+    bool SummonHotKeyContractPassed,
+    bool SummonHotKeyConflictVisible,
+    bool SummonHotKeyReleased,
     bool ProductionStartupStateTouched,
     IReadOnlyList<string> Failures);
 
@@ -32,6 +35,9 @@ public static class DesktopPresenceProbe
         bool singleInstanceAdmissionPassed = false;
         bool secondaryActivationPassed = false;
         bool primaryReacquirePassed = false;
+        bool summonHotKeyContractPassed = false;
+        bool summonHotKeyConflictVisible = false;
+        bool summonHotKeyReleased = false;
         try
         {
             string firstExecutable = Path.Combine(root, "jarvis-control-center.exe");
@@ -96,6 +102,40 @@ public static class DesktopPresenceProbe
             using ControlCenterSingleInstance reacquired =
                 ControlCenterSingleInstance.AcquireForScope(scope);
             primaryReacquirePassed = reacquired.IsPrimary;
+
+            MemoryDesktopHotKeyNative hotKeyNative = new();
+            using (DesktopSummonHotKey hotKey = new(hotKeyNative))
+            {
+                DesktopSummonHotKeyReceipt registered = hotKey.Register(42);
+                summonHotKeyContractPassed =
+                    registered.Result == "passed" &&
+                    registered.Registered &&
+                    registered.Chord == DesktopSummonHotKey.Chord &&
+                    hotKeyNative.WindowHandle == 42 &&
+                    hotKeyNative.Identifier != 0 &&
+                    hotKeyNative.Modifiers == 0x4003 &&
+                    hotKeyNative.VirtualKey == 0x4A &&
+                    DesktopSummonHotKey.IsSummonMessage(
+                        DesktopSummonHotKey.WindowsMessageId,
+                        hotKeyNative.Identifier);
+            }
+            summonHotKeyReleased = hotKeyNative.UnregisterCount == 1;
+
+            MemoryDesktopHotKeyNative conflictNative = new()
+            {
+                RegisterResult = false,
+                LastError = 1409,
+            };
+            using DesktopSummonHotKey conflicting = new(conflictNative);
+            DesktopSummonHotKeyReceipt conflict = conflicting.Register(84);
+            summonHotKeyConflictVisible =
+                conflict.Result == "unavailable" &&
+                !conflict.Registered &&
+                conflict.ConflictVisible &&
+                conflict.NativeError == 1409 &&
+                conflict.Failures.Contains(
+                    "summon-chord-already-registered",
+                    StringComparer.Ordinal);
         }
         catch (Exception exception)
         {
@@ -150,6 +190,18 @@ public static class DesktopPresenceProbe
         {
             failures.Add("primary-reacquire");
         }
+        if (!summonHotKeyContractPassed)
+        {
+            failures.Add("summon-hot-key-contract");
+        }
+        if (!summonHotKeyConflictVisible)
+        {
+            failures.Add("summon-hot-key-conflict");
+        }
+        if (!summonHotKeyReleased)
+        {
+            failures.Add("summon-hot-key-release");
+        }
 
         return new DesktopPresenceProbeReceipt(
             1,
@@ -163,6 +215,9 @@ public static class DesktopPresenceProbe
             singleInstanceAdmissionPassed,
             secondaryActivationPassed,
             primaryReacquirePassed,
+            summonHotKeyContractPassed,
+            summonHotKeyConflictVisible,
+            summonHotKeyReleased,
             ProductionStartupStateTouched: false,
             failures);
     }
@@ -189,5 +244,48 @@ public static class DesktopPresenceProbe
             value = null;
             DeleteCount++;
         }
+    }
+
+    private sealed class MemoryDesktopHotKeyNative :
+        DesktopSummonHotKey.IDesktopHotKeyNative
+    {
+        public bool RegisterResult { get; init; } = true;
+
+        public int LastError { get; init; }
+
+        public nint WindowHandle { get; private set; }
+
+        public nint Identifier { get; private set; }
+
+        public uint Modifiers { get; private set; }
+
+        public uint VirtualKey { get; private set; }
+
+        public int UnregisterCount { get; private set; }
+
+        public bool RegisterHotKey(
+            nint windowHandle,
+            int identifier,
+            uint modifiers,
+            uint virtualKey)
+        {
+            WindowHandle = windowHandle;
+            Identifier = identifier;
+            Modifiers = modifiers;
+            VirtualKey = virtualKey;
+            return RegisterResult;
+        }
+
+        public bool UnregisterHotKey(nint windowHandle, int identifier)
+        {
+            if (windowHandle == WindowHandle && identifier == Identifier)
+            {
+                UnregisterCount++;
+                return true;
+            }
+            return false;
+        }
+
+        public int GetLastError() => LastError;
     }
 }

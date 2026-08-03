@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -31,8 +32,16 @@ public partial class MainWindow : Window
     private Thickness conversationMarginBeforeImmersive;
     private bool immersiveMode;
     private bool shutdownInProgress;
+    private bool exitRequested;
     private bool closeAuthorized;
     private bool desktopPresenceBusy;
+    private bool desktopTrayAvailable = true;
+
+    public event EventHandler? DesktopHideRequested;
+
+    public event EventHandler? RuntimePhaseChanged;
+
+    public string DesktopRuntimePhaseLabel => conversation.PhaseLabel;
 
     public MainWindow()
         : this(ConversationSurfaceViewModel.CreateIdle())
@@ -56,6 +65,11 @@ public partial class MainWindow : Window
         clockTimer.Start();
         UpdateClock();
         UpdateConversationChrome();
+        if (conversation.Phase == ConversationRuntimePhase.Preview)
+        {
+            SummonHotKeyStatus.Text = UiText.Get(
+                "Loc.Presence.HotKeyPreview");
+        }
         Loaded += OnWindowLoaded;
         Closing += OnWindowClosing;
     }
@@ -129,6 +143,61 @@ public partial class MainWindow : Window
             desktopPresenceBusy = false;
             UpdateDesktopPresenceControls();
         }
+    }
+
+    public void RequestApplicationExit()
+    {
+        if (exitRequested)
+        {
+            return;
+        }
+        exitRequested = true;
+        Close();
+    }
+
+    public void SetDesktopSummonHotKeyReceipt(
+        DesktopSummonHotKeyReceipt receipt)
+    {
+        ArgumentNullException.ThrowIfNull(receipt);
+        SummonHotKeyStatus.Text = receipt.Registered
+            ? UiText.Format("Loc.Presence.HotKeyReady", receipt.Chord)
+            : UiText.Format("Loc.Presence.HotKeyUnavailable", receipt.Chord);
+        SummonHotKeyStatus.Foreground = receipt.Registered
+            ? (Brush)FindResource("CyanBrush")
+            : (Brush)FindResource("AmberBrush");
+        string helpText = receipt.Registered
+            ? UiText.Get("Loc.Presence.HotKeyReadyTooltip")
+            : UiText.Get(desktopTrayAvailable
+                ? "Loc.Presence.HotKeyUnavailableTooltip"
+                : "Loc.Presence.HotKeyUnavailableNoTrayTooltip");
+        SummonHotKeyStatus.ToolTip = helpText;
+        AutomationProperties.SetHelpText(
+            SummonHotKeyStatus,
+            helpText);
+    }
+
+    public void ReportDesktopPresenceUnavailable()
+    {
+        desktopTrayAvailable = false;
+        AutomationProperties.SetName(
+            CloseWindowButton,
+            UiText.Get("Loc.Window.CloseTaskbarAutomation"));
+        CloseWindowButton.ToolTip = UiText.Get(
+            "Loc.Window.CloseTaskbarTooltip");
+        SummonHotKeyDescription.Text = UiText.Get(
+            "Loc.Presence.DegradedDescription");
+        conversation.ReportUiError(
+            UiText.Get("Loc.Presence.TrayUnavailable"));
+    }
+
+    public void FocusConversationInput()
+    {
+        if (PromptInput.IsVisible && PromptInput.IsEnabled)
+        {
+            _ = PromptInput.Focus();
+            return;
+        }
+        _ = Focus();
     }
 
     private async void OnWindowLoaded(
@@ -280,6 +349,13 @@ public partial class MainWindow : Window
         RoutedEventArgs eventArgs)
     {
         Close();
+    }
+
+    private void ExitJarvisButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        RequestApplicationExit();
     }
 
     private async void SubmitButton_OnClick(
@@ -790,6 +866,10 @@ public partial class MainWindow : Window
         {
             UpdateDesktopPresenceControls();
         }
+        if (eventArgs.PropertyName == nameof(conversation.Phase))
+        {
+            RuntimePhaseChanged?.Invoke(this, EventArgs.Empty);
+        }
         if (eventArgs.PropertyName == nameof(conversation.Turns))
         {
             _ = Dispatcher.BeginInvoke(
@@ -866,7 +946,17 @@ public partial class MainWindow : Window
         object? sender,
         CancelEventArgs eventArgs)
     {
-        if (closeAuthorized || !conversation.HasOwnedRuntime)
+        if (closeAuthorized)
+        {
+            return;
+        }
+        if (!exitRequested)
+        {
+            eventArgs.Cancel = true;
+            DesktopHideRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+        if (!conversation.HasOwnedRuntime)
         {
             return;
         }

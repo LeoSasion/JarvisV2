@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -12,6 +13,7 @@ public partial class App : Application
 {
     private readonly IReadOnlyList<string> launchArguments;
     private readonly ControlCenterSingleInstance? singleInstance;
+    private DesktopPresenceCoordinator? desktopPresence;
     private int activationListenerStarted;
 
     public App()
@@ -40,9 +42,11 @@ public partial class App : Application
 
         if (arguments.Count == 0)
         {
-            MainWindow = new MainWindow(
+            MainWindow window = new(
                 ConversationSurfaceViewModel.CreateIdle());
-            MainWindow.Show();
+            MainWindow = window;
+            AttachDesktopPresence(window);
+            window.Show();
             StartActivationListener();
             return;
         }
@@ -53,6 +57,8 @@ public partial class App : Application
                 out int captureWidth,
                 out int captureHeight))
         {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
             MainWindow preview = new MainWindow(
                 ConversationSurfaceViewModel.CreatePreview())
             {
@@ -77,6 +83,8 @@ public partial class App : Application
                 out outputPath,
                 out string? previewWorkspace))
         {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
             DateTimeOffset previewTime = new(
                 2026,
                 8,
@@ -116,12 +124,23 @@ public partial class App : Application
                 ConversationSurfaceViewModel.CreateIdle())
             {
                 ShowActivated = !startMinimized,
-                WindowState = startMinimized
-                    ? WindowState.Minimized
-                    : WindowState.Normal,
+                ShowInTaskbar = !startMinimized,
+                WindowState = WindowState.Normal,
             };
             MainWindow = window;
+            AttachDesktopPresence(window);
             window.Show();
+            if (startMinimized)
+            {
+                if (desktopPresence?.CanHideToNotificationArea == true)
+                {
+                    desktopPresence.HideWindow();
+                }
+                else
+                {
+                    desktopPresence?.ShowWindow();
+                }
+            }
             StartActivationListener();
             await window.ResumeLatestSessionAsync();
             return;
@@ -134,6 +153,7 @@ public partial class App : Application
             MainWindow window = new(
                 ConversationSurfaceViewModel.Create(options));
             MainWindow = window;
+            AttachDesktopPresence(window);
             window.Show();
             StartActivationListener();
             await window.InitializeConversationAsync();
@@ -172,6 +192,11 @@ public partial class App : Application
 
     private void ActivateMainWindow()
     {
+        if (desktopPresence is not null)
+        {
+            desktopPresence.ShowWindow();
+            return;
+        }
         if (MainWindow is not Window window)
         {
             return;
@@ -186,6 +211,19 @@ public partial class App : Application
         }
         _ = window.Activate();
         window.Focus();
+    }
+
+    protected override void OnExit(ExitEventArgs eventArgs)
+    {
+        desktopPresence?.Dispose();
+        desktopPresence = null;
+        base.OnExit(eventArgs);
+    }
+
+    private void AttachDesktopPresence(MainWindow window)
+    {
+        desktopPresence?.Dispose();
+        desktopPresence = new DesktopPresenceCoordinator(window);
     }
 
     private static bool TryParseCapture(
@@ -403,13 +441,38 @@ public partial class App : Application
         try
         {
             preview.UpdateLayout();
+            Visual captureTarget = preview.Content as Visual ?? preview;
+            if (captureTarget is FrameworkElement surface)
+            {
+                Size targetSize = new(width, height);
+                surface.Measure(targetSize);
+                surface.Arrange(new Rect(targetSize));
+                surface.UpdateLayout();
+            }
             RenderTargetBitmap bitmap = new(
                 width,
                 height,
                 96,
                 96,
                 PixelFormats.Pbgra32);
-            bitmap.Render(preview);
+            DrawingVisual offscreen = new();
+            using (DrawingContext drawing = offscreen.RenderOpen())
+            {
+                VisualBrush surfaceBrush = new(captureTarget)
+                {
+                    Stretch = Stretch.Fill,
+                };
+                drawing.DrawRectangle(
+                    surfaceBrush,
+                    pen: null,
+                    new Rect(0, 0, width, height));
+            }
+            bitmap.Render(offscreen);
+            if (!HasUsefulVisualRange(bitmap))
+            {
+                throw new InvalidDataException(
+                    "The deterministic preview rendered a blank frame.");
+            }
 
             PngBitmapEncoder encoder = new();
             encoder.Frames.Add(BitmapFrame.Create(bitmap));
@@ -419,13 +482,51 @@ public partial class App : Application
                 FileAccess.Write,
                 FileShare.None);
             encoder.Save(output);
+            if (preview is MainWindow controlCenterPreview)
+            {
+                controlCenterPreview.RequestApplicationExit();
+                Shutdown(0);
+                return;
+            }
             preview.Close();
             Shutdown(0);
         }
         catch
         {
-            preview.Close();
+            if (preview is MainWindow controlCenterPreview)
+            {
+                controlCenterPreview.RequestApplicationExit();
+            }
+            else
+            {
+                preview.Close();
+            }
             Shutdown(3);
         }
+    }
+
+    private static bool HasUsefulVisualRange(BitmapSource bitmap)
+    {
+        int stride = checked(bitmap.PixelWidth * 4);
+        byte[] pixels = new byte[checked(stride * bitmap.PixelHeight)];
+        bitmap.CopyPixels(pixels, stride, 0);
+        byte darkest = byte.MaxValue;
+        byte brightest = byte.MinValue;
+        for (int index = 0; index < pixels.Length; index += 4)
+        {
+            if (pixels[index + 3] == 0)
+            {
+                continue;
+            }
+            byte localDarkest = Math.Min(
+                pixels[index],
+                Math.Min(pixels[index + 1], pixels[index + 2]));
+            byte localBrightest = Math.Max(
+                pixels[index],
+                Math.Max(pixels[index + 1], pixels[index + 2]));
+            darkest = Math.Min(darkest, localDarkest);
+            brightest = Math.Max(brightest, localBrightest);
+        }
+        return brightest >= 64 && brightest - darkest >= 32;
     }
 }

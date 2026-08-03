@@ -30,10 +30,11 @@ workspace and complete packaged/developer runtime before any broker or sidecar
 starts. The conversation checkpoint remains a separate CurrentUser-DPAPI store
 and is restored only by the admitted runtime.
 
-`--minimized` changes only initial presentation. It does not hide Jarvis from
-the taskbar, make it topmost, create a tray-only process or weaken orderly
-shutdown. If no recent workspace is available, the ordinary idle surface stays
-available with an explicit status message.
+`--minimized` creates the owned window and registers its desktop-presence
+boundary, then hides it from the taskbar behind one notification-area icon. It
+does not make Jarvis topmost, replace the Shell or weaken orderly shutdown. If
+no recent workspace is available, the same hidden instance remains summonable
+and opens the ordinary idle surface with an explicit status message.
 
 The desktop sidecar request/readiness window is bounded to 25 seconds (with a
 30-second admitted ceiling). This accounts for cold Pi dependency loading on a
@@ -51,17 +52,62 @@ isolated so deterministic visual QA can run while the product is open.
 The named event carries only foreground intent. It contains no prompt,
 workspace path, credential, proposal, approval or command payload.
 
+## Desktop summon and exit
+
+The primary Control Center registers `Ctrl+Alt+J` with `RegisterHotKey` against
+its one owned WPF window. `MOD_NOREPEAT` prevents a held chord from generating
+an activation storm. The chord and the notification-area icon only restore and
+foreground that same instance; neither mechanism carries model input or gains
+agent authority. If another application already owns the chord, Jarvis stays
+available from the notification area and shows the conflict in `WINDOWS
+PRESENCE` instead of replacing the other registration.
+
+The notification icon uses the same concentric cyan Jarvis signal as the
+Control Center header. Its native menu has exactly two actions: `OPEN JARVIS`
+and `EXIT JARVIS`. Closing the owned window hides it and preserves the admitted
+Pi runtime. Only the explicit exit action starts the existing orderly shutdown:
+reviewed iteration is suspended, submissions quiesce, the active turn is
+cancelled, DPAPI state is flushed, and the owned sidecar and broker are released.
+The global hot key is unregistered and the notification icon removed as the
+process exits.
+
+Notification-area integration is fail-soft. If Windows rejects icon or menu
+initialization, Jarvis keeps the same window visible on the taskbar, reports a
+localized actionable error, and refuses to hide behind a tray presence that was
+not created. The independent global chord still registers when Windows permits
+it.
+
 ## Verification
 
 `DesktopPresenceProbe` uses two in-memory startup values, temporary synthetic PE
 files and a random named-event scope. It proves enable, idempotence, moved-path
 visibility, disable, exact resume arguments, one-primary admission, secondary
-activation and clean reacquisition after disposal. The receipt fixes
-`ProductionStartupStateTouched=false`; the probe never reads or writes the real
-Run value.
+activation, clean reacquisition after disposal, the exact no-repeat
+`Ctrl+Alt+J` contract, visible error `1409` conflict handling and hot-key release.
+The receipt fixes `ProductionStartupStateTouched=false`; the probe never reads
+or writes the real Run value and uses a memory-backed hot-key adapter rather
+than changing the live desktop registration.
 
 Run it through:
 
 ```powershell
 pwsh -File .\scripts\Test-ControlCenter.ps1
 ```
+
+The bounded live Windows check launches one exact built Control Center, proves
+that the minimized launch owns `Ctrl+Alt+J`, posts the real `WM_HOTKEY` path,
+records foreground and keyboard-focus state (without treating a background
+runner's inability to acquire interactive input as product failure), checks
+close-to-hide and second-launch activation, invokes `EXIT JARVIS` through UI
+Automation, verifies summon restores the previous maximized state, and fails if
+forced cleanup was required:
+
+```powershell
+pwsh -File .\scripts\Test-DesktopPresenceLive.ps1 `
+  -ExecutablePath .\path\to\jarvis-control-center.exe `
+  -DotnetRoot .\path\to\developer-sdk
+```
+
+`DotnetRoot` is needed only for a framework-dependent developer build on a
+machine without a globally installed Windows Desktop runtime. The portable
+package is self-contained and omits it.

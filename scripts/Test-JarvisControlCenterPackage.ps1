@@ -175,6 +175,10 @@ if ($null -eq $receipt -or
         'jarvis-control-center.exe --resume-latest --minimized' -or
     $receipt.desktopSingleInstance -ne
         'current-user-session-named-auto-reset-activation' -or
+    $receipt.desktopSummon -ne
+        'notify-icon-plus-ctrl-alt-j-mod-norepeat' -or
+    $receipt.desktopCloseBehavior -ne
+        'close-hides-explicit-exit-quiesces-runtime' -or
     $receipt.desktopStartupAvailableToPi -or
     $receipt.piSidecarNetworkAllowed -or
     $receipt.piSidecarCredentialTransportAllowed -or

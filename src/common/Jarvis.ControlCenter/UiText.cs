@@ -32,7 +32,14 @@ public static class UiText
             ["Loc.Header.RuntimePath"] = "CONTROL CENTER / LOCAL RUNTIME",
             ["Loc.Header.ReviewGated"] = "REVIEW-GATED PI TOOLS",
             ["Loc.Window.MinimizeAutomation"] = "Minimize JarvisV2",
-            ["Loc.Window.CloseAutomation"] = "Close JarvisV2",
+            ["Loc.Window.CloseAutomation"] =
+                "Hide JarvisV2 in the notification area",
+            ["Loc.Window.CloseTooltip"] =
+                "Keep Jarvis running; summon it from the notification area or Ctrl+Alt+J",
+            ["Loc.Window.CloseTaskbarAutomation"] =
+                "Minimize JarvisV2 to the taskbar",
+            ["Loc.Window.CloseTaskbarTooltip"] =
+                "Keep Jarvis running and available from the taskbar",
             ["Loc.Immersive.EnterAutomation"] =
                 "Enter immersive conversation mode",
             ["Loc.Immersive.EnterTooltip"] = "Immersive mode (F11)",
@@ -119,7 +126,10 @@ public static class UiText
             ["Loc.Model.Configure"] = "CONFIGURE OPENAI",
             ["Loc.Shutdown.Label"] = "SAFE SHUTDOWN",
             ["Loc.Shutdown.Description"] =
-                "Closing this window suspends any reviewed policy, quiesces submissions, cancels an active turn, flushes DPAPI state, then releases the owned sidecar and broker.",
+                "Only Exit Jarvis performs an orderly shutdown: suspend reviewed policy, quiesce submissions, cancel the active turn, flush DPAPI state, then release the owned sidecar and broker. The window close control keeps Jarvis present.",
+            ["Loc.Shutdown.ExitAutomation"] =
+                "Exit JarvisV2 and release the owned Pi runtime",
+            ["Loc.Shutdown.Exit"] = "EXIT JARVIS",
             ["Loc.Footer.Runtime"] = "Pi desktop runtime",
             ["Loc.Footer.Safety"] =
                 "NO SHELL INJECTION / NO UNREVIEWED WRITES",
@@ -183,11 +193,29 @@ public static class UiText
             ["Loc.Presence.Disabled"] = "START WITH WINDOWS // OFF",
             ["Loc.Presence.Unknown"] = "START WITH WINDOWS // CHECKING",
             ["Loc.Presence.Description"] =
-                "After sign-in, resume the latest revalidated workspace in one minimized Control Center. The setting is current-user only and reversible.",
+                "After sign-in, resume the latest revalidated workspace as one hidden desktop presence. The setting is current-user only and reversible.",
             ["Loc.Presence.Enable"] = "ENABLE AT SIGN-IN",
             ["Loc.Presence.Disable"] = "DISABLE AT SIGN-IN",
             ["Loc.Presence.ToggleAutomation"] =
                 "Enable or disable JarvisV2 startup for the current Windows user",
+            ["Loc.Presence.HotKeyChecking"] = "SUMMON // CHECKING",
+            ["Loc.Presence.HotKeyReady"] = "SUMMON // {0} READY",
+            ["Loc.Presence.HotKeyUnavailable"] =
+                "SUMMON // {0} UNAVAILABLE",
+            ["Loc.Presence.HotKeyPreview"] =
+                "SUMMON // PREVIEW DOES NOT REGISTER",
+            ["Loc.Presence.HotKeyDescription"] =
+                "The global chord restores this same Control Center. Closing the window keeps the admitted runtime in the notification area.",
+            ["Loc.Presence.HotKeyReadyTooltip"] =
+                "Global summon is registered for this Windows session.",
+            ["Loc.Presence.HotKeyUnavailableTooltip"] =
+                "The global chord is unavailable. Use the notification-area icon to open Jarvis.",
+            ["Loc.Presence.HotKeyUnavailableNoTrayTooltip"] =
+                "The global chord and notification-area presence are unavailable. Jarvis remains available on the taskbar.",
+            ["Loc.Presence.TrayUnavailable"] =
+                "Notification-area presence is unavailable. Jarvis will stay on the taskbar; use this window to continue or exit.",
+            ["Loc.Presence.DegradedDescription"] =
+                "Notification-area presence is unavailable. Closing this window minimizes Jarvis to the taskbar; the global chord remains independent.",
             ["Loc.Presence.Resume"] = "RESUME LATEST",
             ["Loc.Presence.ResumeAutomation"] =
                 "Revalidate and resume the latest Jarvis workspace",
@@ -201,6 +229,9 @@ public static class UiText
                 "The Windows startup setting could not be inspected.",
             ["Loc.Presence.RecentInspectFailed"] =
                 "Recent work could not be inspected.",
+            ["Loc.Tray.Open"] = "OPEN JARVIS    Ctrl+Alt+J",
+            ["Loc.Tray.Exit"] = "EXIT JARVIS",
+            ["Loc.Tray.Tooltip"] = "JarvisV2 · {0} · {1}",
             ["Loc.Language.Section"] = "Display language",
             ["Loc.Language.Authority"] = "FOLLOWS WINDOWS",
             ["Loc.Language.Current"] = "CURRENT WINDOWS LANGUAGE",
@@ -301,7 +332,13 @@ public static class UiText
             ["Loc.Header.RuntimePath"] = "控制中心 / 本地运行时",
             ["Loc.Header.ReviewGated"] = "受审查保护的 PI 工具",
             ["Loc.Window.MinimizeAutomation"] = "最小化 JarvisV2",
-            ["Loc.Window.CloseAutomation"] = "关闭 JarvisV2",
+            ["Loc.Window.CloseAutomation"] = "将 JarvisV2 隐藏到通知区域",
+            ["Loc.Window.CloseTooltip"] =
+                "保持 Jarvis 运行；可从通知区域或按 Ctrl+Alt+J 召回",
+            ["Loc.Window.CloseTaskbarAutomation"] =
+                "将 JarvisV2 最小化到任务栏",
+            ["Loc.Window.CloseTaskbarTooltip"] =
+                "保持 Jarvis 运行并可从任务栏打开",
             ["Loc.Immersive.EnterAutomation"] = "进入沉浸式对话模式",
             ["Loc.Immersive.EnterTooltip"] = "沉浸模式（F11）",
             ["Loc.Immersive.ExitAutomation"] = "退出沉浸式对话模式",
@@ -379,7 +416,10 @@ public static class UiText
             ["Loc.Model.Configure"] = "配置 OPENAI",
             ["Loc.Shutdown.Label"] = "安全关闭",
             ["Loc.Shutdown.Description"] =
-                "关闭窗口会暂停受审查策略、停止新提交、取消活动回合、刷新 DPAPI 状态，然后释放自有 sidecar 和代理。",
+                "只有“退出 JARVIS”会执行有序关闭：暂停受审查策略、停止新提交、取消活动回合、刷新 DPAPI 状态，然后释放自有 sidecar 和代理。窗口关闭按钮会让 Jarvis 继续常驻。",
+            ["Loc.Shutdown.ExitAutomation"] =
+                "退出 JarvisV2 并释放自有 Pi 运行时",
+            ["Loc.Shutdown.Exit"] = "退出 JARVIS",
             ["Loc.Footer.Runtime"] = "Pi 桌面运行时",
             ["Loc.Footer.Safety"] = "不注入 SHELL / 不进行未经审查的写入",
             ["Loc.Runtime.Phase.NotStarted"] = "尚未启动",
@@ -436,11 +476,27 @@ public static class UiText
             ["Loc.Presence.Disabled"] = "随 WINDOWS 启动 // 关闭",
             ["Loc.Presence.Unknown"] = "随 WINDOWS 启动 // 正在检查",
             ["Loc.Presence.Description"] =
-                "登录后在一个最小化的控制中心中重新验证并继续最近工作区。设置仅属于当前用户，可随时撤销。",
+                "登录后重新验证并继续最近工作区，以一个隐藏的桌面常驻实例运行。设置仅属于当前用户，可随时撤销。",
             ["Loc.Presence.Enable"] = "登录时启动",
             ["Loc.Presence.Disable"] = "关闭登录时启动",
             ["Loc.Presence.ToggleAutomation"] =
                 "为当前 Windows 用户启用或停用 JarvisV2 登录启动",
+            ["Loc.Presence.HotKeyChecking"] = "召回 // 正在检查",
+            ["Loc.Presence.HotKeyReady"] = "召回 // {0} 可用",
+            ["Loc.Presence.HotKeyUnavailable"] = "召回 // {0} 不可用",
+            ["Loc.Presence.HotKeyPreview"] = "召回 // 预览不注册",
+            ["Loc.Presence.HotKeyDescription"] =
+                "全局快捷键会恢复同一个控制中心。关闭窗口后，已准入运行时会继续驻留在通知区域。",
+            ["Loc.Presence.HotKeyReadyTooltip"] =
+                "此 Windows 会话已注册全局召回快捷键。",
+            ["Loc.Presence.HotKeyUnavailableTooltip"] =
+                "全局快捷键不可用。请从通知区域图标打开 Jarvis。",
+            ["Loc.Presence.HotKeyUnavailableNoTrayTooltip"] =
+                "全局快捷键和通知区域常驻均不可用。Jarvis 仍可从任务栏打开。",
+            ["Loc.Presence.TrayUnavailable"] =
+                "通知区域常驻不可用。Jarvis 将保留在任务栏；请使用当前窗口继续工作或退出。",
+            ["Loc.Presence.DegradedDescription"] =
+                "通知区域常驻不可用。关闭窗口会将 Jarvis 最小化到任务栏；全局快捷键仍独立工作。",
             ["Loc.Presence.Resume"] = "继续最近工作",
             ["Loc.Presence.ResumeAutomation"] =
                 "重新验证并继续最近的 Jarvis 工作区",
@@ -452,6 +508,9 @@ public static class UiText
             ["Loc.Presence.InspectFailed"] =
                 "无法检查 Windows 启动设置。",
             ["Loc.Presence.RecentInspectFailed"] = "无法检查最近工作。",
+            ["Loc.Tray.Open"] = "打开 JARVIS    Ctrl+Alt+J",
+            ["Loc.Tray.Exit"] = "退出 JARVIS",
+            ["Loc.Tray.Tooltip"] = "JarvisV2 · {0} · {1}",
             ["Loc.Language.Section"] = "显示语言",
             ["Loc.Language.Authority"] = "跟随 WINDOWS",
             ["Loc.Language.Current"] = "当前 WINDOWS 语言",

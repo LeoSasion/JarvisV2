@@ -407,7 +407,9 @@
                             Click="MinimizeButton_OnClick"
                             Content="&#x2212;" />
                         <Button
+                            x:Name="CloseWindowButton"
                             AutomationProperties.Name="{DynamicResource Loc.Window.CloseAutomation}"
+                            ToolTip="{DynamicResource Loc.Window.CloseTooltip}"
                             Style="{StaticResource WindowButton}"
                             Click="CloseButton_OnClick"
                             Content="&#x00D7;" />
@@ -1127,6 +1129,7 @@
                                 Text="{DynamicResource Loc.Composer.Mode}" />
                             <TextBox
                                 x:Name="PromptInput"
+                                AutomationProperties.AutomationId="PromptInput"
                                 AutomationProperties.Name="{DynamicResource Loc.Composer.Automation}"
                                 AutomationProperties.HelpText="{DynamicResource Loc.Composer.Help}"
                                 Grid.Row="2"
@@ -1466,11 +1469,29 @@
                                     FontSize="10"
                                     Text="{DynamicResource Loc.Presence.Unknown}" />
                                 <TextBlock
+                                    x:Name="SummonHotKeyDescription"
                                     Margin="0,5,0,0"
                                     Foreground="{StaticResource TextMutedBrush}"
                                     FontSize="10"
                                     LineHeight="15"
                                     Text="{DynamicResource Loc.Presence.Description}"
+                                    TextWrapping="Wrap" />
+                                <TextBlock
+                                    x:Name="SummonHotKeyStatus"
+                                    Margin="0,11,0,0"
+                                    AutomationProperties.AutomationId="SummonHotKeyStatus"
+                                    AutomationProperties.LiveSetting="Polite"
+                                    Foreground="{StaticResource TextMutedBrush}"
+                                    FontFamily="Consolas"
+                                    FontSize="10"
+                                    Text="{DynamicResource Loc.Presence.HotKeyChecking}"
+                                    TextWrapping="Wrap" />
+                                <TextBlock
+                                    Margin="0,5,0,0"
+                                    Foreground="{StaticResource TextMutedBrush}"
+                                    FontSize="10"
+                                    LineHeight="15"
+                                    Text="{DynamicResource Loc.Presence.HotKeyDescription}"
                                     TextWrapping="Wrap" />
                                 <Button
                                     x:Name="StartupRegistrationButton"
@@ -1523,6 +1544,14 @@
                                         LineHeight="15"
                                         Text="{DynamicResource Loc.Shutdown.Description}"
                                         TextWrapping="Wrap" />
+                                    <Button
+                                        x:Name="ExitJarvisButton"
+                                        Margin="0,12,0,0"
+                                        AutomationProperties.AutomationId="ExitJarvisButton"
+                                        AutomationProperties.Name="{DynamicResource Loc.Shutdown.ExitAutomation}"
+                                        Style="{StaticResource ActionButton}"
+                                        Click="ExitJarvisButton_OnClick"
+                                        Content="{DynamicResource Loc.Shutdown.Exit}" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>

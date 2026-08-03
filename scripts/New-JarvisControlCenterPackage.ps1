@@ -275,7 +275,8 @@ $readme = @'
 JARVIS2 PORTABLE CONTROL CENTER
 
 This folder is a self-contained Windows x64 desktop build. It does not install,
-activate, inject, restart Explorer, or modify the registry.
+activate, inject, restart Explorer, or silently modify the registry. Current-user
+sign-in startup remains an explicit reversible owner action in the Control Center.
 The fixed repository gate uses the bundled runtime\git\cmd\git.exe directly;
 it does not invoke cmd, PowerShell, or a workspace-authored script.
 
@@ -296,9 +297,12 @@ Resume latest admitted work:
 
 Windows presence:
   Use WINDOWS PRESENCE in the runtime inspector to enable current-user sign-in
-  startup. Jarvis registers one exact REG_SZ command and starts minimized. A
-  second launch activates the existing Control Center instead of starting a
-  second Pi runtime. The setting is explicit, current-user only and reversible.
+  startup. Jarvis registers one exact REG_SZ command and starts hidden behind
+  one notification-area identity. Press Ctrl+Alt+J or use OPEN JARVIS from that
+  icon to restore the same Control Center. Closing the window keeps Pi present;
+  EXIT JARVIS performs orderly runtime shutdown. A second launch activates the
+  existing instance instead of starting another Pi runtime. Startup is explicit,
+  current-user only and reversible.
 
 The API key is protected under the current Windows user with DPAPI. It is not
 stored in this package and is never sent to the offline Pi sidecar. Pi tools are
@@ -377,6 +381,10 @@ $receipt = [ordered]@{
         'jarvis-control-center.exe --resume-latest --minimized'
     desktopSingleInstance =
         'current-user-session-named-auto-reset-activation'
+    desktopSummon =
+        'notify-icon-plus-ctrl-alt-j-mod-norepeat'
+    desktopCloseBehavior =
+        'close-hides-explicit-exit-quiesces-runtime'
     desktopStartupAvailableToPi = $false
     credentialStore =
         'desktop-current-user-dpapi-atomic-no-sidecar-transport'

@@ -40,4 +40,7 @@ Control Center. It admits one process per current user/session through a named
 auto-reset event and can register one exact `REG_SZ` command under the current
 user's Run key only after an explicit desktop action. The command resumes the
 latest catalog hint through normal workspace/runtime admission and starts
-minimized. It never invokes a shell or grants Pi access to the registration.
+hidden behind one authored notification-area identity. The primary instance
+owns a no-repeat `Ctrl+Alt+J` global summon chord; closing hides the window while
+the explicit Exit action performs orderly Pi shutdown. It never invokes a shell
+or grants Pi access to the registration, summon or exit boundaries.
