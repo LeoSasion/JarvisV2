@@ -666,17 +666,24 @@
                                 Padding="14,6,10,10"
                                 VerticalScrollBarVisibility="Auto"
                                 HorizontalScrollBarVisibility="Disabled">
-                                <ItemsControl ItemsSource="{Binding Turns}">
+                                <ItemsControl
+                                    x:Name="TranscriptTurns"
+                                    ItemsSource="{Binding Turns}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border
+                                            <local:AttentionTargetBorder
                                                 Margin="0,8,0,0"
                                                 Padding="13"
+                                                AutomationProperties.AutomationId="AttentionTurnTarget"
+                                                AutomationProperties.Name="{DynamicResource Loc.Attention.Route.TurnAutomation}"
+                                                AutomationProperties.HelpText="{DynamicResource Loc.Attention.Route.TurnHelp}"
                                                 Background="{StaticResource SurfaceBrush}"
                                                 BorderThickness="1"
-                                                CornerRadius="2">
-                                                <Border.Style>
-                                                    <Style TargetType="Border">
+                                                CornerRadius="2"
+                                                Focusable="True"
+                                                KeyboardNavigation.IsTabStop="False">
+                                                <local:AttentionTargetBorder.Style>
+                                                    <Style TargetType="local:AttentionTargetBorder">
                                                         <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding Status}" Value="Running">
@@ -689,9 +696,13 @@
                                                             <DataTrigger Binding="{Binding Status}" Value="Aborted">
                                                                 <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
                                                             </DataTrigger>
+                                                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                                                <Setter Property="BorderBrush" Value="{StaticResource CyanBrush}" />
+                                                                <Setter Property="BorderThickness" Value="2" />
+                                                            </Trigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </Border.Style>
+                                                </local:AttentionTargetBorder.Style>
                                                 <Grid>
                                                     <Grid.RowDefinitions>
                                                         <RowDefinition Height="Auto" />
@@ -768,13 +779,18 @@
                                                     <ItemsControl Grid.Row="3" Margin="0,8,0,0" ItemsSource="{Binding WorkspaceEdits}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
-                                                                <Border
+                                                                <local:AttentionTargetBorder
                                                                     Margin="0,0,0,8"
                                                                     Padding="12"
+                                                                    AutomationProperties.AutomationId="AttentionProposalTarget"
+                                                                    AutomationProperties.Name="{DynamicResource Loc.Attention.Route.ProposalAutomation}"
+                                                                    AutomationProperties.HelpText="{DynamicResource Loc.Attention.Route.ProposalHelp}"
                                                                     BorderThickness="1"
-                                                                    CornerRadius="2">
-                                                                    <Border.Style>
-                                                                        <Style TargetType="Border">
+                                                                    CornerRadius="2"
+                                                                    Focusable="True"
+                                                                    KeyboardNavigation.IsTabStop="False">
+                                                                    <local:AttentionTargetBorder.Style>
+                                                                        <Style TargetType="local:AttentionTargetBorder">
                                                                             <Setter Property="Background" Value="{StaticResource AmberDimBrush}" />
                                                                             <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
                                                                             <Style.Triggers>
@@ -798,9 +814,13 @@
                                                                                     <Setter Property="Background" Value="{StaticResource RedDimBrush}" />
                                                                                     <Setter Property="BorderBrush" Value="{StaticResource RedBrush}" />
                                                                                 </DataTrigger>
+                                                                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                                                                    <Setter Property="BorderBrush" Value="{StaticResource CyanBrush}" />
+                                                                                    <Setter Property="BorderThickness" Value="2" />
+                                                                                </Trigger>
                                                                             </Style.Triggers>
                                                                         </Style>
-                                                                    </Border.Style>
+                                                                    </local:AttentionTargetBorder.Style>
                                                                     <StackPanel>
                                                                         <Grid>
                                                                             <Grid.ColumnDefinitions>
@@ -1031,7 +1051,7 @@
                                                                             </StackPanel>
                                                                         </Grid>
                                                                     </StackPanel>
-                                                                </Border>
+                                                                </local:AttentionTargetBorder>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
@@ -1054,7 +1074,7 @@
                                                         <TextBlock Grid.Column="2" Margin="12,0,0,0" Style="{StaticResource MonoText}" Text="{Binding Status}" />
                                                     </Grid>
                                                 </Grid>
-                                            </Border>
+                                            </local:AttentionTargetBorder>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
@@ -1150,6 +1170,7 @@
                                 TextWrapping="Wrap" />
                             <StackPanel Grid.Row="2" Grid.Column="1">
                                 <Button
+                                    AutomationProperties.AutomationId="SubmitButton"
                                     AutomationProperties.Name="{DynamicResource Loc.Composer.SendAutomation}"
                                     Style="{StaticResource PrimaryActionButton}"
                                     IsEnabled="{Binding CanSubmit}"
@@ -1173,7 +1194,10 @@
                     Background="#081014"
                     BorderBrush="{StaticResource LineBrush}"
                     BorderThickness="1,0,0,0">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ScrollViewer
+                        x:Name="RuntimeInspectorScroll"
+                        VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="18,18,18,16">
                             <TextBlock Style="{StaticResource SectionLabel}" Text="{DynamicResource Loc.Inspector.Section}" />
                             <TextBlock Margin="0,8,0,0" FontSize="19" FontWeight="Light" Text="{DynamicResource Loc.Inspector.Title}" />
@@ -1279,12 +1303,15 @@
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Style="{StaticResource MonoText}" Text="{DynamicResource Loc.Review.OwnerPolicy}" />
                                             <TextBlock
+                                                x:Name="ReviewedIterationStatusText"
                                                 Grid.Column="1"
                                                 AutomationProperties.LiveSetting="Polite"
                                                 Margin="10,0,0,0"
                                                 FontFamily="Consolas"
                                                 FontSize="10"
                                                 FontWeight="SemiBold"
+                                                Focusable="True"
+                                                KeyboardNavigation.IsTabStop="False"
                                                 Text="{Binding ReviewedIterationStatusLabel}">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
@@ -1371,6 +1398,7 @@
                                             Click="StartReviewedIterationButton_OnClick"
                                             Content="{DynamicResource Loc.Review.Start}" />
                                         <Button
+                                            x:Name="RunTrustedValidationButton"
                                             Margin="0,8,0,0"
                                             AutomationProperties.Name="{DynamicResource Loc.Review.RunTestsAutomation}"
                                             IsEnabled="{Binding CanRunTrustedValidation}"
@@ -1398,6 +1426,7 @@
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
                                             <Button
+                                                x:Name="ResumeReviewedIterationButton"
                                                 AutomationProperties.Name="{DynamicResource Loc.Review.RearmAutomation}"
                                                 Style="{StaticResource ActionButton}"
                                                 IsEnabled="{Binding CanResumeReviewedIteration}"
@@ -1501,6 +1530,8 @@
                                     Foreground="{StaticResource CyanBrush}"
                                     FontFamily="Consolas"
                                     FontSize="10"
+                                    Focusable="True"
+                                    KeyboardNavigation.IsTabStop="False"
                                     Text="{DynamicResource Loc.Attention.Ready}"
                                     TextWrapping="Wrap" />
                                 <TextBlock
@@ -1520,6 +1551,24 @@
                                     FontSize="10"
                                     Text="{DynamicResource Loc.Attention.Delivery.None}"
                                     TextWrapping="Wrap" />
+                                <Button
+                                    x:Name="OpenAttentionButton"
+                                    Margin="0,10,0,0"
+                                    AutomationProperties.AutomationId="OpenAttentionButton"
+                                    AutomationProperties.HelpText="{DynamicResource Loc.Attention.Route.Help}"
+                                    Style="{StaticResource ActionButton}"
+                                    Visibility="Collapsed"
+                                    Click="OpenAttentionButton_OnClick"
+                                    Content="{DynamicResource Loc.Attention.Route.Completed}" />
+                                <TextBlock
+                                    x:Name="OpenAttentionDescription"
+                                    Margin="0,5,0,0"
+                                    Foreground="{StaticResource TextMutedBrush}"
+                                    FontSize="10"
+                                    LineHeight="15"
+                                    Text="{DynamicResource Loc.Attention.Route.Description}"
+                                    TextWrapping="Wrap"
+                                    Visibility="Collapsed" />
                                 <Button
                                     x:Name="StartupRegistrationButton"
                                     Margin="0,12,0,0"

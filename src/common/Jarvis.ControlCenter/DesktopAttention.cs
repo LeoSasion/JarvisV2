@@ -13,7 +13,9 @@ internal enum DesktopAttentionKind
 
 internal sealed record DesktopAttentionSnapshot(
     DesktopAttentionKind Kind,
-    string SignalKey);
+    string SignalKey,
+    string? TargetTurnId = null,
+    string? TargetProposalId = null);
 
 internal sealed record DesktopAttentionInput
 {
@@ -22,8 +24,10 @@ internal sealed record DesktopAttentionInput
     public string? LatestTurnId { get; init; }
     public PiAgentConversationTurnStatus? LatestTurnStatus { get; init; }
     public string? PendingProposalId { get; init; }
+    public string? PendingEditTurnId { get; init; }
     public PiAgentWorkspaceEditStatus? PendingEditStatus { get; init; }
     public string? LatestProposalId { get; init; }
+    public string? LatestEditTurnId { get; init; }
     public PiAgentWorkspaceEditStatus? LatestEditStatus { get; init; }
     public string? IterationId { get; init; }
     public string? IterationTurnId { get; init; }
@@ -40,7 +44,8 @@ internal static class DesktopAttentionModel
         {
             return new(
                 DesktopAttentionKind.Faulted,
-                "runtime:faulted");
+                "runtime:faulted",
+                input.LatestTurnId);
         }
         bool iterationOwnsActiveTurn =
             input.ActiveTurnId is not null &&
@@ -72,7 +77,8 @@ internal static class DesktopAttentionModel
                 DesktopAttentionKind.Working,
                 iterationWorking
                     ? CreateKey("iteration", input.IterationId)
-                    : CreateKey("turn", input.ActiveTurnId));
+                    : CreateKey("turn", input.ActiveTurnId),
+                input.ActiveTurnId);
         }
         if (input.LatestEditStatus is
             PiAgentWorkspaceEditStatus.Drifted or
@@ -80,7 +86,9 @@ internal static class DesktopAttentionModel
         {
             return new(
                 DesktopAttentionKind.Faulted,
-                CreateKey("proposal", input.LatestProposalId));
+                CreateKey("proposal", input.LatestProposalId),
+                input.LatestEditTurnId,
+                input.LatestProposalId);
         }
         if (
             iterationRelevant &&
@@ -90,13 +98,15 @@ internal static class DesktopAttentionModel
         {
             return new(
                 DesktopAttentionKind.Faulted,
-                CreateKey("iteration", input.IterationId));
+                CreateKey("iteration", input.IterationId),
+                input.IterationTurnId);
         }
         if (input.LatestTurnStatus == PiAgentConversationTurnStatus.Failed)
         {
             return new(
                 DesktopAttentionKind.Faulted,
-                CreateKey("turn", input.LatestTurnId));
+                CreateKey("turn", input.LatestTurnId),
+                input.LatestTurnId);
         }
         if (
             input.PendingEditStatus == PiAgentWorkspaceEditStatus.Pending ||
@@ -115,9 +125,16 @@ internal static class DesktopAttentionModel
             string? identity = category == "proposal"
                 ? input.PendingProposalId
                 : input.IterationId;
+            string? targetTurnId = category == "proposal"
+                ? input.PendingEditTurnId
+                : input.IterationTurnId;
             return new(
                 DesktopAttentionKind.OwnerActionRequired,
-                CreateKey(category, identity));
+                CreateKey(category, identity),
+                targetTurnId,
+                category == "proposal"
+                    ? input.PendingProposalId
+                    : null);
         }
         if (
             input.LatestEditStatus is
@@ -126,7 +143,9 @@ internal static class DesktopAttentionModel
         {
             return new(
                 DesktopAttentionKind.Working,
-                CreateKey("proposal", input.LatestProposalId));
+                CreateKey("proposal", input.LatestProposalId),
+                input.LatestEditTurnId,
+                input.LatestProposalId);
         }
         if (
             iterationRelevant &&
@@ -134,7 +153,8 @@ internal static class DesktopAttentionModel
         {
             return new(
                 DesktopAttentionKind.Completed,
-                CreateKey("iteration", input.IterationId));
+                CreateKey("iteration", input.IterationId),
+                input.IterationTurnId);
         }
         if (
             input.RuntimePhase is
@@ -149,13 +169,15 @@ internal static class DesktopAttentionModel
                 DesktopAttentionKind.Working,
                 input.IterationId is null
                     ? $"runtime:{input.RuntimePhase}"
-                    : CreateKey("iteration", input.IterationId));
+                    : CreateKey("iteration", input.IterationId),
+                input.IterationTurnId);
         }
         if (input.LatestTurnStatus == PiAgentConversationTurnStatus.Completed)
         {
             return new(
                 DesktopAttentionKind.Completed,
-                CreateKey("turn", input.LatestTurnId));
+                CreateKey("turn", input.LatestTurnId),
+                input.LatestTurnId);
         }
         return new(
             DesktopAttentionKind.Ready,
@@ -223,6 +245,7 @@ public sealed record DesktopAttentionProbeReceipt(
     bool DriftedEditSignalPassed,
     bool FailedEditSignalPassed,
     bool FaultSignalPassed,
+    bool AttentionTargetsPassed,
     bool DuplicateSignalSuppressed,
     bool ContentFreeSignalKeysPassed,
     IReadOnlyList<string> Failures);
@@ -262,6 +285,7 @@ public static class DesktopAttentionProbe
             {
                 RuntimePhase = ConversationRuntimePhase.Ready,
                 PendingProposalId = "proposal-a",
+                PendingEditTurnId = "turn-proposal",
                 PendingEditStatus = PiAgentWorkspaceEditStatus.Pending,
             });
         DesktopAttentionSnapshot trustedValidation =
@@ -270,6 +294,7 @@ public static class DesktopAttentionProbe
                 {
                     RuntimePhase = ConversationRuntimePhase.Ready,
                     IterationId = "iteration-a",
+                    IterationTurnId = "turn-reviewed",
                     IterationStatus = PiAgentReviewedIterationStatus
                         .AwaitingTrustedValidation,
                 });
@@ -338,8 +363,10 @@ public static class DesktopAttentionProbe
                 {
                     RuntimePhase = ConversationRuntimePhase.Ready,
                     PendingProposalId = "proposal-edit",
+                    PendingEditTurnId = "turn-edit",
                     PendingEditStatus = PiAgentWorkspaceEditStatus.Pending,
                     LatestProposalId = "proposal-edit",
+                    LatestEditTurnId = "turn-edit",
                     LatestEditStatus = PiAgentWorkspaceEditStatus.Pending,
                 });
         DesktopAttentionSnapshot driftedEdit =
@@ -348,6 +375,7 @@ public static class DesktopAttentionProbe
                 {
                     RuntimePhase = ConversationRuntimePhase.Ready,
                     LatestProposalId = "proposal-edit",
+                    LatestEditTurnId = "turn-edit",
                     LatestEditStatus = PiAgentWorkspaceEditStatus.Drifted,
                 });
         DesktopAttentionSnapshot failedEdit =
@@ -356,6 +384,7 @@ public static class DesktopAttentionProbe
                 {
                     RuntimePhase = ConversationRuntimePhase.Ready,
                     LatestProposalId = "proposal-edit",
+                    LatestEditTurnId = "turn-edit",
                     LatestEditStatus = PiAgentWorkspaceEditStatus.Failed,
                 });
 
@@ -395,6 +424,19 @@ public static class DesktopAttentionProbe
         bool faultSignalPassed =
             fault.Kind == DesktopAttentionKind.Faulted &&
             DesktopAttentionModel.ShouldSignal(active, fault);
+        bool attentionTargetsPassed =
+            active.TargetTurnId == "turn-a" &&
+            completed.TargetTurnId == "turn-a" &&
+            completed.TargetProposalId is null &&
+            owner.TargetTurnId == "turn-proposal" &&
+            owner.TargetProposalId == "proposal-a" &&
+            trustedValidation.TargetTurnId == "turn-reviewed" &&
+            trustedValidation.TargetProposalId is null &&
+            reviewedCompleted.TargetTurnId == "turn-reviewed" &&
+            driftedEdit.TargetTurnId == "turn-edit" &&
+            driftedEdit.TargetProposalId == "proposal-edit" &&
+            failedEdit.TargetTurnId == "turn-edit" &&
+            failedEdit.TargetProposalId == "proposal-edit";
         bool driftedEditSignalPassed =
             driftedEdit.Kind == DesktopAttentionKind.Faulted &&
             DesktopAttentionModel.ShouldSignal(pendingEdit, driftedEdit);
@@ -458,6 +500,10 @@ public static class DesktopAttentionProbe
         AddFailure(failures, faultSignalPassed, "fault-signal-failed");
         AddFailure(
             failures,
+            attentionTargetsPassed,
+            "attention-target-selection-failed");
+        AddFailure(
+            failures,
             duplicateSignalSuppressed,
             "duplicate-signal-was-not-suppressed");
         AddFailure(
@@ -480,6 +526,7 @@ public static class DesktopAttentionProbe
             driftedEditSignalPassed,
             failedEditSignalPassed,
             faultSignalPassed,
+            attentionTargetsPassed,
             duplicateSignalSuppressed,
             contentFreeSignalKeysPassed,
             failures);

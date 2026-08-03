@@ -51,6 +51,10 @@ $desktopSummonHotKeyPath = Join-Path $desktopPresenceRoot (
 $desktopPresenceCoordinatorPath = Join-Path $sourceRoot (
     'DesktopPresenceCoordinator.cs')
 $desktopAttentionPath = Join-Path $sourceRoot 'DesktopAttention.cs'
+$attentionTargetBorderPath = Join-Path $sourceRoot (
+    'AttentionTargetBorder.cs')
+$desktopAttentionLiveProbePath = Join-Path $root (
+    'scripts\Test-DesktopAttentionRoutingLive.ps1')
 $desktopPresenceProbePath = Join-Path $desktopPresenceRoot (
     'DesktopPresenceProbe.cs')
 $jarvisPresenceIconPath = Join-Path $desktopPresenceRoot (
@@ -110,6 +114,10 @@ $desktopSummonHotKeyText = [IO.File]::ReadAllText(
 $desktopPresenceCoordinatorText = [IO.File]::ReadAllText(
     $desktopPresenceCoordinatorPath)
 $desktopAttentionText = [IO.File]::ReadAllText($desktopAttentionPath)
+$attentionTargetBorderText = [IO.File]::ReadAllText(
+    $attentionTargetBorderPath)
+$desktopAttentionLiveProbeText = [IO.File]::ReadAllText(
+    $desktopAttentionLiveProbePath)
 $desktopPresenceProbeText = [IO.File]::ReadAllText(
     $desktopPresenceProbePath)
 $jarvisPresenceIconText = [IO.File]::ReadAllText(
@@ -316,17 +324,54 @@ Add-Check `
 $desktopAttentionStaticBoundary =
     $mainWindowText.Contains('x:Name="AttentionStatus"') -and
     $mainWindowText.Contains('x:Name="AttentionDeliveryStatus"') -and
+    $mainWindowText.Contains('x:Name="OpenAttentionButton"') -and
+    $mainWindowText.Contains('x:Name="TranscriptTurns"') -and
+    $mainWindowText.Contains(
+        'AutomationProperties.AutomationId="AttentionTurnTarget"') -and
+    $mainWindowText.Contains(
+        'AutomationProperties.AutomationId="AttentionProposalTarget"') -and
+    $mainWindowText.Contains(
+        'AutomationProperties.AutomationId="SubmitButton"') -and
+    $mainWindowText.Contains('local:AttentionTargetBorder') -and
+    $mainWindowText.Contains(
+        '<Trigger Property="IsKeyboardFocused" Value="True">') -and
     $mainWindowText.Contains(
         'AutomationProperties.LiveSetting="Polite"') -and
     $mainWindowCodeText.Contains('DesktopAttentionChanged') -and
     $mainWindowCodeText.Contains('UpdateDesktopAttentionChrome') -and
+    $mainWindowCodeText.Contains('FocusAttentionTarget') -and
+    $mainWindowCodeText.Contains('FindFocusableDataContextElement') -and
+    $mainWindowCodeText.Contains('ExitImmersiveMode(restoreFocus: false)') -and
+    [regex]::Matches(
+        $mainWindowCodeText,
+        'return FocusInspectorTarget\(AttentionStatus\);').Count -ge 2 -and
     $desktopAttentionText.Contains('DesktopAttentionModel.ShouldSignal') -and
+    $desktopAttentionText.Contains('TargetProposalId') -and
     $desktopAttentionText.Contains('StartupReplaySuppressed') -and
+    $attentionTargetBorderText.Contains(
+        'new AttentionTargetAutomationPeer(this)') -and
+    $attentionTargetBorderText.Contains(
+        'IsControlElementCore() => true') -and
+    $attentionTargetBorderText.Contains(
+        'IsKeyboardFocusableCore() => true') -and
     $desktopPresenceCoordinatorText.Contains('!window.IsVisible') -and
     $desktopPresenceCoordinatorText.Contains('ShowBalloonTip') -and
     $desktopPresenceCoordinatorText.Contains('BalloonTipClicked') -and
+    $desktopPresenceCoordinatorText.Contains('lastDeliveredAttention') -and
+    $desktopPresenceCoordinatorText.Contains(
+        'ShowAttention(lastDeliveredAttention ?? attentionSnapshot)') -and
     $desktopPresenceCoordinatorText.Contains(
         'DesktopAttentionModel.ShouldSignal') -and
+    $desktopPresenceCoordinatorText.Contains(
+        'Loc.Tray.OpenAttention') -and
+    $desktopAttentionLiveProbeText.Contains(
+        "'AttentionTurnTarget'") -and
+    $desktopAttentionLiveProbeText.Contains(
+        "'attention-routing-screenshot-was-blank'") -and
+    $desktopAttentionLiveProbeText.Contains(
+        "'live-attention-routing-'") -and
+    $desktopAttentionLiveProbeText.Contains(
+        'Remove-Item -LiteralPath $checkpointPath -Force') -and
     $jarvisPresenceIconText.Contains('JarvisPresenceSignal.Working') -and
     $jarvisPresenceIconText.Contains(
         'JarvisPresenceSignal.OwnerActionRequired') -and
@@ -344,7 +389,9 @@ Add-Check `
         'Attention must derive from real Pi runtime state, expose a polite ' +
         'accessible inspector status, update shape-distinct tray icons, and ' +
         'emit generic completion, owner-action or fail-closed notifications ' +
-        'only while the owned window is hidden.')
+        'only while the owned window is hidden; notification and inspector ' +
+        'actions must route focus to the exact retained turn, proposal or ' +
+        'reviewed-iteration control without invoking an approval.')
 
 Add-Check `
     -Name 'surface.retained-handoff-vfx-and-neural-scrollbar' `
@@ -884,6 +931,7 @@ $desktopAttentionProbePassed =
     $desktopAttentionProbe.DriftedEditSignalPassed -and
     $desktopAttentionProbe.FailedEditSignalPassed -and
     $desktopAttentionProbe.FaultSignalPassed -and
+    $desktopAttentionProbe.AttentionTargetsPassed -and
     $desktopAttentionProbe.DuplicateSignalSuppressed -and
     $desktopAttentionProbe.ContentFreeSignalKeysPassed -and
     @($desktopAttentionProbe.Failures).Count -eq 0

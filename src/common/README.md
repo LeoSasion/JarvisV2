@@ -45,5 +45,7 @@ owns a no-repeat `Ctrl+Alt+J` global summon chord; closing hides the window whil
 the explicit Exit action performs orderly Pi shutdown. While hidden, a
 shape-distinct attention beacon can submit generic completion, owner-action or
 fail-closed notifications to Windows without prompt, path or model content;
-clicking one restores the same instance. It never invokes a shell or grants Pi
-access to the registration, summon, notification or exit boundaries.
+clicking one restores the same instance and focuses the retained turn or neutral
+proposal card. The conditional tray action and inspector action use the same
+content-free router; they never invoke approval. It never invokes a shell or
+grants Pi access to the registration, summon, notification or exit boundaries.

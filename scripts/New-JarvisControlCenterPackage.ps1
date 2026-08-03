@@ -150,8 +150,8 @@ $gitRuntimeFiles = @(
     $gitRuntimeEntries |
         Where-Object { -not $_.PSIsContainer } |
         Sort-Object FullName)
-$gitRuntimeBytes = ($gitRuntimeFiles |
-    Measure-Object -Property Length -Sum).Sum
+[long]$gitRuntimeBytes = [long](($gitRuntimeFiles |
+    Measure-Object -Property Length -Sum).Sum)
 if ($gitRuntimeFiles.Count -lt 3 -or
     $gitRuntimeFiles.Count -gt 2048 -or
     $gitRuntimeBytes -le 0 -or
@@ -306,7 +306,9 @@ Windows presence:
   identity changes shape for working, owner-action and fail-closed states and
   may show a native Windows notification for completion, owner action or a
   safe stop. Those signals are generic: prompts, paths and model text are never
-  included. Clicking the signal restores this same Control Center.
+  included. Clicking the signal, OPEN CURRENT ATTENTION in the tray, or the
+  contextual inspector action restores this same Control Center and focuses the
+  retained turn or neutral proposal card. Attention routing never approves.
 
 The API key is protected under the current Windows user with DPAPI. It is not
 stored in this package and is never sent to the offline Pi sidecar. Pi tools are
@@ -389,6 +391,8 @@ $receipt = [ordered]@{
         'notify-icon-plus-ctrl-alt-j-mod-norepeat'
     desktopAttention =
         'hidden-only-content-free-complete-owner-fault-signals'
+    desktopAttentionRouting =
+        'notification-tray-inspector-to-exact-retained-target-no-action'
     desktopCloseBehavior =
         'close-hides-explicit-exit-quiesces-runtime'
     desktopStartupAvailableToPi = $false

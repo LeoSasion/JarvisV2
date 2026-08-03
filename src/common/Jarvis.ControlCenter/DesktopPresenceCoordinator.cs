@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using Jarvis.DesktopPresence;
 using Forms = System.Windows.Forms;
 
@@ -12,9 +13,11 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
     private readonly DesktopSummonHotKey summonHotKey = new();
     private readonly Forms.NotifyIcon? trayIcon;
     private readonly Forms.ContextMenuStrip? trayMenu;
+    private readonly Forms.ToolStripMenuItem? attentionMenuItem;
     private readonly IReadOnlyList<Icon> ownedIcons = [];
     private HwndSource? windowSource;
     private DesktopAttentionSnapshot attentionSnapshot;
+    private DesktopAttentionSnapshot? lastDeliveredAttention;
     private WindowState restoreState = WindowState.Normal;
     private int disposed;
 
@@ -34,12 +37,19 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
             }
             menu = new Forms.ContextMenuStrip();
             menu.ShowImageMargin = false;
+            Forms.ToolStripMenuItem attentionItem = new(
+                UiText.Get("Loc.Tray.OpenAttention"));
+            attentionItem.Visible = IsActionableAttention(
+                attentionSnapshot.Kind);
+            attentionItem.Click += (_, _) =>
+                ShowAttention(attentionSnapshot);
             Forms.ToolStripMenuItem openItem = new(
                 UiText.Get("Loc.Tray.Open"));
             openItem.Click += (_, _) => ShowWindow();
             Forms.ToolStripMenuItem exitItem = new(
                 UiText.Get("Loc.Tray.Exit"));
             exitItem.Click += (_, _) => window.RequestApplicationExit();
+            _ = menu.Items.Add(attentionItem);
             _ = menu.Items.Add(openItem);
             _ = menu.Items.Add(new Forms.ToolStripSeparator());
             _ = menu.Items.Add(exitItem);
@@ -52,6 +62,7 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
             notifyIcon.DoubleClick += OnTrayIconDoubleClick;
             notifyIcon.BalloonTipClicked += OnBalloonTipClicked;
             ownedIcons = icons;
+            attentionMenuItem = attentionItem;
             trayMenu = menu;
             trayIcon = notifyIcon;
         }
@@ -104,7 +115,27 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
         window.Hide();
     }
 
-    public void ShowWindow()
+    public void ShowWindow() => RestoreWindow(focusConversation: true);
+
+    private void ShowAttention(DesktopAttentionSnapshot attention)
+    {
+        if (Volatile.Read(ref disposed) != 0)
+        {
+            return;
+        }
+        RestoreWindow(focusConversation: false);
+        _ = window.Dispatcher.BeginInvoke(
+            DispatcherPriority.Input,
+            new Action(() =>
+            {
+                if (!window.FocusAttentionTarget(attention))
+                {
+                    window.FocusConversationInput();
+                }
+            }));
+    }
+
+    private void RestoreWindow(bool focusConversation)
     {
         if (Volatile.Read(ref disposed) != 0)
         {
@@ -125,7 +156,10 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
         {
             _ = DesktopSummonHotKey.TrySetForegroundWindow(handle);
         }
-        window.FocusConversationInput();
+        if (focusConversation)
+        {
+            window.FocusConversationInput();
+        }
     }
 
     public void Dispose()
@@ -204,7 +238,7 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
             !window.IsVisible &&
             DesktopAttentionModel.ShouldSignal(previous, attentionSnapshot))
         {
-            ShowAttentionSignal(attentionSnapshot.Kind);
+            ShowAttentionSignal(attentionSnapshot);
         }
     }
 
@@ -220,7 +254,7 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
         ShowWindow();
 
     private void OnBalloonTipClicked(object? sender, EventArgs eventArgs) =>
-        ShowWindow();
+        ShowAttention(lastDeliveredAttention ?? attentionSnapshot);
 
     private void OnWindowClosed(object? sender, EventArgs eventArgs) =>
         Dispose();
@@ -265,6 +299,11 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
                 ownedIcons,
                 attentionSnapshot.Kind);
             trayIcon.Text = CreateTrayText();
+            if (attentionMenuItem is not null)
+            {
+                attentionMenuItem.Visible = IsActionableAttention(
+                    attentionSnapshot.Kind);
+            }
         }
         catch (Exception exception) when (IsRecoverableIntegrationFailure(exception))
         {
@@ -272,14 +311,14 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
         }
     }
 
-    private void ShowAttentionSignal(DesktopAttentionKind kind)
+    private void ShowAttentionSignal(DesktopAttentionSnapshot attention)
     {
         if (trayIcon is null)
         {
             return;
         }
         (string titleKey, string bodyKey, Forms.ToolTipIcon icon) =
-            kind switch
+            attention.Kind switch
             {
                 DesktopAttentionKind.Completed =>
                     (
@@ -306,7 +345,8 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
                 UiText.Get(titleKey),
                 UiText.Get(bodyKey),
                 icon);
-            window.SetDesktopAttentionDeliveryReceipt(kind);
+            lastDeliveredAttention = attention;
+            window.SetDesktopAttentionDeliveryReceipt(attention.Kind);
         }
         catch (Exception exception) when (IsRecoverableIntegrationFailure(exception))
         {
@@ -343,6 +383,13 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
                 "Loc.Attention.Tray.Faulted",
             _ => "Loc.Attention.Tray.Ready",
         });
+
+    private static bool IsActionableAttention(
+        DesktopAttentionKind kind) =>
+        kind is
+            DesktopAttentionKind.Completed or
+            DesktopAttentionKind.OwnerActionRequired or
+            DesktopAttentionKind.Faulted;
 
     private static bool IsRecoverableIntegrationFailure(Exception exception) =>
         exception is not OutOfMemoryException and

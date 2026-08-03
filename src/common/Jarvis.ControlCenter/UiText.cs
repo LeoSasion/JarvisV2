@@ -268,7 +268,23 @@ public static class UiText
                 "Jarvis stopped safely",
             ["Loc.Attention.Notification.FaultedBody"] =
                 "Open the Control Center to inspect the fail-closed status.",
+            ["Loc.Attention.Route.Completed"] = "OPEN RESULT",
+            ["Loc.Attention.Route.Owner"] = "REVIEW DECISION",
+            ["Loc.Attention.Route.Faulted"] = "INSPECT SAFE STOP",
+            ["Loc.Attention.Route.Help"] =
+                "Moves keyboard focus to the current attention target without invoking an action.",
+            ["Loc.Attention.Route.Description"] =
+                "Routes to the current turn or proposal. It never approves an action.",
+            ["Loc.Attention.Route.TurnAutomation"] =
+                "Attention target conversation turn",
+            ["Loc.Attention.Route.TurnHelp"] =
+                "The conversation turn associated with the current Jarvis attention state.",
+            ["Loc.Attention.Route.ProposalAutomation"] =
+                "Attention target workspace proposal",
+            ["Loc.Attention.Route.ProposalHelp"] =
+                "Review this proposal before choosing reject or approve once.",
             ["Loc.Tray.Open"] = "OPEN JARVIS    Ctrl+Alt+J",
+            ["Loc.Tray.OpenAttention"] = "OPEN CURRENT ATTENTION",
             ["Loc.Tray.Exit"] = "EXIT JARVIS",
             ["Loc.Tray.Tooltip"] = "JarvisV2 · {0} · {1}",
             ["Loc.Language.Section"] = "Display language",
@@ -582,7 +598,23 @@ public static class UiText
                 "Jarvis 已安全停止",
             ["Loc.Attention.Notification.FaultedBody"] =
                 "打开控制中心，检查安全关闭状态。",
+            ["Loc.Attention.Route.Completed"] = "打开结果",
+            ["Loc.Attention.Route.Owner"] = "审查决定",
+            ["Loc.Attention.Route.Faulted"] = "检查安全停止",
+            ["Loc.Attention.Route.Help"] =
+                "将键盘焦点移动到当前注意目标，不会执行任何操作。",
+            ["Loc.Attention.Route.Description"] =
+                "定位当前回合或提案，绝不会自动批准操作。",
+            ["Loc.Attention.Route.TurnAutomation"] =
+                "注意目标对话回合",
+            ["Loc.Attention.Route.TurnHelp"] =
+                "与当前 Jarvis 注意状态关联的对话回合。",
+            ["Loc.Attention.Route.ProposalAutomation"] =
+                "注意目标工作区提案",
+            ["Loc.Attention.Route.ProposalHelp"] =
+                "在选择拒绝或批准一次之前审查此提案。",
             ["Loc.Tray.Open"] = "打开 JARVIS    Ctrl+Alt+J",
+            ["Loc.Tray.OpenAttention"] = "打开当前注意目标",
             ["Loc.Tray.Exit"] = "退出 JARVIS",
             ["Loc.Tray.Tooltip"] = "JarvisV2 · {0} · {1}",
             ["Loc.Language.Section"] = "显示语言",

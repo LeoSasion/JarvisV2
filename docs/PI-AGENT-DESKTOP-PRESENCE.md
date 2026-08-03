@@ -63,8 +63,9 @@ available from the notification area and shows the conflict in `WINDOWS
 PRESENCE` instead of replacing the other registration.
 
 The notification icon uses the same concentric cyan Jarvis signal as the
-Control Center header. Its native menu has exactly two actions: `OPEN JARVIS`
-and `EXIT JARVIS`. Closing the owned window hides it and preserves the admitted
+Control Center header. Its native menu always has `OPEN JARVIS` and `EXIT
+JARVIS`; while an actionable attention state exists, `OPEN CURRENT ATTENTION`
+appears above them. Closing the owned window hides it and preserves the admitted
 Pi runtime. Only the explicit exit action starts the existing orderly shutdown:
 reviewed iteration is suspended, submissions quiesce, the active turn is
 cancelled, DPAPI state is flushed, and the owned sidecar and broker are released.
@@ -91,14 +92,32 @@ necessary, or a fail-closed stop occurs. Repeated states are deduplicated and a
 completed turn restored from disk is not replayed at startup. The notification
 contains only a generic localized title and sentence; prompts, model output,
 workspace paths, file names and proposal contents never enter the tray signal.
-Clicking it restores the same owned Control Center and returns focus to the
-conversation input.
+Clicking it restores the same owned Control Center and routes focus to the
+retained work described below.
 
 The runtime inspector exposes the current attention state and the last hidden
 signal as polite UI Automation live regions. Windows remains the authority for
 whether a native balloon is visually presented, so Focus Assist or notification
 policy can suppress pixels even after Jarvis successfully submits the signal.
 This does not grant Pi any notification, foreground or process capability.
+
+### Attention router
+
+The native notification click, the conditional tray action and the runtime
+inspector's contextual action all resolve the attention snapshot back to the
+currently retained desktop objects. A completed or failed turn focuses its
+conversation card. A pending workspace proposal focuses the neutral proposal
+card before its decision controls; routing never invokes approve or reject. A
+reviewed-iteration owner stop focuses the enabled trusted-validation or resume
+control when one exists, otherwise its status. If an older notification refers
+to an object that retention has already removed, Jarvis focuses the inspector's
+current attention state instead of guessing.
+
+The retained notification snapshot stores internal turn/proposal identifiers
+only. It does not copy prompts, model output, file paths or proposal text. The
+focus targets expose generic localized UI Automation names and a visible cyan
+focus border. Routing from immersive conversation mode exits immersive mode
+without restoring its old focus afterward, so the resolved target keeps focus.
 
 ## Verification
 
@@ -109,8 +128,9 @@ activation, clean reacquisition after disposal, the exact no-repeat
 `Ctrl+Alt+J` contract, visible error `1409` conflict handling and hot-key release.
 It also creates and disposes all shape-distinct attention icons. A separate
 `DesktopAttentionProbe` proves ready/working/completed, owner-action and fault
-selection, matching completion delivery, duplicate suppression, restored-turn
-startup suppression and content-free signal keys.
+selection, exact retained turn/proposal target selection, matching completion
+delivery, duplicate suppression, restored-turn startup suppression and
+content-free signal keys.
 The receipt fixes `ProductionStartupStateTouched=false`; the probe never reads
 or writes the real Run value and uses a memory-backed hot-key adapter rather
 than changing the live desktop registration.
@@ -139,3 +159,22 @@ pwsh -File .\scripts\Test-DesktopPresenceLive.ps1 `
 `DotnetRoot` is needed only for a framework-dependent developer build on a
 machine without a globally installed Windows Desktop runtime. The portable
 package is self-contained and omits it.
+
+The attention-router live check starts one fresh local-diagnostic conversation,
+submits a real read-only Pi turn through UI Automation, waits for `OPEN RESULT`,
+invokes it, and verifies that Windows reports keyboard focus on the generic
+`AttentionTurnTarget` rather than an action control or prompt-derived name. It
+then exits normally and removes only the exact synthetic workspace and its
+workspace-bound DPAPI checkpoint:
+
+```powershell
+pwsh -File .\scripts\Test-DesktopAttentionRoutingLive.ps1 `
+  -ExecutablePath .\path\to\jarvis-control-center.exe `
+  -DotnetRoot .\path\to\developer-sdk
+```
+
+Developer builds may additionally supply the reviewed `NodePath` and
+`SidecarPath` pair. Portable packages resolve both from their hash-bound layout.
+Native notification pixels and delivery still belong to Windows, so this probe
+validates the shared routing action and exact focus result; it does not claim
+that Focus Assist displayed or clicked a balloon.

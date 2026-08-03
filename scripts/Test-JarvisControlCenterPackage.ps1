@@ -50,6 +50,14 @@ if (-not (Test-Path -LiteralPath $package -PathType Container)) {
     throw 'PackagePath must identify an existing package directory.'
 }
 $receiptPath = Join-Path $package 'package-receipt.json'
+$receiptJson = if (Test-Path -LiteralPath $receiptPath -PathType Leaf) {
+    [IO.File]::ReadAllText($receiptPath)
+} else {
+    ''
+}
+$gitRuntimeBytesJsonInteger = [regex]::IsMatch(
+    $receiptJson,
+    '"gitRuntimeBytes"\s*:\s*[0-9]+\s*[,}]')
 $expectedCriticalPaths = @(
     'jarvis-control-center.exe',
     'jarvis-control-center.dll',
@@ -179,6 +187,8 @@ if ($null -eq $receipt -or
         'notify-icon-plus-ctrl-alt-j-mod-norepeat' -or
     $receipt.desktopAttention -ne
         'hidden-only-content-free-complete-owner-fault-signals' -or
+    $receipt.desktopAttentionRouting -ne
+        'notification-tray-inspector-to-exact-retained-target-no-action' -or
     $receipt.desktopCloseBehavior -ne
         'close-hides-explicit-exit-quiesces-runtime' -or
     $receipt.desktopStartupAvailableToPi -or
@@ -193,6 +203,7 @@ if ($null -eq $receipt -or
     $duplicateCriticalPathCount -ne 0 -or
     $receipt.gitRuntimeFileCount -ne $actualGitFiles.Count -or
     $receipt.gitRuntimeBytes -ne $actualGitBytes -or
+    -not $gitRuntimeBytesJsonInteger -or
     ($receiptGitPaths -join '|') -ne ($actualGitPaths -join '|') -or
     (@($receipt.portableNodePackages | ForEach-Object name) -join '|') -ne
         ($expectedPortablePackages -join '|') -or

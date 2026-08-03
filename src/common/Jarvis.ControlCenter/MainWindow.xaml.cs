@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Jarvis.DesktopPresence;
+using Jarvis.PiAgentHost;
 
 namespace Jarvis.ControlCenter;
 
@@ -208,6 +209,125 @@ public partial class MainWindow : Window
         _ = Focus();
     }
 
+    internal bool FocusAttentionTarget(
+        DesktopAttentionSnapshot attention)
+    {
+        ArgumentNullException.ThrowIfNull(attention);
+        if (attention.TargetProposalId is string proposalId)
+        {
+            PiAgentConversationTurnSnapshot? proposalTurn =
+                FindAttentionTurn(attention.TargetTurnId) ??
+                conversation.Turns.FirstOrDefault(turn =>
+                    turn.WorkspaceEdits.Any(edit => string.Equals(
+                        edit.ProposalId,
+                        proposalId,
+                        StringComparison.Ordinal)));
+            PiAgentWorkspaceEditSnapshot? proposal =
+                proposalTurn?.WorkspaceEdits.FirstOrDefault(edit =>
+                    string.Equals(
+                        edit.ProposalId,
+                        proposalId,
+                        StringComparison.Ordinal));
+            if (
+                proposalTurn is not null &&
+                proposal is not null &&
+                FocusTranscriptTarget(proposalTurn, proposal))
+            {
+                return true;
+            }
+            return FocusInspectorTarget(AttentionStatus);
+        }
+        if (attention.Kind == DesktopAttentionKind.OwnerActionRequired)
+        {
+            FrameworkElement iterationTarget =
+                conversation.CanRunTrustedValidation
+                    ? RunTrustedValidationButton
+                    : conversation.CanResumeReviewedIteration
+                        ? ResumeReviewedIterationButton
+                        : ReviewedIterationStatusText;
+            return FocusInspectorTarget(iterationTarget);
+        }
+        PiAgentConversationTurnSnapshot? targetTurn =
+            FindAttentionTurn(attention.TargetTurnId);
+        if (
+            targetTurn is not null &&
+            FocusTranscriptTarget(targetTurn, targetTurn))
+        {
+            return true;
+        }
+        return FocusInspectorTarget(AttentionStatus);
+    }
+
+    private PiAgentConversationTurnSnapshot? FindAttentionTurn(
+        string? turnId) =>
+        turnId is null
+            ? null
+            : conversation.Turns.FirstOrDefault(turn => string.Equals(
+                turn.TurnId,
+                turnId,
+                StringComparison.Ordinal));
+
+    private bool FocusTranscriptTarget(
+        PiAgentConversationTurnSnapshot turn,
+        object target)
+    {
+        TranscriptTurns.UpdateLayout();
+        DependencyObject? container =
+            TranscriptTurns.ItemContainerGenerator.ContainerFromItem(turn);
+        if (container is null)
+        {
+            return false;
+        }
+        FrameworkElement? element =
+            FindFocusableDataContextElement(container, target);
+        if (element is null)
+        {
+            return false;
+        }
+        element.BringIntoView();
+        TranscriptScroll.UpdateLayout();
+        return element.Focus();
+    }
+
+    private bool FocusInspectorTarget(FrameworkElement element)
+    {
+        if (immersiveMode)
+        {
+            ExitImmersiveMode(restoreFocus: false);
+        }
+        element.BringIntoView();
+        RuntimeInspectorScroll.UpdateLayout();
+        return element.Focus();
+    }
+
+    private static FrameworkElement? FindFocusableDataContextElement(
+        DependencyObject root,
+        object target)
+    {
+        if (
+            root is FrameworkElement
+            {
+                Focusable: true,
+                DataContext: object dataContext,
+            } element &&
+            ReferenceEquals(dataContext, target))
+        {
+            return element;
+        }
+        int childCount = VisualTreeHelper.GetChildrenCount(root);
+        for (int index = 0; index < childCount; index++)
+        {
+            FrameworkElement? match = FindFocusableDataContextElement(
+                VisualTreeHelper.GetChild(root, index),
+                target);
+            if (match is not null)
+            {
+                return match;
+            }
+        }
+        return null;
+    }
+
     internal void SetDesktopAttentionDeliveryReceipt(
         DesktopAttentionKind kind)
     {
@@ -344,7 +464,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ExitImmersiveMode()
+    private void ExitImmersiveMode(bool restoreFocus = true)
     {
         if (!immersiveMode)
         {
@@ -367,6 +487,10 @@ public partial class MainWindow : Window
 
         IInputElement? elementToRestore = focusBeforeImmersive;
         focusBeforeImmersive = null;
+        if (!restoreFocus)
+        {
+            return;
+        }
         _ = Dispatcher.BeginInvoke(
             DispatcherPriority.Input,
             new Action(() =>
@@ -604,6 +728,16 @@ public partial class MainWindow : Window
         {
             desktopPresenceBusy = false;
             UpdateDesktopPresenceControls();
+        }
+    }
+
+    private void OpenAttentionButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        if (!FocusAttentionTarget(desktopAttentionSnapshot))
+        {
+            FocusConversationInput();
         }
     }
 
@@ -997,6 +1131,42 @@ public partial class MainWindow : Window
         string helpText = UiText.Get("Loc.Attention.Description");
         AttentionStatus.ToolTip = helpText;
         AutomationProperties.SetHelpText(AttentionStatus, helpText);
+
+        bool actionable =
+            conversation.Phase != ConversationRuntimePhase.Preview &&
+            desktopAttentionSnapshot.Kind is
+                DesktopAttentionKind.Completed or
+                DesktopAttentionKind.OwnerActionRequired or
+                DesktopAttentionKind.Faulted;
+        OpenAttentionButton.Visibility = actionable
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        OpenAttentionDescription.Visibility = OpenAttentionButton.Visibility;
+        if (!actionable)
+        {
+            return;
+        }
+        string routeKey = desktopAttentionSnapshot.Kind switch
+        {
+            DesktopAttentionKind.OwnerActionRequired =>
+                "Loc.Attention.Route.Owner",
+            DesktopAttentionKind.Faulted =>
+                "Loc.Attention.Route.Faulted",
+            _ => "Loc.Attention.Route.Completed",
+        };
+        string routeLabel = UiText.Get(routeKey);
+        OpenAttentionButton.Content = routeLabel;
+        AutomationProperties.SetName(OpenAttentionButton, routeLabel);
+        Brush routeBrush = desktopAttentionSnapshot.Kind switch
+        {
+            DesktopAttentionKind.OwnerActionRequired =>
+                (Brush)FindResource("AmberBrush"),
+            DesktopAttentionKind.Faulted =>
+                (Brush)FindResource("RedBrush"),
+            _ => (Brush)FindResource("CyanBrush"),
+        };
+        OpenAttentionButton.BorderBrush = routeBrush;
+        OpenAttentionButton.Foreground = routeBrush;
     }
 
     private void SetStageState(

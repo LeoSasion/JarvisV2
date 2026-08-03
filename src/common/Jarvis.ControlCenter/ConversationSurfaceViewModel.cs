@@ -174,6 +174,15 @@ public sealed class ConversationSurfaceViewModel :
                 snapshot.Turns.LastOrDefault();
             PiAgentWorkspaceEditSnapshot? pendingEdit =
                 PendingWorkspaceEdit;
+            PiAgentConversationTurnSnapshot? pendingEditTurn =
+                pendingEdit is null
+                    ? null
+                    : snapshot.Turns.SingleOrDefault(turn =>
+                        turn.WorkspaceEdits.Any(edit =>
+                            string.Equals(
+                                edit.ProposalId,
+                                pendingEdit.ProposalId,
+                                StringComparison.Ordinal)));
             PiAgentWorkspaceEditSnapshot? latestEdit =
                 latestTurn?.WorkspaceEdits.LastOrDefault();
             string? iterationTurnId =
@@ -201,8 +210,12 @@ public sealed class ConversationSurfaceViewModel :
                     LatestTurnId = latestTurn?.TurnId,
                     LatestTurnStatus = latestTurn?.Status,
                     PendingProposalId = pendingEdit?.ProposalId,
+                    PendingEditTurnId = pendingEditTurn?.TurnId,
                     PendingEditStatus = pendingEdit?.Status,
                     LatestProposalId = latestEdit?.ProposalId,
+                    LatestEditTurnId = latestEdit is null
+                        ? null
+                        : latestTurn?.TurnId,
                     LatestEditStatus = latestEdit?.Status,
                     IterationId = reviewedIterationSnapshot?.IterationId,
                     IterationTurnId = iterationTurnId,
