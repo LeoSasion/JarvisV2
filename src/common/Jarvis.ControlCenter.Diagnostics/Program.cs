@@ -55,6 +55,12 @@ bool desktopPresenceProbe =
         args[0],
         "--desktop-presence-probe",
         StringComparison.Ordinal);
+bool desktopAttentionProbe =
+    args.Length == 1 &&
+    string.Equals(
+        args[0],
+        "--desktop-attention-probe",
+        StringComparison.Ordinal);
 if (
     !providerProbe &&
     !bootstrapProbe &&
@@ -63,7 +69,8 @@ if (
     !recentSessionStoreProbe &&
     !handoffVfxProbe &&
     !uiLanguageProbe &&
-    !desktopPresenceProbe)
+    !desktopPresenceProbe &&
+    !desktopAttentionProbe)
 {
     Console.Error.WriteLine(
         "Usage: <--provider-probe | --bootstrap-probe | " +
@@ -73,12 +80,15 @@ if (
         "--handoff-vfx-probe " +
         "--ui-language-probe " +
         "--desktop-presence-probe " +
+        "--desktop-attention-probe " +
         "--workspace <absolute-workspace>>");
     return 2;
 }
 
 object receipt = providerProbe
     ? await LocalDiagnosticProviderProbe.RunAsync()
+    : desktopAttentionProbe
+        ? DesktopAttentionProbe.Run()
     : desktopPresenceProbe
         ? await DesktopPresenceProbe.RunAsync()
     : uiLanguageProbe

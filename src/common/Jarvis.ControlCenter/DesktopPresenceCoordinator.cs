@@ -12,20 +12,26 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
     private readonly DesktopSummonHotKey summonHotKey = new();
     private readonly Forms.NotifyIcon? trayIcon;
     private readonly Forms.ContextMenuStrip? trayMenu;
-    private readonly Icon? ownedIcon;
+    private readonly IReadOnlyList<Icon> ownedIcons = [];
     private HwndSource? windowSource;
+    private DesktopAttentionSnapshot attentionSnapshot;
     private WindowState restoreState = WindowState.Normal;
     private int disposed;
 
     public DesktopPresenceCoordinator(MainWindow window)
     {
         this.window = window ?? throw new ArgumentNullException(nameof(window));
-        Icon? icon = null;
+        attentionSnapshot = window.DesktopAttention;
+        List<Icon> icons = [];
         Forms.ContextMenuStrip? menu = null;
         Forms.NotifyIcon? notifyIcon = null;
         try
         {
-            icon = JarvisPresenceIcon.Create();
+            foreach (JarvisPresenceSignal signal in
+                Enum.GetValues<JarvisPresenceSignal>())
+            {
+                icons.Add(JarvisPresenceIcon.Create(signal));
+            }
             menu = new Forms.ContextMenuStrip();
             menu.ShowImageMargin = false;
             Forms.ToolStripMenuItem openItem = new(
@@ -40,11 +46,12 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
 
             notifyIcon = new Forms.NotifyIcon();
             notifyIcon.ContextMenuStrip = menu;
-            notifyIcon.Icon = icon;
+            notifyIcon.Icon = GetPresenceIcon(icons, attentionSnapshot.Kind);
             notifyIcon.Text = CreateTrayText();
             notifyIcon.Visible = true;
             notifyIcon.DoubleClick += OnTrayIconDoubleClick;
-            ownedIcon = icon;
+            notifyIcon.BalloonTipClicked += OnBalloonTipClicked;
+            ownedIcons = icons;
             trayMenu = menu;
             trayIcon = notifyIcon;
         }
@@ -56,12 +63,16 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
                 notifyIcon.Dispose();
             }
             menu?.Dispose();
-            icon?.Dispose();
+            foreach (Icon createdIcon in icons)
+            {
+                createdIcon.Dispose();
+            }
             window.ReportDesktopPresenceUnavailable();
         }
         window.SourceInitialized += OnWindowSourceInitialized;
         window.DesktopHideRequested += OnDesktopHideRequested;
         window.RuntimePhaseChanged += OnRuntimePhaseChanged;
+        window.DesktopAttentionChanged += OnDesktopAttentionChanged;
         window.StateChanged += OnWindowStateChanged;
         window.Closed += OnWindowClosed;
     }
@@ -126,6 +137,7 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
         window.SourceInitialized -= OnWindowSourceInitialized;
         window.DesktopHideRequested -= OnDesktopHideRequested;
         window.RuntimePhaseChanged -= OnRuntimePhaseChanged;
+        window.DesktopAttentionChanged -= OnDesktopAttentionChanged;
         window.StateChanged -= OnWindowStateChanged;
         window.Closed -= OnWindowClosed;
         if (windowSource is not null)
@@ -137,11 +149,15 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
         if (trayIcon is not null)
         {
             trayIcon.DoubleClick -= OnTrayIconDoubleClick;
+            trayIcon.BalloonTipClicked -= OnBalloonTipClicked;
             trayIcon.Visible = false;
             trayIcon.Dispose();
         }
         trayMenu?.Dispose();
-        ownedIcon?.Dispose();
+        foreach (Icon icon in ownedIcons)
+        {
+            icon.Dispose();
+        }
     }
 
     private void OnWindowSourceInitialized(object? sender, EventArgs eventArgs)
@@ -177,6 +193,21 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
     private void OnRuntimePhaseChanged(object? sender, EventArgs eventArgs) =>
         UpdateTrayText();
 
+    private void OnDesktopAttentionChanged(
+        object? sender,
+        EventArgs eventArgs)
+    {
+        DesktopAttentionSnapshot previous = attentionSnapshot;
+        attentionSnapshot = window.DesktopAttention;
+        UpdateTrayState();
+        if (
+            !window.IsVisible &&
+            DesktopAttentionModel.ShouldSignal(previous, attentionSnapshot))
+        {
+            ShowAttentionSignal(attentionSnapshot.Kind);
+        }
+    }
+
     private void OnWindowStateChanged(object? sender, EventArgs eventArgs)
     {
         if (window.WindowState != WindowState.Minimized)
@@ -188,6 +219,9 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
     private void OnTrayIconDoubleClick(object? sender, EventArgs eventArgs) =>
         ShowWindow();
 
+    private void OnBalloonTipClicked(object? sender, EventArgs eventArgs) =>
+        ShowWindow();
+
     private void OnWindowClosed(object? sender, EventArgs eventArgs) =>
         Dispose();
 
@@ -196,7 +230,7 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
         const int maximumNotifyIconTextLength = 63;
         string text = UiText.Format(
             "Loc.Tray.Tooltip",
-            window.DesktopRuntimePhaseLabel,
+            GetTrayAttentionLabel(attentionSnapshot.Kind),
             DesktopSummonHotKey.Chord);
         return text.Length <= maximumNotifyIconTextLength
             ? text
@@ -205,11 +239,110 @@ internal sealed class DesktopPresenceCoordinator : IDisposable
 
     private void UpdateTrayText()
     {
-        if (trayIcon is not null)
+        if (trayIcon is null)
+        {
+            return;
+        }
+        try
         {
             trayIcon.Text = CreateTrayText();
         }
+        catch (Exception exception) when (IsRecoverableIntegrationFailure(exception))
+        {
+            window.SetDesktopAttentionDeliveryUnavailable();
+        }
     }
+
+    private void UpdateTrayState()
+    {
+        if (trayIcon is null)
+        {
+            return;
+        }
+        try
+        {
+            trayIcon.Icon = GetPresenceIcon(
+                ownedIcons,
+                attentionSnapshot.Kind);
+            trayIcon.Text = CreateTrayText();
+        }
+        catch (Exception exception) when (IsRecoverableIntegrationFailure(exception))
+        {
+            window.SetDesktopAttentionDeliveryUnavailable();
+        }
+    }
+
+    private void ShowAttentionSignal(DesktopAttentionKind kind)
+    {
+        if (trayIcon is null)
+        {
+            return;
+        }
+        (string titleKey, string bodyKey, Forms.ToolTipIcon icon) =
+            kind switch
+            {
+                DesktopAttentionKind.Completed =>
+                    (
+                        "Loc.Attention.Notification.CompletedTitle",
+                        "Loc.Attention.Notification.CompletedBody",
+                        Forms.ToolTipIcon.Info),
+                DesktopAttentionKind.OwnerActionRequired =>
+                    (
+                        "Loc.Attention.Notification.OwnerTitle",
+                        "Loc.Attention.Notification.OwnerBody",
+                        Forms.ToolTipIcon.Warning),
+                DesktopAttentionKind.Faulted =>
+                    (
+                        "Loc.Attention.Notification.FaultedTitle",
+                        "Loc.Attention.Notification.FaultedBody",
+                        Forms.ToolTipIcon.Error),
+                _ => throw new InvalidOperationException(
+                    "The attention state does not own a desktop signal."),
+            };
+        try
+        {
+            trayIcon.ShowBalloonTip(
+                5000,
+                UiText.Get(titleKey),
+                UiText.Get(bodyKey),
+                icon);
+            window.SetDesktopAttentionDeliveryReceipt(kind);
+        }
+        catch (Exception exception) when (IsRecoverableIntegrationFailure(exception))
+        {
+            window.SetDesktopAttentionDeliveryUnavailable();
+        }
+    }
+
+    private static Icon GetPresenceIcon(
+        IReadOnlyList<Icon> icons,
+        DesktopAttentionKind kind)
+    {
+        JarvisPresenceSignal signal = kind switch
+        {
+            DesktopAttentionKind.Working => JarvisPresenceSignal.Working,
+            DesktopAttentionKind.OwnerActionRequired =>
+                JarvisPresenceSignal.OwnerActionRequired,
+            DesktopAttentionKind.Faulted => JarvisPresenceSignal.Faulted,
+            _ => JarvisPresenceSignal.Ready,
+        };
+        return icons[(int)signal];
+    }
+
+    private static string GetTrayAttentionLabel(
+        DesktopAttentionKind kind) =>
+        UiText.Get(kind switch
+        {
+            DesktopAttentionKind.Working =>
+                "Loc.Attention.Tray.Working",
+            DesktopAttentionKind.Completed =>
+                "Loc.Attention.Tray.Completed",
+            DesktopAttentionKind.OwnerActionRequired =>
+                "Loc.Attention.Tray.Owner",
+            DesktopAttentionKind.Faulted =>
+                "Loc.Attention.Tray.Faulted",
+            _ => "Loc.Attention.Tray.Ready",
+        });
 
     private static bool IsRecoverableIntegrationFailure(Exception exception) =>
         exception is not OutOfMemoryException and

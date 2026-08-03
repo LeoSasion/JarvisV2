@@ -77,6 +77,29 @@ localized actionable error, and refuses to hide behind a tray presence that was
 not created. The independent global chord still registers when Windows permits
 it.
 
+## Attention beacon
+
+The notification-area identity also carries the smallest useful Pi state while
+the Control Center is hidden. It remains cyan when ready or working, changes to
+an amber diamond when the owner must decide, and changes to a coral cross when
+the runtime fails closed. Working uses a directional handoff mark. Shape and
+localized text accompany color, so the meaning does not depend on hue alone.
+
+Jarvis may ask Windows to show a native notification only for three meaningful
+hidden transitions: a matching active turn completes, owner action becomes
+necessary, or a fail-closed stop occurs. Repeated states are deduplicated and a
+completed turn restored from disk is not replayed at startup. The notification
+contains only a generic localized title and sentence; prompts, model output,
+workspace paths, file names and proposal contents never enter the tray signal.
+Clicking it restores the same owned Control Center and returns focus to the
+conversation input.
+
+The runtime inspector exposes the current attention state and the last hidden
+signal as polite UI Automation live regions. Windows remains the authority for
+whether a native balloon is visually presented, so Focus Assist or notification
+policy can suppress pixels even after Jarvis successfully submits the signal.
+This does not grant Pi any notification, foreground or process capability.
+
 ## Verification
 
 `DesktopPresenceProbe` uses two in-memory startup values, temporary synthetic PE
@@ -84,6 +107,10 @@ files and a random named-event scope. It proves enable, idempotence, moved-path
 visibility, disable, exact resume arguments, one-primary admission, secondary
 activation, clean reacquisition after disposal, the exact no-repeat
 `Ctrl+Alt+J` contract, visible error `1409` conflict handling and hot-key release.
+It also creates and disposes all shape-distinct attention icons. A separate
+`DesktopAttentionProbe` proves ready/working/completed, owner-action and fault
+selection, matching completion delivery, duplicate suppression, restored-turn
+startup suppression and content-free signal keys.
 The receipt fixes `ProductionStartupStateTouched=false`; the probe never reads
 or writes the real Run value and uses a memory-backed hot-key adapter rather
 than changing the live desktop registration.
@@ -100,7 +127,8 @@ records foreground and keyboard-focus state (without treating a background
 runner's inability to acquire interactive input as product failure), checks
 close-to-hide and second-launch activation, invokes `EXIT JARVIS` through UI
 Automation, verifies summon restores the previous maximized state, and fails if
-forced cleanup was required:
+forced cleanup was required. It also reads both attention live regions and
+verifies that startup did not replay a stale hidden signal:
 
 ```powershell
 pwsh -File .\scripts\Test-DesktopPresenceLive.ps1 `

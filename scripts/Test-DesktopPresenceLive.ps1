@@ -101,6 +101,8 @@ $initiallyHidden = $false
 $productionChordRegistered = $false
 $summonStatus = ''
 $summonHelpText = ''
+$attentionStatus = ''
+$attentionDeliveryStatus = ''
 $hotKeyMessageRestoredWindow = $false
 $hotKeyRestoredForeground = $false
 $keyboardFocusReturnedToPrimary = $false
@@ -236,6 +238,40 @@ try {
         $summonStatus = $summonElement.Current.Name
         $summonHelpText = $summonElement.Current.HelpText
     }
+    $attentionCondition =
+        [System.Windows.Automation.PropertyCondition]::new(
+            [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+            'AttentionStatus')
+    $attentionElement = $automationRoot.FindFirst(
+        [System.Windows.Automation.TreeScope]::Descendants,
+        $attentionCondition)
+    if ($null -eq $attentionElement) {
+        $failures.Add('attention-status-not-found-by-automation')
+    }
+    else {
+        $attentionStatus = $attentionElement.Current.Name
+        if ([string]::IsNullOrWhiteSpace($attentionStatus)) {
+            $failures.Add('attention-status-was-empty')
+        }
+    }
+    $attentionDeliveryCondition =
+        [System.Windows.Automation.PropertyCondition]::new(
+            [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+            'AttentionDeliveryStatus')
+    $attentionDeliveryElement = $automationRoot.FindFirst(
+        [System.Windows.Automation.TreeScope]::Descendants,
+        $attentionDeliveryCondition)
+    if ($null -eq $attentionDeliveryElement) {
+        $failures.Add('attention-delivery-not-found-by-automation')
+    }
+    else {
+        $attentionDeliveryStatus = $attentionDeliveryElement.Current.Name
+        if ($attentionDeliveryStatus -notin @(
+                'LAST HIDDEN SIGNAL // NONE',
+                '最近隐藏信号 // 无')) {
+            $failures.Add('attention-delivery-replayed-stale-signal')
+        }
+    }
     [void][JarvisDesktopPresenceNative]::PostMessage(
         $windowHandle,
         0x0112,
@@ -361,6 +397,8 @@ $passed = $failures.Count -eq 0
     productionChordRegistered = $productionChordRegistered
     summonStatus = $summonStatus
     summonHelpText = $summonHelpText
+    attentionStatus = $attentionStatus
+    attentionDeliveryStatus = $attentionDeliveryStatus
     hotKeyMessageRestoredWindow = $hotKeyMessageRestoredWindow
     hotKeyRestoredForeground = $hotKeyRestoredForeground
     keyboardFocusReturnedToPrimary = $keyboardFocusReturnedToPrimary

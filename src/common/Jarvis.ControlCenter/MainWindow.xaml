@@ -1493,6 +1493,33 @@
                                     LineHeight="15"
                                     Text="{DynamicResource Loc.Presence.HotKeyDescription}"
                                     TextWrapping="Wrap" />
+                                <TextBlock
+                                    x:Name="AttentionStatus"
+                                    Margin="0,11,0,0"
+                                    AutomationProperties.AutomationId="AttentionStatus"
+                                    AutomationProperties.LiveSetting="Polite"
+                                    Foreground="{StaticResource CyanBrush}"
+                                    FontFamily="Consolas"
+                                    FontSize="10"
+                                    Text="{DynamicResource Loc.Attention.Ready}"
+                                    TextWrapping="Wrap" />
+                                <TextBlock
+                                    Margin="0,5,0,0"
+                                    Foreground="{StaticResource TextMutedBrush}"
+                                    FontSize="10"
+                                    LineHeight="15"
+                                    Text="{DynamicResource Loc.Attention.Description}"
+                                    TextWrapping="Wrap" />
+                                <TextBlock
+                                    x:Name="AttentionDeliveryStatus"
+                                    Margin="0,5,0,0"
+                                    AutomationProperties.AutomationId="AttentionDeliveryStatus"
+                                    AutomationProperties.LiveSetting="Polite"
+                                    Foreground="{StaticResource TextMutedBrush}"
+                                    FontFamily="Consolas"
+                                    FontSize="10"
+                                    Text="{DynamicResource Loc.Attention.Delivery.None}"
+                                    TextWrapping="Wrap" />
                                 <Button
                                     x:Name="StartupRegistrationButton"
                                     Margin="0,12,0,0"

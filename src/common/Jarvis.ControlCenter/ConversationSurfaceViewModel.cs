@@ -166,6 +166,50 @@ public sealed class ConversationSurfaceViewModel :
         phase is ConversationRuntimePhase.NotStarted or
             ConversationRuntimePhase.Faulted;
     public bool HasOwnedRuntime => runtime is not null && !runtime.IsShutdown;
+    internal DesktopAttentionSnapshot DesktopAttention
+    {
+        get
+        {
+            PiAgentConversationTurnSnapshot? latestTurn =
+                snapshot.Turns.LastOrDefault();
+            PiAgentWorkspaceEditSnapshot? pendingEdit =
+                PendingWorkspaceEdit;
+            PiAgentWorkspaceEditSnapshot? latestEdit =
+                latestTurn?.WorkspaceEdits.LastOrDefault();
+            string? iterationTurnId =
+                reviewedIterationSnapshot?.CurrentTurnId;
+            if (
+                iterationTurnId is null &&
+                reviewedIterationSnapshot?.CurrentProposalId is string
+                    currentProposalId)
+            {
+                iterationTurnId = snapshot.Turns
+                    .LastOrDefault(turn => turn.WorkspaceEdits.Any(edit =>
+                        string.Equals(
+                            edit.ProposalId,
+                            currentProposalId,
+                            StringComparison.Ordinal)))?
+                    .TurnId;
+            }
+            iterationTurnId ??=
+                reviewedIterationSnapshot?.Steps.LastOrDefault()?.TurnId;
+            return DesktopAttentionModel.Select(
+                new DesktopAttentionInput
+                {
+                    RuntimePhase = phase,
+                    ActiveTurnId = snapshot.ActiveTurnId,
+                    LatestTurnId = latestTurn?.TurnId,
+                    LatestTurnStatus = latestTurn?.Status,
+                    PendingProposalId = pendingEdit?.ProposalId,
+                    PendingEditStatus = pendingEdit?.Status,
+                    LatestProposalId = latestEdit?.ProposalId,
+                    LatestEditStatus = latestEdit?.Status,
+                    IterationId = reviewedIterationSnapshot?.IterationId,
+                    IterationTurnId = iterationTurnId,
+                    IterationStatus = reviewedIterationSnapshot?.Status,
+                });
+        }
+    }
     public PiAgentReviewedIterationSnapshot? ReviewedIteration =>
         reviewedIterationSnapshot;
     public bool HasReviewedIteration => reviewedIterationSnapshot is not null;

@@ -177,6 +177,8 @@ if ($null -eq $receipt -or
         'current-user-session-named-auto-reset-activation' -or
     $receipt.desktopSummon -ne
         'notify-icon-plus-ctrl-alt-j-mod-norepeat' -or
+    $receipt.desktopAttention -ne
+        'hidden-only-content-free-complete-owner-fault-signals' -or
     $receipt.desktopCloseBehavior -ne
         'close-hides-explicit-exit-quiesces-runtime' -or
     $receipt.desktopStartupAvailableToPi -or

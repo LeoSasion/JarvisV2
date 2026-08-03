@@ -36,12 +36,18 @@ public partial class MainWindow : Window
     private bool closeAuthorized;
     private bool desktopPresenceBusy;
     private bool desktopTrayAvailable = true;
+    private DesktopAttentionSnapshot desktopAttentionSnapshot;
 
     public event EventHandler? DesktopHideRequested;
 
     public event EventHandler? RuntimePhaseChanged;
 
+    public event EventHandler? DesktopAttentionChanged;
+
     public string DesktopRuntimePhaseLabel => conversation.PhaseLabel;
+
+    internal DesktopAttentionSnapshot DesktopAttention =>
+        desktopAttentionSnapshot;
 
     public MainWindow()
         : this(ConversationSurfaceViewModel.CreateIdle())
@@ -52,6 +58,7 @@ public partial class MainWindow : Window
     {
         this.conversation = conversation ??
             throw new ArgumentNullException(nameof(conversation));
+        desktopAttentionSnapshot = conversation.DesktopAttention;
         InitializeComponent();
         DataContext = conversation;
         HandoffConstellationVfx.Attach(
@@ -65,6 +72,7 @@ public partial class MainWindow : Window
         clockTimer.Start();
         UpdateClock();
         UpdateConversationChrome();
+        UpdateDesktopAttentionChrome();
         if (conversation.Phase == ConversationRuntimePhase.Preview)
         {
             SummonHotKeyStatus.Text = UiText.Get(
@@ -198,6 +206,32 @@ public partial class MainWindow : Window
             return;
         }
         _ = Focus();
+    }
+
+    internal void SetDesktopAttentionDeliveryReceipt(
+        DesktopAttentionKind kind)
+    {
+        string key = kind switch
+        {
+            DesktopAttentionKind.Completed =>
+                "Loc.Attention.Delivery.Completed",
+            DesktopAttentionKind.OwnerActionRequired =>
+                "Loc.Attention.Delivery.Owner",
+            DesktopAttentionKind.Faulted =>
+                "Loc.Attention.Delivery.Faulted",
+            _ => "Loc.Attention.Delivery.None",
+        };
+        AttentionDeliveryStatus.Text = UiText.Get(key);
+        AttentionDeliveryStatus.Foreground =
+            (Brush)FindResource("TextMutedBrush");
+    }
+
+    internal void SetDesktopAttentionDeliveryUnavailable()
+    {
+        AttentionDeliveryStatus.Text = UiText.Get(
+            "Loc.Attention.Delivery.Unavailable");
+        AttentionDeliveryStatus.Foreground =
+            (Brush)FindResource("AmberBrush");
     }
 
     private async void OnWindowLoaded(
@@ -870,6 +904,14 @@ public partial class MainWindow : Window
         {
             RuntimePhaseChanged?.Invoke(this, EventArgs.Empty);
         }
+        DesktopAttentionSnapshot nextAttention =
+            conversation.DesktopAttention;
+        if (nextAttention != desktopAttentionSnapshot)
+        {
+            desktopAttentionSnapshot = nextAttention;
+            UpdateDesktopAttentionChrome();
+            DesktopAttentionChanged?.Invoke(this, EventArgs.Empty);
+        }
         if (eventArgs.PropertyName == nameof(conversation.Turns))
         {
             _ = Dispatcher.BeginInvoke(
@@ -924,6 +966,37 @@ public partial class MainWindow : Window
             conversation.PendingWorkspaceEdit is not null,
             conversation.HasActiveTurn,
             conversation.Phase);
+    }
+
+    private void UpdateDesktopAttentionChrome()
+    {
+        string statusKey = conversation.Phase ==
+            ConversationRuntimePhase.Preview
+                ? "Loc.Attention.Preview"
+                : desktopAttentionSnapshot.Kind switch
+                {
+                    DesktopAttentionKind.Working =>
+                        "Loc.Attention.Working",
+                    DesktopAttentionKind.Completed =>
+                        "Loc.Attention.Completed",
+                    DesktopAttentionKind.OwnerActionRequired =>
+                        "Loc.Attention.Owner",
+                    DesktopAttentionKind.Faulted =>
+                        "Loc.Attention.Faulted",
+                    _ => "Loc.Attention.Ready",
+                };
+        AttentionStatus.Text = UiText.Get(statusKey);
+        AttentionStatus.Foreground = desktopAttentionSnapshot.Kind switch
+        {
+            DesktopAttentionKind.OwnerActionRequired =>
+                (Brush)FindResource("AmberBrush"),
+            DesktopAttentionKind.Faulted =>
+                (Brush)FindResource("RedBrush"),
+            _ => (Brush)FindResource("CyanBrush"),
+        };
+        string helpText = UiText.Get("Loc.Attention.Description");
+        AttentionStatus.ToolTip = helpText;
+        AutomationProperties.SetHelpText(AttentionStatus, helpText);
     }
 
     private void SetStageState(

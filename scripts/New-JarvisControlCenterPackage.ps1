@@ -302,7 +302,11 @@ Windows presence:
   icon to restore the same Control Center. Closing the window keeps Pi present;
   EXIT JARVIS performs orderly runtime shutdown. A second launch activates the
   existing instance instead of starting another Pi runtime. Startup is explicit,
-  current-user only and reversible.
+  current-user only and reversible. While the owned window is hidden, the tray
+  identity changes shape for working, owner-action and fail-closed states and
+  may show a native Windows notification for completion, owner action or a
+  safe stop. Those signals are generic: prompts, paths and model text are never
+  included. Clicking the signal restores this same Control Center.
 
 The API key is protected under the current Windows user with DPAPI. It is not
 stored in this package and is never sent to the offline Pi sidecar. Pi tools are
@@ -383,6 +387,8 @@ $receipt = [ordered]@{
         'current-user-session-named-auto-reset-activation'
     desktopSummon =
         'notify-icon-plus-ctrl-alt-j-mod-norepeat'
+    desktopAttention =
+        'hidden-only-content-free-complete-owner-fault-signals'
     desktopCloseBehavior =
         'close-hides-explicit-exit-quiesces-runtime'
     desktopStartupAvailableToPi = $false

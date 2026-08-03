@@ -1,3 +1,5 @@
+using System.Drawing;
+
 namespace Jarvis.DesktopPresence;
 
 public sealed record DesktopPresenceProbeReceipt(
@@ -15,6 +17,7 @@ public sealed record DesktopPresenceProbeReceipt(
     bool SummonHotKeyContractPassed,
     bool SummonHotKeyConflictVisible,
     bool SummonHotKeyReleased,
+    bool AttentionIconsPassed,
     bool ProductionStartupStateTouched,
     IReadOnlyList<string> Failures);
 
@@ -38,6 +41,7 @@ public static class DesktopPresenceProbe
         bool summonHotKeyContractPassed = false;
         bool summonHotKeyConflictVisible = false;
         bool summonHotKeyReleased = false;
+        bool attentionIconsPassed = false;
         try
         {
             string firstExecutable = Path.Combine(root, "jarvis-control-center.exe");
@@ -136,6 +140,24 @@ public static class DesktopPresenceProbe
                 conflict.Failures.Contains(
                     "summon-chord-already-registered",
                     StringComparer.Ordinal);
+
+            using Icon readyIcon = JarvisPresenceIcon.Create(
+                JarvisPresenceSignal.Ready);
+            using Icon workingIcon = JarvisPresenceIcon.Create(
+                JarvisPresenceSignal.Working);
+            using Icon ownerIcon = JarvisPresenceIcon.Create(
+                JarvisPresenceSignal.OwnerActionRequired);
+            using Icon faultIcon = JarvisPresenceIcon.Create(
+                JarvisPresenceSignal.Faulted);
+            attentionIconsPassed =
+                readyIcon.Size == new Size(32, 32) &&
+                workingIcon.Size == new Size(32, 32) &&
+                ownerIcon.Size == new Size(32, 32) &&
+                faultIcon.Size == new Size(32, 32) &&
+                readyIcon.Handle != nint.Zero &&
+                workingIcon.Handle != nint.Zero &&
+                ownerIcon.Handle != nint.Zero &&
+                faultIcon.Handle != nint.Zero;
         }
         catch (Exception exception)
         {
@@ -202,6 +224,10 @@ public static class DesktopPresenceProbe
         {
             failures.Add("summon-hot-key-release");
         }
+        if (!attentionIconsPassed)
+        {
+            failures.Add("attention-icons");
+        }
 
         return new DesktopPresenceProbeReceipt(
             1,
@@ -218,6 +244,7 @@ public static class DesktopPresenceProbe
             summonHotKeyContractPassed,
             summonHotKeyConflictVisible,
             summonHotKeyReleased,
+            attentionIconsPassed,
             ProductionStartupStateTouched: false,
             failures);
     }

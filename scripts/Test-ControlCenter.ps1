@@ -50,8 +50,11 @@ $desktopSummonHotKeyPath = Join-Path $desktopPresenceRoot (
     'DesktopSummonHotKey.cs')
 $desktopPresenceCoordinatorPath = Join-Path $sourceRoot (
     'DesktopPresenceCoordinator.cs')
+$desktopAttentionPath = Join-Path $sourceRoot 'DesktopAttention.cs'
 $desktopPresenceProbePath = Join-Path $desktopPresenceRoot (
     'DesktopPresenceProbe.cs')
+$jarvisPresenceIconPath = Join-Path $desktopPresenceRoot (
+    'JarvisPresenceIcon.cs')
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()
@@ -106,8 +109,11 @@ $desktopSummonHotKeyText = [IO.File]::ReadAllText(
     $desktopSummonHotKeyPath)
 $desktopPresenceCoordinatorText = [IO.File]::ReadAllText(
     $desktopPresenceCoordinatorPath)
+$desktopAttentionText = [IO.File]::ReadAllText($desktopAttentionPath)
 $desktopPresenceProbeText = [IO.File]::ReadAllText(
     $desktopPresenceProbePath)
+$jarvisPresenceIconText = [IO.File]::ReadAllText(
+    $jarvisPresenceIconPath)
 $localizedSurfaceText = @(
     $mainWindowText,
     $viewModelText,
@@ -306,6 +312,39 @@ Add-Check `
         'expose a fail-soft tray-owned Ctrl+Alt+J summon path, explicit ' +
         'orderly exit and foreground restoration, and expose no shell, ' +
         'child-process or injection path.')
+
+$desktopAttentionStaticBoundary =
+    $mainWindowText.Contains('x:Name="AttentionStatus"') -and
+    $mainWindowText.Contains('x:Name="AttentionDeliveryStatus"') -and
+    $mainWindowText.Contains(
+        'AutomationProperties.LiveSetting="Polite"') -and
+    $mainWindowCodeText.Contains('DesktopAttentionChanged') -and
+    $mainWindowCodeText.Contains('UpdateDesktopAttentionChrome') -and
+    $desktopAttentionText.Contains('DesktopAttentionModel.ShouldSignal') -and
+    $desktopAttentionText.Contains('StartupReplaySuppressed') -and
+    $desktopPresenceCoordinatorText.Contains('!window.IsVisible') -and
+    $desktopPresenceCoordinatorText.Contains('ShowBalloonTip') -and
+    $desktopPresenceCoordinatorText.Contains('BalloonTipClicked') -and
+    $desktopPresenceCoordinatorText.Contains(
+        'DesktopAttentionModel.ShouldSignal') -and
+    $jarvisPresenceIconText.Contains('JarvisPresenceSignal.Working') -and
+    $jarvisPresenceIconText.Contains(
+        'JarvisPresenceSignal.OwnerActionRequired') -and
+    $jarvisPresenceIconText.Contains('JarvisPresenceSignal.Faulted') -and
+    $uiTextText.Contains(
+        '["Loc.Attention.Notification.CompletedBody"]') -and
+    $uiTextText.Contains(
+        '["Loc.Attention.Notification.OwnerBody"]') -and
+    $uiTextText.Contains(
+        '["Loc.Attention.Notification.FaultedBody"]')
+Add-Check `
+    -Name 'desktop-attention.hidden-content-free-semantic-signals' `
+    -Passed $desktopAttentionStaticBoundary `
+    -Detail (
+        'Attention must derive from real Pi runtime state, expose a polite ' +
+        'accessible inspector status, update shape-distinct tray icons, and ' +
+        'emit generic completion, owner-action or fail-closed notifications ' +
+        'only while the owned window is hidden.')
 
 Add-Check `
     -Name 'surface.retained-handoff-vfx-and-neural-scrollbar' `
@@ -800,6 +839,7 @@ $desktopPresenceProbePassed =
     $desktopPresenceProbe.SummonHotKeyContractPassed -and
     $desktopPresenceProbe.SummonHotKeyConflictVisible -and
     $desktopPresenceProbe.SummonHotKeyReleased -and
+    $desktopPresenceProbe.AttentionIconsPassed -and
     -not $desktopPresenceProbe.ProductionStartupStateTouched -and
     @($desktopPresenceProbe.Failures).Count -eq 0
 Add-Check `
@@ -811,6 +851,51 @@ Add-Check `
         'reacquire, exact no-repeat Ctrl+Alt+J registration, visible conflict, ' +
         'release and zero production startup-state mutation. Output: ' +
         (($desktopPresenceProbeOutput | Select-Object -Last 18) -join ' '))
+
+$desktopAttentionProbeOutput = @(
+    & $DotnetPath run `
+        --project $diagnosticsProjectPath `
+        --configuration Release `
+        -- `
+        --desktop-attention-probe 2>&1
+)
+$desktopAttentionProbeExitCode = $LASTEXITCODE
+$desktopAttentionProbe = $null
+try {
+    $desktopAttentionProbe =
+        ($desktopAttentionProbeOutput -join [Environment]::NewLine) |
+            ConvertFrom-Json
+}
+catch {
+    $desktopAttentionProbe = $null
+}
+$desktopAttentionProbePassed =
+    $desktopAttentionProbeExitCode -eq 0 -and
+    $null -ne $desktopAttentionProbe -and
+    $desktopAttentionProbe.Result -eq 'passed' -and
+    $desktopAttentionProbe.ReadyPassed -and
+    $desktopAttentionProbe.ActiveTurnPassed -and
+    $desktopAttentionProbe.TurnCompletionSignalPassed -and
+    $desktopAttentionProbe.ReviewedIterationCompletionSignalPassed -and
+    $desktopAttentionProbe.TerminalIterationOrdinaryTurnPassed -and
+    $desktopAttentionProbe.StartupReplaySuppressed -and
+    $desktopAttentionProbe.OwnerReviewSignalPassed -and
+    $desktopAttentionProbe.TrustedValidationSignalPassed -and
+    $desktopAttentionProbe.DriftedEditSignalPassed -and
+    $desktopAttentionProbe.FailedEditSignalPassed -and
+    $desktopAttentionProbe.FaultSignalPassed -and
+    $desktopAttentionProbe.DuplicateSignalSuppressed -and
+    $desktopAttentionProbe.ContentFreeSignalKeysPassed -and
+    @($desktopAttentionProbe.Failures).Count -eq 0
+Add-Check `
+    -Name 'desktop-attention.executable-transition-probe' `
+    -Passed $desktopAttentionProbePassed `
+    -Detail (
+        'The executable transition probe must select ready, working, owner ' +
+        'and fault states; notify on matching completion; and suppress stale ' +
+        'startup replay and duplicate signals without retaining user content. ' +
+        'Output: ' +
+        (($desktopAttentionProbeOutput | Select-Object -Last 18) -join ' '))
 
 $handoffVfxProbeOutput = @(
     & $DotnetPath run `

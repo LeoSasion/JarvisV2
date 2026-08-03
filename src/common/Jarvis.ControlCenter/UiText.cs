@@ -229,6 +229,45 @@ public static class UiText
                 "The Windows startup setting could not be inspected.",
             ["Loc.Presence.RecentInspectFailed"] =
                 "Recent work could not be inspected.",
+            ["Loc.Attention.Ready"] = "ATTENTION // READY",
+            ["Loc.Attention.Working"] = "ATTENTION // PI WORKING",
+            ["Loc.Attention.Completed"] =
+                "ATTENTION // TURN COMPLETE",
+            ["Loc.Attention.Owner"] =
+                "ATTENTION // OWNER DECISION",
+            ["Loc.Attention.Faulted"] =
+                "ATTENTION // FAILED CLOSED",
+            ["Loc.Attention.Preview"] =
+                "ATTENTION // PREVIEW DOES NOT SIGNAL",
+            ["Loc.Attention.Description"] =
+                "While this window is hidden, Jarvis signals only turn completion, owner decisions and fail-closed stops. Notifications never include prompts, paths or model text.",
+            ["Loc.Attention.Delivery.None"] =
+                "LAST HIDDEN SIGNAL // NONE",
+            ["Loc.Attention.Delivery.Completed"] =
+                "LAST HIDDEN SIGNAL // TURN COMPLETE",
+            ["Loc.Attention.Delivery.Owner"] =
+                "LAST HIDDEN SIGNAL // OWNER ACTION",
+            ["Loc.Attention.Delivery.Faulted"] =
+                "LAST HIDDEN SIGNAL // FAILED CLOSED",
+            ["Loc.Attention.Delivery.Unavailable"] =
+                "LAST HIDDEN SIGNAL // UNAVAILABLE",
+            ["Loc.Attention.Tray.Ready"] = "READY",
+            ["Loc.Attention.Tray.Working"] = "PI WORKING",
+            ["Loc.Attention.Tray.Completed"] = "TURN COMPLETE",
+            ["Loc.Attention.Tray.Owner"] = "OWNER ACTION",
+            ["Loc.Attention.Tray.Faulted"] = "FAILED CLOSED",
+            ["Loc.Attention.Notification.CompletedTitle"] =
+                "Jarvis finished the turn",
+            ["Loc.Attention.Notification.CompletedBody"] =
+                "The result is ready in the Control Center. No conversation content is shown here.",
+            ["Loc.Attention.Notification.OwnerTitle"] =
+                "Jarvis needs your decision",
+            ["Loc.Attention.Notification.OwnerBody"] =
+                "Open the Control Center to review the bounded owner action.",
+            ["Loc.Attention.Notification.FaultedTitle"] =
+                "Jarvis stopped safely",
+            ["Loc.Attention.Notification.FaultedBody"] =
+                "Open the Control Center to inspect the fail-closed status.",
             ["Loc.Tray.Open"] = "OPEN JARVIS    Ctrl+Alt+J",
             ["Loc.Tray.Exit"] = "EXIT JARVIS",
             ["Loc.Tray.Tooltip"] = "JarvisV2 · {0} · {1}",
@@ -508,6 +547,41 @@ public static class UiText
             ["Loc.Presence.InspectFailed"] =
                 "无法检查 Windows 启动设置。",
             ["Loc.Presence.RecentInspectFailed"] = "无法检查最近工作。",
+            ["Loc.Attention.Ready"] = "注意力 // 就绪",
+            ["Loc.Attention.Working"] = "注意力 // PI 工作中",
+            ["Loc.Attention.Completed"] = "注意力 // 回合完成",
+            ["Loc.Attention.Owner"] = "注意力 // 等待主人决定",
+            ["Loc.Attention.Faulted"] = "注意力 // 已安全停止",
+            ["Loc.Attention.Preview"] = "注意力 // 预览不发送信号",
+            ["Loc.Attention.Description"] =
+                "窗口隐藏时，Jarvis 仅提醒回合完成、主人决定和安全停止。通知绝不包含提示词、路径或模型文本。",
+            ["Loc.Attention.Delivery.None"] =
+                "最近隐藏信号 // 无",
+            ["Loc.Attention.Delivery.Completed"] =
+                "最近隐藏信号 // 回合完成",
+            ["Loc.Attention.Delivery.Owner"] =
+                "最近隐藏信号 // 主人操作",
+            ["Loc.Attention.Delivery.Faulted"] =
+                "最近隐藏信号 // 已安全停止",
+            ["Loc.Attention.Delivery.Unavailable"] =
+                "最近隐藏信号 // 不可用",
+            ["Loc.Attention.Tray.Ready"] = "就绪",
+            ["Loc.Attention.Tray.Working"] = "PI 工作中",
+            ["Loc.Attention.Tray.Completed"] = "回合完成",
+            ["Loc.Attention.Tray.Owner"] = "等待主人操作",
+            ["Loc.Attention.Tray.Faulted"] = "已安全停止",
+            ["Loc.Attention.Notification.CompletedTitle"] =
+                "Jarvis 已完成回合",
+            ["Loc.Attention.Notification.CompletedBody"] =
+                "结果已在控制中心就绪。此通知不会显示任何对话内容。",
+            ["Loc.Attention.Notification.OwnerTitle"] =
+                "Jarvis 需要你的决定",
+            ["Loc.Attention.Notification.OwnerBody"] =
+                "打开控制中心，审查受边界约束的主人操作。",
+            ["Loc.Attention.Notification.FaultedTitle"] =
+                "Jarvis 已安全停止",
+            ["Loc.Attention.Notification.FaultedBody"] =
+                "打开控制中心，检查安全关闭状态。",
             ["Loc.Tray.Open"] = "打开 JARVIS    Ctrl+Alt+J",
             ["Loc.Tray.Exit"] = "退出 JARVIS",
             ["Loc.Tray.Tooltip"] = "JarvisV2 · {0} · {1}",

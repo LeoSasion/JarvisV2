@@ -42,5 +42,8 @@ user's Run key only after an explicit desktop action. The command resumes the
 latest catalog hint through normal workspace/runtime admission and starts
 hidden behind one authored notification-area identity. The primary instance
 owns a no-repeat `Ctrl+Alt+J` global summon chord; closing hides the window while
-the explicit Exit action performs orderly Pi shutdown. It never invokes a shell
-or grants Pi access to the registration, summon or exit boundaries.
+the explicit Exit action performs orderly Pi shutdown. While hidden, a
+shape-distinct attention beacon can submit generic completion, owner-action or
+fail-closed notifications to Windows without prompt, path or model content;
+clicking one restores the same instance. It never invokes a shell or grants Pi
+access to the registration, summon, notification or exit boundaries.
