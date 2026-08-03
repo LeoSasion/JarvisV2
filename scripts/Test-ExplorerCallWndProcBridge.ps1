@@ -384,8 +384,8 @@ if ($null -ne $compiler -and $null -ne $dumpbin) {
             'jarvis-explorer-callwndproc-bridge.dll')
         $dllOutput = @(
             & $compiler `
-                /nologo /std:c++20 /O2 /W4 /WX /EHsc /permissive- `
-                /Zc:preprocessor /LD `
+                /nologo /std:c++20 /O2 /W4 /WX /permissive- `
+                /Zc:preprocessor /GS- /GR- /Zl /LD `
                 /DJARVIS_BRIDGE_CORE_SHARED_INSTANCE `
                 "/I$callbackRoot" "/I$bridgeRoot" `
                 $bridgeCorePath $callbackCorePath $callbackWindowsPath `
