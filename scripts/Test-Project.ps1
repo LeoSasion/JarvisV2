@@ -2,6 +2,7 @@
 param(
     [switch]$SkipManagedBuild,
     [string]$DotnetPath = 'dotnet',
+    [string]$PwshPath = $(Join-Path $PSHOME 'pwsh.exe'),
     [string]$NodePath = 'node'
 )
 
@@ -9,6 +10,16 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
+foreach ($toolPath in @($DotnetPath, $PwshPath, $NodePath)) {
+    if (Test-Path -LiteralPath $toolPath -PathType Leaf) {
+        $toolDirectory = Split-Path -Parent (
+            (Resolve-Path -LiteralPath $toolPath).Path)
+        $pathEntries = @($env:PATH -split ';')
+        if ($toolDirectory -notin $pathEntries) {
+            $env:PATH = $toolDirectory + ';' + $env:PATH
+        }
+    }
+}
 $stylerPath = Join-Path $root 'mods\windows11\jarvis-native-taskbar.wh.cpp'
 $iconSizePath = Join-Path $root 'mods\windows11\jarvis-taskbar-icon-size.wh.cpp'
 $compatibilityPath = Join-Path $root 'config\compatibility.json'
@@ -1423,7 +1434,7 @@ Add-Check `
     'The replacement-host skeleton must remain a fixture-only single PID/TID policy model with no live process or injection API.'
 
 $explorerHostAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -1506,7 +1517,7 @@ Add-Check `
     'The visible Control Center must remain an ordinary review-gated Pi conversation window with explicit owner-only replace/patch/create/change-set decisions, complete bounded review, shell lock, orderly shutdown and no shell mutation API.'
 
 $controlCenterAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -1567,7 +1578,7 @@ Add-Check `
     'Bridge ABI v1 must expose only an offline fail-closed model, never a DLL export, hook, loader or process API.'
 
 $explorerBridgeAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -1624,7 +1635,7 @@ Add-Check `
     'The native style lab may apply reviewed DWM attributes only to the HWND owned by its own ordinary window.'
 
 $nativeStyleAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -1678,7 +1689,7 @@ Add-Check `
     'The desktop probe must expose only exact read-only window discovery and a hard non-mutation receipt.'
 
 $desktopProbeAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -1749,7 +1760,7 @@ Add-Check `
     'The desktop style session must remain a journaled, bounded, text-color-only ListView experiment.'
 
 $desktopSessionAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -1820,7 +1831,7 @@ Add-Check `
     'The native Explorer window session must remain a bounded, exact-HWND, DWM-color-only experiment with system-default reset.'
 
 $nativeWindowSessionAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -1888,7 +1899,7 @@ Add-Check `
     'The Phase 9 model must remain fixture-only, cover exactly three native frame roles, snapshot originals and contain no live XAML or process transport.'
 
 $explorerFrameAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -1953,7 +1964,7 @@ Add-Check `
     'Phase 10 must pin the GPL File Explorer Styler source and keep the exact three-surface candidate schema offline and non-authorizing.'
 
 $explorerPreviewAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -1985,7 +1996,7 @@ Add-Check `
     'The real candidate compiler and 43-case preview-plan matrix must pass without exposing a live style transport.'
 
 $explorerSurfaceProbeAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -2061,7 +2072,7 @@ Add-Check `
     'Phase 11 must keep the exact-PID XAML transport ABI machine-bound, model-only, non-enumerating and incapable of live connection or self-approval.'
 
 $explorerTransportAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -2138,7 +2149,7 @@ Add-Check `
     'Phase 12 must remain a disk-only AMD64 TAP build with SetSite permanently refused, a describe-only controller, zero endpoint/load support and no live diagnostics call.'
 
 $explorerReadOnlyTapAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -2237,7 +2248,7 @@ Add-Check `
     'Phase 13 must require zero consumers and one offline endpoint candidate, consume the full exact bind once, fingerprint only nine canonical values, and retain every non-live claim.'
 
 $explorerReadOnlyAdmissionAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -2325,7 +2336,7 @@ Add-Check `
     'Phase 14 must accept only bounded local null or exact solid-color projections, own one Phase 13 fingerprint, and keep the live read gate closed.'
 
 $explorerInspectableAdapterAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -2416,7 +2427,7 @@ Add-Check `
     'Phase 15 must snapshot all nine values, dirty every reported write attempt, verify each value and restore strictly in reverse while the live write gate stays closed.'
 
 $explorerStyleTransactionAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -2518,7 +2529,7 @@ Add-Check `
     'Phase 16 must compile only a separate real-interface read review object, retain local exact-type and ownership gates, and remain unlinked and unapproved.'
 
 $explorerXamlReadBridgeAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -2619,7 +2630,7 @@ Add-Check `
     'Phase 17 must bind the exact three candidate selectors to a fixed-capacity fail-closed discovery core and compile only an unlinked callback review object.'
 
 $explorerXamlSurfaceDiscoveryAuditOutput = @(
-    & pwsh `
+    & $PwshPath `
         -NoLogo `
         -NoProfile `
         -ExecutionPolicy Bypass `
@@ -7795,8 +7806,8 @@ else {
     Add-Check 'receipt.evidence-closure' $false 'Run a canonical all-module build with the current scripts to replace the stale receipt.'
 }
 
-Add-Check 'safety.explicit-live-authorization' ($safetyContract.Contains('user explicitly approves') -and $safetyContract.Contains('Do not inject a module')) 'Repository instructions must forbid live injection without explicit current-task authorization.'
-Add-Check 'recovery.flag-not-unload' ($recovery.Contains('不是结束进程的按钮') -and $recovery.Contains('不允许') -and $recovery.Contains('物理卸载')) 'Recovery docs must distinguish the emergency flag from DLL unload or process termination.'
+Add-Check 'safety.bounded-standing-authorization' ($safetyContract.Contains('Standing authorization') -and $safetyContract.Contains('Automated preflight') -and $safetyContract.Contains('one exact live Explorer PID') -and $safetyContract.Contains('recovery helper') -and $safetyContract.Contains('one-shot permit absent')) 'Repository instructions must allow bounded automation only behind exact-target, artifact, kill-switch and recovery checks.'
+Add-Check 'recovery.flag-not-unload' ($recovery.Contains('不是结束进程的按钮') -and $recovery.Contains('物理卸载') -and $recovery.Contains('急停文件本身从不终止 Explorer')) 'Recovery docs must distinguish the emergency flag from DLL unload or process termination.'
 
 $piAgentHostRoot =
     Join-Path $root 'src\common\Jarvis.PiAgentHost'
@@ -7866,70 +7877,70 @@ $managedBuild = [pscustomobject]@{
 }
 if (-not $SkipManagedBuild) {
     $supervisorBuildOutput =
-        & dotnet build $supervisorProject --configuration Release --nologo 2>&1
+        & $DotnetPath build $supervisorProject --configuration Release --nologo 2>&1
     $supervisorBuildExitCode = $LASTEXITCODE
     Add-Check `
         'supervisor.release-build' `
         ($supervisorBuildExitCode -eq 0) `
         (($supervisorBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
     $hostModelBuildOutput =
-        & dotnet build $explorerHostModelProject --configuration Release --nologo 2>&1
+        & $DotnetPath build $explorerHostModelProject --configuration Release --nologo 2>&1
     $hostModelBuildExitCode = $LASTEXITCODE
     Add-Check `
         'explorer-host-model.release-build' `
         ($hostModelBuildExitCode -eq 0) `
         (($hostModelBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
     $controlCenterBuildOutput =
-        & dotnet build $controlCenterProject --configuration Release --nologo 2>&1
+        & $DotnetPath build $controlCenterProject --configuration Release --nologo 2>&1
     $controlCenterBuildExitCode = $LASTEXITCODE
     Add-Check `
         'control-center.release-build' `
         ($controlCenterBuildExitCode -eq 0) `
         (($controlCenterBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
     $nativeStyleBuildOutput =
-        & dotnet build $nativeStyleLabProject --configuration Release --nologo 2>&1
+        & $DotnetPath build $nativeStyleLabProject --configuration Release --nologo 2>&1
     $nativeStyleBuildExitCode = $LASTEXITCODE
     Add-Check `
         'native-style-lab.release-build' `
         ($nativeStyleBuildExitCode -eq 0) `
         (($nativeStyleBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
     $desktopProbeBuildOutput =
-        & dotnet build $desktopStyleProbeProject --configuration Release --nologo 2>&1
+        & $DotnetPath build $desktopStyleProbeProject --configuration Release --nologo 2>&1
     $desktopProbeBuildExitCode = $LASTEXITCODE
     Add-Check `
         'desktop-style-probe.release-build' `
         ($desktopProbeBuildExitCode -eq 0) `
         (($desktopProbeBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
     $desktopSessionBuildOutput =
-        & dotnet build $desktopStyleSessionProject --configuration Release --nologo 2>&1
+        & $DotnetPath build $desktopStyleSessionProject --configuration Release --nologo 2>&1
     $desktopSessionBuildExitCode = $LASTEXITCODE
     Add-Check `
         'desktop-style-session.release-build' `
         ($desktopSessionBuildExitCode -eq 0) `
         (($desktopSessionBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
     $nativeWindowSessionBuildOutput =
-        & dotnet build $nativeWindowStyleSessionProject --configuration Release --nologo 2>&1
+        & $DotnetPath build $nativeWindowStyleSessionProject --configuration Release --nologo 2>&1
     $nativeWindowSessionBuildExitCode = $LASTEXITCODE
     Add-Check `
         'native-window-style-session.release-build' `
         ($nativeWindowSessionBuildExitCode -eq 0) `
         (($nativeWindowSessionBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
     $explorerFrameModelBuildOutput =
-        & dotnet build $explorerFrameModelProject --configuration Release --nologo 2>&1
+        & $DotnetPath build $explorerFrameModelProject --configuration Release --nologo 2>&1
     $explorerFrameModelBuildExitCode = $LASTEXITCODE
     Add-Check `
         'explorer-frame-model.release-build' `
         ($explorerFrameModelBuildExitCode -eq 0) `
         (($explorerFrameModelBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
     $explorerPreviewModelBuildOutput =
-        & dotnet build $explorerPreviewModelProject --configuration Release --nologo 2>&1
+        & $DotnetPath build $explorerPreviewModelProject --configuration Release --nologo 2>&1
     $explorerPreviewModelBuildExitCode = $LASTEXITCODE
     Add-Check `
         'explorer-preview-model.release-build' `
         ($explorerPreviewModelBuildExitCode -eq 0) `
         (($explorerPreviewModelBuildOutput | Select-Object -Last 8) -join [Environment]::NewLine)
     $explorerSurfaceProbeBuildOutput =
-        & dotnet build $explorerSurfaceProbeProject --configuration Release --nologo 2>&1
+        & $DotnetPath build $explorerSurfaceProbeProject --configuration Release --nologo 2>&1
     $explorerSurfaceProbeBuildExitCode = $LASTEXITCODE
     Add-Check `
         'explorer-surface-probe.release-build' `

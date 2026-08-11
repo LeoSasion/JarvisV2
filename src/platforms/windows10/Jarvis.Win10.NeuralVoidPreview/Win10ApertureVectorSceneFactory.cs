@@ -10,12 +10,11 @@ internal sealed record Win10ApertureVectorSceneInputs(
 internal static class Win10ApertureVectorSceneFactory
 {
     private static readonly VectorStroke Hairline =
-        new(1.0, "square", "round", []);
+        new(1.0, "square", "miter", []);
 
     public static bool TryCreate(
         double width,
         double height,
-        double cornerRadius,
         double cornerLength,
         Brush lineBrush,
         out Win10ApertureVectorSceneInputs? inputs)
@@ -23,7 +22,6 @@ internal static class Win10ApertureVectorSceneFactory
         inputs = null;
         if (!IsFiniteRange(width, 4.0, 32768.0) ||
             !IsFiniteRange(height, 4.0, 32768.0) ||
-            !IsFiniteRange(cornerRadius, 0.0, 32768.0) ||
             !IsFiniteRange(cornerLength, 0.0, 32768.0) ||
             lineBrush is not SolidColorBrush solidColorBrush ||
             !IsFiniteRange(solidColorBrush.Opacity, 0.0, 1.0))
@@ -31,12 +29,6 @@ internal static class Win10ApertureVectorSceneFactory
             return false;
         }
 
-        double radius =
-            Math.Min(
-                cornerRadius,
-                Math.Min(
-                    (width - 1.0) / 4.0,
-                    (height - 1.0) / 4.0));
         double length =
             Math.Min(
                 cornerLength,
@@ -49,51 +41,43 @@ internal static class Win10ApertureVectorSceneFactory
         double bottom = height - 0.5;
         List<VectorPathFigure> figures = [];
 
-        AddTangentCorner(
+        AddOrthogonalCorner(
             figures,
-            new(left, top + radius + length),
-            new(left, top + radius),
-            new(left + radius, top),
-            new(left + radius + length, top),
-            radius);
-        AddTangentCorner(
+            new(left, top + length),
+            new(left, top),
+            new(left + length, top));
+        AddOrthogonalCorner(
             figures,
-            new(right - radius - length, top),
-            new(right - radius, top),
-            new(right, top + radius),
-            new(right, top + radius + length),
-            radius);
-        AddTangentCorner(
+            new(right - length, top),
+            new(right, top),
+            new(right, top + length));
+        AddOrthogonalCorner(
             figures,
-            new(right, bottom - radius - length),
-            new(right, bottom - radius),
-            new(right - radius, bottom),
-            new(right - radius - length, bottom),
-            radius);
-        AddTangentCorner(
+            new(right, bottom - length),
+            new(right, bottom),
+            new(right - length, bottom));
+        AddOrthogonalCorner(
             figures,
-            new(left + radius + length, bottom),
-            new(left + radius, bottom),
-            new(left, bottom - radius),
-            new(left, bottom - radius - length),
-            radius);
+            new(left + length, bottom),
+            new(left, bottom),
+            new(left, bottom - length));
 
         AddSplitEdge(
             figures,
-            new(left + radius + length, top),
-            new(right - radius - length, top));
+            new(left + length, top),
+            new(right - length, top));
         AddSplitEdge(
             figures,
-            new(right, top + radius + length),
-            new(right, bottom - radius - length));
+            new(right, top + length),
+            new(right, bottom - length));
         AddSplitEdge(
             figures,
-            new(right - radius - length, bottom),
-            new(left + radius + length, bottom));
+            new(right - length, bottom),
+            new(left + length, bottom));
         AddSplitEdge(
             figures,
-            new(left, bottom - radius - length),
-            new(left, top + radius + length));
+            new(left, bottom - length),
+            new(left, top + length));
 
         Color source = solidColorBrush.Color;
         VectorMaterial material =
@@ -268,23 +252,30 @@ internal static class Win10ApertureVectorSceneFactory
                     new(focus.X, focus.Y + 6.0),
                     Hairline));
 
-            VectorMaterial ring =
+            VectorMaterial registration =
                 CreateMaterial(
                     "accent",
                     source,
                     solidColorBrush.Opacity,
-                    1.0);
+                    0.42);
+            VectorPoint registrationTopLeft =
+                new(
+                    horizontalDirection > 0.0
+                        ? focus.X
+                        : focus.X - 10.0,
+                    verticalDirection > 0.0
+                        ? focus.Y
+                        : focus.Y - 10.0);
             commands.Add(
-                new VectorEllipseCommand(
-                    "focus-ring",
+                new VectorRectangleCommand(
+                    "focus-registration-square",
                     300,
                     50,
                     "per-frame",
-                    ring,
-                    focus,
-                    5.0,
-                    5.0,
-                    0.42,
+                    registration,
+                    registrationTopLeft,
+                    10.0,
+                    10.0,
                     Hairline));
             commands.Add(
                 new VectorPointCommand(
@@ -364,29 +355,15 @@ internal static class Win10ApertureVectorSceneFactory
                     source.B),
         };
 
-    private static void AddTangentCorner(
+    private static void AddOrthogonalCorner(
         ICollection<VectorPathFigure> figures,
         VectorPoint start,
-        VectorPoint arcStart,
-        VectorPoint arcEnd,
-        VectorPoint end,
-        double radius)
+        VectorPoint corner,
+        VectorPoint end)
     {
         List<VectorPathSegment> segments = [];
         VectorPoint current = start;
-        AddLine(segments, ref current, arcStart);
-        if (current != arcEnd && radius > 0.0)
-        {
-            segments.Add(
-                new VectorPathArcSegment(
-                    arcEnd,
-                    radius,
-                    radius,
-                    0.0,
-                    false,
-                    "clockwise"));
-            current = arcEnd;
-        }
+        AddLine(segments, ref current, corner);
         AddLine(segments, ref current, end);
         if (segments.Count != 0)
         {

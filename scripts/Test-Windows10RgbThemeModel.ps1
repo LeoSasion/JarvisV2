@@ -122,7 +122,7 @@ Add-Check `
         'that feeds all reviewed desktop, Explorer and taskbar roles.')
 
 $expectedVectorPrimitives =
-    @('arc', 'line', 'plane', 'point')
+    @('line', 'plane', 'point', 'rectangle')
 $observedVectorPrimitives =
     @($theme.vectorGrammar.primitiveSet | Sort-Object)
 Add-Check `
@@ -130,9 +130,11 @@ Add-Check `
     -Passed (
         $theme.vectorGrammar.id -eq 'aperture-contour-v1' -and
         $theme.vectorGrammar.selection -eq
-            'user-selected-variant-4' -and
+            'user-refined-orthogonal-variant-4' -and
         $theme.vectorGrammar.frameClosure -eq
             'subtractive-open' -and
+        $theme.vectorGrammar.cornerGeometry -eq
+            'orthogonal-right-angle' -and
         ($observedVectorPrimitives -join '|') -eq
             ($expectedVectorPrimitives -join '|') -and
         $theme.vectorGrammar.focusJunctionCount -eq 2 -and
@@ -144,13 +146,14 @@ Add-Check `
         -not $theme.vectorGrammar.bitmapResourcesRequired -and
         $schema.'$defs'.vectorGrammar.properties.id.const -eq
             'aperture-contour-v1' -and
+        $schema.'$defs'.vectorGrammar.properties.cornerGeometry.const -eq
+            'orthogonal-right-angle' -and
         $schema.'$defs'.vectorGrammar.properties.glowPolicy.const -eq
             'reserved-global-not-implemented') `
     -Detail (
-        'Selected variant 4 must remain an open ' +
-        'point-line-arc-compound-path-rectangle-ellipse-plane ' +
-        'grammar with two shared-frame focus junctions, no local glow and ' +
-        'no bitmap dependency.')
+        'Refined variant 4 must remain an open orthogonal ' +
+        'point-line-rectangle-plane grammar with two shared-frame focus ' +
+        'junctions, no local glow and no bitmap dependency.')
 
 $expectedGlobalSystems =
     @('particle-system', 'post-processing')

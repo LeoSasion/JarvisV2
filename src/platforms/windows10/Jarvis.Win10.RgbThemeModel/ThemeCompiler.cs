@@ -162,7 +162,9 @@ internal static partial class ThemeCompiler
             grammar.Id == ThemeContract.VectorGrammarId &&
             grammar.Selection ==
                 ThemeContract.VectorGrammarSelection &&
-            grammar.FrameClosure == "subtractive-open",
+            grammar.FrameClosure == "subtractive-open" &&
+            grammar.CornerGeometry ==
+                ThemeContract.VectorCornerGeometry,
             "vector-grammar-identity-invalid",
             failures);
         Require(

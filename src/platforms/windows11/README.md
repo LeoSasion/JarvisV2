@@ -28,5 +28,7 @@ read/write, non-executable PE section so controller-side initialization and
 target-side callback ownership refer to the same state. The exported callback
 reads only its current PID/TID, performs no message or visual work, releases
 ownership, and always returns `CallNextHookEx`. The DLL has a zero PE entry
-point and no CRT or custom startup. There is no collector or loader.
+point and no CRT or custom startup. There is no Windows 11 collector or
+loader. The separately owned Windows 10 collector forks this reviewed stack
+under `src/platforms/windows10` and does not widen or activate this backend.
 See `docs/PHASE-20-DISK-ONLY-CALLWNDPROC-BRIDGE-TASK.md`.

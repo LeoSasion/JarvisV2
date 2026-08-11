@@ -21,11 +21,11 @@
       "modRoot": "mods/windows10",
       "nativeTestRoot": "tests/native/windows10",
       "entryDocument": "WINDOWS10-HANDOFF.md",
-      "status": "owned-rgb-window-pi-transport-desktop-preview-caption-write-disabled-and-owned-caption-overlay-visually-verified",
+      "status": "owned-horizon-desktop-preview-and-offline-callback-dll-only",
       "compatibilityProfile": "win10-22h2-19045.6466-x64",
       "activationPermitted": false,
       "liveExplorer": "not-run",
-      "nextVisibleSlice": "refine the visually verified own-process Explorer overlay while the current Explorer caption write capability remains disabled"
+      "nextVisibleSlice": "close native unload and full callback-drain proof before publishing any collector executable or enabling live admission"
     },
     {
       "id": "windows11",

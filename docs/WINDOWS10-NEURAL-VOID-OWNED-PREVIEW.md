@@ -1,102 +1,116 @@
-# Windows 10 Neural Void owned preview
+# Windows 10 Horizon Membrane desktop shell owned preview
 
-`Jarvis.Win10.NeuralVoidPreview` is the first runnable rendering of the
-approved D / Neural Void direction. It draws a simulated desktop, Explorer
-window and classic Win10 taskbar entirely inside its own WPF process.
+> Evidence boundary: `Jarvis.Win10.NeuralVoidPreview` is an own-process WPF
+> preview. It reports `shellMutationSupported=false` and
+> `liveExplorer=not-run`. Nothing in this document is evidence of a real
+> Explorer injection or Shell mutation.
 
-The current visual pass implements the user-selected fourth aperture variant.
-The generated frame remains a style reference only: its blank composition,
-panel placement and decorative marks are not copied into the simulated Shell.
-The retained language is:
+`Jarvis.Win10.NeuralVoidPreview` renders the signed **Windows 10 Horizon
+Membrane Desktop Shell** expression inside its own 1600-by-900 WPF window. It
+simulates a Windows 10 desktop, a restored Explorer window, a taskbar and a
+layout instrument without inspecting or styling the live Shell. The executable
+and this document retain the historical Neural Void name, but the current
+black-and-yellow Horizon Membrane contract supersedes the former multicolor
+aperture and preset descriptions.
 
-- one monochrome accent over neutral black surfaces;
-- subtractive one-pixel contours with deliberately missing edge segments;
-- tangent corner arcs, tiny registration squares and long quiet datums;
-- exactly two local RGB focus junctions drawn as points, crosses and rings;
-- mathematical point, line, arc, path, rectangle, ellipse and plane geometry
-  with no bitmap decoration.
+![Current JARVIS2 Windows 10 UI baseline](screenshots/jarvis-win10-current-ui-baseline.png)
 
-`ApertureFrame` is the reusable window-contour primitive. It keeps its static
-graphite contour and dynamic RGB focus junction in separate
-`DrawingVisual` objects. Its four tangent corners and eight split-edge figures
-now form one common compound-path command, preserving continuous line/arc
-joins and semi-transparent blending. Its three tiny registration marks are
-native rectangle commands; each active focus is four per-frame lines, one
-ellipse with independent drawing opacity and one filled point. `NeuralVectorLayer`
-likewise sources its static planes, desktop datums and junction paths from the
-platform-neutral retained command buffer, while its two small signal junctions
-remain per-frame redraws. The adapter validates and freezes every command in a
-staging `DrawingGroup`, then replays the immutable children so offscreen WPF
-content bounds remain correct. Invalid geometry or color input therefore
-produces an empty layer. This keeps RGB animation bounded and makes the same
-contour grammar reusable by Explorer, Control Center, Win11 and the future Pi
-conversation surface.
+The checked-in image above is the canonical deterministic baseline. The
+finish-review record in [`design-qa.md`](../design-qa.md) documents its visual
+and interaction verification.
 
-No local glow shader, radial glow brush or particle emitter is implemented in
-these components. Every colored contour and junction binds to the same
-`RgbFrame`; neutral structure does not change hue. Glow, particles, trails,
-distortion and color grading are reserved for a future global VFX compositor
-so effects can be coordinated across the complete desktop instead of being
-duplicated by individual controls.
+## Visual contract
 
-That future compositor will use a film/game-engine-style parameter stack for
-spawn, motion, lifetime, appearance, color and size over life, material,
-render order and post processing. A Galaxy View-like parameter surface may
-control those values later. The platform-neutral parameter catalog is now
-compiled and tested, but the current preview contains neither the runtime nor
-its controls. See `NEURAL-VOID-GLOBAL-VFX-CONTRACT.md`.
+The canvas is pure black. Yellow (`#FFF000`) is the only chromatic accent; it
+marks current state, focus junctions and selected structure. Orange, cyan,
+purple, green, RGB cycling and other accent variants are not part of this
+component. Text and structural neutrals remain achromatic.
 
-![Neural Void owned-process preview](screenshots/jarvis-win10-neural-void-owned-preview.png)
+| Structure tier | Color | Stroke |
+| --- | --- | --- |
+| Primary | `#C2C2BE` | 2 px |
+| Secondary | `#626562` | 1 px |
+| Quiet | `#303230` | 1 px |
 
-The preview covers the eight reviewed roles:
+All major geometry is orthogonal and zero-radius. Device-pixel-aligned retained
+vectors form the icons, layout topologies, taskbar marks and Explorer controls;
+there are no gradients, glow fields, particles or bitmap placeholders in this
+signature shell.
 
-- desktop icon list;
-- Explorer command bar, content host and folder view;
-- taskbar Start button, task list, notification area and clock.
+## Deterministic 1600-by-900 composition
 
-It does not draw a keyboard, mouse, linked-device panel or RGB device
-controller inside the desktop. A/C/D presets and the continuous hue slider
-belong to the outer preview host only.
+- A 126-pixel layout rail occupies the left layout axis and meets the horizontal
+  taskbar at the exact `y=800` crossing.
+- The lower-left taskbar slot is the current-layout glyph, not a Start button.
+  Its rail contains sixteen unique layout topologies: one maximized window, six
+  two-window splits, eight three-window structures and one four-quadrant grid.
+  A clipped 556-pixel viewport shows ten items at once rather than expanding all
+  sixteen. The glyphs use a 54-pixel pitch, are ordered by pane count, grouped
+  with whitespace, and share the lower-left slot's 70-by-42 geometry and `x=63`
+  centerline. Both glyph elements begin at `x=28`; their rendered neutral frames
+  occupy the identical `x=34..91` pixels and selected brackets occupy the
+  identical `x=29..96` pixels. Rail templates are explicitly zero-indent so
+  Windows theme defaults cannot move the list column.
+- Six desktop icons occupy the left side of the working field.
+- A non-maximized 930-by-667 Explorer window occupies the right side. The files,
+  storage summaries, clock and date belong to the deterministic fixture; the
+  visible storage rows do not establish a fixed three-drive product contract.
 
-## Interactive preview
+## Interaction contract
+
+Hovering the current-layout slot fades the rail in. Leaving the instrument
+starts its delayed retraction rather than hiding it immediately. Selecting any
+of the sixteen layouts moves the selected state and updates the lower-left
+current-layout glyph. The catalog validates exact pane coverage, stable order,
+unique topology signatures and horizontal/vertical/rotational closure before the
+surface can run.
+
+The rail's separate 44-pixel upper and lower edge zones start auto-scroll after a
+short dwell without covering any layout item. Motion uses a single bounded
+background timer and physical pixel offsets. Leaving the edge zone, using the
+wheel or keyboard, selecting a layout, closing the rail, reaching an endpoint or
+unloading the surface stops it immediately. Reduced-motion environments keep the
+navigation but advance one complete 54-pixel item per step. Reopening the rail
+reveals the current selection without changing it.
+
+The simulated Explorer remains operational within the preview: minimize,
+maximize, close and restore all work, and its taskbar button can activate or
+restore it. The maximize control selects the single-window topology; restoring
+returns to the last tiled topology. These interactions affect only controls
+owned by the WPF preview; they do not invoke or mutate the real Windows Explorer
+process.
+
+## Run the interactive preview
 
 ```powershell
 dotnet .\src\platforms\windows10\Jarvis.Win10.NeuralVoidPreview\bin\Release\net8.0-windows\jarvis-win10-neural-void-preview.dll show
 ```
 
-The host offers A cyan, C amber and D emerald shortcuts, a 0–360 degree hue
-slider and static, breathe, spectrum and signal-pulse effects. Every frame is
-computed by the shared `Jarvis.VisualEffects` RGB engine and exposed through
-the Win10 theme model.
+The interactive host opens the fixed Horizon Membrane shell. It does not expose
+the former A/C/D palette presets, a continuous hue slider or multicolor effect
+modes.
 
 ## Deterministic evidence
 
 ```powershell
 dotnet .\src\platforms\windows10\Jarvis.Win10.NeuralVoidPreview\bin\Release\net8.0-windows\jarvis-win10-neural-void-preview.dll `
-  render .\preview.png 156.235294 signal-pulse 0.25
+  render .\preview.png 56.470588 static 0
 ```
 
-The render command creates a 1600x900 PNG and a JSON receipt. The checked-in
-screenshot uses D neural emerald at the full-brightness point of the
-signal-pulse effect. The latest source/implementation comparison is recorded
-in `design-qa.md` and passes for the approved style-only scope.
+The render command creates a 1600-by-900 PNG and a JSON receipt for the one
+accepted yellow case. On the target Windows 10 build 19045, the canonical PNG
+SHA-256 is:
 
-On the target Windows 10 19045 renderer, the regression script also requires
-the exact pre-adapter PNG hashes:
+`2158EEA1184EFD22CBE3B630D662F3562A02DFC27955922F4321E2D1957AD9E0`
 
-| Case | SHA-256 |
-| --- | --- |
-| A cyan | `23CEA04C7471F45D01C58CE738429C1409B057BE0BBDDC88DE0BD2107199B0F6` |
-| C amber | `2A44328EB8C4B009B523D44E109B0D1202CF0C11EF971E7EEC78252F4D0E3780` |
-| D emerald | `B9545A55C8E280F2FDFB287DC199872857E2770A1E7C6D87E9696FA19A7DB28F` |
-| Custom magenta | `6E791CC91B844851CAC149332A35DD15711B6811D3A0305DCF811B94F3526066` |
+Final bounded verification passed:
 
-Other Windows builds still run the geometry, safety and render checks, but do
-not claim cross-version WPF/font pixel identity.
+- owned-preview audit: 15 / 15;
+- WPF vector adapter: 13 / 13;
+- layout and edge-bar scenarios: 19 / 19, including actual descendant-bounds
+  equality for all sixteen rail glyphs and the current-layout glyph.
 
-## Safety boundary
-
-This is not a desktop replacement and does not inspect or style a real Shell
-window. The project has no native imports, process enumeration, registry
-access, device I/O or provider SDK. It cannot mutate Explorer or physical
-devices, and it cannot activate a module.
+The receipt and tests remain fail-closed about authority:
+`shellMutationSupported=false`, `liveExplorer=not-run`. They validate the
+own-process rendering and interaction model only, not real Explorer injection,
+Explorer styling or live Shell mutation.

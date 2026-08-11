@@ -23,5 +23,10 @@ own-process WPF composition. It renders A, C, D and a custom hue to four
 distinct 1600x900 PNGs, verifies the exact eight-role visual map and rejects
 native, process, registry, Shell and device APIs.
 
+The three `jarvis_win10_explorer_*_harness.cpp` files exercise the Win10-owned
+BridgeCore, empty CallWndProc callback and exact-thread transport forks. The
+shared test entry scripts accept `-Platform windows10`, compile against only
+`src/platforms/windows10`, and do not use a Win11 backend source or binary.
+
 Future native harnesses belong in this directory. No test may load a module
-into Explorer without a separately approved live gate.
+into Explorer without the separately reviewed live gate.

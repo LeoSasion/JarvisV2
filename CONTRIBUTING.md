@@ -1,14 +1,19 @@
 # Contributing to JarvisV2
 
-JarvisV2 modifies native Windows shell processes. A visually attractive change
-is not acceptable if it weakens the fail-closed boundary.
+JarvisV2 modifies native Windows shell processes. Live validation is a supported
+development mode on the dedicated Windows 10 VM, but it must remain narrow,
+reversible and fail-closed.
 
 ## Before opening a pull request
 
-1. Keep `%LOCALAPPDATA%\JARVIS2\disabled.flag` armed.
-2. Do not install, start, configure or enable Windhawk for development.
-3. Do not inject a module or restart Explorer as part of a build or test.
-4. Run:
+1. State whether the work was tested offline, compiled only, or exercised live.
+2. For a live run, satisfy the automated preflight in `AGENTS.md`: exact
+   PID/TID/window, current source and artifact hash, armed kill switch, one
+   module permit and an active recovery helper.
+3. Use only the narrow reviewed JARVIS2 collector/Hook path. Do not use a global
+   injector, bypass compatibility/hash gates, replace system files or create an
+   unattended Explorer restart loop.
+4. Run the checks that are relevant to the changed code:
 
    ```powershell
    pwsh -NoLogo -NoProfile -File .\scripts\Test-PublicationBoundary.ps1
@@ -51,5 +56,6 @@ Keep changes narrowly scoped. Include:
 - checks run and their exact result;
 - whether any live validation occurred.
 
-Live validation is never a routine pull-request step. It requires a separate,
-current, exact activation approval under `AGENTS.md`.
+Standing authorization means a passing automated preflight does not require a
+second per-command approval. Record the exact host/build identity, target,
+commands, result and final recovery state so the run can be reproduced.

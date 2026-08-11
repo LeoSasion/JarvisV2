@@ -63,6 +63,29 @@
       "role": "pinned AI agent SDK dependency behind the disabled JSONL desktop sidecar boundary"
     },
     {
+      "name": "Barlow Condensed",
+      "repository": "https://github.com/jpt/barlow",
+      "version": "1.408",
+      "tag": "v1.408",
+      "commit": "b4726ddf91525818e85e5fce111c285b9273d764",
+      "license": "OFL-1.1",
+      "licensePath": "OFL.txt",
+      "licenseSha256": "186D750EB496A4C17A76385F82BE6AEA2AC1CF2DE074A811D63786CF374EA73F",
+      "files": [
+        {
+          "sourcePath": "fonts/ttf/BarlowCondensed-Regular.ttf",
+          "vendoredPath": "src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/Assets/Fonts/BarlowCondensed-Regular.ttf",
+          "sha256": "583CEC5DA3B84BC4DC7C9C72E2A565C94D34E431518B19D7E250B7830AD5F996"
+        },
+        {
+          "sourcePath": "fonts/ttf/BarlowCondensed-Medium.ttf",
+          "vendoredPath": "src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/Assets/Fonts/BarlowCondensed-Medium.ttf",
+          "sha256": "262BD143292CE479EE0CD09A42B47AB173FCA8E9C6EB5ED0B5C8A845BC371D17"
+        }
+      ],
+      "role": "embedded typography for the own-process Windows 10 preview"
+    },
+    {
       "name": "eDEX-UI",
       "repository": "https://github.com/GitSquared/edex-ui",
       "commit": "04a00c4079908788b371c6ecdefff96d0d9950f8",

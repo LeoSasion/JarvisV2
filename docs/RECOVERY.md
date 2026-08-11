@@ -1,5 +1,9 @@
 # Recovery
 
+> Current runtime policy is defined by `AGENTS.md`. A passing automated
+> preflight authorizes a bounded live session, but recovery readiness, exact
+> targeting and the final armed/permit-absent state remain mandatory.
+
 JARVIS2 不替换系统文件、不修改 `Shell` 注册表项，也不把自己的窗口设成桌面。最坏情况下的恢复目标是：让模块在 Explorer 启动时、注册 Hook 之前退出。当前 Supervisor 只允许 M2 单 Hook 模块进入未来实机门；M1 视觉模块仍为 build-only。
 
 ## 当前宿主状态

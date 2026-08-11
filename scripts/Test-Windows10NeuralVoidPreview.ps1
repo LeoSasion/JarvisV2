@@ -16,7 +16,11 @@ $visualEffectsRoot = Join-Path $root (
 $projectPath = Join-Path $sourceRoot (
     'Jarvis.Win10.NeuralVoidPreview.csproj')
 $surfacePath = Join-Path $sourceRoot (
-    'NeuralVoidPreviewSurface.xaml')
+    'DesktopShellSurface.xaml')
+$surfaceCodePath = Join-Path $sourceRoot (
+    'DesktopShellSurface.xaml.cs')
+$layoutCatalogPath = Join-Path $sourceRoot 'LayoutCatalog.cs'
+$layoutGlyphPath = Join-Path $sourceRoot 'LayoutGlyph.cs'
 $vectorLayerPath = Join-Path $sourceRoot (
     'NeuralVectorLayer.cs')
 $vectorSceneFactoryPath = Join-Path $sourceRoot (
@@ -70,6 +74,9 @@ $sourceText = @(
     }
 ) -join [Environment]::NewLine
 $surfaceText = [IO.File]::ReadAllText($surfacePath)
+$surfaceCodeText = [IO.File]::ReadAllText($surfaceCodePath)
+$layoutCatalogText = [IO.File]::ReadAllText($layoutCatalogPath)
+$layoutGlyphText = [IO.File]::ReadAllText($layoutGlyphPath)
 $vectorLayerText = [IO.File]::ReadAllText($vectorLayerPath)
 $vectorSceneFactoryText =
     [IO.File]::ReadAllText($vectorSceneFactoryPath)
@@ -115,31 +122,100 @@ Add-Check `
 
 $requiredRoleNames = @(
     'DesktopIconList',
-    'ExplorerCommandBar',
-    'ExplorerContentHost',
-    'ExplorerFolderView',
-    'TaskbarStartButton',
-    'TaskbarTaskList',
-    'TaskbarNotificationArea',
-    'TaskbarClock'
+    'ExplorerWindow',
+    'LayoutRailPanel',
+    'CurrentLayoutButton',
+    'TaskbarSearchButton',
+    'TaskbarTaskViewButton',
+    'TaskbarExplorerButton',
+    'TaskbarNetworkButton',
+    'TaskbarClockButton'
 )
 Add-Check `
-    -Name 'surface.exact-eight-role-map' `
+    -Name 'surface.desktop-shell-role-map' `
     -Passed (
         @($requiredRoleNames | Where-Object {
             -not $surfaceText.Contains("x:Name=`"$_`"")
         }).Count -eq 0) `
     -Detail (
-        'The simulated desktop must visibly cover every reviewed selector ' +
-        'role before any real adapter is considered.')
+        'The owned desktop must expose its desktop, Explorer, layout rail, ' +
+        'current-layout slot, realistic task buttons and minimal tray.')
+
+Add-Check `
+    -Name 'surface.orthogonal-cross-and-current-layout-placement' `
+    -Passed (
+        $surfaceText.Contains('x:Name="LayoutAxisUpper"') -and
+        $surfaceText.Contains('x:Name="LayoutAxisLower"') -and
+        $surfaceText.Contains('x:Name="TaskbarChrome"') -and
+        $surfaceText.Contains('x:Name="CurrentLayoutButton"') -and
+        $surfaceText.Contains('Width="126"') -and
+        $surfaceText.Contains('PERMANENT LAYOUT-AXIS INVARIANT') -and
+        $surfaceText.Contains('x:Key="LayoutRailListStyle"') -and
+        $surfaceText.Contains('<GroupStyle.ContainerStyle>') -and
+        $surfaceText.Contains('Padding="0"') -and
+        $surfaceCodeText.Contains('LayoutAxisX = 126.0') -and
+        $surfaceCodeText.Contains('TaskbarTop = 800.0') -and
+        $surfaceCodeText.Contains('LayoutColumnCenterX = 63.0') -and
+        $surfaceCodeText.Contains('SelectedRailLayoutGlyphBounds') -and
+        $surfaceCodeText.Contains('LayoutRailGlyphBounds') -and
+        $sourceText.Contains(
+            'layout-glyph-drawn-bounds-share-permanent-x-axis') -and
+        -not $surfaceText.Contains('TaskbarStartButton') -and
+        -not $surfaceText.Contains('StartFlyout')) `
+    -Detail (
+        'The 126px layout column must terminate in the same current-layout ' +
+        'glyph while its 2px axis crosses the 2px taskbar rule.')
+
+Add-Check `
+    -Name 'surface.layout-rail-and-inner-window-are-operable' `
+    -Passed (
+        $surfaceText.Contains(
+            'Source="{x:Static local:LayoutCatalog.All}"') -and
+        $surfaceText.Contains(
+            'ItemsSource="{Binding Source={StaticResource LayoutDefinitionsView}}"') -and
+        $surfaceText.Contains('SelectedValuePath="Preset"') -and
+        $surfaceText.Contains('Preset="{Binding Preset}"') -and
+        $surfaceText.Contains(
+            'PreviewMouseLeftButtonUp="LayoutRailPanel_OnPreviewMouseLeftButtonUp"') -and
+        $surfaceText.Contains(
+            'PreviewKeyDown="LayoutRailPanel_OnPreviewKeyDown"') -and
+        $surfaceText.Contains('x:Name="LayoutScrollUpHotZone"') -and
+        $surfaceText.Contains('x:Name="LayoutScrollDownHotZone"') -and
+        $surfaceText.Contains('ScrollViewer.CanContentScroll="False"') -and
+        $surfaceText.Contains(
+            'Height="{x:Static local:DesktopShellSurface.LayoutViewportHeight}"') -and
+        $surfaceText.Contains('x:Name="ExplorerMinimizeButton"') -and
+        $surfaceText.Contains('x:Name="ExplorerMaximizeButton"') -and
+        $surfaceText.Contains('x:Name="ExplorerCloseButton"') -and
+        $surfaceText.Contains('x:Name="TaskbarExplorerButton"') -and
+        $surfaceCodeText.Contains('LayoutRailRegion_OnMouseEnter(') -and
+        $surfaceCodeText.Contains('ScheduleLayoutRailClose()') -and
+        $surfaceCodeText.Contains('SelectLayout(') -and
+        $surfaceCodeText.Contains('StartLayoutRailAutoScroll(') -and
+        $surfaceCodeText.Contains('AdvanceLayoutRailAutoScroll(') -and
+        $surfaceCodeText.Contains('StopLayoutRailAutoScroll(') -and
+        $surfaceCodeText.Contains('RailScrollDwell') -and
+        $surfaceCodeText.Contains('LayoutItemHeight = 54.0') -and
+        $surfaceCodeText.Contains('LayoutViewportHeight = 556.0') -and
+        $surfaceCodeText.Contains('ExpandExplorerBounds()') -and
+        $surfaceCodeText.Contains('_lastTiledLayout') -and
+        $surfaceCodeText.Contains('ExplorerTitleBar_OnMouseMove(') -and
+        $surfaceCodeText.Contains('RestoreExplorer()') -and
+        $surfaceCodeText.Contains('DispatcherTimer')) `
+    -Detail (
+        'The compact data-driven rail must hover-open, auto-scroll from its ' +
+        'upper and lower edge zones, select one of sixteen layouts, ' +
+        'synchronize maximize/restore state, and keep the inner Explorer ' +
+        'controls operational.')
 
 Add-Check `
     -Name 'surface.vector-only-visual-grammar' `
     -Passed (
-        $surfaceText.Contains(
-            '<local:NeuralVectorLayer') -and
-        $surfaceText.Contains(
-            '<local:ApertureFrame') -and
+        $surfaceText.Contains('<Path ') -and
+        $surfaceText.Contains('<Rectangle') -and
+        $surfaceText.Contains('<local:LayoutGlyph') -and
+        $layoutGlyphText.Contains('DrawingContext') -and
+        $layoutGlyphText.Contains('DrawTopology(') -and
         $vectorLayerText.Contains('DrawingVisual') -and
         $vectorLayerText.Contains(
             'WpfRetainedVectorSceneRenderer') -and
@@ -175,31 +251,13 @@ Add-Check `
             'public sealed record RetainedVectorScene') -and
         $sourceText.Contains(
             'public static class RetainedVectorSceneCompiler') -and
-        $apertureFrameText.Contains('DrawingVisual') -and
-        $apertureFrameText.Contains(
-            'Win10ApertureVectorSceneFactory.TryCreate(') -and
-        $apertureVectorFactoryText.Contains(
-            'VectorPathCommand') -and
-        $apertureVectorFactoryText.Contains(
-            'VectorPathArcSegment') -and
-        $apertureVectorFactoryText.Contains('AddTangentCorner(') -and
-        $apertureVectorFactoryText.Contains(
-            'AddRegistrationSquare(') -and
-        $apertureVectorFactoryText.Contains(
-            'VectorRectangleCommand') -and
-        $apertureVectorFactoryText.Contains(
-            'TryCreateFocus(') -and
-        $apertureVectorFactoryText.Contains(
-            'VectorPointCommand') -and
-        $apertureVectorFactoryText.Contains(
-            'VectorEllipseCommand') -and
         -not $surfaceText.Contains('<Image ') -and
         -not $vectorLayerText.Contains('Bitmap') -and
         -not $apertureFrameText.Contains('Bitmap')) `
     -Detail (
-        'Selected variant 4 must be drawn from mathematical points, lines, ' +
-        'arcs, compound paths, rectangles, ellipses and planes without ' +
-        'decorative bitmap resources.')
+        'Horizon Membrane must use native line and path geometry while the ' +
+        'shared renderer retains its broader primitive support and no ' +
+        'bitmaps are required.')
 
 Add-Check `
     -Name 'surface.retained-static-vector-layer' `
@@ -239,48 +297,41 @@ Add-Check `
         'Static vector geometry must remain retained while RGB work stays ' +
         'isolated to small signal and focus visuals.')
 
-$apertureFrameCount =
-    [regex]::Matches(
-        $surfaceText,
-        '<local:ApertureFrame\b').Count
 Add-Check `
-    -Name 'surface.variant-four-aperture-grammar' `
+    -Name 'surface.orthogonal-desktop-grammar' `
     -Passed (
-        $apertureFrameCount -ge 4 -and
-        $surfaceText.Contains('FocusCorner="TopLeft"') -and
+        $surfaceText.Contains('JARVIS2 / FILE EXPLORER') -and
+        $surfaceText.Contains('PROJECT_BRIEF_0826.DOCX') -and
+        $surfaceText.Contains('x:Name="LayoutRailPanel"') -and
+        $surfaceText.Contains('x:Name="CurrentLayoutGlyph"') -and
+        $surfaceText.Contains('x:Key="PrimaryRuleBrush" Color="#C2C2BE"') -and
+        $surfaceText.Contains('x:Key="SecondaryRuleBrush" Color="#626562"') -and
+        $surfaceText.Contains('x:Key="QuietRuleBrush" Color="#303230"') -and
+        $layoutCatalogText.Contains('LayoutPreset.Maximized') -and
+        $layoutCatalogText.Contains('LayoutPreset.NarrowLeftWideRight') -and
+        $layoutCatalogText.Contains('LayoutPreset.NarrowTopWideBottom') -and
+        $layoutCatalogText.Contains('LayoutPreset.CenterMainColumns') -and
+        $layoutCatalogText.Contains('LayoutPreset.CenterMainRows') -and
+        $layoutCatalogText.Contains('LayoutPreset.TopSplitBottomMain') -and
+        $layoutCatalogText.Contains('LayoutPreset.FourQuadrants') -and
+        $layoutCatalogText.Contains('HasOrthogonalClosure()') -and
+        $layoutCatalogText.Contains('IsExactCover(') -and
+        -not $surfaceText.Contains('Click="LayoutButton_OnClick"') -and
+        $surfaceText.Contains('./Assets/Fonts/#Barlow Condensed') -and
+        $sourceText.Contains('BarlowCondensed-Regular.ttf') -and
+        $sourceText.Contains('BarlowCondensed-Medium.ttf') -and
         $surfaceText.Contains(
-            'LineBrush="{StaticResource ApertureLineBrush}"') -and
-        $surfaceText.Contains(
-            'AccentBrush="{Binding AccentBrush, ElementName=Root}"') -and
+            '{Binding AccentBrush, ElementName=Root}') -and
+        -not $surfaceText.Contains('CornerRadius=') -and
         -not $surfaceText.Contains('<DropShadowEffect') -and
-        $apertureVectorFactoryText.Contains('AddSplitEdge(') -and
-        $apertureVectorFactoryText.Contains(
-            'VectorPathArcSegment') -and
-        $apertureVectorFactoryText.Contains(
-            '"focus-ring"') -and
-        $apertureVectorFactoryText.Contains(
-            '"focus-core"') -and
-        -not $apertureFrameText.Contains('CreateGlowBrush(') -and
         -not $sourceText.Contains('RadialGradientBrush') -and
         -not $sourceText.Contains('DropShadowEffect') -and
-        $themeText.Contains('"id": "aperture-contour-v1"') -and
-        $themeText.Contains(
-            '"selection": "user-selected-variant-4"') -and
-        $themeText.Contains('"frameClosure": "subtractive-open"') -and
-        $themeText.Contains('"focusJunctionCount": 2') -and
-        $themeText.Contains('"accentBinding": "shared-rgb-frame"') -and
-        $themeText.Contains(
-            '"glowPolicy": "reserved-global-not-implemented"') -and
-        $themeText.Contains(
-            '"architecture": "global-vfx-parameter-stack"') -and
-        $themeText.Contains('"localGlowImplemented": false') -and
-        $themeText.Contains('"globalGlowReserved": true') -and
-        $themeText.Contains('"runtimeImplemented": false') -and
-        $themeText.Contains('"bitmapResourcesRequired": false')) `
+        -not $surfaceText.Contains('LinearGradientBrush') -and
+        -not $surfaceText.Contains('RadialGradientBrush')) `
     -Detail (
-        'The selected fourth variant requires subtractive open contours, ' +
-        'tangent arcs, shared-frame color binding, two local point/ring ' +
-        'junctions, no component glow and a reserved global VFX boundary.')
+        'The selected direction requires a black desktop, one yellow state ' +
+        'accent, sixteen complete layouts, a floating Explorer, three rule ' +
+        'tiers, square geometry and no gradients or glow.')
 
 $forbiddenDesktopContentPattern =
     '(?i)\b(?:keyboard|mouse|linked devices|rgb sync|peripheral)\b'
@@ -294,23 +345,29 @@ Add-Check `
         'control panel.')
 
 Add-Check `
-    -Name 'window.preview-controls-outside-desktop-surface' `
+    -Name 'window.single-yellow-desktop-host' `
     -Passed (
-        $windowText.Contains('x:Name="HueSlider"') -and
-        $windowText.Contains('A / CYAN') -and
-        $windowText.Contains('C / AMBER') -and
-        $windowText.Contains('D / EMERALD') -and
+        $windowText.Contains('WindowStyle="None"') -and
         $windowText.Contains(
-            '<local:NeuralVoidPreviewSurface') -and
+            '<local:DesktopShellSurface') -and
+        $sourceText.Contains('HorizonYellowHue') -and
+        $windowText.Contains('SnapsToDevicePixels="True"') -and
+        $windowText.Contains('UseLayoutRounding="True"') -and
+        -not $windowText.Contains('<Viewbox') -and
+        -not $windowText.Contains('HueSlider') -and
+        -not $windowText.Contains('CYAN') -and
+        -not $windowText.Contains('EMERALD') -and
         -not $surfaceText.Contains('x:Name="HueSlider"')) `
     -Detail (
-        'A/C/D and continuous hue controls belong to the preview host, ' +
-        'outside the desktop composition.')
+        'The selected preview host must open directly in the committed ' +
+        'single-yellow desktop world without scaling or theme controls.')
 
 Add-Check `
     -Name 'render.deterministic-png-boundary' `
     -Passed (
         $sourceText.Contains('RenderTargetBitmap') -and
+        $sourceText.Contains('RenderMode.SoftwareOnly') -and
+        $sourceText.Contains('96.0') -and
         $sourceText.Contains('PngBitmapEncoder') -and
         $sourceText.Contains(
             '"own-process-offscreen-wpf-surface"') -and
@@ -320,6 +377,21 @@ Add-Check `
     -Detail (
         'The project must support deterministic offscreen evidence with ' +
         'explicit non-Shell and non-device receipts.')
+
+$targetPixelBaselineBuild = 19045
+$targetPixelBaselineUbr = 6466
+$observedUbr = try {
+    [int](Get-ItemProperty `
+        -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' `
+        -Name UBR `
+        -ErrorAction Stop).UBR
+}
+catch {
+    -1
+}
+$targetPixelBaselineEnforced =
+    [Environment]::OSVersion.Version.Build -eq $targetPixelBaselineBuild -and
+    $observedUbr -eq $targetPixelBaselineUbr
 
 $buildOutput = @(
     & $DotnetPath build `
@@ -371,53 +443,54 @@ if ($buildExitCode -eq 0) {
             "$($adapterReceipt.passedCount)/" +
             "$($adapterReceipt.scenarioCount).")
 
+    $edgeOutput = @(
+        & $DotnetPath $assemblyPath test-edge-bars 2>&1
+    )
+    $edgeExitCode = $LASTEXITCODE
+    $edgeReceipt = $null
+    try {
+        $edgeReceipt =
+            ($edgeOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $edgeReceipt = $null
+    }
+    Add-Check `
+        -Name 'interaction.edge-bar-scenarios' `
+        -Passed (
+            $edgeExitCode -eq 0 -and
+            $null -ne $edgeReceipt -and
+            $edgeReceipt.result -eq 'passed' -and
+            $edgeReceipt.scenarioCount -eq 19 -and
+            $edgeReceipt.passedCount -eq
+                $edgeReceipt.scenarioCount -and
+            $edgeReceipt.ownProcessOnly -and
+            -not $edgeReceipt.shellMutationSupported -and
+            $edgeReceipt.liveExplorer -eq 'not-run') `
+        -Detail (
+            "Edge-bar test exit $edgeExitCode; scenarios " +
+            "$($edgeReceipt.passedCount)/" +
+            "$($edgeReceipt.scenarioCount).")
+
     $null = New-Item `
         -ItemType Directory `
         -Path $renderRoot `
         -Force
     $renderCases = @(
         [pscustomobject]@{
-            name = 'a-cyan'
-            hue = '186.117647'
+            name = 'layout-rail-scroll'
+            hue = '56.470588'
             effect = 'static'
             phase = '0'
-            expectedHex = '#00E5FF'
+            expectedHex = '#FFF000'
             expectedTargetSha256 =
-                '23CEA04C7471F45D01C58CE738429C1409B057BE0BBDDC88DE0BD2107199B0F6'
-        },
-        [pscustomobject]@{
-            name = 'c-amber'
-            hue = '24.941176'
-            effect = 'static'
-            phase = '0'
-            expectedHex = '#FF6A00'
-            expectedTargetSha256 =
-                '2A44328EB8C4B009B523D44E109B0D1202CF0C11EF971E7EEC78252F4D0E3780'
-        },
-        [pscustomobject]@{
-            name = 'd-emerald'
-            hue = '156.235294'
-            effect = 'signal-pulse'
-            phase = '0.25'
-            expectedHex = '#00FF9A'
-            expectedTargetSha256 =
-                'B9545A55C8E280F2FDFB287DC199872857E2770A1E7C6D87E9696FA19A7DB28F'
-        },
-        [pscustomobject]@{
-            name = 'custom-magenta'
-            hue = '300'
-            effect = 'static'
-            phase = '0'
-            expectedHex = '#FF00FF'
-            expectedTargetSha256 =
-                '6E791CC91B844851CAC149332A35DD15711B6811D3A0305DCF811B94F3526066'
+                '2158EEA1184EFD22CBE3B630D662F3562A02DFC27955922F4321E2D1957AD9E0'
         }
     )
     $renderPassed = $true
     $renderDetails = [Collections.Generic.List[string]]::new()
     $renderHashes = [Collections.Generic.List[string]]::new()
-    $targetPixelBaselineEnforced =
-        [Environment]::OSVersion.Version.Build -eq 19045
     foreach ($renderCase in $renderCases) {
         $outputPath =
             Join-Path $renderRoot "$($renderCase.name).png"
@@ -502,15 +575,14 @@ if ($buildExitCode -eq 0) {
     }
 
     Add-Check `
-        -Name 'render.acd-and-custom-hue-evidence' `
+        -Name 'render.layout-rail-yellow-evidence' `
         -Passed (
             $renderPassed -and
-            $renderHashes.Count -eq 4 -and
-            @($renderHashes | Sort-Object -Unique).Count -eq 4) `
+            $renderHashes.Count -eq 1) `
         -Detail (
-            'All 1600x900 renders must be safe, color-correct and visually ' +
-            'distinct. Exact Windows 10 build 19045 additionally requires ' +
-            'byte-identical approved pixels. ' +
+            'The approved 1600x900 render must be safe, single-yellow and ' +
+            'byte-identical on the 96-DPI software-rendered Windows 10 ' +
+            '19045.6466 baseline. ' +
             ($renderDetails -join '; '))
 }
 
@@ -523,8 +595,14 @@ $passed = $failures.Count -eq 0
     passedCount = @($checks | Where-Object passed).Count
     desktopContainsDeviceUi = $false
     ownProcessOnly = $true
-    targetPixelBaselineEnforced =
-        [Environment]::OSVersion.Version.Build -eq 19045
+    targetPixelBaselineEnforced = $targetPixelBaselineEnforced
+    pixelBaselineProfile = [ordered]@{
+        build = $targetPixelBaselineBuild
+        ubr = $targetPixelBaselineUbr
+        dpiX = 96
+        dpiY = 96
+        renderMode = 'software-only'
+    }
     readyForVisualReview = $passed
     shellMutationSupported = $false
     deviceIntegrationSupported = $false

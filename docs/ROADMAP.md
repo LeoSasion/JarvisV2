@@ -1,5 +1,9 @@
 # Roadmap
 
+> Current runtime policy is defined by `AGENTS.md`. Historical `build-only` and
+> `liveExplorer=not-run` labels remain evidence facts; later live validation
+> must independently satisfy the current automated preflight.
+
 ## M1 — Native Taskbar
 
 源码、精确兼容门禁、一次性许可、固定工具链基线和静态约束已经完成。Phase 2 又完成四组严格受限的离线安全切片：GIT cookie 的显式可重试生命周期与 provisional quarantine；不依赖 HWND 的 generation-scoped UI 线程注册表及事务式初始化/清理；以固定 slot、稳定 ID/epoch/generation、独立 observer 和真实能力引用实现的跨线程 claim-or-cancel 派发收据；以及不加载 Explorer 的便携故障注入实验室。single-generation init CAS、创建前 reserve 的 typed kernel ledger、成组保留 registry wait bundle、TAP lifecycle drain、active/retired watcher、callback scope 和 safety pin 约束继续保留。

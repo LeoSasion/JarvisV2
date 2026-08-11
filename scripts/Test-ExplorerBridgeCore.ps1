@@ -1,20 +1,32 @@
 [CmdletBinding()]
 param(
-    [switch]$StaticOnly
+    [switch]$StaticOnly,
+
+    [ValidateSet('windows10', 'windows11')]
+    [string]$Platform = 'windows11'
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
+$isWindows10 = $Platform -ceq 'windows10'
+$platformPrefix = if ($Platform -ceq 'windows10') { 'Jarvis.Win10.' } else { 'Jarvis.' }
+$expectedAbiVersion = if ($isWindows10) { 3 } else { 2 }
+$expectedResponseBytes = if ($isWindows10) { 68 } else { 64 }
+$expectedCoreExportCount = if ($isWindows10) { 5 } else { 4 }
 $sourceRoot = Join-Path $root (
-    'src\platforms\windows11\Jarvis.ExplorerBridgeCore')
+    "src\platforms\$Platform\${platformPrefix}ExplorerBridgeCore")
 $headerPath = Join-Path $sourceRoot 'jarvis_explorer_bridge_core.h'
 $internalPath = Join-Path $sourceRoot (
     'jarvis_explorer_bridge_core_internal.h')
 $corePath = Join-Path $sourceRoot 'jarvis_explorer_bridge_core.cpp'
 $harnessPath = Join-Path $root (
-    'tests\native\windows11\jarvis_explorer_bridge_core_harness.cpp')
+    $(if ($Platform -ceq 'windows10') {
+        'tests\native\windows10\jarvis_win10_explorer_bridge_core_harness.cpp'
+    } else {
+        'tests\native\windows11\jarvis_explorer_bridge_core_harness.cpp'
+    }))
 $temporaryRoot = Join-Path (
     [IO.Path]::GetTempPath()
 ) ('jarvis2-explorer-bridge-core-' + [Guid]::NewGuid().ToString('N'))
@@ -113,19 +125,22 @@ Add-Check `
 $exportMatches = @(
     [regex]::Matches(
         [IO.File]::ReadAllText($headerPath),
-        '(?m)^JarvisBridge_(?:QueryContract|Initialize|Quiesce|QueryState)\(')
+        '(?m)^JarvisBridge_(?:QueryContract|Initialize|Quiesce|QueryState|' +
+        'AcquireSharedInstance)\(')
 )
 Add-Check `
-    -Name 'contract.exact-four-export-abi' `
+    -Name 'contract.platform-specific-export-abi' `
     -Passed (
-        $exportMatches.Count -eq 4 -and
-        $sourceText.Contains('JARVIS_EXPLORER_BRIDGE_CORE_ABI_VERSION = 2U') -and
+        $exportMatches.Count -eq $expectedCoreExportCount -and
+        $sourceText.Contains(
+            "JARVIS_EXPLORER_BRIDGE_CORE_ABI_VERSION = $($expectedAbiVersion)U") -and
         $sourceText.Contains('__declspec(dllexport)') -and
         -not $sourceText.Contains('JarvisBridge_InstallHook') -and
         -not $sourceText.Contains('JarvisBridge_Load')) `
     -Detail (
-        'The PE boundary must export only QueryContract, Initialize, ' +
-        'Quiesce and QueryState; loader and Hook installation remain absent.')
+        "The $Platform PE boundary must expose exactly " +
+        "$expectedCoreExportCount ABI v$expectedAbiVersion exports; loader " +
+        'and Hook installation remain absent.')
 
 Add-Check `
     -Name 'contract.fixed-layout-and-exact-identity' `
@@ -133,14 +148,15 @@ Add-Check `
         $sourceText.Contains(
             'static_assert(sizeof(jarvis_bridge_core_init_request) == 80U)') -and
         $sourceText.Contains(
-            'static_assert(sizeof(jarvis_bridge_core_response) == 64U)') -and
+            "static_assert(sizeof(jarvis_bridge_core_response) == " +
+            "$($expectedResponseBytes)U)") -and
         $sourceText.Contains('std::uint32_t explorer_process_id') -and
         $sourceText.Contains('std::uint32_t shell_thread_id') -and
         $sourceText.Contains('std::uint64_t session_nonce') -and
         $sourceText.Contains('std::uint8_t settings_sha256[32]')) `
     -Detail (
-        'ABI v2 must pin structure sizes, one exact PID/TID, a session ' +
-        'nonce and the immutable settings SHA-256.')
+        "ABI v$expectedAbiVersion must pin the $expectedResponseBytes-byte " +
+        'response, exact PID/TID, session nonce and settings SHA-256.')
 
 Add-Check `
     -Name 'admission.kill-switch-permit-and-thread-scope-required' `
@@ -169,10 +185,13 @@ Add-Check `
         $drainingIndex -gt $passThroughIndex -and
         $sourceText.Contains('active_callback_count.fetch_add') -and
         $sourceText.Contains('active_callback_count.fetch_sub') -and
+        ($sourceText.Contains('accepted_callback_count.fetch_add') -eq
+            $isWindows10) -and
         $sourceText.Contains('PromoteDrainedInstance(instance)')) `
     -Detail (
         'Quiesce must publish pass-through before entering the draining ' +
-        'state, then wait for exact callback ownership to reach zero.')
+        'state, then wait for exact callback ownership to reach zero; only ' +
+        'the Win10 v3 fork records the cumulative accepted count.')
 
 Add-Check `
     -Name 'lifecycle.external-entry-permanent-pin' `
@@ -327,7 +346,11 @@ if ($null -ne $compiler -and $null -ne $dumpbin) {
                 -Detail $harnessDetail
         }
 
-        $dllPath = Join-Path $temporaryRoot 'jarvis-explorer-bridge-core.dll'
+        $dllPath = Join-Path $temporaryRoot $(if ($isWindows10) {
+            'jarvis-win10-explorer-bridge-core.dll'
+        } else {
+            'jarvis-explorer-bridge-core.dll'
+        })
         $dllCompileOutput = @(
             & $compiler `
                 /nologo `
@@ -364,6 +387,9 @@ if ($null -ne $compiler -and $null -ne $dumpbin) {
                 'JarvisBridge_Quiesce',
                 'JarvisBridge_QueryState'
             )
+            if ($isWindows10) {
+                $expectedExports += 'JarvisBridge_AcquireSharedInstance'
+            }
             $actualExports = @(
                 foreach ($line in $exportOutput) {
                     if ($line -match (
@@ -424,6 +450,7 @@ $passed = $failures.Count -eq 0
 [pscustomobject]@{
     schemaVersion = 1
     receiptType = 'jarvisv2-explorer-bridge-core-audit'
+    platform = $Platform
     result = if ($passed) { 'passed' } else { 'failed' }
     staticOnly = [bool]$StaticOnly
     checkCount = $checks.Count

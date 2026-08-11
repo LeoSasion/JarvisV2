@@ -25,8 +25,9 @@ bridge may consume the same RGB frame without becoming a Shell dependency.
 The fifth slice, `Jarvis.Win10.NeuralVoidPreview`, renders that shared RGB
 frame as a runnable own-process WPF desktop, Explorer and classic Win10
 taskbar. The selected fourth visual variant is encoded as a reusable,
-bitmap-free `ApertureFrame` with subtractive open contours, tangent arcs and
-two bounded focus junctions; no reference layout or feature set is copied.
+bitmap-free `ApertureFrame` with subtractive open 90-degree contours, miter
+joins and two bounded point/square focus junctions; no reference layout or
+feature set is copied.
 All accent geometry consumes one shared RGB frame. Component-level glow is
 intentionally absent; particles, glow and post processing are reserved for a
 future desktop-global, film/game-engine-style VFX parameter stack. Its A/C/D
@@ -102,10 +103,10 @@ library now compiles a backend-neutral retained
 point/line/polyline/arc/compound-path/rectangle/ellipse/plane command buffer.
 The first Win10 WPF adapter now consumes that buffer for the owned preview's
 static planes, datums, junction paths, reusable aperture contours,
-registration marks and per-frame focus geometry, renders every supported
+orthogonal registration marks and per-frame focus geometry, renders every supported
 primitive kind in tests and fails closed on invalid input.
 Four exact PNG hashes on Windows 10 build 19045 prove the migration does not
-change the current WPF pixels. See
+lock the reviewed WPF output on the exact target renderer. See
 `docs/NEURAL-VOID-GLOBAL-VFX-CONTRACT.md`.
 See `docs/WINDOWS10-DESKTOP-STYLE-SESSION.md` for the exact-host-bound,
 non-module desktop preview.
@@ -147,3 +148,11 @@ conversation and supervised self-iteration remain background runtime concerns,
 not the center of the desktop composition.
 Future projects continue to use `Jarvis.Win10.<Feature>` and must not reuse
 Win11 private symbols, selectors, DWM backdrops or module IDs.
+
+The reviewed Win10 BridgeCore, CallWndProc and exact-thread transport research
+remain platform-owned forks. The published native package is offline-only and
+contains only the empty pass-through callback DLL plus its source-bound
+receipt. It contains no collector executable, does not use the transport, and
+cannot activate Explorer. The compatible official live entry is fixed blocked
+until unload, Hook-removal and callback-drain proof is closed. See
+`docs/WINDOWS10-EXACT-THREAD-EXPLORER-COLLECTOR.md`.

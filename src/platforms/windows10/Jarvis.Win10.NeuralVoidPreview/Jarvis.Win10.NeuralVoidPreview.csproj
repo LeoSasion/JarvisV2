@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -18,4 +18,11 @@
     <ProjectReference
       Include="..\Jarvis.Win10.RgbThemeModel\Jarvis.Win10.RgbThemeModel.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\Fonts\BarlowCondensed-Regular.ttf" />
+    <Resource Include="Assets\Fonts\BarlowCondensed-Medium.ttf" />
+    <None Include="Assets\Fonts\OFL.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

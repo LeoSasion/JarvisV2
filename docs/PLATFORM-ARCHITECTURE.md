@@ -1,5 +1,9 @@
 # Platform architecture
 
+> Current runtime policy is defined by `AGENTS.md`: cross-version research does
+> not waive exact compatibility, target, artifact or recovery checks for a live
+> validation session.
+
 JarvisV2 uses one shared layer and separate Windows-family backends. The
 physical layout is an enforcement boundary, not a statement that both
 platforms already have feature parity.
@@ -154,19 +158,20 @@ composition. See `docs/WINDOWS10-NEURAL-VOID-RGB-INTENT.md`.
 standalone WPF process whose desktop, Explorer and classic taskbar are all
 simulated controls. It consumes the shared RGB frame engine, exposes A/C/D
 shortcuts plus continuous hue and effects, and implements the selected fourth
-visual variant as a reusable `ApertureFrame`: subtractive open contours,
-tangent arcs and two local RGB focus junctions. Local components draw only
-point/line/arc/compound-path/rectangle/ellipse/plane geometry; every colored
+visual variant as a reusable `ApertureFrame`: subtractive open right-angle
+contours, miter joins and two local RGB focus junctions. The shared renderer
+supports point/line/arc/compound-path/rectangle/ellipse/plane geometry, while
+the local frame grammar deliberately uses its orthogonal subset. Every colored
 primitive consumes the same RGB frame and no local glow is implemented. The
 desktop layer's static planes, datums and junction paths plus every
 `ApertureFrame` contour, registration square and dynamic focus mark are now
 authored as common retained-vector commands. `ApertureFrame` uses one compound
-path so its tangent joins keep single-draw alpha semantics, native rectangle
-commands for registration marks and per-frame line/ellipse/point commands for
-focus. The Win10 WPF adapter validates and freezes the complete staging group,
+path so its right-angle corners keep single-draw alpha semantics, native
+rectangle commands for registration marks and per-frame line/rectangle/point
+commands for focus. The Win10 WPF adapter validates and freezes the complete staging group,
 then replays immutable child drawings so offscreen `DrawingVisual` bounds stay
-correct. Exact four-case PNG hashes on Windows 10 build 19045 prove this
-adapter boundary is pixel-identical to the preceding implementation.
+correct. Exact four-case PNG hashes on Windows 10 build 19045 lock the reviewed
+orthogonal output on the target renderer.
 
 Particles, glow and post processing are reserved for a future desktop-global
 VFX compositor with a film/game-engine-style parameter stack. This boundary
@@ -178,6 +183,15 @@ Deterministic 1600x900 WPF evidence and the source/implementation comparison
 now pass for the approved style-only scope. The renderer still has no Shell
 mutation transport or physical-device integration.
 See `docs/WINDOWS10-NEURAL-VOID-OWNED-PREVIEW.md`.
+
+The Win10 BridgeCore, exact-thread transport and CallWndProc sources remain
+isolated, platform-owned research forks. The published package uses only the
+BridgeCore and empty CallWndProc sources and contains exactly a disk-only DLL
+plus receipt. No collector executable or transport source is packaged or run.
+The official live entry is fixed blocked because unload and callback-drain
+proof is not closed. It neither references a Win11 backend source/binary nor
+changes preserved Win11 identities. See
+`docs/WINDOWS10-EXACT-THREAD-EXPLORER-COLLECTOR.md`.
 
 ## Compatibility profiles
 

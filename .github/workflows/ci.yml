@@ -232,6 +232,13 @@ jobs:
           pwsh -NoLogo -NoProfile -File
           .\scripts\Test-ExplorerCallWndProcBridge.ps1
 
+      - name: Build and test Windows 10 offline callback package
+        shell: pwsh
+        run: |
+          $package = "artifacts/win10-explorer-exact-thread-collector-ci-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          .\scripts\New-ExplorerExactThreadCollectorPackage.ps1 -OutputDirectory $package
+          .\scripts\Test-ExplorerExactThreadCollector.ps1 -PackageDirectory $package
+
       - name: Audit offline Explorer frame transaction model
         shell: pwsh
         run: >-

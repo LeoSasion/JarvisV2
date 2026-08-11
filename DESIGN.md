@@ -88,6 +88,10 @@ components:
 
 # Design System: JarvisV2 Control Center
 
+> Experiment-policy note (2026-08-03): component authority boundaries below
+> describe the Control Center design. They do not prohibit separate live Shell
+> injection experiments in this repository.
+
 ## Overview
 
 **Creative North Star: "The Bounded Handoff Console"**
@@ -382,6 +386,48 @@ compact enough to remain unclipped at the minimum window width. While a proposal
 is paused, the rail states in text that the owner holds the one-shot decision.
 The ownership progress line, stage label and status text update together so
 color is never the sole carrier of progress.
+
+### Windows 10 Horizon Membrane Desktop Shell
+
+This signature component is a deliberately isolated visual sub-world for
+`Jarvis.Win10.NeuralVoidPreview`; it does not replace the Control Center's cyan,
+rounded, matte-plane design tokens. Its fixed 1600-by-900 evidence frame uses a
+pure-black field, one yellow accent (`#FFF000`), square retained-vector geometry
+and three neutral structure tiers: Primary (`#C2C2BE`, 2 pixels), Secondary
+(`#626562`, 1 pixel) and Quiet (`#303230`, 1 pixel). A 126-pixel layout rail meets
+the taskbar at `y=800`; the current-layout glyph occupies the lower-left slot and
+reveals a compact scrolling viewport into sixteen unique layouts: one maximized
+window, six two-window splits, eight three-window structures and one
+four-quadrant grid. Ten items remain visible at once; dwelling at the separate
+44-pixel upper or lower edge zone scrolls toward the hidden layouts, while
+leaving either edge, reaching a boundary, closing the rail or unloading the
+surface stops the motion immediately. The catalog is ordered by pane count,
+separated only by whitespace, and is closed under horizontal mirror, vertical
+mirror and 90-degree rotation. Every rail glyph and the lower-left current-layout
+glyph share the same 70-by-42 geometry and exact `x=63` centerline; rail items use
+a 54-pixel pitch for a deliberate six-pixel top and bottom inset.
+
+**The Layout Column Absolute-Alignment Rule.** The layout rail and the lower-left
+current-layout slot are one column, not two approximately centered regions. Every
+`LayoutGlyph` uses the same 70-by-42 token, begins at layout-space `x=28` and is
+centered at `x=63`. ListBox, ScrollViewer and GroupItem templates must contribute
+zero horizontal padding, chrome or indentation; per-instance negative-margin
+compensation is forbidden. Acceptance compares the translated bounds of all
+sixteen real rail glyph descendants with `CurrentLayoutGlyph` and pins the PNG;
+parent-container center arithmetic alone is not proof of alignment.
+
+The sub-world presents six desktop icons and a restored 930-by-667 Explorer
+window. The rail fades in, recenters the selected layout within its clipped
+viewport, retracts after a delay and updates the fixed current glyph on selection.
+Selecting the single-window topology expands Explorer and selecting
+a tiled topology restores its prior floating bounds; the Explorer maximize button
+uses the same catalog state and returns to the last tiled layout. Explorer
+minimize, close, restore and taskbar activation remain operable. This is
+own-process WPF evidence only:
+`shellMutationSupported=false`, `liveExplorer=not-run`; it must never be
+described as injected or as a real Explorer mutation. See the
+[canonical baseline](docs/screenshots/jarvis-win10-current-ui-baseline.png) and
+the finish-review record in `design-qa.md`.
 
 ### Transcript Turn
 

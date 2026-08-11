@@ -1,5 +1,9 @@
 # Architecture
 
+> Current runtime policy is defined by `AGENTS.md`: bounded live validation has
+> standing authorization only after exact-target, identity, kill-switch,
+> one-module and recovery preflight checks succeed.
+
 ## Independent desktop agent boundary
 
 `Jarvis.ControlCenter` is an ordinary own-process WPF application. Its

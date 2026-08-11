@@ -94,9 +94,12 @@ $windows10Projects =
 $expectedWindows10Projects =
     @(
         'Jarvis.Win10.DesktopStyleSession',
+        'Jarvis.Win10.ExplorerBridgeCore',
+        'Jarvis.Win10.ExplorerCallWndProcBridge',
         'Jarvis.Win10.ExplorerCaptionOverlay',
         'Jarvis.Win10.ExplorerCaptionPlan',
         'Jarvis.Win10.ExplorerCaptionSession',
+        'Jarvis.Win10.ExplorerExactThreadTransport',
         'Jarvis.Win10.HostAdmission',
         'Jarvis.Win10.NativeStyleProbe',
         'Jarvis.Win10.NeuralVoidPreview',
@@ -109,7 +112,7 @@ Add-Check `
     'windows10.reviewed-project-set' `
     (($windows10Projects -join '|') -eq
         ($expectedWindows10Projects -join '|')) `
-    'Windows 10 contains only the eleven reviewed platform projects.'
+    'Windows 10 contains only the fourteen reviewed platform projects.'
 
 $windows10 = @($matrix.platforms | Where-Object id -eq 'windows10')
 $windows11 = @($matrix.platforms | Where-Object id -eq 'windows11')

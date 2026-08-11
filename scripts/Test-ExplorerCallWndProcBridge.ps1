@@ -1,16 +1,23 @@
 [CmdletBinding()]
 param(
-    [switch]$StaticOnly
+    [switch]$StaticOnly,
+
+    [ValidateSet('windows10', 'windows11')]
+    [string]$Platform = 'windows11'
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
+$isWindows10 = $Platform -ceq 'windows10'
+$platformPrefix = if ($Platform -ceq 'windows10') { 'Jarvis.Win10.' } else { 'Jarvis.' }
+$expectedCoreExportCount = if ($isWindows10) { 5 } else { 4 }
+$expectedModuleExportCount = if ($isWindows10) { 6 } else { 5 }
 $callbackRoot = Join-Path $root (
-    'src\platforms\windows11\Jarvis.ExplorerCallWndProcBridge')
+    "src\platforms\$Platform\${platformPrefix}ExplorerCallWndProcBridge")
 $bridgeRoot = Join-Path $root (
-    'src\platforms\windows11\Jarvis.ExplorerBridgeCore')
+    "src\platforms\$Platform\${platformPrefix}ExplorerBridgeCore")
 $callbackHeaderPath = Join-Path $callbackRoot (
     'jarvis_explorer_callwndproc_bridge.h')
 $callbackInternalPath = Join-Path $callbackRoot (
@@ -24,8 +31,13 @@ $bridgeInternalPath = Join-Path $bridgeRoot (
     'jarvis_explorer_bridge_core_internal.h')
 $bridgeCorePath = Join-Path $bridgeRoot 'jarvis_explorer_bridge_core.cpp'
 $harnessPath = Join-Path $root (
-    'tests\native\windows11\' +
-    'jarvis_explorer_callwndproc_bridge_harness.cpp')
+    $(if ($Platform -ceq 'windows10') {
+        'tests\native\windows10\' +
+        'jarvis_win10_explorer_callwndproc_bridge_harness.cpp'
+    } else {
+        'tests\native\windows11\' +
+        'jarvis_explorer_callwndproc_bridge_harness.cpp'
+    }))
 $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) (
     'jarvis2-callwndproc-bridge-' + [Guid]::NewGuid().ToString('N'))
 $checks = [Collections.Generic.List[object]]::new()
@@ -124,6 +136,7 @@ if ($missingPaths.Count -ne 0) {
     [pscustomobject]@{
         schemaVersion = 1
         receiptType = 'jarvisv2-callwndproc-bridge-audit'
+        platform = $Platform
         result = 'failed'
         staticOnly = [bool]$StaticOnly
         checkCount = $checks.Count
@@ -194,18 +207,27 @@ Add-Check `
 $coreExportCount = @(
     [regex]::Matches(
         $bridgeHeaderText,
-        '(?m)^JarvisBridge_(?:QueryContract|Initialize|Quiesce|QueryState)\(')
+        '(?m)^JarvisBridge_(?:QueryContract|Initialize|Quiesce|QueryState|' +
+        'AcquireSharedInstance)\(')
 ).Count
+$hasZigZeroEntryStub =
+    $callbackWindowsText.Contains(
+        '#if defined(JARVIS_ZIG_ZERO_ENTRY_LINK_STUB)') -and
+    ([regex]::Matches(
+        $callbackWindowsText,
+        '(?m)^extern "C" BOOL WINAPI _DllMainCRTStartup\(').Count -eq 1)
 Add-Check `
-    -Name 'contract.exact-five-export-source-boundary' `
+    -Name 'contract.platform-specific-export-source-boundary' `
     -Passed (
-        $coreExportCount -eq 4 -and
+        $coreExportCount -eq $expectedCoreExportCount -and
         $callbackWindowsText.Contains('JarvisBridge_CallWndProc(') -and
         $callbackWindowsText.Contains('__declspec(dllexport)') -and
-        -not $callbackWindowsText.Contains('DllMain')) `
+        ($hasZigZeroEntryStub -eq $isWindows10) -and
+        -not [regex]::IsMatch($callbackWindowsText, '\bDllMain\s*\(')) `
     -Detail (
-        'The disk-only module must expose the four bridge functions plus one ' +
-        'CallWndProc callback and no custom loader entry.')
+        "The $Platform disk-only module must expose exactly " +
+        "$expectedModuleExportCount exports. Only the Win10 fork carries " +
+        'the guarded Zig no-entry link stub; neither backend defines DllMain.')
 
 Add-Check `
     -Name 'callback.negative-code-direct-chain' `
@@ -380,8 +402,11 @@ if ($null -ne $compiler -and $null -ne $dumpbin) {
                 })
         }
 
-        $dllPath = Join-Path $temporaryRoot (
-            'jarvis-explorer-callwndproc-bridge.dll')
+        $dllPath = Join-Path $temporaryRoot $(if ($isWindows10) {
+            'jarvis-win10-explorer-callwndproc-bridge.dll'
+        } else {
+            'jarvis-explorer-callwndproc-bridge.dll'
+        })
         $dllOutput = @(
             & $compiler `
                 /nologo /std:c++20 /O2 /W4 /WX /permissive- `
@@ -412,6 +437,9 @@ if ($null -ne $compiler -and $null -ne $dumpbin) {
                 'JarvisBridge_QueryState',
                 'JarvisBridge_Quiesce'
             )
+            if ($isWindows10) {
+                $expectedExports += 'JarvisBridge_AcquireSharedInstance'
+            }
             $actualExports = @(
                 foreach ($line in $exportOutput) {
                     if ($line -match (
@@ -427,7 +455,7 @@ if ($null -ne $compiler -and $null -ne $dumpbin) {
                     -DifferenceObject $actualExports
             )
             Add-Check `
-                -Name 'binary.exact-five-exports' `
+                -Name 'binary.exact-platform-exports' `
                 -Passed (
                     $exportExit -eq 0 -and
                     $actualExports.Count -eq $expectedExports.Count -and
@@ -526,6 +554,7 @@ $passed = $failures.Count -eq 0
 [pscustomobject]@{
     schemaVersion = 1
     receiptType = 'jarvisv2-callwndproc-bridge-audit'
+    platform = $Platform
     result = if ($passed) { 'passed' } else { 'failed' }
     staticOnly = [bool]$StaticOnly
     checkCount = $checks.Count

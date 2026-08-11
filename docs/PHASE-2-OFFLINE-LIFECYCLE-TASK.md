@@ -420,4 +420,5 @@ Acceptance:
 
 只有 P2.0—P2.6 的所有必需项完成、最终审计无 P0/P1、canonical 回执和只读主机
 收据齐全时，Phase 2 才能标记为 complete。即使完成，M1 仍保持 build-only；
-任何 live activation 必须在另一个任务中重新满足 AGENTS.md 的完整授权门。
+任何 live activation 必须在另一个任务中由 `AGENTS.md` 的 standing
+authorization 和自动预检管理，不得把离线完成状态当作实机准入证明。
