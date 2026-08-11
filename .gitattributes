@@ -1,2 +1,2 @@
 # Preserve the byte-for-byte upstream license whose locked source includes trailing space.
-src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/Assets/Fonts/OFL.txt -whitespace
+src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/Assets/Fonts/OFL.txt -text -whitespace
