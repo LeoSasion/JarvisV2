@@ -112,6 +112,28 @@ JSONL sidecar. The current transport probe imports and fingerprints the SDK
 but refuses session creation, credentials and mutation tools. No Pi code is
 loaded into Explorer.
 
+## Barlow Condensed
+
+- Project: Barlow
+- Copyright: 2017 The Barlow Project Authors
+- Version/tag: `v1.408`
+- Commit: `b4726ddf91525818e85e5fce111c285b9273d764`
+- Upstream: <https://github.com/jpt/barlow>
+- License: SIL Open Font License 1.1
+- Vendored files:
+  - `fonts/ttf/BarlowCondensed-Regular.ttf` ->
+    `BarlowCondensed-Regular.ttf`, SHA-256
+    `583CEC5DA3B84BC4DC7C9C72E2A565C94D34E431518B19D7E250B7830AD5F996`
+  - `fonts/ttf/BarlowCondensed-Medium.ttf` ->
+    `BarlowCondensed-Medium.ttf`, SHA-256
+    `262BD143292CE479EE0CD09A42B47AB173FCA8E9C6EB5ED0B5C8A845BC371D17`
+- License source: `OFL.txt`, SHA-256
+  `186D750EB496A4C17A76385F82BE6AEA2AC1CF2DE074A811D63786CF374EA73F`
+- Vendored license copy:
+  `src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/Assets/Fonts/OFL.txt`
+
+JarvisV2 embeds these two font weights in the own-process Windows 10 preview.
+
 ## Reference-only projects
 
 - Windows 11 Taskbar Styling Guide, commit `12a3c7900eb6581901548961b369e87541fcdd04`: selector research only. The repository has no declared license, so JARVIS2 vendors none of its images, icons, theme packages, or screenshots.

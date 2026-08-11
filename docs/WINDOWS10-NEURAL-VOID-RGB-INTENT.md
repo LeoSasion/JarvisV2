@@ -14,11 +14,12 @@ the accent drives desktop traces, icon focus, Explorer borders and selection,
 taskbar running indicators and status highlights.
 
 The selected frame grammar is `aperture-contour-v1`, based on the fourth
-reviewed visual variant. It preserves style only, not the mockup layout,
-functions or motifs. Its reusable primitives are point, line, tangent arc and
-plane; frames are subtractive and open, exactly two local focus junctions may
-carry the current shared `RgbFrame` accent, and no bitmap resource is
-required. Local controls do not render glow.
+reviewed visual variant and refined by the user into an orthogonal system. It
+preserves style only, not the mockup layout, functions or motifs. Its reusable
+local primitives are point, line, rectangle and plane; frames use subtractive
+open 90-degree corners with miter joins, exactly two local point/square focus
+junctions may carry the current shared `RgbFrame` accent, and no bitmap
+resource is required. Local controls do not render glow.
 
 ## Future global effects
 
@@ -33,9 +34,10 @@ The theme intent records the direction, while the separate
 `neural-void-global-vfx-v1` contract now provides a validated, platform-neutral
 parameter vocabulary:
 
-- component geometry remains
-  point/line/arc/compound-path/rectangle/ellipse/plane and consumes the shared
-  RGB frame;
+- the common renderer remains capable of
+  point/line/arc/compound-path/rectangle/ellipse/plane geometry, while this
+  frame grammar uses only its orthogonal subset and consumes the shared RGB
+  frame;
 - the global compositor may consume the same frame and add synchronized
   particle and post-effect layers;
 - 30 scalar, integer, range, enum and curve parameters are organized into five

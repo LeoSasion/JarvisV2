@@ -13,10 +13,9 @@ public enum ApertureFocusCorner
 }
 
 /// <summary>
-/// Reusable, bitmap-free window contour based on the selected aperture
-/// grammar. Static graphite geometry and the small RGB focus junction are
-/// retained in separate DrawingVisuals so color animation does not rebuild
-/// the full frame.
+/// Reusable, bitmap-free orthogonal window contour. Static graphite geometry
+/// and the small RGB focus registration are retained in separate
+/// DrawingVisuals so color animation does not rebuild the full frame.
 /// </summary>
 public sealed class ApertureFrame : FrameworkElement
 {
@@ -46,16 +45,6 @@ public sealed class ApertureFrame : FrameworkElement
             new FrameworkPropertyMetadata(
                 ApertureFocusCorner.None,
                 OnFocusAppearanceChanged));
-
-    public static readonly DependencyProperty CornerRadiusProperty =
-        DependencyProperty.Register(
-            nameof(CornerRadius),
-            typeof(double),
-            typeof(ApertureFrame),
-            new FrameworkPropertyMetadata(
-                16.0,
-                OnStaticAppearanceChanged),
-            IsFiniteNonNegative);
 
     public static readonly DependencyProperty CornerLengthProperty =
         DependencyProperty.Register(
@@ -100,12 +89,6 @@ public sealed class ApertureFrame : FrameworkElement
         set => SetValue(FocusCornerProperty, value);
     }
 
-    public double CornerRadius
-    {
-        get => (double)GetValue(CornerRadiusProperty);
-        set => SetValue(CornerRadiusProperty, value);
-    }
-
     public double CornerLength
     {
         get => (double)GetValue(CornerLengthProperty);
@@ -136,7 +119,6 @@ public sealed class ApertureFrame : FrameworkElement
         if (!Win10ApertureVectorSceneFactory.TryCreate(
                 RenderSize.Width,
                 RenderSize.Height,
-                CornerRadius,
                 CornerLength,
                 LineBrush,
                 out Win10ApertureVectorSceneInputs? inputs) ||

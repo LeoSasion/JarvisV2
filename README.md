@@ -41,7 +41,7 @@ direct writes, shell access and unattended approval remain unavailable.
 
 JarvisV2 是一个独立于旧版 JARVIS 的 Windows 原生桌面改造实验。它不铺设全屏画布，不用 Electron/WebView 假装桌面，也不替换任务栏的交互模型；模块进入明确的 Windows 宿主进程，修改现有原生组件，并且必须可以失败关闭和撤销。仓库与公开展示名称为 **JarvisV2**，内部运行时安全标识仍为 `JARVIS2`；状态目录、命名状态门、模块 ID 和既有收据不做破坏性改名。
 
-当前完成了 **M1 / Native Taskbar** 的 latched no-new-work、线程生命周期闸门、unload-safety pin，以及 Phase 2 的可重试 GIT、UI 线程注册表、跨线程派发收据和便携故障注入四组离线安全切片；同时保留第一个受控的 **M2 / Native Icon Size** 离线里程碑。M1 基于 GPL-3.0 的 Windhawk Taskbar Styler 引擎，直接修改 `explorer.exe` 中的原生 XAML Visual Tree；这些改动仍只允许 build-only，离线状态机通过不构成真实 Explorer 生命周期中的安全卸载或视觉恢复证明。M2 只 Hook `Taskbar.View.dll` 的一个现代图标尺寸计算，是目前唯一进入 Supervisor allowlist 的候选。eDEX-UI 只提供深色控制台、青色状态线和琥珀告警色的视觉语言，不进入运行时。
+当前完成了 **M1 / Native Taskbar** 的 latched no-new-work、线程生命周期闸门、unload-safety pin，以及 Phase 2 的可重试 GIT、UI 线程注册表、跨线程派发收据和便携故障注入四组离线安全切片；同时保留第一个受控的 **M2 / Native Icon Size** 离线里程碑。M1 基于 GPL-3.0 的 Windhawk Taskbar Styler 引擎，直接修改 `explorer.exe` 中的原生 XAML Visual Tree；离线收据本身不构成实机证明。实时验证由 [`AGENTS.md`](AGENTS.md) 的 standing authorization 管理，但仍必须通过精确 PID/TID、当前源码与产物哈希、急停初态、单模块许可和恢复助手的自动预检。M2 只 Hook `Taskbar.View.dll` 的一个现代图标尺寸计算，是目前唯一进入 Supervisor allowlist 的候选。eDEX-UI 只提供深色控制台、青色状态线和琥珀告警色的视觉语言，不进入运行时。
 
 ## 平台入口
 
@@ -58,8 +58,9 @@ tests/native/{common,windows10,windows11}/
 转移到 Windows 10 时从 [Windows 10 接力说明](WINDOWS10-HANDOFF.md)
 开始；目录职责、命名和返回 Win11 的规则见
 [平台架构](docs/PLATFORM-ARCHITECTURE.md)。Win10 目录目前不是“兼容完成”，
-而是一个明确失败关闭的开发落点；Win11 私有符号、选择器和模块 ID 不得
-通过放宽版本门禁复用。`scripts/` 保持扁平，作为迁移前后稳定的仓库入口。
+而是一个明确失败关闭的开发落点；Win11 私有符号或选择器可用于离线研究，
+但不得通过放宽版本门禁直接载入 Win10 宿主。`scripts/` 保持扁平，作为迁移
+前后稳定的仓库入口。
 
 ## 当前状态
 
@@ -124,11 +125,14 @@ pwsh -File .\scripts\Build-NativeMod.ps1 -Module jarvis-taskbar-icon-size
 
 2026-07-22 的安全审计发现，旧版 portable 引导曾因 `Start-Process` 的 `/D` 参数额外带引号而把安装器导向默认系统安装位置。安装器退出码为 0，但预期的 portable 编译器并未出现；约 40 秒后 Windows 记录了 Windhawk 服务创建。完整时间线、影响边界和处置状态见 [安全事件记录](docs/SECURITY-INCIDENT-2026-07-22.md)。经用户明确授权，阶段 A 已用上游正常停机路径把服务改为 Stopped / Manual，并让 Explorer 和其他活动宿主卸载基础引擎；当时一个完全挂起的 `ShellExperienceHost.exe` 仍保留惰性 DLL 映射，因此流程没有运行卸载器、恢复或终止该系统进程，也没有重启 Explorer。用户随后自行重启；2026-07-23 15:39 的只读复查确认所有 Windhawk DLL 映射已归零，但没有据此执行卸载或激活。
 
-## 实机边界
+## 实时注入边界
 
-当前没有可执行的首次实机验证顺序。Windhawk 服务宿主已被隔离，`StartDisabledHost`、`EnableOnce` 和 `clear-kill-switch` 都必须失败。任何旧文档、旧命令或旧 session plan 都不再构成授权。
-
-未来只有在独立 bridge ABI、便携 native fault lab、只读 collector、单 PID/非零 TID transport 和新恢复设计分别完成审查后，才可以起草新的实机 runbook。届时仍需在当前任务中展示并批准精确二进制哈希、PID、TID 和一次性命令；本 ADR 与离线模型本身不授予任何加载权限。
+专用 Win10 开发虚拟机允许执行受控实机验证，不需要逐次重复人工确认。每次
+加载前仍必须自动确认：当前源码与产物哈希、一个精确 Explorer PID/非零 Shell
+TID/所属窗口、急停初始已武装、无陈旧许可、单一模块许可和可工作的恢复助手。
+仅使用窄范围、可逆的 JARVIS2 私有 collector 或 exact-thread Hook；不得使用
+Windhawk 全局注入器、绕过身份/哈希门禁、替换系统文件或建立无人值守重启循环。
+每次会话无论成功失败，都必须以急停已武装、一次性许可不存在结束，并留下收据。
 
 完整的边界、恢复流程和验收矩阵见 [架构](docs/ARCHITECTURE.md)、[恢复](docs/RECOVERY.md)、[安全事件记录](docs/SECURITY-INCIDENT-2026-07-22.md) 与 [路线图](docs/ROADMAP.md)。
 

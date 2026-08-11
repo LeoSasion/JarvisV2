@@ -16,12 +16,13 @@
   },
   "vectorGrammar": {
     "id": "aperture-contour-v1",
-    "selection": "user-selected-variant-4",
+    "selection": "user-refined-orthogonal-variant-4",
     "frameClosure": "subtractive-open",
+    "cornerGeometry": "orthogonal-right-angle",
     "primitiveSet": [
       "point",
       "line",
-      "arc",
+      "rectangle",
       "plane"
     ],
     "focusJunctionCount": 2,

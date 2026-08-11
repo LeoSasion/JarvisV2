@@ -11,7 +11,9 @@ internal static class ThemeContract
     public const string ApprovalBasis = "user-selected-2026-07-30";
     public const string VectorGrammarId = "aperture-contour-v1";
     public const string VectorGrammarSelection =
-        "user-selected-variant-4";
+        "user-refined-orthogonal-variant-4";
+    public const string VectorCornerGeometry =
+        "orthogonal-right-angle";
     public const string VectorAccentBinding =
         "shared-rgb-frame";
     public const string VectorGlowPolicy =
@@ -28,7 +30,7 @@ internal static class ThemeContract
     public static readonly IReadOnlySet<string>
         RequiredVectorPrimitives =
         new HashSet<string>(
-            ["point", "line", "arc", "plane"],
+            ["point", "line", "rectangle", "plane"],
             StringComparer.Ordinal);
 
     public static readonly IReadOnlySet<string>
@@ -130,6 +132,7 @@ internal sealed record VectorGrammar(
     string Id,
     string Selection,
     string FrameClosure,
+    string CornerGeometry,
     string[] PrimitiveSet,
     int FocusJunctionCount,
     bool SingleAccentFamily,

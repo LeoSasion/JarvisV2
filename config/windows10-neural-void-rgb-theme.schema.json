@@ -128,6 +128,7 @@
         "id",
         "selection",
         "frameClosure",
+        "cornerGeometry",
         "primitiveSet",
         "focusJunctionCount",
         "singleAccentFamily",
@@ -140,10 +141,13 @@
           "const": "aperture-contour-v1"
         },
         "selection": {
-          "const": "user-selected-variant-4"
+          "const": "user-refined-orthogonal-variant-4"
         },
         "frameClosure": {
           "const": "subtractive-open"
+        },
+        "cornerGeometry": {
+          "const": "orthogonal-right-angle"
         },
         "primitiveSet": {
           "type": "array",
@@ -154,7 +158,7 @@
             "enum": [
               "point",
               "line",
-              "arc",
+              "rectangle",
               "plane"
             ]
           }

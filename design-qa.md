@@ -1,98 +1,70 @@
-# Design QA - Win10 Neural Void aperture grammar
+# Design QA - Horizon Membrane compact layout rail
 
-## Visual truth
+- Canonical baseline: `docs/screenshots/jarvis-win10-current-ui-baseline.png`
+- Deterministic evidence: `artifacts/win10-neural-void-preview-tests/layout-rail-scroll.png`
+- Viewport: 1600 x 900 at 96 DPI
+- State: black/yellow desktop, compact layout rail open, `LeftMainRightStack`
+  selected, Explorer restored at `(596, 63)` with size `930 x 667`
+- Validation scope: own-process WPF preview only;
+  `shellMutationSupported=false`, `liveExplorer=not-run`
 
-- Source:
-  `%USERPROFILE%\.codex\generated_images\019fadf9-6d36-7352-9c2c-24f1bd9e17d2\call_cXINEJfYYCzX7K1sHSPjMfGk.png`
-- Selection: the fourth displayed variant from the latest ideation set.
-- Scope: reproduce only its subtractive contour, tangent-arc, registration
-  mark, negative-space and local-focus grammar. Do not copy its blank layout,
-  functions or decorative arrangement.
-- Latest refinement: local components must not implement glow. They draw
-  shared-RGB point/line/arc/plane geometry only; particles and post effects
-  belong to a future global VFX system.
+## Layout catalog
 
-## Implementation target
+The catalog still contains 16 stable topologies: one maximized window, six
+two-window splits, eight three-window structures and one four-quadrant grid.
+Every definition is an exact cover of a 12 x 12 integer grid. Startup validation
+rejects duplicate IDs, orders, presets or signatures, gaps, overlaps, and any
+catalog that is not closed under horizontal mirror, vertical mirror and
+90-degree rotation.
 
-- Owned-process WPF preview:
-  `src\platforms\windows10\Jarvis.Win10.NeuralVoidPreview`
-- Reusable contour:
-  `src\platforms\windows10\Jarvis.Win10.NeuralVoidPreview\ApertureFrame.cs`
-- Desktop vector layer:
-  `src\platforms\windows10\Jarvis.Win10.NeuralVoidPreview\NeuralVectorLayer.cs`
-- Implementation capture:
-  `artifacts\win10-neural-void-preview-tests\d-emerald.png`
+## Compact rail geometry
 
-## Viewport and state
+Independent finish review verdict: **PASS**. Blocking findings: none.
 
-- Source pixels: 1600 x 900.
-- Implementation pixels and WPF surface: 1600 x 900 at 96 DPI
-  (1x density).
-- Theme state: D neural emerald, `#00FF9A`, `signal-pulse`, phase `0.25`.
-- Crop and density normalization: none required.
+- The clipped rail viewport is 86 x 556 and presents about ten complete items
+  instead of expanding all sixteen across the work area.
+- Every list item is 86 x 54. Its 70 x 42 glyph has a six-pixel top and bottom
+  inset; group transitions add eight pixels of whitespace and no divider line.
+- The list begins at `x=20`, and its ListBox and GroupItem templates contribute
+  zero horizontal chrome or indentation. Every rail glyph element therefore
+  occupies `x=28..98`; the fixed lower-left glyph uses the same 70 x 42 token and
+  occupies the same range. Both element centers are exactly `x=63`.
+- Pixel inspection confirms the neutral linework occupies `x=34..91`
+  (`center=62.5`) in the rail and current slot alike; the yellow selected bounds
+  occupy `x=29..96` (`center=62.5`) in both places. The former 6-pixel rail drift
+  is zero.
+- Separate 126 x 44 upper and lower hover zones sit outside the clipped list and
+  cannot cover or intercept a layout item. They add no permanent arrow or rule.
+  While scrolling, only the corresponding segment of the existing vertical axis
+  adopts the yellow accent.
+- The vertical axis remains at `x=124..126` and meets the two-pixel taskbar rule
+  at `y=800`, preserving the approved orthogonal cross.
+- Pure black, near-white vector content, one `#FFF000` accent, square geometry
+  and the existing primary/secondary/quiet rule hierarchy remain unchanged.
 
-## Comparison evidence
+## Auto-scroll behavior
 
-- Combined full-view input:
-  `artifacts\win10-neural-void-preview-tests\variant4-qa-comparison.png`
-- Left half: 1600 x 900 source visual.
-- Right half: 1600 x 900 implementation output.
-- Both halves were inspected together at their native state and density.
+- A 140 ms edge dwell starts one bounded background timer. Normal mode scrolls
+  physical pixels at a stable elapsed-time-based velocity; reduced-motion and
+  high-contrast modes advance one complete 54-pixel item at a slower interval.
+- Moving away from an edge snaps to the nearest complete item. Reaching either
+  endpoint stops immediately and prevents idle CPU work.
+- Direction changes are exclusive. Wheel input, keyboard input, selection,
+  closing the rail, leaving the rail or unloading the surface stops auto-scroll.
+- Scrolling never mutates `CurrentLayout`, the selected data item or the fixed
+  lower-left current-layout glyph.
+- Opening or reopening the rail reveals the selected item. The first and last
+  catalog entries are both fully reachable and fully visible.
 
-## Findings
+## Verification
 
-- No P0, P1 or P2 fidelity issue remains for the approved style-only scope.
-- Intentional divergence: the source uses luminous focus glow, while the
-  latest user direction explicitly defers all glow to a future global system.
-  The implementation therefore uses crisp RGB points, crosses and rings.
-- The source's empty composition, panel placement and decorative arrangement
-  are not fidelity targets. The implementation applies the approved contour
-  grammar to the existing Win10 desktop, Explorer and taskbar role map.
+- Release build: passed, 0 warnings / 0 errors
+- WPF retained-vector adapter: 13 / 13 passed
+- Layout and edge-bar scenarios: 19 / 19 passed, including translated bounds of
+  all sixteen generated rail glyphs versus the current-slot glyph
+- Owned-preview audit: 15 / 15 passed
+- Deterministic PNG: 1600 x 900, `#FFF000`
+- Final SHA-256: `2158EEA1184EFD22CBE3B630D662F3562A02DFC27955922F4321E2D1957AD9E0`
+- Empty/transparent rendering protection: fail-closed
 
-## Required fidelity surfaces
-
-- Contours: open one-pixel graphite frames, missing edge segments, tangent
-  corner arcs and registration marks are visibly present.
-- Focus: two bounded junctions use the shared emerald RGB frame without local
-  glow, blur or drop shadow.
-- Color: neutral black surfaces remain stable while the accent family is
-  consistently applied to active geometry and state.
-- Asset fidelity: the implementation is vector-only and has no bitmap
-  decoration dependency.
-- Copy and layout: intentionally outside the selected style-only scope; the
-  retained content remains legible at 1600 x 900.
-
-## Comparison history
-
-1. Offscreen `RenderTargetBitmap` capture after the variant-four build:
-   transparent.
-2. Owned preview process launch: process exited before exposing a usable
-   window handle in this automation desktop.
-3. Screen capture attempt: blocked with `The handle is invalid`.
-4. Computer Use initialization: unavailable because its Node kernel assets
-   could not be created in this desktop session.
-5. A later deterministic Release render produced a valid 1600 x 900 image.
-   The source and implementation were then recomposed into one 3200 x 900
-   comparison and inspected together.
-
-## Verified evidence
-
-- Fixed .NET SDK 8.0.423 Release build: passed, 0 warnings and 0 errors.
-- Owned-preview audit: 11/11 passed, including four visible and distinct RGB
-  render states.
-- RGB theme contract: 11/11 passed, including `aperture-contour-v1`, shared
-  RGB binding and the reserved global VFX boundary.
-- Combined source/implementation visual comparison: passed for the approved
-  style-only scope.
-- Kill switch remains armed; no Windhawk activation, Explorer injection,
-  restart, registry write or system-file modification occurred.
-
-## Follow-up polish
-
-- [P3] Revisit graphite contour opacity after an interactive ClearType capture.
-- [P3] Revisit the two point/ring junction weights after real Win10 compositor
-  validation.
-- Design the global particle/post-effect parameter model separately; do not
-  add local glow to individual components.
-
-final result: passed
+Final result: **passed**.

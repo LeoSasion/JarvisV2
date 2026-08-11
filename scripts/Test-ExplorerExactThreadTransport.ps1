@@ -1,16 +1,23 @@
 [CmdletBinding()]
 param(
-    [switch]$StaticOnly
+    [switch]$StaticOnly,
+
+    [ValidateSet('windows10', 'windows11')]
+    [string]$Platform = 'windows11'
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
+$isWindows10 = $Platform -ceq 'windows10'
+$expectedBridgeAbiVersion = if ($isWindows10) { 3 } else { 2 }
+$expectedBridgeResponseBytes = if ($isWindows10) { 68 } else { 64 }
+$platformPrefix = if ($Platform -ceq 'windows10') { 'Jarvis.Win10.' } else { 'Jarvis.' }
 $transportRoot = Join-Path $root (
-    'src\platforms\windows11\Jarvis.ExplorerExactThreadTransport')
+    "src\platforms\$Platform\${platformPrefix}ExplorerExactThreadTransport")
 $bridgeRoot = Join-Path $root (
-    'src\platforms\windows11\Jarvis.ExplorerBridgeCore')
+    "src\platforms\$Platform\${platformPrefix}ExplorerBridgeCore")
 $headerPath = Join-Path $transportRoot (
     'jarvis_explorer_exact_thread_transport.h')
 $internalPath = Join-Path $transportRoot (
@@ -19,10 +26,16 @@ $corePath = Join-Path $transportRoot (
     'jarvis_explorer_exact_thread_transport.cpp')
 $windowsPath = Join-Path $transportRoot (
     'jarvis_explorer_exact_thread_transport_windows.cpp')
+$bridgeHeaderPath = Join-Path $bridgeRoot 'jarvis_explorer_bridge_core.h'
 $bridgeCorePath = Join-Path $bridgeRoot 'jarvis_explorer_bridge_core.cpp'
 $harnessPath = Join-Path $root (
-    'tests\native\windows11\' +
-    'jarvis_explorer_exact_thread_transport_harness.cpp')
+    $(if ($Platform -ceq 'windows10') {
+        'tests\native\windows10\' +
+        'jarvis_win10_explorer_exact_thread_transport_harness.cpp'
+    } else {
+        'tests\native\windows11\' +
+        'jarvis_explorer_exact_thread_transport_harness.cpp'
+    }))
 $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) (
     'jarvis2-exact-thread-transport-' + [Guid]::NewGuid().ToString('N'))
 $checks = [Collections.Generic.List[object]]::new()
@@ -103,6 +116,7 @@ $requiredPaths = @(
     $internalPath,
     $corePath,
     $windowsPath,
+    $bridgeHeaderPath,
     $bridgeCorePath,
     $harnessPath
 )
@@ -119,6 +133,7 @@ if ($missingPaths.Count -ne 0) {
     [pscustomobject]@{
         schemaVersion = 1
         receiptType = 'jarvisv2-exact-thread-transport-audit'
+        platform = $Platform
         result = 'failed'
         staticOnly = [bool]$StaticOnly
         checkCount = $checks.Count
@@ -139,6 +154,8 @@ $headerText = [IO.File]::ReadAllText($headerPath)
 $internalText = [IO.File]::ReadAllText($internalPath)
 $coreText = [IO.File]::ReadAllText($corePath)
 $windowsText = [IO.File]::ReadAllText($windowsPath)
+$bridgeHeaderText = [IO.File]::ReadAllText($bridgeHeaderPath)
+$bridgeCoreText = [IO.File]::ReadAllText($bridgeCorePath)
 $harnessText = [IO.File]::ReadAllText($harnessPath)
 $productionText = @(
     $headerText,
@@ -153,6 +170,27 @@ $sourceText = @(
     $windowsText,
     $harnessText
 ) -join [Environment]::NewLine
+
+$bridgeAcquireExportCount = [regex]::Matches(
+    $bridgeHeaderText,
+    '(?m)^JarvisBridge_AcquireSharedInstance\s*\(').Count
+$hasAcceptedCallbackCount = $bridgeCoreText.Contains(
+    'accepted_callback_count.fetch_add')
+Add-Check `
+    -Name 'bridge.platform-specific-abi' `
+    -Passed (
+        $bridgeHeaderText.Contains(
+            "JARVIS_EXPLORER_BRIDGE_CORE_ABI_VERSION = " +
+            "$($expectedBridgeAbiVersion)U") -and
+        $bridgeHeaderText.Contains(
+            "sizeof(jarvis_bridge_core_response) == " +
+            "$($expectedBridgeResponseBytes)U") -and
+        $bridgeAcquireExportCount -eq $(if ($isWindows10) { 1 } else { 0 }) -and
+        $hasAcceptedCallbackCount -eq $isWindows10) `
+    -Detail (
+        "${Platform} must retain bridge ABI v$expectedBridgeAbiVersion, " +
+        "${expectedBridgeResponseBytes}-byte responses and its reviewed " +
+        'shared-instance/callback-count contract.')
 
 $forbiddenScopePattern = (
     '(?i)\b(?:OpenProcess|CreateRemoteThread|VirtualAllocEx|' +
@@ -450,6 +488,7 @@ $passed = $failures.Count -eq 0
 [pscustomobject]@{
     schemaVersion = 1
     receiptType = 'jarvisv2-exact-thread-transport-audit'
+    platform = $Platform
     result = if ($passed) { 'passed' } else { 'failed' }
     staticOnly = [bool]$StaticOnly
     checkCount = $checks.Count

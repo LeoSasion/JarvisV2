@@ -9,6 +9,10 @@ $manifestPath = Join-Path $root 'config\publication-manifest.json'
 $manifest =
     Get-Content -LiteralPath $manifestPath -Raw |
         ConvertFrom-Json
+$upstreamLockPath = Join-Path $root 'config\upstream-lock.json'
+$upstreamLock =
+    Get-Content -LiteralPath $upstreamLockPath -Raw |
+        ConvertFrom-Json
 $errors = [System.Collections.Generic.List[string]]::new()
 
 function Add-BoundaryError {
@@ -171,9 +175,79 @@ if (-not $licenseText.Contains('GNU GENERAL PUBLIC LICENSE') -or
 }
 if (-not $noticeText.Contains('Windows 11 Taskbar Styler') -or
     -not $noticeText.Contains('Taskbar height and icon size') -or
+    -not $noticeText.Contains('Barlow Condensed') -or
     -not $noticeText.Contains('eDEX-UI')) {
     Add-BoundaryError 'third-party-notice-incomplete'
 }
+
+$barlowLocks = @(
+    $upstreamLock.dependencies |
+        Where-Object { $_.name -ceq 'Barlow Condensed' })
+if ($barlowLocks.Count -ne 1) {
+    Add-BoundaryError 'barlow-upstream-lock-count-invalid'
+}
+else {
+    $barlowLock = $barlowLocks[0]
+    if ($barlowLock.repository -cne 'https://github.com/jpt/barlow' -or
+        $barlowLock.version -cne '1.408' -or
+        $barlowLock.tag -cne 'v1.408' -or
+        $barlowLock.commit -cne
+            'b4726ddf91525818e85e5fce111c285b9273d764' -or
+        $barlowLock.license -cne 'OFL-1.1' -or
+        $barlowLock.licensePath -cne 'OFL.txt' -or
+        $barlowLock.licenseSha256 -cne
+            '186D750EB496A4C17A76385F82BE6AEA2AC1CF2DE074A811D63786CF374EA73F') {
+        Add-BoundaryError 'barlow-upstream-lock-identity-invalid'
+    }
+
+    $expectedBarlowFiles = [ordered]@{
+        'fonts/ttf/BarlowCondensed-Regular.ttf' = [ordered]@{
+            vendoredPath =
+                'src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/Assets/Fonts/BarlowCondensed-Regular.ttf'
+            sha256 =
+                '583CEC5DA3B84BC4DC7C9C72E2A565C94D34E431518B19D7E250B7830AD5F996'
+        }
+        'fonts/ttf/BarlowCondensed-Medium.ttf' = [ordered]@{
+            vendoredPath =
+                'src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/Assets/Fonts/BarlowCondensed-Medium.ttf'
+            sha256 =
+                '262BD143292CE479EE0CD09A42B47AB173FCA8E9C6EB5ED0B5C8A845BC371D17'
+        }
+    }
+    $barlowFiles = @($barlowLock.files)
+    if ($barlowFiles.Count -ne $expectedBarlowFiles.Count) {
+        Add-BoundaryError 'barlow-upstream-lock-file-count-invalid'
+    }
+    foreach ($sourcePath in $expectedBarlowFiles.Keys) {
+        $expectedFile = $expectedBarlowFiles[$sourcePath]
+        $lockedFiles = @(
+            $barlowFiles |
+                Where-Object { $_.sourcePath -ceq $sourcePath })
+        if ($lockedFiles.Count -ne 1 -or
+            $lockedFiles[0].vendoredPath -cne $expectedFile.vendoredPath -or
+            $lockedFiles[0].sha256 -cne $expectedFile.sha256) {
+            Add-BoundaryError "barlow-upstream-lock-file-invalid:$sourcePath"
+            continue
+        }
+
+        $vendoredPath = Join-Path $root $expectedFile.vendoredPath
+        if (-not (Test-Path -LiteralPath $vendoredPath -PathType Leaf) -or
+            (Get-FileHash -LiteralPath $vendoredPath -Algorithm SHA256).Hash -cne
+                $expectedFile.sha256) {
+            Add-BoundaryError "barlow-vendored-file-invalid:$sourcePath"
+        }
+    }
+
+    $barlowLicensePath = Join-Path $root (
+        'src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/' +
+        'Assets/Fonts/OFL.txt')
+    if (-not (Test-Path -LiteralPath $barlowLicensePath -PathType Leaf) -or
+        (Get-FileHash -LiteralPath $barlowLicensePath -Algorithm SHA256).Hash -cne
+            $barlowLock.licenseSha256) {
+        Add-BoundaryError 'barlow-vendored-license-invalid'
+    }
+}
+
 if (-not $readmeText.StartsWith('# JarvisV2') -or
     -not $readmeText.Contains('**JarvisV2**') -or
     -not $readmeText.Contains('`JARVIS2`')) {

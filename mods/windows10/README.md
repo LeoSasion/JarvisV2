@@ -1,10 +1,19 @@
 # Windows 10 native modules
 
-No Win10 module is shipped in this handoff.
+> Windows 10 native modules may be exercised under the standing authorization
+> in `AGENTS.md` only after the exact-target, artifact, kill-switch,
+> single-module and recovery preflight succeeds.
+
+No Win10 binary module is checked into the repository.
 
 Future modules require new `jarvis-win10-*` IDs, exact Win10 build fingerprints,
 a fixed toolchain receipt and a transport that does not use the quarantined
 Windhawk service host.
+
+The exact-thread package builder produces an offline-only Win10 callback DLL
+and source-bound receipt from the Win10-owned BridgeCore and empty CallWndProc
+sources. No collector executable is published or run. The official live entry
+is fixed blocked until native unload and callback-drain proof is closed.
 
 The managed `Jarvis.Win10.DesktopStyleSession` adapter is not a module. Its
 bounded desktop `SysListView32` text-color preview uses the reviewed scalar

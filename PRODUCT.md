@@ -10,7 +10,7 @@ adaptive
 
 The primary user is the owner-operator of JarvisV2, working with the embedded
 assistant as a long-running collaborator across desktop conversation, file
-work and future self-iteration. Development currently happens on a disposable
+work and future self-iteration. Development currently happens on a dedicated
 Windows 10 virtual machine; the finished product must support both Windows 10
 and Windows 11 through separately admitted platform backends.
 

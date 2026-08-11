@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media;
 
 namespace Jarvis.Win10.NeuralVoidPreview;
 
@@ -15,7 +17,8 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        if (args.Length == 1 && args[0] == "show")
+        if (args.Length == 0 ||
+            (args.Length == 1 && args[0] == "show"))
         {
             Application application = new()
             {
@@ -55,8 +58,26 @@ internal static class Program
         if (args.Length == 1 &&
             args[0] == "test-vector-adapter")
         {
+            RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
+            _ = new Application
+            {
+                ShutdownMode = ShutdownMode.OnExplicitShutdown,
+            };
             WpfVectorAdapterTestReceipt receipt =
                 WpfVectorAdapterScenarios.Run();
+            Console.WriteLine(
+                JsonSerializer.Serialize(receipt, JsonOptions));
+            return receipt.Result == "passed" ? 0 : 12;
+        }
+
+        if (args.Length == 1 &&
+            args[0] == "test-edge-bars")
+        {
+            _ = new Application
+            {
+                ShutdownMode = ShutdownMode.OnExplicitShutdown,
+            };
+            EdgeBarTestReceipt receipt = EdgeBarScenarios.Run();
             Console.WriteLine(
                 JsonSerializer.Serialize(receipt, JsonOptions));
             return receipt.Result == "passed" ? 0 : 12;
@@ -79,5 +100,6 @@ internal static class Program
         Console.Error.WriteLine(
             "Usage: jarvis-win10-neural-void-preview show " +
             "or render <png-path> <hue> <effect> <phase> " +
-            "or test-vector-adapter");
+            "or test-vector-adapter " +
+            "or test-edge-bars");
 }

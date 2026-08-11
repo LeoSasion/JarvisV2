@@ -102,7 +102,7 @@ Every receipt keeps `callbackDllExecuted=false`, `liveExplorer=not-run`,
 
 ## Boundary that remains closed
 
-No collector currently:
+No Windows 11 collector currently:
 
 - resolves or loads this DLL;
 - obtains its module handle or callback address;
@@ -116,3 +116,7 @@ verified HWND/PID/TID and one reviewed DLL path. Its admission must bind the
 module SHA-256, private path/DACL, callback export, architecture, session nonce,
 recovery lease and exact one-shot permit before producing a non-executing
 session package. Live use remains a separate explicit approval gate.
+
+The Windows 10 backend owns a separate offline callback fork. Its published
+package contains no collector executable, and its official live entry is fixed
+blocked; it does not activate, widen or source-reference this Win11 backend.

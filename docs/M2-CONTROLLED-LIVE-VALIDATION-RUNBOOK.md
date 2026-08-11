@@ -31,8 +31,9 @@ Preparing or passing this runbook does not authorize:
 - loading M2;
 - restarting Explorer.
 
-Broad authorization to develop a phase cannot replace the final, current-task
-approval required by `AGENTS.md`.
+The standing authorization in `AGENTS.md` replaces repeated per-command
+approval, but it does not bypass this runbook's exact-target, artifact,
+kill-switch or recovery checks for M2.
 
 ## Offline readiness
 

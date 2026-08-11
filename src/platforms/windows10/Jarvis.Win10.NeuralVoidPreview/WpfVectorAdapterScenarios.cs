@@ -70,20 +70,18 @@ internal static class WpfVectorAdapterScenarios
             });
         Add(
             scenarios,
-            "aperture-contours-render-at-reviewed-sizes",
+            "orthogonal-contours-render-at-reviewed-sizes",
             () =>
             {
                 (double Width,
                     double Height,
-                    double Radius,
                     double Length,
                     Color Color)[] cases =
                     [
                         (
                             595.0,
                             488.0,
-                            24.0,
-                            38.0,
+                            34.0,
                             Color.FromRgb(
                                 0x1B,
                                 0x25,
@@ -91,8 +89,7 @@ internal static class WpfVectorAdapterScenarios
                         (
                             28.0,
                             28.0,
-                            4.0,
-                            6.0,
+                            7.0,
                             Color.FromArgb(
                                 0x98,
                                 0x00,
@@ -101,8 +98,7 @@ internal static class WpfVectorAdapterScenarios
                         (
                             1000.0,
                             620.0,
-                            22.0,
-                            42.0,
+                            36.0,
                             Color.FromRgb(
                                 0x34,
                                 0x40,
@@ -110,8 +106,7 @@ internal static class WpfVectorAdapterScenarios
                         (
                             200.0,
                             112.0,
-                            12.0,
-                            18.0,
+                            16.0,
                             Color.FromRgb(
                                 0x34,
                                 0x40,
@@ -123,7 +118,6 @@ internal static class WpfVectorAdapterScenarios
                         Win10ApertureVectorSceneFactory.TryCreate(
                             testCase.Width,
                             testCase.Height,
-                            testCase.Radius,
                             testCase.Length,
                             new SolidColorBrush(testCase.Color),
                             out
@@ -146,7 +140,7 @@ internal static class WpfVectorAdapterScenarios
                         compilation.Result ==
                             "compiled-retained-vector-scene" &&
                         compilation.CommandCount == 4 &&
-                        compilation.ArcCount == 4 &&
+                        compilation.ArcCount == 0 &&
                         compilation.PathCount == 1 &&
                         compilation.RectangleCount == 3 &&
                         receipt.Result ==
@@ -157,15 +151,14 @@ internal static class WpfVectorAdapterScenarios
             });
         Add(
             scenarios,
-            "zero-radius-aperture-path-compiles",
+            "orthogonal-aperture-path-compiles",
             () =>
             {
                 bool created =
                     Win10ApertureVectorSceneFactory.TryCreate(
                         200.0,
                         112.0,
-                        0.0,
-                        0.0,
+                        16.0,
                         new SolidColorBrush(
                             Color.FromRgb(
                                 0x34,
@@ -199,8 +192,7 @@ internal static class WpfVectorAdapterScenarios
                     Win10ApertureVectorSceneFactory.TryCreate(
                         200.0,
                         112.0,
-                        12.0,
-                        18.0,
+                        16.0,
                         new SolidColorBrush(
                             Color.FromRgb(
                                 0x34,
@@ -242,7 +234,6 @@ internal static class WpfVectorAdapterScenarios
                         4.0,
                         4.0,
                         0.0,
-                        0.0,
                         new SolidColorBrush(
                             Color.FromRgb(
                                 0x34,
@@ -276,7 +267,6 @@ internal static class WpfVectorAdapterScenarios
                     Win10ApertureVectorSceneFactory.TryCreate(
                         200.0,
                         112.0,
-                        12.0,
                         18.0,
                         new LinearGradientBrush(),
                         out
@@ -358,15 +348,14 @@ internal static class WpfVectorAdapterScenarios
                         compilation.PathCount !=
                             0 ||
                         compilation.EllipseCount !=
+                            0 ||
+                        compilation.RectangleCount !=
                             (corner ==
                                 ApertureFocusCorner.None
                                 ? 0
                                 : 1) ||
                         compilation.ArcCount !=
-                            (corner ==
-                                ApertureFocusCorner.None
-                                ? 0
-                                : 2) ||
+                            0 ||
                         compilation.PointCount !=
                             (corner ==
                                 ApertureFocusCorner.None
@@ -379,6 +368,7 @@ internal static class WpfVectorAdapterScenarios
                             $"commands={compilation.CommandCount}:" +
                             $"lines={compilation.LineCount}:" +
                             $"paths={compilation.PathCount}:" +
+                            $"rectangles={compilation.RectangleCount}:" +
                             $"ellipses={compilation.EllipseCount}:" +
                             $"arcs={compilation.ArcCount}:" +
                             $"points={compilation.PointCount}");
@@ -389,7 +379,6 @@ internal static class WpfVectorAdapterScenarios
                         {
                             Width = 200.0,
                             Height = 112.0,
-                            CornerRadius = 12.0,
                             CornerLength = 18.0,
                             FocusCorner = corner,
                             LineBrush =
