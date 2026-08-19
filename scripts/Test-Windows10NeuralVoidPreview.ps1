@@ -38,6 +38,10 @@ $themePath = Join-Path $root (
     'config\windows10-neural-void-rgb-theme.json')
 $renderRoot = Join-Path $root (
     'artifacts\win10-neural-void-preview-tests')
+$currentFeatherBaselinePath = Join-Path $root (
+    'docs\screenshots\jarvis-win10-current-ui-baseline.png')
+$approvedFeatherTargetSha256 =
+    '42AD07963D7BA732F5FBC3EABC3B15E28F1E38AACFA13C0243FA69870D6168E2'
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()
@@ -179,32 +183,82 @@ Add-Check `
             'PreviewMouseLeftButtonUp="LayoutRailPanel_OnPreviewMouseLeftButtonUp"') -and
         $surfaceText.Contains(
             'PreviewKeyDown="LayoutRailPanel_OnPreviewKeyDown"') -and
-        $surfaceText.Contains('x:Name="LayoutScrollUpHotZone"') -and
-        $surfaceText.Contains('x:Name="LayoutScrollDownHotZone"') -and
+        $surfaceText.Contains('x:Name="LayoutRailViewport"') -and
+        $surfaceText.Contains('ClipToBounds="True"') -and
+        -not $surfaceText.Contains(
+            'MouseMove="LayoutRailRegion_OnMouseMove"') -and
         $surfaceText.Contains('ScrollViewer.CanContentScroll="False"') -and
+        $surfaceText.Contains('<ScaleTransform x:Name="LayoutAxisScale" ScaleY="1"') -and
         $surfaceText.Contains(
             'Height="{x:Static local:DesktopShellSurface.LayoutViewportHeight}"') -and
         $surfaceText.Contains('x:Name="ExplorerMinimizeButton"') -and
         $surfaceText.Contains('x:Name="ExplorerMaximizeButton"') -and
         $surfaceText.Contains('x:Name="ExplorerCloseButton"') -and
         $surfaceText.Contains('x:Name="TaskbarExplorerButton"') -and
-        $surfaceCodeText.Contains('LayoutRailRegion_OnMouseEnter(') -and
-        $surfaceCodeText.Contains('ScheduleLayoutRailClose()') -and
+        $surfaceCodeText.Contains('PrepareLayoutRailPresentation(') -and
+        $surfaceCodeText.Contains('UpdateLayoutRailEdgeFeather(') -and
+        $surfaceCodeText.Contains('CreateLayoutRailFeatherMask(') -and
+        $surfaceCodeText.Contains('RailFeatherDepth = 256.0') -and
+        $surfaceCodeText.Contains('RailFeatherInnerOffset') -and
+        $surfaceCodeText.Contains('RailFeatherMiddleOffset') -and
+        $surfaceCodeText.Contains('RailFeatherOuterOffset') -and
+        -not $surfaceCodeText.Contains('ScheduleLayoutRailClose(') -and
+        -not $surfaceCodeText.Contains('SetLayoutRailOpen(') -and
         $surfaceCodeText.Contains('SelectLayout(') -and
         $surfaceCodeText.Contains('StartLayoutRailAutoScroll(') -and
         $surfaceCodeText.Contains('AdvanceLayoutRailAutoScroll(') -and
         $surfaceCodeText.Contains('StopLayoutRailAutoScroll(') -and
-        $surfaceCodeText.Contains('RailScrollDwell') -and
-        $surfaceCodeText.Contains('LayoutItemHeight = 54.0') -and
+        $surfaceCodeText.Contains('EvaluateLayoutRailVelocity(') -and
+        $surfaceCodeText.Contains('RailCreepDistance') -and
+        $surfaceCodeText.Contains('RailCreepVelocity') -and
+        $surfaceCodeText.Contains('RailLinearPressureWeight') -and
+        $surfaceCodeText.Contains('SmoothStep(') -and
+        -not $surfaceCodeText.Contains('RailNeutralHalfHeight') -and
+        $surfaceCodeText.Contains('RailResponseHalfExtent') -and
+        $surfaceCodeText.Contains('RailMaxVelocity') -and
+        $surfaceCodeText -match
+            'LayoutRailHitRegion\.AddHandler\(\s*Mouse\.PreviewMouseMoveEvent,\s*new MouseEventHandler\(LayoutRailRegion_OnPreviewMouseMove\),\s*true\);' -and
+        $surfaceCodeText.Contains(
+            'RaiseHandledLayoutRailMouseMoveFromWhiteGlyphForTest(') -and
+        $surfaceCodeText.Contains('RenderingEventArgs') -and
+        $surfaceCodeText.Contains('_layoutRailRequestedOffset') -and
+        -not $surfaceCodeText.Contains('RailScrollDwell') -and
+        $surfaceCodeText.Contains('RailReducedMotionInterval') -and
+        $surfaceCodeText.Contains('RailReducedMotionMinimumStep') -and
+        $surfaceCodeText.Contains('RailReducedMotionMaximumStep') -and
+        $surfaceCodeText.Contains('GetReducedMotionStep(') -and
+        $surfaceCodeText.Contains('GetCenteredAdjacentRailItemsForTest(') -and
+        $surfaceCodeText.Contains(
+            'CompositionTarget.Rendering += LayoutRailRendering_OnRendering') -and
+        $surfaceCodeText.Contains(
+            'CompositionTarget.Rendering -= LayoutRailRendering_OnRendering') -and
+        $surfaceCodeText.Contains('_layoutRailRenderingSubscribed') -and
+        $surfaceCodeText.Contains('_layoutRailSmoothMotion') -and
+        $surfaceCodeText.Contains('HostWindow_OnDeactivated(') -and
+        $surfaceCodeText.Contains('HostWindow_OnStateChanged(') -and
+        -not $surfaceCodeText.Contains('_layoutRailGlyphCache') -and
+        -not $surfaceCodeText.Contains('SetLayoutGlyphOpacity(') -and
+        $surfaceCodeText.Contains('_pendingLayoutReveal') -and
+        $surfaceCodeText.Contains('CancelPendingLayoutReveal(') -and
+        -not $surfaceCodeText.Contains('RailScrollFrameInterval') -and
+        -not $surfaceCodeText.Contains('SnapLayoutRailToNearestItem(') -and
+        -not $surfaceCodeText.Contains('StopLayoutRailAutoScroll(true)') -and
+        $surfaceCodeText -notmatch
+            'ScrollToVerticalOffset\(target\);\s*LayoutRailList\.UpdateLayout\(\);' -and
+        $surfaceCodeText.Contains('LayoutItemHeight = 64.0') -and
         $surfaceCodeText.Contains('LayoutViewportHeight = 556.0') -and
         $surfaceCodeText.Contains('ExpandExplorerBounds()') -and
         $surfaceCodeText.Contains('_lastTiledLayout') -and
         $surfaceCodeText.Contains('ExplorerTitleBar_OnMouseMove(') -and
+        $surfaceCodeText.Contains('MinimizeExplorer()') -and
         $surfaceCodeText.Contains('RestoreExplorer()') -and
         $surfaceCodeText.Contains('DispatcherTimer')) `
     -Detail (
-        'The compact data-driven rail must hover-open, auto-scroll from its ' +
-        'upper and lower edge zones, select one of sixteen layouts, ' +
+        'The permanent data-driven rail must signal scroll capability through ' +
+        'a continuous boundary-aware feather, then map pointer distance from ' +
+        'its center through a nonlinear display-frame-synchronized velocity ' +
+        'curve without dwell, snap or post-leave offset changes, ' +
+        'select one of sixteen layouts, ' +
         'synchronize maximize/restore state, and keep the inner Explorer ' +
         'controls operational.')
 
@@ -331,7 +385,8 @@ Add-Check `
     -Detail (
         'The selected direction requires a black desktop, one yellow state ' +
         'accent, sixteen complete layouts, a floating Explorer, three rule ' +
-        'tiers, square geometry and no gradients or glow.')
+        'tiers, square geometry, no chromatic or fill gradients, and no ' +
+        'glow; the opacity feather is the sole gradient exception.')
 
 $forbiddenDesktopContentPattern =
     '(?i)\b(?:keyboard|mouse|linked devices|rgb sync|peripheral)\b'
@@ -392,6 +447,67 @@ catch {
 $targetPixelBaselineEnforced =
     [Environment]::OSVersion.Version.Build -eq $targetPixelBaselineBuild -and
     $observedUbr -eq $targetPixelBaselineUbr
+
+$approvedFeatherHashConfigured =
+    -not [string]::IsNullOrWhiteSpace($approvedFeatherTargetSha256)
+$approvedFeatherHashWellFormed =
+    -not $approvedFeatherHashConfigured -or
+    $approvedFeatherTargetSha256 -cmatch '^[0-9A-F]{64}$'
+Add-Check `
+    -Name 'evidence.approved-feather-hash-contract' `
+    -Passed $approvedFeatherHashWellFormed `
+    -Detail (
+        'The optional approved feather hash must be one exact uppercase ' +
+        'SHA-256. An absent hash keeps the locked profile pending but does ' +
+        'not fail a non-comparable structural run. ' +
+        "configured=$approvedFeatherHashConfigured")
+
+$currentFeatherBaselineHash = $null
+if (Test-Path `
+        -LiteralPath $currentFeatherBaselinePath `
+        -PathType Leaf) {
+    $currentFeatherBaselineHash =
+        (Get-FileHash `
+            -LiteralPath $currentFeatherBaselinePath `
+            -Algorithm SHA256).Hash
+}
+$currentFeatherBaselineState =
+    if (-not $approvedFeatherHashConfigured) {
+        'approval-not-configured'
+    }
+    elseif ($currentFeatherBaselineHash -ceq
+            $approvedFeatherTargetSha256) {
+        'approved-hash-match'
+    }
+    else {
+        'approved-hash-mismatch'
+    }
+Add-Check `
+    -Name 'evidence.current-feather-canonical-integrity' `
+    -Passed (
+        -not $approvedFeatherHashConfigured -or
+        ($approvedFeatherHashWellFormed -and
+            $currentFeatherBaselineHash -ceq
+                $approvedFeatherTargetSha256)) `
+    -Detail (
+        'When a feather hash is approved, the checked-in current canonical ' +
+        'PNG must match it byte-for-byte on every host. ' +
+        "state=$currentFeatherBaselineState/" +
+        "sha256=$currentFeatherBaselineHash/" +
+        "approved=$approvedFeatherTargetSha256")
+
+$featherRenderAttempted = $false
+$featherStructuralRenderPassed = $false
+$featherPixelComparable = $false
+$featherPixelApproved = $false
+$observedFeatherSha256 = $null
+$featherEvidenceState =
+    if ($targetPixelBaselineEnforced) {
+        'locked-profile-not-run'
+    }
+    else {
+        'non-comparable-not-run'
+    }
 
 $buildOutput = @(
     & $DotnetPath build `
@@ -462,7 +578,8 @@ if ($buildExitCode -eq 0) {
             $edgeExitCode -eq 0 -and
             $null -ne $edgeReceipt -and
             $edgeReceipt.result -eq 'passed' -and
-            $edgeReceipt.scenarioCount -eq 19 -and
+            $edgeReceipt.schemaVersion -eq 8 -and
+            $edgeReceipt.scenarioCount -eq 25 -and
             $edgeReceipt.passedCount -eq
                 $edgeReceipt.scenarioCount -and
             $edgeReceipt.ownProcessOnly -and
@@ -484,14 +601,15 @@ if ($buildExitCode -eq 0) {
             effect = 'static'
             phase = '0'
             expectedHex = '#FFF000'
-            expectedTargetSha256 =
-                '2158EEA1184EFD22CBE3B630D662F3562A02DFC27955922F4321E2D1957AD9E0'
+            approvedFeatherTargetSha256 =
+                $approvedFeatherTargetSha256
         }
     )
     $renderPassed = $true
     $renderDetails = [Collections.Generic.List[string]]::new()
     $renderHashes = [Collections.Generic.List[string]]::new()
     foreach ($renderCase in $renderCases) {
+        $featherRenderAttempted = $true
         $outputPath =
             Join-Path $renderRoot "$($renderCase.name).png"
         $renderOutput = @(
@@ -538,7 +656,7 @@ if ($buildExitCode -eq 0) {
             }
         }
 
-        $casePassed =
+        $structuralCasePassed =
             $renderExitCode -eq 0 -and
             $null -ne $receipt -and
             $receipt.result -eq
@@ -552,43 +670,168 @@ if ($buildExitCode -eq 0) {
             $receipt.liveExplorer -eq 'not-run' -and
             -not $receipt.mutationPerformed -and
             $pngValid
+        $actualSha256 = $null
         if ($pngValid) {
             $actualSha256 =
                 (Get-FileHash `
                     -LiteralPath $outputPath `
                     -Algorithm SHA256).Hash
             $renderHashes.Add($actualSha256)
-            $pixelIdentical =
-                -not $targetPixelBaselineEnforced -or
-                $actualSha256 -ceq
-                    $renderCase.expectedTargetSha256
-            $casePassed =
-                $casePassed -and $pixelIdentical
         }
-        else {
-            $pixelIdentical = $false
-        }
+
+        $hasApprovedFeatherHash =
+            -not [string]::IsNullOrWhiteSpace(
+                $renderCase.approvedFeatherTargetSha256)
+        $caseFeatherPixelComparable =
+            $structuralCasePassed -and $targetPixelBaselineEnforced
+        $caseFeatherPixelApproved =
+            $caseFeatherPixelComparable -and
+            $approvedFeatherHashWellFormed -and
+            $hasApprovedFeatherHash -and
+            $actualSha256 -ceq
+                $renderCase.approvedFeatherTargetSha256
+        $caseEvidenceState =
+            if (-not $structuralCasePassed) {
+                'structural-failed'
+            }
+            elseif (-not $targetPixelBaselineEnforced) {
+                'non-comparable-structural-pass'
+            }
+            elseif (-not $hasApprovedFeatherHash) {
+                'locked-profile-pending-approval'
+            }
+            elseif (-not $approvedFeatherHashWellFormed) {
+                'locked-profile-invalid-approved-hash'
+            }
+            elseif ($caseFeatherPixelApproved) {
+                'locked-profile-approved'
+            }
+            else {
+                'locked-profile-hash-mismatch'
+            }
+        $publicationBoundaryPassed =
+            -not $targetPixelBaselineEnforced -or
+            $caseFeatherPixelApproved
+        $casePassed =
+            $structuralCasePassed -and $publicationBoundaryPassed
+
+        $featherStructuralRenderPassed = $structuralCasePassed
+        $featherPixelComparable = $caseFeatherPixelComparable
+        $featherPixelApproved = $caseFeatherPixelApproved
+        $observedFeatherSha256 = $actualSha256
+        $featherEvidenceState = $caseEvidenceState
         $renderPassed = $renderPassed -and $casePassed
         $renderDetails.Add(
             "$($renderCase.name)=$casePassed/" +
-            "$($receipt.accentHex)/pixel=$pixelIdentical")
+            "$($receipt.accentHex)/" +
+            "structural=$structuralCasePassed/" +
+            "comparable=$caseFeatherPixelComparable/" +
+            "featherPixelApproved=$caseFeatherPixelApproved/" +
+            "state=$caseEvidenceState/" +
+            "actualHash=$actualSha256/" +
+            "approvedHash=$($renderCase.approvedFeatherTargetSha256)")
     }
 
     Add-Check `
-        -Name 'render.layout-rail-yellow-evidence' `
+        -Name 'render.feather-current-evidence' `
         -Passed (
             $renderPassed -and
             $renderHashes.Count -eq 1) `
         -Detail (
-            'The approved 1600x900 render must be safe, single-yellow and ' +
-            'byte-identical on the 96-DPI software-rendered Windows 10 ' +
-            '19045.6466 baseline. ' +
+            'The current 1600x900 feather render must be safe and ' +
+            'single-yellow. A non-locked host may pass only as a ' +
+            'non-comparable structural result. The locked 96-DPI Windows 10 ' +
+            '19045.6466 profile passes only when the actual SHA-256 strictly ' +
+            'matches the explicitly approved current canonical. ' +
             ($renderDetails -join '; '))
 }
 
+$featherEvidenceStateConsistent =
+    switch ($featherEvidenceState) {
+        'locked-profile-not-run' {
+            -not $featherRenderAttempted -and
+            $targetPixelBaselineEnforced -and
+            -not $featherStructuralRenderPassed -and
+            -not $featherPixelComparable -and
+            -not $featherPixelApproved
+        }
+        'non-comparable-not-run' {
+            -not $featherRenderAttempted -and
+            -not $targetPixelBaselineEnforced -and
+            -not $featherStructuralRenderPassed -and
+            -not $featherPixelComparable -and
+            -not $featherPixelApproved
+        }
+        'structural-failed' {
+            $featherRenderAttempted -and
+            -not $featherStructuralRenderPassed -and
+            -not $featherPixelComparable -and
+            -not $featherPixelApproved
+        }
+        'non-comparable-structural-pass' {
+            $featherRenderAttempted -and
+            $featherStructuralRenderPassed -and
+            -not $targetPixelBaselineEnforced -and
+            -not $featherPixelComparable -and
+            -not $featherPixelApproved
+        }
+        'locked-profile-pending-approval' {
+            $featherRenderAttempted -and
+            $featherStructuralRenderPassed -and
+            $targetPixelBaselineEnforced -and
+            $featherPixelComparable -and
+            -not $approvedFeatherHashConfigured -and
+            -not $featherPixelApproved
+        }
+        'locked-profile-invalid-approved-hash' {
+            $featherRenderAttempted -and
+            $featherStructuralRenderPassed -and
+            $targetPixelBaselineEnforced -and
+            $featherPixelComparable -and
+            $approvedFeatherHashConfigured -and
+            -not $approvedFeatherHashWellFormed -and
+            -not $featherPixelApproved
+        }
+        'locked-profile-hash-mismatch' {
+            $featherRenderAttempted -and
+            $featherStructuralRenderPassed -and
+            $targetPixelBaselineEnforced -and
+            $featherPixelComparable -and
+            $approvedFeatherHashConfigured -and
+            $approvedFeatherHashWellFormed -and
+            -not $featherPixelApproved -and
+            $observedFeatherSha256 -cne
+                $approvedFeatherTargetSha256
+        }
+        'locked-profile-approved' {
+            $featherRenderAttempted -and
+            $featherStructuralRenderPassed -and
+            $targetPixelBaselineEnforced -and
+            $featherPixelComparable -and
+            $approvedFeatherHashConfigured -and
+            $approvedFeatherHashWellFormed -and
+            $featherPixelApproved -and
+            $observedFeatherSha256 -ceq
+                $approvedFeatherTargetSha256
+        }
+        default {
+            $false
+        }
+    }
+Add-Check `
+    -Name 'evidence.feather-publication-state-is-consistent' `
+    -Passed $featherEvidenceStateConsistent `
+    -Detail (
+        'Pixel approval is possible only for a structurally valid render on ' +
+        'the locked profile with an exact approved SHA-256 match. ' +
+        "state=$featherEvidenceState/" +
+        "structural=$featherStructuralRenderPassed/" +
+        "comparable=$featherPixelComparable/" +
+        "approved=$featherPixelApproved")
+
 $passed = $failures.Count -eq 0
 [pscustomobject]@{
-    schemaVersion = 1
+    schemaVersion = 2
     receiptType = 'jarvisv2-win10-neural-void-owned-preview-audit'
     result = if ($passed) { 'passed' } else { 'failed' }
     checkCount = $checks.Count
@@ -596,6 +839,14 @@ $passed = $failures.Count -eq 0
     desktopContainsDeviceUi = $false
     ownProcessOnly = $true
     targetPixelBaselineEnforced = $targetPixelBaselineEnforced
+    currentFeatherBaselineSha256 = $currentFeatherBaselineHash
+    approvedFeatherTargetSha256 = $approvedFeatherTargetSha256
+    observedFeatherSha256 = $observedFeatherSha256
+    featherRenderAttempted = $featherRenderAttempted
+    featherStructuralRenderPassed = $featherStructuralRenderPassed
+    featherPixelComparable = $featherPixelComparable
+    featherPixelApproved = $featherPixelApproved
+    featherEvidenceState = $featherEvidenceState
     pixelBaselineProfile = [ordered]@{
         build = $targetPixelBaselineBuild
         ubr = $targetPixelBaselineUbr
@@ -603,7 +854,10 @@ $passed = $failures.Count -eq 0
         dpiY = 96
         renderMode = 'software-only'
     }
-    readyForVisualReview = $passed
+    readyForStructuralReview = $passed
+    readyForVisualReview = $passed -and $featherPixelApproved
+    readyForCanonicalPixelPublication =
+        $passed -and $featherPixelApproved
     shellMutationSupported = $false
     deviceIntegrationSupported = $false
     activationPermitted = $false

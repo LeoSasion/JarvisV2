@@ -36,9 +36,10 @@ internal static class PreviewRenderer
                     phase);
             DesktopShellSurface surface = new();
             surface.ApplyFrame(frame);
-            surface.SetLayoutRailOpenForSnapshot(true);
             renderHost = CreateRenderHost(surface);
             renderHost.Show();
+            PumpDispatcher();
+            surface.PrepareLayoutRailForSnapshot();
             PumpDispatcher();
             surface.SetClockForSnapshot(
                 new DateTime(2026, 8, 6, 14, 39, 0));

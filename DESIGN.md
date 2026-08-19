@@ -396,16 +396,27 @@ pure-black field, one yellow accent (`#FFF000`), square retained-vector geometry
 and three neutral structure tiers: Primary (`#C2C2BE`, 2 pixels), Secondary
 (`#626562`, 1 pixel) and Quiet (`#303230`, 1 pixel). A 126-pixel layout rail meets
 the taskbar at `y=800`; the current-layout glyph occupies the lower-left slot and
-reveals a compact scrolling viewport into sixteen unique layouts: one maximized
+anchors a permanently visible scrolling viewport into sixteen unique layouts: one maximized
 window, six two-window splits, eight three-window structures and one
-four-quadrant grid. Ten items remain visible at once; dwelling at the separate
-44-pixel upper or lower edge zone scrolls toward the hidden layouts, while
-leaving either edge, reaching a boundary, closing the rail or unloading the
-surface stops the motion immediately. The catalog is ordered by pane count,
+four-quadrant grid. About eight to nine items remain visible at once. A continuous
+256-pixel opacity feather dissolves each scrollable viewport edge into the black
+field, leaving a 44-pixel fully opaque center; an edge that has reached its
+boundary stays fully opaque. Pointer height within the rail drives a
+center-relative pressure curve: exact center is stationary, a short activation
+curve blends into a linear-plus-smoothstep response without a low-speed shelf,
+and speed rises continuously to 180 pixels per second near either edge. The
+closest white and near-white neighboring glyph centers remain visibly active
+instead of waiting several seconds for a full-item jump. Normal motion is synchronized to display
+frames and integrates elapsed-time pixel offsets with no dwell. Returning to the
+center, leaving the rail, reaching a boundary or unloading the surface stops at
+the exact physical offset without snapping or rebound. The catalog is ordered by pane count,
 separated only by whitespace, and is closed under horizontal mirror, vertical
 mirror and 90-degree rotation. Every rail glyph and the lower-left current-layout
 glyph share the same 70-by-42 geometry and exact `x=63` centerline; rail items use
-a 54-pixel pitch for a deliberate six-pixel top and bottom inset.
+a 64-pixel pitch for a deliberate eleven-pixel top and bottom inset. The spatial
+feather replaces discrete per-item opacity jumps, so partially clipped glyphs
+cross the viewport edge continuously without arrows, scrollbars, black overlay
+plates or stray rule segments.
 
 **The Layout Column Absolute-Alignment Rule.** The layout rail and the lower-left
 current-layout slot are one column, not two approximately centered regions. Every
@@ -417,8 +428,8 @@ sixteen real rail glyph descendants with `CurrentLayoutGlyph` and pins the PNG;
 parent-container center arithmetic alone is not proof of alignment.
 
 The sub-world presents six desktop icons and a restored 930-by-667 Explorer
-window. The rail fades in, recenters the selected layout within its clipped
-viewport, retracts after a delay and updates the fixed current glyph on selection.
+window. The rail and its orthogonal axis remain visible, recenter the selected
+layout within the clipped viewport and update the fixed current glyph on selection.
 Selecting the single-window topology expands Explorer and selecting
 a tiled topology restores its prior floating bounds; the Explorer maximize button
 uses the same catalog state and returns to the last tiled layout. Explorer
@@ -426,8 +437,11 @@ minimize, close, restore and taskbar activation remain operable. This is
 own-process WPF evidence only:
 `shellMutationSupported=false`, `liveExplorer=not-run`; it must never be
 described as injected or as a real Explorer mutation. See the
-[canonical baseline](docs/screenshots/jarvis-win10-current-ui-baseline.png) and
-the finish-review record in `design-qa.md`.
+[current approved feather baseline](docs/screenshots/jarvis-win10-current-ui-baseline.png)
+and the interaction/pixel-evidence status in `design-qa.md`. The locked Windows
+10 19045.6466, 96-DPI software-render profile pins this frame by SHA-256;
+non-equivalent hosts may report structural rendering only and never pixel
+approval.
 
 ### Transcript Turn
 

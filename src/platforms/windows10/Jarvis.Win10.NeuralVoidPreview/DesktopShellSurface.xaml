@@ -10,7 +10,6 @@
     Focusable="True"
     Loaded="Surface_OnLoaded"
     Unloaded="Surface_OnUnloaded"
-    PreviewKeyDown="Surface_OnPreviewKeyDown"
     SnapsToDevicePixels="True"
     UseLayoutRounding="True"
     TextOptions.TextFormattingMode="Display"
@@ -451,7 +450,7 @@
             Height="800"
             Panel.ZIndex="20"
             Background="Transparent"
-            MouseEnter="LayoutRailRegion_OnMouseEnter"
+            PreviewMouseLeftButtonDown="LayoutRailRegion_OnPreviewMouseLeftButtonDown"
             MouseLeave="LayoutRailRegion_OnMouseLeave">
             <Border
                 x:Name="LayoutAxisUpper"
@@ -461,8 +460,9 @@
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 Background="{StaticResource PrimaryRuleBrush}"
+                IsHitTestVisible="False"
                 RenderTransformOrigin="0.5,1">
-                <Border.RenderTransform><ScaleTransform x:Name="LayoutAxisScale" ScaleY="0" /></Border.RenderTransform>
+                <Border.RenderTransform><ScaleTransform x:Name="LayoutAxisScale" ScaleY="1" /></Border.RenderTransform>
             </Border>
             <Grid
                 x:Name="LayoutRailPanel"
@@ -471,117 +471,86 @@
                 Margin="0,70,0,0"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
-                Opacity="0"
-                Visibility="Collapsed">
+                Opacity="1"
+                Visibility="Visible">
                 <Border
-                    x:Name="LayoutScrollUpHotZone"
-                    Width="126"
-                    Height="44"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Top"
-                    Background="Transparent"
-                    MouseEnter="LayoutScrollUpHotZone_OnMouseEnter"
-                    MouseLeave="LayoutScrollHotZone_OnMouseLeave"
-                    AutomationProperties.Name="Scroll layouts upward">
-                    <Border
-                        x:Name="LayoutScrollUpSignal"
-                        Width="2"
-                        Height="44"
-                        HorizontalAlignment="Right"
-                        Background="{Binding AccentBrush, ElementName=Root}"
-                        IsHitTestVisible="False"
-                        Opacity="0" />
-                </Border>
-
-                <ListBox
-                    x:Name="LayoutRailList"
+                    x:Name="LayoutRailViewport"
                     Width="86"
                     Height="{x:Static local:DesktopShellSurface.LayoutViewportHeight}"
                     Margin="20,52,0,0"
-                    Padding="0"
-                    Style="{StaticResource LayoutRailListStyle}"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Top"
                     Background="Transparent"
-                    BorderThickness="0"
-                    ClipToBounds="True"
-                    ItemsSource="{Binding Source={StaticResource LayoutDefinitionsView}}"
-                    ItemContainerStyle="{StaticResource LayoutOptionItem}"
-                    SelectedValuePath="Preset"
-                    SelectionMode="Single"
-                    ScrollViewer.CanContentScroll="False"
-                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                    ScrollViewer.VerticalScrollBarVisibility="Hidden"
-                    VirtualizingPanel.IsVirtualizing="False"
-                    PreviewMouseLeftButtonUp="LayoutRailPanel_OnPreviewMouseLeftButtonUp"
-                    PreviewKeyDown="LayoutRailPanel_OnPreviewKeyDown"
-                    PreviewMouseWheel="LayoutRailList_OnPreviewMouseWheel"
-                    AutomationProperties.HelpText="Hover the upper or lower rail edge to scroll. Use arrow keys, Home, End, or the wheel for direct navigation.">
-                    <ListBox.GroupStyle>
-                        <GroupStyle>
-                            <!--
-                            PERMANENT LAYOUT-AXIS INVARIANT:
-                            GroupItem must add no horizontal chrome or indentation.
-                            Every 70x42 rail glyph and CurrentLayoutGlyph must
-                            occupy x=28..98 on the shared x=63 centerline.
-                            -->
-                            <GroupStyle.ContainerStyle>
-                                <Style TargetType="{x:Type GroupItem}">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="{x:Type GroupItem}">
-                                                <StackPanel Margin="0">
-                                                    <ContentPresenter
-                                                        Margin="0"
-                                                        Content="{TemplateBinding Content}"
-                                                        ContentTemplate="{TemplateBinding ContentTemplate}"
-                                                        ContentStringFormat="{TemplateBinding ContentStringFormat}" />
-                                                    <ItemsPresenter Margin="0" />
-                                                </StackPanel>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Style>
-                            </GroupStyle.ContainerStyle>
-                            <GroupStyle.HeaderTemplate>
-                                <DataTemplate>
-                                    <Border Height="8" />
-                                </DataTemplate>
-                            </GroupStyle.HeaderTemplate>
-                        </GroupStyle>
-                    </ListBox.GroupStyle>
-                    <ListBox.ItemTemplate>
-                        <DataTemplate DataType="{x:Type local:LayoutDefinition}">
-                            <local:LayoutGlyph
-                                Width="{x:Static local:DesktopShellSurface.LayoutGlyphWidth}"
-                                Height="{x:Static local:DesktopShellSurface.LayoutGlyphHeight}"
-                                Preset="{Binding Preset}"
-                                IsSelected="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type ListBoxItem}}}"
-                                Stroke="{StaticResource TextBrush}"
-                                Accent="{Binding AccentBrush, RelativeSource={RelativeSource AncestorType={x:Type local:DesktopShellSurface}}}" />
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-
-                <Border
-                    x:Name="LayoutScrollDownHotZone"
-                    Width="126"
-                    Height="44"
-                    Margin="0,616,0,0"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Top"
-                    Background="Transparent"
-                    MouseEnter="LayoutScrollDownHotZone_OnMouseEnter"
-                    MouseLeave="LayoutScrollHotZone_OnMouseLeave"
-                    AutomationProperties.Name="Scroll layouts downward">
-                    <Border
-                        x:Name="LayoutScrollDownSignal"
-                        Width="2"
-                        Height="44"
-                        HorizontalAlignment="Right"
-                        Background="{Binding AccentBrush, ElementName=Root}"
-                        IsHitTestVisible="False"
-                        Opacity="0" />
+                    ClipToBounds="True">
+                    <ListBox
+                        x:Name="LayoutRailList"
+                        Width="86"
+                        Height="{x:Static local:DesktopShellSurface.LayoutViewportHeight}"
+                        Margin="0"
+                        Padding="0"
+                        Style="{StaticResource LayoutRailListStyle}"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        ItemsSource="{Binding Source={StaticResource LayoutDefinitionsView}}"
+                        ItemContainerStyle="{StaticResource LayoutOptionItem}"
+                        SelectedValuePath="Preset"
+                        SelectionMode="Single"
+                        ScrollViewer.CanContentScroll="False"
+                        ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                        ScrollViewer.VerticalScrollBarVisibility="Hidden"
+                        VirtualizingPanel.IsVirtualizing="False"
+                        PreviewMouseLeftButtonUp="LayoutRailPanel_OnPreviewMouseLeftButtonUp"
+                        PreviewKeyDown="LayoutRailPanel_OnPreviewKeyDown"
+                        PreviewMouseWheel="LayoutRailList_OnPreviewMouseWheel"
+                        AutomationProperties.HelpText="The rail remains visible. Feathered edges indicate more layouts. Pointer distance above or below the rail center controls scroll speed; arrow keys, Home, End, and the wheel remain available.">
+                        <ListBox.GroupStyle>
+                            <GroupStyle>
+                                <!--
+                                PERMANENT LAYOUT-AXIS INVARIANT:
+                                GroupItem must add no horizontal chrome or indentation.
+                                Every 70x42 rail glyph and CurrentLayoutGlyph must
+                                occupy x=28..98 on the shared x=63 centerline.
+                                -->
+                                <GroupStyle.ContainerStyle>
+                                    <Style TargetType="{x:Type GroupItem}">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="{x:Type GroupItem}">
+                                                    <StackPanel Margin="0">
+                                                        <ContentPresenter
+                                                            Margin="0"
+                                                            Content="{TemplateBinding Content}"
+                                                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                            ContentStringFormat="{TemplateBinding ContentStringFormat}" />
+                                                        <ItemsPresenter Margin="0" />
+                                                    </StackPanel>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </GroupStyle.ContainerStyle>
+                                <GroupStyle.HeaderTemplate>
+                                    <DataTemplate>
+                                        <Border Height="12" />
+                                    </DataTemplate>
+                                </GroupStyle.HeaderTemplate>
+                            </GroupStyle>
+                        </ListBox.GroupStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type local:LayoutDefinition}">
+                                <local:LayoutGlyph
+                                    Width="{x:Static local:DesktopShellSurface.LayoutGlyphWidth}"
+                                    Height="{x:Static local:DesktopShellSurface.LayoutGlyphHeight}"
+                                    IsHitTestVisible="False"
+                                    Preset="{Binding Preset}"
+                                    IsSelected="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type ListBoxItem}}}"
+                                    Stroke="{StaticResource TextBrush}"
+                                    Accent="{Binding AccentBrush, RelativeSource={RelativeSource AncestorType={x:Type local:DesktopShellSurface}}}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
                 </Border>
             </Grid>
         </Grid>
@@ -606,8 +575,6 @@
                     Style="{StaticResource BareButton}"
                     HorizontalContentAlignment="Center"
                     VerticalContentAlignment="Center"
-                    MouseEnter="CurrentLayoutButton_OnMouseEnter"
-                    MouseLeave="CurrentLayoutButton_OnMouseLeave"
                     Click="CurrentLayoutButton_OnClick"
                     AutomationProperties.Name="Current multi-view layout">
                     <local:LayoutGlyph
@@ -664,6 +631,7 @@
             Width="2"
             Height="100"
             Panel.ZIndex="50"
+            IsHitTestVisible="False"
             Background="{StaticResource PrimaryRuleBrush}" />
 
         <TextBlock

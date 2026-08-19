@@ -1,5 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace Jarvis.Win10.NeuralVoidPreview;
 
@@ -23,10 +26,28 @@ internal static class EdgeBarScenarios
 {
     public static EdgeBarTestReceipt Run()
     {
-        List<EdgeBarScenario> scenarios = [];
         DesktopShellSurface surface = new();
+        Window testHost = CreateTestHost(surface);
+        try
+        {
+            testHost.Show();
+            return RunHosted(surface);
+        }
+        finally
+        {
+            testHost.Content = null;
+            testHost.Close();
+        }
+    }
+
+    private static EdgeBarTestReceipt RunHosted(
+        DesktopShellSurface surface)
+    {
+        List<EdgeBarScenario> scenarios = [];
         surface.Measure(new Size(1600, 900));
         surface.Arrange(new Rect(0, 0, 1600, 900));
+        surface.UpdateLayout();
+        surface.PrepareLayoutRailForSnapshot();
         surface.UpdateLayout();
 
         Add(
@@ -74,16 +95,17 @@ internal static class EdgeBarScenarios
 
         Add(
             scenarios,
-            "hover-rail-open-state",
+            "layout-rail-is-permanently-visible",
             () =>
-            {
-                surface.SetLayoutRailOpenForSnapshot(true);
-                return
-                    surface.IsLayoutRailOpen &&
-                    surface.LayoutRailPanel.Visibility == Visibility.Visible &&
-                    surface.LayoutRailPanel.Opacity == 1.0 &&
-                    surface.LayoutAxisScale.ScaleY == 1.0;
-            });
+                surface.IsLayoutRailOpen &&
+                surface.LayoutRailPanel.Visibility == Visibility.Visible &&
+                surface.LayoutRailPanel.Opacity == 1.0 &&
+                surface.LayoutAxisScale.ScaleY == 1.0);
+
+        Add(
+            scenarios,
+            "layout-rail-escape-bubbles-to-host-window",
+            EscapeFromLayoutRailClosesHostedMainWindow);
 
         Add(
             scenarios,
@@ -189,28 +211,67 @@ internal static class EdgeBarScenarios
 
         Add(
             scenarios,
-            "edge-hover-stops-at-scroll-boundaries",
+            "edge-boundaries-remain-stable-after-pointer-leave",
             () =>
             {
+                surface.SelectLayoutForTest(LayoutPreset.FourQuadrants);
                 surface.ScrollLayoutRailToBoundaryForTest(true);
-                double bottomOffset = surface.LayoutRailVerticalOffset;
+                double bottomOffset = surface.LayoutRailScrollableHeight;
+                surface.BeginLayoutRailAutoScrollForTest(
+                    LayoutRailScrollDirection.Up);
+                surface.AdvanceLayoutRailAutoScrollForTest(
+                    TimeSpan.FromSeconds(1.0 / 60.0));
+                bool movedUp =
+                    surface.LayoutRailVerticalOffset < bottomOffset;
                 surface.BeginLayoutRailAutoScrollForTest(
                     LayoutRailScrollDirection.Down);
-                bool bottomStopped =
+                surface.AdvanceLayoutRailAutoScrollForTest(
+                    TimeSpan.FromSeconds(1.0));
+                bool bottomStable =
+                    NearlyEqual(
+                        surface.LayoutRailVerticalOffset,
+                        bottomOffset) &&
+                    !surface.CanScrollLayoutRailDown &&
                     !surface.IsLayoutRailAutoScrolling &&
                     surface.LayoutRailScrollDirection ==
                         LayoutRailScrollDirection.None &&
-                    surface.LayoutRailVerticalOffset == bottomOffset;
+                    surface.IsSelectedLayoutFullyVisible &&
+                    surface.CurrentLayout == LayoutPreset.FourQuadrants &&
+                    LayoutGlyphsSharePermanentAxis(surface) &&
+                    MaskEndIsOpaque(
+                        surface.LayoutRailFeatherMask,
+                        top: false);
+
+                surface.SelectLayoutForTest(LayoutPreset.Maximized);
                 surface.ScrollLayoutRailToBoundaryForTest(false);
                 double topOffset = surface.LayoutRailVerticalOffset;
                 surface.BeginLayoutRailAutoScrollForTest(
+                    LayoutRailScrollDirection.Down);
+                surface.AdvanceLayoutRailAutoScrollForTest(
+                    TimeSpan.FromSeconds(1.0 / 60.0));
+                bool movedDown =
+                    surface.LayoutRailVerticalOffset > topOffset;
+                surface.BeginLayoutRailAutoScrollForTest(
                     LayoutRailScrollDirection.Up);
+                surface.AdvanceLayoutRailAutoScrollForTest(
+                    TimeSpan.FromSeconds(1.0));
                 return
-                    bottomStopped &&
+                    movedUp &&
+                    bottomStable &&
+                    movedDown &&
                     !surface.IsLayoutRailAutoScrolling &&
                     surface.LayoutRailScrollDirection ==
                         LayoutRailScrollDirection.None &&
-                    surface.LayoutRailVerticalOffset == topOffset;
+                    NearlyEqual(
+                        surface.LayoutRailVerticalOffset,
+                        topOffset) &&
+                    !surface.CanScrollLayoutRailUp &&
+                    surface.IsSelectedLayoutFullyVisible &&
+                    surface.CurrentLayout == LayoutPreset.Maximized &&
+                    LayoutGlyphsSharePermanentAxis(surface) &&
+                    MaskEndIsOpaque(
+                        surface.LayoutRailFeatherMask,
+                        top: true);
             });
 
         Add(
@@ -223,7 +284,9 @@ internal static class EdgeBarScenarios
                 surface.BeginLayoutRailAutoScrollForTest(
                     LayoutRailScrollDirection.Down);
                 surface.AdvanceLayoutRailAutoScrollForTest(
-                    TimeSpan.FromMilliseconds(200));
+                    TimeSpan.FromSeconds(1.0 / 60.0));
+                double offsetBeforeStop =
+                    surface.LayoutRailVerticalOffset;
                 bool selectionPreserved =
                     surface.CurrentLayout == selected &&
                     surface.SelectedLayoutDefinition?.Preset == selected &&
@@ -231,43 +294,443 @@ internal static class EdgeBarScenarios
                 surface.StopLayoutRailAutoScrollForTest();
                 return
                     selectionPreserved &&
+                    NearlyEqual(
+                        surface.LayoutRailVerticalOffset,
+                        offsetBeforeStop) &&
                     surface.IsLayoutRailOpen &&
                     !surface.IsLayoutRailAutoScrolling;
             });
 
         Add(
             scenarios,
-            "closing-rail-stops-scroll-and-reveals-selection",
+            "edge-feather-signals-top-middle-and-bottom-capability",
             () =>
             {
                 surface.ScrollLayoutRailToBoundaryForTest(false);
-                surface.BeginLayoutRailAutoScrollForTest(
-                    LayoutRailScrollDirection.Down);
-                bool armed = surface.IsLayoutRailAutoScrolling;
-                surface.SetLayoutRailOpenForSnapshot(false);
-                bool stoppedOnClose =
-                    !surface.IsLayoutRailOpen &&
-                    !surface.IsLayoutRailAutoScrolling;
-                surface.SetLayoutRailOpenForSnapshot(true);
+                bool topState =
+                    !surface.CanScrollLayoutRailUp &&
+                    surface.CanScrollLayoutRailDown &&
+                    MaskMatches(
+                        surface.LayoutRailFeatherMask,
+                        [255, 255, 255, 255, 255, 128, 51, 0]);
+
+                surface.ScrollLayoutRailToFractionForTest(0.5);
+                bool middleState =
+                    surface.CanScrollLayoutRailUp &&
+                    surface.CanScrollLayoutRailDown &&
+                    MaskMatches(
+                        surface.LayoutRailFeatherMask,
+                        [0, 51, 128, 255, 255, 128, 51, 0]);
+
+                surface.ScrollLayoutRailToBoundaryForTest(true);
+                bool bottomState =
+                    surface.CanScrollLayoutRailUp &&
+                    !surface.CanScrollLayoutRailDown &&
+                    MaskMatches(
+                        surface.LayoutRailFeatherMask,
+                        [0, 51, 128, 255, 255, 255, 255, 255]);
+
                 return
-                    armed &&
-                    stoppedOnClose &&
-                    surface.IsSelectedLayoutFullyVisible;
+                    topState &&
+                    middleState &&
+                    bottomState &&
+                    surface.IsLayoutRailOpen;
             });
 
         Add(
             scenarios,
-            "first-and-last-layouts-are-revealed-on-open",
+            "rail-feather-mask-is-continuous-and-symmetric",
+            () =>
+            {
+                surface.ScrollLayoutRailToFractionForTest(0.5);
+                LinearGradientBrush mask = surface.LayoutRailFeatherMask;
+                GradientStopCollection stops = mask.GradientStops;
+                if (stops.Count != 8)
+                {
+                    return false;
+                }
+
+                bool offsetsStrictlyIncrease =
+                    Enumerable.Range(1, stops.Count - 1).All(index =>
+                        stops[index].Offset > stops[index - 1].Offset);
+                bool mirrorSymmetric =
+                    Enumerable.Range(0, stops.Count).All(index =>
+                        NearlyEqual(
+                            stops[index].Offset +
+                            stops[^(index + 1)].Offset,
+                            1.0) &&
+                        stops[index].Color.A ==
+                            stops[^(index + 1)].Color.A);
+                bool boundedSlope =
+                    Enumerable.Range(1, stops.Count - 1).All(index =>
+                    {
+                        double pixels =
+                            (stops[index].Offset -
+                                stops[index - 1].Offset) *
+                            DesktopShellSurface.LayoutViewportHeight;
+                        double alphaDelta = Math.Abs(
+                            stops[index].Color.A -
+                            stops[index - 1].Color.A);
+                        return pixels > 0.0 && alphaDelta / pixels <= 16.0;
+                    });
+                double topFeatherPixels =
+                    (stops[3].Offset - stops[0].Offset) *
+                    DesktopShellSurface.LayoutViewportHeight;
+                double bottomFeatherPixels =
+                    (stops[^1].Offset - stops[^4].Offset) *
+                    DesktopShellSurface.LayoutViewportHeight;
+                double opaqueCorePixels =
+                    (stops[4].Offset - stops[3].Offset) *
+                    DesktopShellSurface.LayoutViewportHeight;
+                return
+                    mask.IsFrozen &&
+                    mask.MappingMode == BrushMappingMode.RelativeToBoundingBox &&
+                    mask.StartPoint == new Point(0.5, 0.0) &&
+                    mask.EndPoint == new Point(0.5, 1.0) &&
+                    offsetsStrictlyIncrease &&
+                    mirrorSymmetric &&
+                    boundedSlope &&
+                    NearlyEqual(topFeatherPixels, 256.0) &&
+                    NearlyEqual(bottomFeatherPixels, 256.0) &&
+                    NearlyEqual(opaqueCorePixels, 44.0) &&
+                    surface.LayoutRailViewport.ActualWidth == 86.0 &&
+                    surface.LayoutRailViewport.ActualHeight ==
+                        DesktopShellSurface.LayoutViewportHeight;
+            });
+
+        Add(
+            scenarios,
+            "high-contrast-change-stops-scroll-and-has-loaded-lifetime",
+            () =>
+            {
+                surface.ApplyHighContrastStateForTest(false);
+                surface.ScrollLayoutRailToFractionForTest(0.5);
+                bool ordinaryMask =
+                    MaskMatches(
+                        surface.LayoutRailFeatherMask,
+                        [0, 51, 128, 255, 255, 128, 51, 0]);
+                surface.BeginLayoutRailAutoScrollForTest(
+                    LayoutRailScrollDirection.Down);
+                bool scrollingBeforeChange =
+                    surface.IsLayoutRailAutoScrolling;
+
+                surface.ApplyHighContrastStateForTest(true);
+                bool highContrastApplied =
+                    surface.HighContrastStateForTest &&
+                    !surface.IsLayoutRailAutoScrolling &&
+                    surface.LayoutRailScrollDirection ==
+                        LayoutRailScrollDirection.None &&
+                    MaskMatches(
+                        surface.LayoutRailFeatherMask,
+                        [255, 255, 255, 255, 255, 255, 255, 255]);
+
+                surface.ApplyHighContrastStateForTest(false);
+                bool ordinaryMaskRestored =
+                    !surface.HighContrastStateForTest &&
+                    MaskMatches(
+                        surface.LayoutRailFeatherMask,
+                        [0, 51, 128, 255, 255, 128, 51, 0]);
+
+                DesktopShellSurface lifecycleSurface = new();
+                Window lifecycleHost = CreateTestHost(lifecycleSurface);
+                bool subscribedWhileLoaded;
+                bool unsubscribedAfterUnload;
+                try
+                {
+                    lifecycleHost.Show();
+                    PumpDispatcher();
+                    subscribedWhileLoaded =
+                        lifecycleSurface.IsSystemParametersSubscribedForTest;
+                    lifecycleHost.Content = null;
+                    lifecycleHost.Close();
+                    PumpDispatcher();
+                    unsubscribedAfterUnload =
+                        !lifecycleSurface.IsSystemParametersSubscribedForTest;
+                }
+                finally
+                {
+                    lifecycleHost.Content = null;
+                    if (lifecycleHost.IsVisible)
+                    {
+                        lifecycleHost.Close();
+                    }
+                }
+
+                return
+                    surface.IsSystemParametersSubscribedForTest &&
+                    ordinaryMask &&
+                    scrollingBeforeChange &&
+                    highContrastApplied &&
+                    ordinaryMaskRestored &&
+                    subscribedWhileLoaded &&
+                    unsubscribedAfterUnload;
+            });
+
+        Add(
+            scenarios,
+            "rail-pressure-velocity-is-nonlinear-monotone-and-symmetric",
+            () =>
+            {
+                double zero =
+                    DesktopShellSurface.EvaluateLayoutRailVelocityForTest(0.0);
+                double quarter =
+                    DesktopShellSurface.EvaluateLayoutRailVelocityForTest(0.25);
+                double half =
+                    DesktopShellSurface.EvaluateLayoutRailVelocityForTest(0.5);
+                double threeQuarter =
+                    DesktopShellSurface.EvaluateLayoutRailVelocityForTest(0.75);
+                double edge =
+                    DesktopShellSurface.EvaluateLayoutRailVelocityForTest(1.0);
+                double negativeHalf =
+                    DesktopShellSurface.EvaluateLayoutRailVelocityForTest(-0.5);
+                double negativeEdge =
+                    DesktopShellSurface.EvaluateLayoutRailVelocityForTest(-1.0);
+                double adjacentWhite = Math.Abs(
+                    DesktopShellSurface.EvaluateLayoutRailVelocityAtViewportYForTest(
+                        DesktopShellSurface.LayoutRailViewportCenterY + 22.0));
+                double adjacentUpper = Math.Abs(
+                    DesktopShellSurface.EvaluateLayoutRailVelocityAtViewportYForTest(
+                        DesktopShellSurface.LayoutRailViewportCenterY - 42.0));
+                double adjacentLower = Math.Abs(
+                    DesktopShellSurface.EvaluateLayoutRailVelocityAtViewportYForTest(
+                        DesktopShellSurface.LayoutRailViewportCenterY + 86.0));
+                TimeSpan reducedInterval =
+                    DesktopShellSurface.ReducedMotionIntervalForTest;
+                double adjacentReducedStep =
+                    DesktopShellSurface.ReducedMotionStepForTest(adjacentWhite);
+                double edgeReducedStep =
+                    DesktopShellSurface.ReducedMotionStepForTest(edge);
+
+                surface.ScrollLayoutRailToFractionForTest(0.5);
+                surface.UpdateLayoutRailPointerForTest(
+                    DesktopShellSurface.LayoutViewportHeight);
+                bool downWired =
+                    surface.LayoutRailScrollDirection ==
+                        LayoutRailScrollDirection.Down &&
+                    NearlyEqual(surface.LayoutRailVelocity, edge);
+                surface.UpdateLayoutRailPointerForTest(
+                    DesktopShellSurface.LayoutRailViewportCenterY);
+                bool centerStops =
+                    !surface.IsLayoutRailAutoScrolling &&
+                    surface.LayoutRailScrollDirection ==
+                        LayoutRailScrollDirection.None &&
+                    NearlyEqual(surface.LayoutRailVelocity, 0.0);
+                surface.UpdateLayoutRailPointerForTest(
+                    DesktopShellSurface.LayoutRailViewportCenterY + 4.0);
+                bool nearCenterCreeps =
+                    surface.LayoutRailScrollDirection ==
+                        LayoutRailScrollDirection.Down &&
+                    surface.LayoutRailVelocity > 0.0 &&
+                    surface.LayoutRailVelocity < adjacentWhite;
+                surface.UpdateLayoutRailPointerForTest(
+                    DesktopShellSurface.LayoutRailViewportCenterY + 16.0);
+                bool activationReached =
+                    surface.LayoutRailScrollDirection ==
+                        LayoutRailScrollDirection.Down &&
+                    surface.LayoutRailVelocity >= 14.0 &&
+                    surface.LayoutRailVelocity < 20.0;
+                surface.UpdateLayoutRailPointerForTest(0.0);
+                bool upWired =
+                    surface.LayoutRailScrollDirection ==
+                        LayoutRailScrollDirection.Up &&
+                    NearlyEqual(surface.LayoutRailVelocity, -edge);
+                surface.StopLayoutRailAutoScrollForTest();
+
+                return
+                    double.IsFinite(zero) &&
+                    double.IsFinite(quarter) &&
+                    double.IsFinite(half) &&
+                    double.IsFinite(threeQuarter) &&
+                    double.IsFinite(edge) &&
+                    NearlyEqual(zero, 0.0) &&
+                    quarter >= adjacentWhite &&
+                    quarter < half &&
+                    half < threeQuarter &&
+                    threeQuarter < edge &&
+                    quarter < edge * 0.30 &&
+                    threeQuarter > edge * 0.75 &&
+                    NearlyEqual(negativeHalf, -half) &&
+                    NearlyEqual(negativeEdge, -edge) &&
+                    adjacentWhite >= 17.5 &&
+                    adjacentUpper >= 27.5 &&
+                    adjacentLower >= 52.5 &&
+                    NearlyEqual(reducedInterval.TotalMilliseconds, 200.0) &&
+                    adjacentReducedStep >= 3.5 &&
+                    NearlyEqual(edgeReducedStep, 32.0) &&
+                    downWired &&
+                    centerStops &&
+                    nearCenterCreeps &&
+                    activationReached &&
+                    upWired;
+            });
+
+        Add(
+            scenarios,
+            "white-glyph-handled-preview-mousemove-drives-perceptible-pressure",
+            () =>
+            {
+                surface.ScrollLayoutRailToFractionForTest(0.5);
+                LayoutPreset layoutBefore = surface.CurrentLayout;
+                object? selectedBefore = surface.LayoutRailList.SelectedItem;
+
+                bool slowRouted =
+                    surface.RaiseHandledLayoutRailMouseMoveFromWhiteGlyphForTest(
+                        DesktopShellSurface.LayoutRailViewportCenterY + 16.0);
+                double slow = Math.Abs(surface.LayoutRailVelocity);
+                bool middleRouted =
+                    surface.RaiseHandledLayoutRailMouseMoveFromWhiteGlyphForTest(
+                        DesktopShellSurface.LayoutRailViewportCenterY +
+                        DesktopShellSurface.LayoutViewportHeight / 4.0);
+                double middle = Math.Abs(surface.LayoutRailVelocity);
+                bool edgeRouted =
+                    surface.RaiseHandledLayoutRailMouseMoveFromWhiteGlyphForTest(
+                        DesktopShellSurface.LayoutViewportHeight);
+                double edge = Math.Abs(surface.LayoutRailVelocity);
+                bool upperEdgeRouted =
+                    surface.RaiseHandledLayoutRailMouseMoveFromWhiteGlyphForTest(
+                        0.0);
+                double upperEdge = surface.LayoutRailVelocity;
+                surface.StopLayoutRailAutoScrollForTest();
+
+                return
+                    slowRouted &&
+                    middleRouted &&
+                    edgeRouted &&
+                    upperEdgeRouted &&
+                    slow >= 14.0 &&
+                    slow < 20.0 &&
+                    slow < middle &&
+                    middle < edge &&
+                    NearlyEqual(edge, 180.0) &&
+                    NearlyEqual(upperEdge, -180.0) &&
+                    surface.CurrentLayout == layoutBefore &&
+                    ReferenceEquals(
+                        surface.LayoutRailList.SelectedItem,
+                        selectedBefore) &&
+                    surface.LayoutRailList.SelectedItems.Count == 1 &&
+                    LayoutGlyphsSharePermanentAxis(surface);
+            });
+
+        AddDetailed(
+            scenarios,
+            "actual-adjacent-layout-centers-drive-visible-bidirectional-scroll",
+            () =>
+            {
+                IReadOnlyList<(
+                    ListBoxItem Item,
+                    UIElement HitSource,
+                    double CenterY)> triplet =
+                    surface.GetCenteredAdjacentRailItemsForTest();
+                if (triplet.Count != 3)
+                {
+                    return (
+                        false,
+                        $"triplet-count={triplet.Count}/" +
+                        surface.AdjacentRailProbeDetailForTest);
+                }
+
+                LayoutPreset layoutBefore = surface.CurrentLayout;
+                object? selectedBefore = surface.LayoutRailList.SelectedItem;
+                double offsetBefore = surface.LayoutRailVerticalOffset;
+                double upperDistance = Math.Abs(
+                    triplet[0].CenterY -
+                    DesktopShellSurface.LayoutRailViewportCenterY);
+                double lowerDistance = Math.Abs(
+                    triplet[2].CenterY -
+                    DesktopShellSurface.LayoutRailViewportCenterY);
+
+                bool upperRouted =
+                    surface.RaiseHandledLayoutRailMouseMoveForTest(
+                        triplet[0].HitSource,
+                        triplet[0].CenterY);
+                double upperSpeed = Math.Abs(surface.LayoutRailVelocity);
+                bool upperActive =
+                    surface.IsLayoutRailAutoScrolling &&
+                    surface.LayoutRailScrollDirection ==
+                        LayoutRailScrollDirection.Up;
+                surface.AdvanceLayoutRailAutoScrollForTest(
+                    TimeSpan.FromSeconds(1.0 / 30.0));
+                double upperOffset = surface.LayoutRailVerticalOffset;
+                surface.StopLayoutRailAutoScrollForTest();
+
+                triplet = surface.GetCenteredAdjacentRailItemsForTest();
+                if (triplet.Count != 3)
+                {
+                    return (
+                        false,
+                        $"recentered-triplet-count={triplet.Count}/" +
+                        surface.AdjacentRailProbeDetailForTest);
+                }
+
+                double lowerOffsetBefore = surface.LayoutRailVerticalOffset;
+                bool lowerRouted =
+                    surface.RaiseHandledLayoutRailMouseMoveForTest(
+                        triplet[2].HitSource,
+                        triplet[2].CenterY);
+                double lowerSpeed = Math.Abs(surface.LayoutRailVelocity);
+                bool lowerActive =
+                    surface.IsLayoutRailAutoScrolling &&
+                    surface.LayoutRailScrollDirection ==
+                        LayoutRailScrollDirection.Down;
+                surface.AdvanceLayoutRailAutoScrollForTest(
+                    TimeSpan.FromSeconds(1.0 / 30.0));
+                double lowerOffset = surface.LayoutRailVerticalOffset;
+                surface.StopLayoutRailAutoScrollForTest();
+
+                double upperDelta = offsetBefore - upperOffset;
+                double lowerDelta = lowerOffset - lowerOffsetBefore;
+
+                bool passed =
+                    Math.Abs(
+                        triplet[1].CenterY -
+                        DesktopShellSurface.LayoutRailViewportCenterY) <= 0.5 &&
+                    Math.Abs(upperDistance - lowerDistance) <= 0.5 &&
+                    upperRouted &&
+                    lowerRouted &&
+                    upperActive &&
+                    lowerActive &&
+                    upperSpeed >= 40.0 &&
+                    lowerSpeed >= 40.0 &&
+                    Math.Abs(upperSpeed - lowerSpeed) <= 1.0 &&
+                    upperDelta >= 1.0 &&
+                    lowerDelta >= 1.0 &&
+                    upperDelta <= 3.0 &&
+                    lowerDelta <= 3.0 &&
+                    surface.CurrentLayout == layoutBefore &&
+                    ReferenceEquals(
+                        surface.LayoutRailList.SelectedItem,
+                        selectedBefore) &&
+                    LayoutGlyphsSharePermanentAxis(surface);
+                return (
+                    passed,
+                    $"centers={triplet[0].CenterY:F2}," +
+                    $"{triplet[1].CenterY:F2},{triplet[2].CenterY:F2};" +
+                    $"speed={upperSpeed:F2},{lowerSpeed:F2};" +
+                    $"routed={upperRouted},{lowerRouted};" +
+                    $"active={upperActive},{lowerActive};" +
+                    $"delta={upperDelta:F2},{lowerDelta:F2}");
+            });
+
+        Add(
+            scenarios,
+            "first-and-last-layouts-are-revealed-while-rail-stays-visible",
             () =>
             {
                 surface.SelectLayoutForTest(LayoutPreset.Maximized);
-                surface.SetLayoutRailOpenForSnapshot(true);
                 bool firstVisible = surface.IsSelectedLayoutFullyVisible;
+                double topOffset = surface.LayoutRailVerticalOffset;
+                surface.SelectLayoutForTest(LayoutPreset.EqualColumns);
+                bool visibleSelectionPreservedOffset =
+                    surface.IsSelectedLayoutFullyVisible &&
+                    NearlyEqual(
+                        surface.LayoutRailVerticalOffset,
+                        topOffset);
                 surface.SelectLayoutForTest(LayoutPreset.FourQuadrants);
-                surface.SetLayoutRailOpenForSnapshot(true);
                 return
                     firstVisible &&
-                    surface.IsSelectedLayoutFullyVisible;
+                    visibleSelectionPreservedOffset &&
+                    surface.IsSelectedLayoutFullyVisible &&
+                    surface.IsLayoutRailOpen;
             });
 
         Add(
@@ -282,7 +745,7 @@ internal static class EdgeBarScenarios
                         surface.CurrentLayoutGlyph.Preset != definition.Preset ||
                         surface.SelectedLayoutDefinition?.Preset != definition.Preset ||
                         surface.LayoutRailList.SelectedItems.Count != 1 ||
-                        surface.IsLayoutRailOpen)
+                        !surface.IsLayoutRailOpen)
                     {
                         return false;
                     }
@@ -317,6 +780,8 @@ internal static class EdgeBarScenarios
                 Canvas.GetTop(surface.TaskbarChrome) ==
                     DesktopShellSurface.TaskbarTop &&
                 surface.LayoutAxisLower.Width == 2.0 &&
+                !surface.LayoutAxisUpper.IsHitTestVisible &&
+                !surface.LayoutAxisLower.IsHitTestVisible &&
                 surface.TaskbarChrome.BorderThickness.Top == 2.0);
 
         Add(
@@ -387,6 +852,13 @@ internal static class EdgeBarScenarios
                 bool restoredTiled =
                     surface.ExplorerWindow.Visibility == Visibility.Visible &&
                     surface.CurrentLayout == LayoutPreset.TopSplitBottomMain;
+                Invoke(surface.TaskbarExplorerButton);
+                bool minimizedFromActiveTaskbar =
+                    surface.ExplorerWindow.Visibility == Visibility.Collapsed;
+                Invoke(surface.TaskbarExplorerButton);
+                bool restoredFromTaskbar =
+                    surface.ExplorerWindow.Visibility == Visibility.Visible &&
+                    surface.CurrentLayout == LayoutPreset.TopSplitBottomMain;
                 Invoke(surface.ExplorerMaximizeButton);
                 bool expanded =
                     surface.IsExplorerMaximized &&
@@ -401,6 +873,8 @@ internal static class EdgeBarScenarios
                 return
                     minimized &&
                     restoredTiled &&
+                    minimizedFromActiveTaskbar &&
+                    restoredFromTaskbar &&
                     expanded &&
                     restoredMaximized &&
                     !surface.IsExplorerMaximized &&
@@ -410,8 +884,8 @@ internal static class EdgeBarScenarios
             });
 
         int passedCount = scenarios.Count(scenario => scenario.Passed);
-        return new(
-            5,
+        EdgeBarTestReceipt receipt = new(
+            8,
             "jarvisv2-layout-rail-edge-bar-test",
             passedCount == scenarios.Count ? "passed" : "failed",
             scenarios.Count,
@@ -420,10 +894,139 @@ internal static class EdgeBarScenarios
             false,
             "not-run",
             scenarios);
+        return receipt;
+    }
+
+    private static Window CreateTestHost(DesktopShellSurface surface) =>
+        new()
+        {
+            Width = 1600,
+            Height = 900,
+            Left = -32000,
+            Top = -32000,
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            WindowStyle = WindowStyle.None,
+            ResizeMode = ResizeMode.NoResize,
+            ShowActivated = false,
+            ShowInTaskbar = false,
+            Content = surface,
+        };
+
+    private static bool EscapeFromLayoutRailClosesHostedMainWindow()
+    {
+        MainWindow testHost = new()
+        {
+            Left = -32000,
+            Top = -32000,
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            ShowActivated = false,
+            ShowInTaskbar = false,
+        };
+        bool hostClosed = false;
+        testHost.Closed += (_, _) => hostClosed = true;
+        try
+        {
+            testHost.Show();
+            PumpDispatcher();
+            DesktopShellSurface surface = testHost.PreviewSurface;
+            PresentationSource? source =
+                PresentationSource.FromVisual(surface.LayoutRailList);
+            if (source is null)
+            {
+                return false;
+            }
+
+            surface.ScrollLayoutRailToFractionForTest(0.5);
+            surface.BeginLayoutRailAutoScrollForTest(
+                LayoutRailScrollDirection.Down);
+            bool scrollingBeforeEscape =
+                surface.IsLayoutRailAutoScrolling;
+
+            KeyEventArgs preview =
+                new(
+                    Keyboard.PrimaryDevice,
+                    source,
+                    Environment.TickCount,
+                    Key.Escape)
+                {
+                    RoutedEvent = Keyboard.PreviewKeyDownEvent,
+                };
+            surface.LayoutRailList.RaiseEvent(preview);
+            bool previewAllowsGlobalRoute =
+                !preview.Handled &&
+                !surface.IsLayoutRailAutoScrolling;
+            if (!previewAllowsGlobalRoute)
+            {
+                return false;
+            }
+
+            KeyEventArgs bubble =
+                new(
+                    Keyboard.PrimaryDevice,
+                    source,
+                    Environment.TickCount,
+                    Key.Escape)
+                {
+                    RoutedEvent = Keyboard.KeyDownEvent,
+                };
+            surface.LayoutRailList.RaiseEvent(bubble);
+            return scrollingBeforeEscape && hostClosed;
+        }
+        finally
+        {
+            if (testHost.IsVisible)
+            {
+                testHost.Close();
+            }
+        }
+    }
+
+    private static void PumpDispatcher()
+    {
+        DispatcherFrame frame = new();
+        _ = Dispatcher.CurrentDispatcher.BeginInvoke(
+            DispatcherPriority.ApplicationIdle,
+            new Action(() => frame.Continue = false));
+        Dispatcher.PushFrame(frame);
     }
 
     private static void Invoke(Button button) =>
         button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+    private static bool MaskMatches(
+        LinearGradientBrush mask,
+        IReadOnlyList<byte> expectedAlphas) =>
+        mask.GradientStops.Count == expectedAlphas.Count &&
+        mask.GradientStops
+            .Select(stop => stop.Color.A)
+            .SequenceEqual(expectedAlphas);
+
+    private static bool MaskEndIsOpaque(
+        LinearGradientBrush mask,
+        bool top)
+    {
+        IEnumerable<GradientStop> endStops =
+            top
+                ? mask.GradientStops.Take(4)
+                : mask.GradientStops.Skip(mask.GradientStops.Count - 4);
+        return endStops.All(stop => stop.Color.A == byte.MaxValue);
+    }
+
+    private static bool LayoutGlyphsSharePermanentAxis(
+        DesktopShellSurface surface)
+    {
+        Rect current = surface.CurrentLayoutGlyphBounds;
+        IReadOnlyList<Rect> rail = surface.LayoutRailGlyphBounds;
+        return
+            rail.Count == surface.LayoutOptionCount &&
+            rail.All(bounds =>
+                NearlyEqual(bounds.Left, current.Left) &&
+                NearlyEqual(bounds.Width, current.Width) &&
+                NearlyEqual(bounds.Height, current.Height) &&
+                NearlyEqual(
+                    bounds.Left + bounds.Width / 2.0,
+                    DesktopShellSurface.LayoutColumnCenterX));
+    }
 
     private static bool NearlyEqual(double left, double right) =>
         Math.Abs(left - right) <= 0.01;
@@ -441,6 +1044,26 @@ internal static class EdgeBarScenarios
                     name,
                     passed,
                     passed ? "passed" : "assertion-failed"));
+        }
+        catch (Exception exception)
+        {
+            scenarios.Add(
+                new(
+                    name,
+                    false,
+                    $"{exception.GetType().Name}: {exception.Message}"));
+        }
+    }
+
+    private static void AddDetailed(
+        ICollection<EdgeBarScenario> scenarios,
+        string name,
+        Func<(bool Passed, string Detail)> action)
+    {
+        try
+        {
+            (bool passed, string detail) = action();
+            scenarios.Add(new(name, passed, detail));
         }
         catch (Exception exception)
         {
