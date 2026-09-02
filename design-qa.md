@@ -1,6 +1,6 @@
-# Design QA - Horizon Membrane compact layout rail
+# Design QA - Horizon Membrane layout rail and Explorer workspace
 
-- Current approved feather baseline:
+- Last approved pre-interactive-Explorer feather baseline:
   `docs/screenshots/jarvis-win10-current-ui-baseline.png`
 - Deterministic evidence: 1600 x 900 locked-profile render,
   SHA-256 `42AD07963D7BA732F5FBC3EABC3B15E28F1E38AACFA13C0243FA69870D6168E2`
@@ -21,7 +21,9 @@ catalog that is not closed under horizontal mirror, vertical mirror and
 
 ## Compact rail geometry
 
-Interaction, geometry and locked-profile pixel verdict: **PASS**.
+Interaction and geometry verdict: **PASS**. The pixel measurements in this
+section describe the last approved rail baseline; the current interactive
+Explorer full frame is awaiting a connected-session render.
 
 - The clipped rail viewport is 86 x 556 and presents about eight to nine items
   instead of expanding all sixteen across the work area.
@@ -78,6 +80,19 @@ Interaction, geometry and locked-profile pixel verdict: **PASS**.
 - The permanent rail reveals the selected item without changing it. The first and
   last catalog entries are both fully reachable and fully visible.
 
+## Interactive Explorer workspace
+
+- Six deterministic document fixtures are supplied by a memory-only model;
+  navigation, selection, Back / Forward / Up and empty locations are stateful.
+- Open displays an owned-process preview and never starts an operating-system
+  application or reads the real filesystem. The covered list is disabled while
+  the preview is visible, and Tab / Shift+Tab remain contained in the preview.
+- Rename validates Windows-compatible names and synchronizes the visible type,
+  icon and preview kind when the extension changes. New Folder creates stable,
+  unique names and immediately enters inline rename.
+- Full names remain available to accessibility and tooltip surfaces when visual
+  columns must ellipsize them.
+
 ## Verification
 
 - Release build: passed, 0 warnings / 0 errors
@@ -88,12 +103,18 @@ Interaction, geometry and locked-profile pixel verdict: **PASS**.
   nonlinear symmetric pointer pressure,
   exact endpoints, Escape routing, dynamic high-contrast handling and Explorer
   taskbar minimize/restore behavior
-- Owned-preview audit: 18 / 18 passed on locked Windows 10 build 19045.6466 at
-  96 DPI with software rendering
-- Current approved canonical SHA-256:
+- Explorer workspace scenarios: 21 / 21 passed
+- Control Center audit: 27 / 27 passed
+- Platform layout: 9 / 9 passed
+- Publication boundary: passed for 511 candidate files; no secret values printed
+- Current owned-preview audit: 18 / 20. Under the disconnected Windows session,
+  the vector adapter reports zero visible pixels and the fresh full-frame render
+  is structurally empty, so both pixel-dependent checks fail closed.
+- Last approved pre-interactive-Explorer canonical SHA-256:
   `42AD07963D7BA732F5FBC3EABC3B15E28F1E38AACFA13C0243FA69870D6168E2`
-- Evidence state: `locked-profile-approved`; checked-in baseline, approved hash
-  and fresh observed render are byte-for-byte equal. Non-locked hosts remain
-  explicitly `non-comparable-structural-pass` and cannot set pixel approval.
+- Current evidence state: `functional-passed/current-pixel-pending`. A connected
+  Windows 10 19045.6466, 96-DPI software-render session must produce and visually
+  review a new candidate before the canonical PNG or approved hash changes.
 
-Current result: **passed**.
+Current result: **functional interaction passed; current full-frame pixel
+approval pending**.

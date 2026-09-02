@@ -13,12 +13,15 @@ and this document retain the historical Neural Void name, but the current
 black-and-yellow Horizon Membrane contract supersedes the former multicolor
 aperture and preset descriptions.
 
-![Current approved JARVIS2 Windows 10 feather baseline](screenshots/jarvis-win10-current-ui-baseline.png)
+![Last approved JARVIS2 Windows 10 feather baseline](screenshots/jarvis-win10-current-ui-baseline.png)
 
-The checked-in image above is the current deterministic feather baseline. It was
-rendered twice with identical bytes on locked Windows 10 build 19045.6466 at
-96 DPI in software-render mode, then visually reviewed. Current interaction and
-pixel evidence is recorded in [`design-qa.md`](../design-qa.md).
+The checked-in image above is the last approved deterministic full-frame
+baseline. It was rendered twice with identical bytes on locked Windows 10 build
+19045.6466 at 96 DPI in software-render mode, then visually reviewed. The
+interactive Explorer workspace added afterward changes the center canvas, so
+this image remains a layout-rail reference rather than current full-frame pixel
+approval. Current interaction and pixel evidence is recorded in
+[`design-qa.md`](../design-qa.md).
 
 ## Visual contract
 
@@ -98,6 +101,14 @@ returns to the last tiled topology. These interactions affect only controls
 owned by the WPF preview; they do not invoke or mutate the real Windows Explorer
 process.
 
+The Explorer content surface is also an operational, deterministic in-memory
+workspace. It supports selection, Back / Forward / Up navigation, folder open,
+an owned-process file preview, inline rename with Windows-style validation,
+unique new-folder naming, long names and explicit empty locations. File previews
+never launch an operating-system application, and the model has no real
+filesystem access. Preview focus cycles inside the visible layer and disables
+the covered item list until the preview closes.
+
 ## Run the interactive preview
 
 ```powershell
@@ -121,7 +132,7 @@ build 19045.6466 at 96 DPI in software-render mode has SHA-256:
 
 `42AD07963D7BA732F5FBC3EABC3B15E28F1E38AACFA13C0243FA69870D6168E2`
 
-Current bounded verification:
+Current bounded verification for the interactive Explorer revision:
 
 - Release build: passed with zero warnings and zero errors;
 - layout and edge-bar scenarios: 25 / 25, including continuous feather geometry,
@@ -131,10 +142,21 @@ Current bounded verification:
   endpoints and actual descendant-bounds equality for all sixteen rail glyphs
   and the current-layout glyph, plus Escape routing and dynamic high-contrast
   lifecycle handling;
-- owned-preview audit: 18 / 18. On the locked profile, checked-in baseline,
-  approved hash and fresh observed render match byte-for-byte. Other hosts may
-  pass structural rendering only as `non-comparable-structural-pass`; they never
-  report pixel approval.
+- Explorer workspace scenarios: 21 / 21, including model/UI synchronization,
+  owned preview focus containment, extension-aware rename metadata and the
+  memory-only API boundary;
+- publication boundary: passed for 511 candidate files with no secret values
+  printed;
+- current owned-preview audit: 18 / 20 while the Windows session is
+  disconnected. The two pixel-dependent checks fail closed because WPF emits
+  zero visible pixels in that session; they are not reported as approved.
+
+The SHA-256 below belongs to the last approved pre-interactive-Explorer frame:
+
+`42AD07963D7BA732F5FBC3EABC3B15E28F1E38AACFA13C0243FA69870D6168E2`
+
+A connected 96-DPI Windows 10 graphics session must render and visually review a
+new candidate before the canonical PNG or approved hash is advanced.
 
 The receipt and tests remain fail-closed about authority:
 `shellMutationSupported=false`, `liveExplorer=not-run`. They validate the
