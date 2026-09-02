@@ -62,24 +62,39 @@ public sealed class ControlCenterSingleInstance : IDisposable
             throw new InvalidOperationException(
                 "The activation listener is already registered.");
         }
+        ActivationDispatch dispatch = new(this, activationRequested);
         listener = ThreadPool.RegisterWaitForSingleObject(
             activationEvent,
             static (state, timedOut) =>
             {
-                if (timedOut || state is not Action activation)
+                if (
+                    timedOut ||
+                    state is not ActivationDispatch pending ||
+                    Volatile.Read(ref pending.Owner.disposed) != 0)
                 {
                     return;
                 }
-                try
-                {
-                    activation();
-                }
-                catch
-                {
-                    // A foreground request must never terminate the owner process.
-                }
+                ThreadPool.QueueUserWorkItem(
+                    static queuedState =>
+                    {
+                        if (
+                            queuedState is not ActivationDispatch queued ||
+                            Volatile.Read(ref queued.Owner.disposed) != 0)
+                        {
+                            return;
+                        }
+                        try
+                        {
+                            queued.Callback();
+                        }
+                        catch
+                        {
+                            // A foreground request must never terminate the owner process.
+                        }
+                    },
+                    pending);
             },
-            activationRequested,
+            dispatch,
             Timeout.InfiniteTimeSpan,
             executeOnlyOnce: false);
     }
@@ -102,8 +117,16 @@ public sealed class ControlCenterSingleInstance : IDisposable
         {
             return;
         }
-        listener?.Unregister(waitObject: null);
+        RegisteredWaitHandle? registeredListener = listener;
         listener = null;
+        if (registeredListener is not null)
+        {
+            using ManualResetEvent callbacksDrained = new(initialState: false);
+            if (registeredListener.Unregister(callbacksDrained))
+            {
+                callbacksDrained.WaitOne();
+            }
+        }
         activationEvent.Dispose();
     }
 
@@ -121,4 +144,8 @@ public sealed class ControlCenterSingleInstance : IDisposable
         byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(scope));
         return Convert.ToHexString(hash[..16]).ToLowerInvariant();
     }
+
+    private sealed record ActivationDispatch(
+        ControlCenterSingleInstance Owner,
+        Action Callback);
 }

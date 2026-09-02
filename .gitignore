@@ -9,6 +9,8 @@ artifacts/
 tools/
 coverage/
 TestResults/
+/HANDOFF-MANIFEST.json
+/windows10-host-inventory.json
 *.log
 *.tmp
 *.bak

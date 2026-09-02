@@ -19,6 +19,9 @@ $surfacePath = Join-Path $sourceRoot (
     'DesktopShellSurface.xaml')
 $surfaceCodePath = Join-Path $sourceRoot (
     'DesktopShellSurface.xaml.cs')
+$explorerWorkspacePath = Join-Path $sourceRoot 'ExplorerWorkspace.cs'
+$explorerScenariosPath = Join-Path $sourceRoot (
+    'ExplorerWorkspaceScenarios.cs')
 $layoutCatalogPath = Join-Path $sourceRoot 'LayoutCatalog.cs'
 $layoutGlyphPath = Join-Path $sourceRoot 'LayoutGlyph.cs'
 $vectorLayerPath = Join-Path $sourceRoot (
@@ -79,6 +82,8 @@ $sourceText = @(
 ) -join [Environment]::NewLine
 $surfaceText = [IO.File]::ReadAllText($surfacePath)
 $surfaceCodeText = [IO.File]::ReadAllText($surfaceCodePath)
+$explorerWorkspaceText = [IO.File]::ReadAllText($explorerWorkspacePath)
+$explorerScenariosText = [IO.File]::ReadAllText($explorerScenariosPath)
 $layoutCatalogText = [IO.File]::ReadAllText($layoutCatalogPath)
 $layoutGlyphText = [IO.File]::ReadAllText($layoutGlyphPath)
 $vectorLayerText = [IO.File]::ReadAllText($vectorLayerPath)
@@ -262,6 +267,56 @@ Add-Check `
         'synchronize maximize/restore state, and keep the inner Explorer ' +
         'controls operational.')
 
+$forbiddenExplorerBoundaryPattern =
+    '(?i)(?:\bSystem\.IO\b|\b(?:File|Directory|Path)\s*\.|' +
+    '\b(?:FileInfo|DirectoryInfo|FileStream|FileSystemInfo|' +
+    'FileSystemWatcher|DriveInfo|StreamReader|StreamWriter|' +
+    'BinaryReader|BinaryWriter|ProcessStartInfo)\b|' +
+    '\bProcess\s*\.|\b(?:CreateFile|SHFileOperation|' +
+    'FindFirstFile|GetFileAttributes|ShellExecute)\b)'
+$explorerBoundaryCanaries = @(
+    'File.ReadAllText("sample.txt")',
+    'Directory.EnumerateFiles(".")',
+    'new FileInfo("sample.txt")',
+    'Process.Start("explorer.exe")'
+)
+$explorerBoundaryCanariesCovered = @(
+    $explorerBoundaryCanaries |
+        Where-Object {
+            -not [regex]::IsMatch(
+                $_,
+                $forbiddenExplorerBoundaryPattern)
+        }
+).Count -eq 0
+Add-Check `
+    -Name 'surface.explorer-workspace-is-stateful-and-memory-only' `
+    -Passed (
+        $explorerWorkspaceText.Contains(
+            'Deterministic, memory-only Explorer session') -and
+        $explorerWorkspaceText.Contains('TryGoBack()') -and
+        $explorerWorkspaceText.Contains('TryGoForward()') -and
+        $explorerWorkspaceText.Contains('CommitRename(') -and
+        $explorerWorkspaceText.Contains('CreateUniqueFolder()') -and
+        $explorerWorkspaceText.Contains(
+            'OperatingSystemLaunchSupported') -and
+        $surfaceText.Contains('x:Name="ExplorerItemList"') -and
+        $surfaceText.Contains('x:Name="ExplorerPreviewPanel"') -and
+        $surfaceText.Contains(
+            'PreviewKeyDown="ExplorerWindow_OnPreviewKeyDown"') -and
+        $surfaceCodeText.Contains('ApplyExplorerOpenResult(') -and
+        $surfaceCodeText.Contains('ShowExplorerPreview(') -and
+        $surfaceCodeText.Contains('QueueExplorerRenameFocus(') -and
+        $explorerScenariosText.Contains(
+            'hosted-surface-file-open-stays-in-owned-preview') -and
+        $explorerBoundaryCanariesCovered -and
+        -not [regex]::IsMatch(
+            $explorerWorkspaceText,
+            $forbiddenExplorerBoundaryPattern)) `
+    -Detail (
+        'The Explorer canvas must keep deterministic in-memory navigation, ' +
+        'selection, owned preview, rename, folder creation and empty states ' +
+        'without filesystem or operating-system launch APIs.')
+
 Add-Check `
     -Name 'surface.vector-only-visual-grammar' `
     -Passed (
@@ -355,7 +410,7 @@ Add-Check `
     -Name 'surface.orthogonal-desktop-grammar' `
     -Passed (
         $surfaceText.Contains('JARVIS2 / FILE EXPLORER') -and
-        $surfaceText.Contains('PROJECT_BRIEF_0826.DOCX') -and
+        $explorerWorkspaceText.Contains('PROJECT_BRIEF_0826.DOCX') -and
         $surfaceText.Contains('x:Name="LayoutRailPanel"') -and
         $surfaceText.Contains('x:Name="CurrentLayoutGlyph"') -and
         $surfaceText.Contains('x:Key="PrimaryRuleBrush" Color="#C2C2BE"') -and
@@ -589,6 +644,43 @@ if ($buildExitCode -eq 0) {
             "Edge-bar test exit $edgeExitCode; scenarios " +
             "$($edgeReceipt.passedCount)/" +
             "$($edgeReceipt.scenarioCount).")
+
+    $explorerOutput = @(
+        & $DotnetPath $assemblyPath test-explorer-workspace 2>&1
+    )
+    $explorerExitCode = $LASTEXITCODE
+    $explorerReceipt = $null
+    try {
+        $explorerReceipt =
+            ($explorerOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $explorerReceipt = $null
+    }
+    $explorerScenarioDetail = if ($null -eq $explorerReceipt) {
+        'receipt-unavailable'
+    }
+    else {
+        "$($explorerReceipt.passedCount)/" +
+            "$($explorerReceipt.scenarioCount)"
+    }
+    Add-Check `
+        -Name 'interaction.explorer-workspace-scenarios' `
+        -Passed (
+            $explorerExitCode -eq 0 -and
+            $null -ne $explorerReceipt -and
+            $explorerReceipt.result -eq 'passed' -and
+            $explorerReceipt.schemaVersion -eq 1 -and
+            $explorerReceipt.scenarioCount -eq 21 -and
+            $explorerReceipt.passedCount -eq
+                $explorerReceipt.scenarioCount -and
+            $explorerReceipt.ownProcessOnly -and
+            -not $explorerReceipt.operatingSystemLaunchSupported -and
+            -not $explorerReceipt.realFileSystemAccessSupported) `
+        -Detail (
+            "Explorer workspace test exit $explorerExitCode; scenarios " +
+            $explorerScenarioDetail + '.')
 
     $null = New-Item `
         -ItemType Directory `

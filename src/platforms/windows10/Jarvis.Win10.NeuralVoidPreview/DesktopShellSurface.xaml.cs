@@ -53,6 +53,7 @@ public partial class DesktopShellSurface :
 
     private readonly DispatcherTimer _clockTimer;
     private readonly DispatcherTimer _railScrollTimer;
+    private readonly ExplorerWorkspace _explorerWorkspace = new();
     private readonly LinearGradientBrush _layoutRailMaskNone =
         CreateLayoutRailFeatherMask(false, false);
     private readonly LinearGradientBrush _layoutRailMaskTop =
@@ -84,10 +85,12 @@ public partial class DesktopShellSurface :
     private double? _layoutRailPointerYOverrideForTest;
     private int _layoutRailMouseMoveInvocationCount;
     private string _adjacentRailProbeDetailForTest = "not-run";
+    private bool _refreshingExplorerPresentation;
 
     public DesktopShellSurface()
     {
         InitializeComponent();
+        _explorerWorkspace.Changed += ExplorerWorkspace_OnChanged;
         LayoutRailHitRegion.AddHandler(
             Mouse.PreviewMouseMoveEvent,
             new MouseEventHandler(LayoutRailRegion_OnPreviewMouseMove),
@@ -110,6 +113,7 @@ public partial class DesktopShellSurface :
             IsEnabled = false,
         };
         ApplyLayoutSelection(_currentLayout);
+        RefreshExplorerPresentation();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -139,6 +143,44 @@ public partial class DesktopShellSurface :
         LayoutRailList.SelectedItem as LayoutDefinition;
 
     internal bool IsExplorerMaximized => _explorerMaximized;
+
+    internal ExplorerWorkspace ExplorerWorkspaceForTest => _explorerWorkspace;
+
+    internal string ExplorerBreadcrumbForTest => ExplorerBreadcrumbText.Text;
+
+    internal int ExplorerVisibleItemCountForTest => ExplorerItemList.Items.Count;
+
+    internal bool ExplorerEmptyStateVisibleForTest =>
+        ExplorerEmptyState.Visibility == Visibility.Visible;
+
+    internal bool ExplorerPreviewVisibleForTest =>
+        ExplorerPreviewPanel.Visibility == Visibility.Visible;
+
+    internal bool ExplorerItemListEnabledForTest => ExplorerItemList.IsEnabled;
+
+    internal bool ExplorerPreviewCyclesKeyboardFocusForTest =>
+        KeyboardNavigation.GetTabNavigation(ExplorerPreviewPanel) ==
+            KeyboardNavigationMode.Cycle &&
+        KeyboardNavigation.GetControlTabNavigation(ExplorerPreviewPanel) ==
+            KeyboardNavigationMode.Cycle;
+
+    internal string ExplorerPreviewNameForTest =>
+        ExplorerPreviewNameText.Text;
+
+    internal string? ExplorerSelectedItemIdForTest =>
+        (ExplorerItemList.SelectedItem as ExplorerWorkspaceItem)?.Id;
+
+    internal bool ExplorerOpenEnabledForTest => ExplorerOpenButton.IsEnabled;
+
+    internal bool ExplorerRenameEnabledForTest =>
+        ExplorerRenameButton.IsEnabled;
+
+    internal bool ExplorerBackEnabledForTest => ExplorerBackButton.IsEnabled;
+
+    internal bool ExplorerForwardEnabledForTest =>
+        ExplorerForwardButton.IsEnabled;
+
+    internal bool ExplorerUpEnabledForTest => ExplorerUpButton.IsEnabled;
 
     internal double LayoutRailVerticalOffset =>
         GetLayoutRailScrollViewer()?.VerticalOffset ?? 0.0;
@@ -249,6 +291,25 @@ public partial class DesktopShellSurface :
 
     internal void SetClockForSnapshot(DateTime timestamp) =>
         RefreshClock(timestamp);
+
+    internal bool PrepareExplorerPreviewForSnapshot()
+    {
+        if (_explorerWorkspace.CurrentLocationId !=
+                ExplorerWorkspace.DocumentsId &&
+            !_explorerWorkspace.TryNavigateTo(ExplorerWorkspace.DocumentsId))
+        {
+            return false;
+        }
+
+        if (!_explorerWorkspace.SelectItem(ExplorerWorkspace.ProjectBriefId))
+        {
+            return false;
+        }
+
+        ApplyExplorerOpenResult(_explorerWorkspace.OpenSelected());
+        return ExplorerPreviewVisibleForTest &&
+            ExplorerPreviewNameForTest == "PROJECT_BRIEF_0826.DOCX";
+    }
 
     internal void SelectLayoutForTest(LayoutPreset preset)
     {
@@ -1310,7 +1371,18 @@ public partial class DesktopShellSurface :
 
         if (destination is "THIS PC" or "PROJECTS" or "ARCHIVE")
         {
+            string locationId = destination switch
+            {
+                "THIS PC" => ExplorerWorkspace.ThisPcId,
+                "PROJECTS" => ExplorerWorkspace.ProjectsId,
+                _ => ExplorerWorkspace.ArchiveId,
+            };
+            ClearExplorerPreview();
+            _ = _explorerWorkspace.TryNavigateTo(locationId);
             RestoreExplorer();
+            AnnounceExplorerLocation();
+            FocusExplorerItems();
+            return;
         }
 
         Announce($"DESKTOP / {destination}");
@@ -1456,37 +1528,459 @@ public partial class DesktopShellSurface :
     private void ExplorerBackButton_OnClick(
         object sender,
         RoutedEventArgs eventArgs) =>
-        Announce("EXPLORER / BACK");
+        NavigateExplorerHistory(_explorerWorkspace.TryGoBack);
 
     private void ExplorerForwardButton_OnClick(
         object sender,
         RoutedEventArgs eventArgs) =>
-        Announce("EXPLORER / FORWARD");
+        NavigateExplorerHistory(_explorerWorkspace.TryGoForward);
 
     private void ExplorerUpButton_OnClick(
         object sender,
         RoutedEventArgs eventArgs) =>
-        Announce("EXPLORER / THIS PC");
+        NavigateExplorerHistory(_explorerWorkspace.TryGoUp);
 
     private void ExplorerOpenButton_OnClick(
         object sender,
         RoutedEventArgs eventArgs) =>
-        Announce("EXPLORER / OPEN PROJECT_BRIEF_0826.DOCX");
+        ApplyExplorerOpenResult(_explorerWorkspace.OpenSelected());
 
     private void ExplorerRenameButton_OnClick(
         object sender,
         RoutedEventArgs eventArgs) =>
-        Announce("EXPLORER / RENAME READY");
+        BeginExplorerRename();
 
     private void ExplorerAccessButton_OnClick(
         object sender,
         RoutedEventArgs eventArgs) =>
-        Announce("EXPLORER / ACCESS READY");
+        Announce("EXPLORER / ACCESS PANEL NOT AVAILABLE IN THIS PREVIEW");
 
     private void ExplorerNewFolderButton_OnClick(
         object sender,
         RoutedEventArgs eventArgs) =>
-        Announce("EXPLORER / NEW FOLDER READY");
+        CreateExplorerFolder();
+
+    private void ExplorerWorkspace_OnChanged(
+        object? sender,
+        EventArgs eventArgs) =>
+        RefreshExplorerPresentation();
+
+    private void RefreshExplorerPresentation()
+    {
+        _refreshingExplorerPresentation = true;
+        try
+        {
+            ExplorerWorkspaceSnapshot snapshot =
+                _explorerWorkspace.CaptureSnapshot();
+            string breadcrumb = string.Join(
+                "  /  ",
+                snapshot.Breadcrumb.Select(segment =>
+                    segment.Name.ToUpperInvariant()));
+
+            ExplorerBreadcrumbText.Text = breadcrumb;
+            ExplorerBreadcrumbText.ToolTip = breadcrumb;
+            AutomationProperties.SetName(
+                ExplorerBreadcrumbText,
+                $"Current Explorer location: {breadcrumb}");
+
+            string folderName =
+                snapshot.CurrentLocation.Name.ToUpperInvariant();
+            ExplorerFolderNameText.Text = folderName;
+            ExplorerFolderNameText.ToolTip = folderName;
+            AutomationProperties.SetName(
+                ExplorerFolderNameText,
+                $"Current folder: {folderName}");
+
+            int itemCount = snapshot.Items.Count;
+            string itemCountText = itemCount == 1
+                ? "1 ITEM"
+                : $"{itemCount} ITEMS";
+            ExplorerItemCountText.Text = itemCountText;
+            AutomationProperties.SetName(
+                ExplorerItemCountText,
+                itemCountText);
+
+            ExplorerItemList.ItemsSource = snapshot.Items;
+            ExplorerWorkspaceItem? selected = snapshot.Items.FirstOrDefault(
+                item => item.IsSelected);
+            ExplorerItemList.SelectedItem = selected;
+
+            ExplorerBackButton.IsEnabled = snapshot.CanGoBack;
+            ExplorerForwardButton.IsEnabled = snapshot.CanGoForward;
+            ExplorerUpButton.IsEnabled = snapshot.CanGoUp;
+            ExplorerOpenButton.IsEnabled = selected is not null;
+            ExplorerRenameButton.IsEnabled = selected is not null;
+            ExplorerAccessButton.IsEnabled = false;
+            ExplorerNewFolderButton.IsEnabled = true;
+            ExplorerEmptyState.Visibility = snapshot.IsEmpty
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            if (snapshot.RenameItemId is null)
+            {
+                ClearExplorerRenameError();
+            }
+        }
+        finally
+        {
+            _refreshingExplorerPresentation = false;
+        }
+    }
+
+    private void ClearExplorerRenameError()
+    {
+        ExplorerRenameErrorText.Text = string.Empty;
+        ExplorerRenameErrorText.Visibility = Visibility.Collapsed;
+        AutomationProperties.SetName(
+            ExplorerRenameErrorText,
+            "No Explorer rename error");
+    }
+
+    private void ShowExplorerRenameError(string message)
+    {
+        ExplorerRenameErrorText.Text = message.ToUpperInvariant();
+        ExplorerRenameErrorText.Visibility = Visibility.Visible;
+        AutomationProperties.SetName(
+            ExplorerRenameErrorText,
+            $"Explorer rename error: {message}");
+    }
+
+    private void NavigateExplorerHistory(Func<bool> navigation)
+    {
+        ClearExplorerPreview();
+        ClearExplorerRenameError();
+        if (navigation())
+        {
+            AnnounceExplorerLocation();
+        }
+        else
+        {
+            Announce("EXPLORER / NAVIGATION BOUNDARY");
+        }
+
+        FocusExplorerItems();
+    }
+
+    private void AnnounceExplorerLocation()
+    {
+        string location = string.Join(
+            " / ",
+            _explorerWorkspace.Breadcrumb.Select(segment => segment.Name));
+        Announce($"EXPLORER / {location}");
+    }
+
+    private void FocusExplorerItems()
+    {
+        _ = Dispatcher.BeginInvoke(
+            DispatcherPriority.Input,
+            new Action(() =>
+            {
+                if (ExplorerWindow.Visibility == Visibility.Visible)
+                {
+                    _ = ExplorerItemList.Focus();
+                }
+            }));
+    }
+
+    private void ApplyExplorerOpenResult(ExplorerOpenResult result)
+    {
+        ClearExplorerRenameError();
+        switch (result.Disposition)
+        {
+            case ExplorerOpenDisposition.Navigated:
+                ClearExplorerPreview();
+                AnnounceExplorerLocation();
+                FocusExplorerItems();
+                break;
+            case ExplorerOpenDisposition.PreviewRequested:
+                ExplorerPreviewRequest request = result.PreviewRequest ??
+                    throw new InvalidOperationException(
+                        "explorer-preview-request-missing");
+                ShowExplorerPreview(request);
+                Announce(
+                    $"EXPLORER / OWNED PREVIEW / {request.DisplayName}");
+                break;
+            default:
+                ClearExplorerPreview();
+                Announce("EXPLORER / SELECT AN ITEM");
+                FocusExplorerItems();
+                break;
+        }
+    }
+
+    private void BeginExplorerRename()
+    {
+        ClearExplorerPreview();
+        ExplorerRenameResult result =
+            _explorerWorkspace.BeginRenameSelected();
+        if (!result.Succeeded)
+        {
+            ShowExplorerRenameError(result.Message);
+            Announce("EXPLORER / RENAME UNAVAILABLE");
+            return;
+        }
+
+        ClearExplorerRenameError();
+        Announce($"EXPLORER / RENAME / {result.Name}");
+        QueueExplorerRenameFocus();
+    }
+
+    private void CreateExplorerFolder()
+    {
+        ClearExplorerPreview();
+        ExplorerWorkspaceItem folder =
+            _explorerWorkspace.CreateUniqueFolder();
+        ClearExplorerRenameError();
+        Announce($"EXPLORER / NEW FOLDER / {folder.Name}");
+        QueueExplorerRenameFocus();
+    }
+
+    private void QueueExplorerRenameFocus()
+    {
+        _ = Dispatcher.BeginInvoke(
+            DispatcherPriority.Input,
+            new Action(() =>
+            {
+                object? selected = ExplorerItemList.SelectedItem;
+                if (selected is null)
+                {
+                    return;
+                }
+
+                ExplorerItemList.ScrollIntoView(selected);
+                ExplorerItemList.UpdateLayout();
+                ListBoxItem? container =
+                    ExplorerItemList.ItemContainerGenerator.ContainerFromItem(
+                        selected) as ListBoxItem;
+                TextBox? editor = container is null
+                    ? null
+                    : FindVisualDescendant<TextBox>(container);
+                if (editor is null || editor.Visibility != Visibility.Visible)
+                {
+                    return;
+                }
+
+                _ = editor.Focus();
+                editor.SelectAll();
+            }));
+    }
+
+    private void CommitExplorerRename(TextBox editor)
+    {
+        if (editor.DataContext is not ExplorerWorkspaceItem item ||
+            !StringComparer.Ordinal.Equals(
+                item.Id,
+                _explorerWorkspace.RenameItemId))
+        {
+            return;
+        }
+
+        ExplorerRenameResult result =
+            _explorerWorkspace.CommitRename(editor.Text);
+        if (result.Succeeded)
+        {
+            ClearExplorerRenameError();
+            Announce($"EXPLORER / RENAMED / {result.Name}");
+            FocusExplorerItems();
+            return;
+        }
+
+        ShowExplorerRenameError(result.Message);
+        Announce("EXPLORER / RENAME NEEDS CORRECTION");
+        _ = Dispatcher.BeginInvoke(
+            DispatcherPriority.Input,
+            new Action(() =>
+            {
+                _ = editor.Focus();
+                editor.SelectAll();
+            }));
+    }
+
+    private void CancelExplorerRename()
+    {
+        if (!_explorerWorkspace.CancelRename())
+        {
+            return;
+        }
+
+        ClearExplorerRenameError();
+        Announce("EXPLORER / RENAME CANCELLED");
+        FocusExplorerItems();
+    }
+
+    private void ShowExplorerPreview(ExplorerPreviewRequest request)
+    {
+        ExplorerPreviewNameText.Text = request.DisplayName;
+        ExplorerPreviewNameText.ToolTip = request.DisplayName;
+        AutomationProperties.SetName(
+            ExplorerPreviewNameText,
+            $"Preview item: {request.DisplayName}");
+        ExplorerPreviewTypeText.Text =
+            $"{request.TypeLabel} / SESSION OBJECT";
+        ExplorerPreviewKindText.Text = request.PreviewKind
+            .Replace('-', ' ')
+            .ToUpperInvariant();
+        ExplorerItemList.IsEnabled = false;
+        ExplorerPreviewPanel.Visibility = Visibility.Visible;
+        _ = Dispatcher.BeginInvoke(
+            DispatcherPriority.Input,
+            new Action(() => _ = ExplorerPreviewCloseButton.Focus()));
+    }
+
+    private void ClearExplorerPreview()
+    {
+        ExplorerPreviewPanel.Visibility = Visibility.Collapsed;
+        ExplorerItemList.IsEnabled = true;
+        ExplorerPreviewNameText.Text = string.Empty;
+        ExplorerPreviewNameText.ToolTip = null;
+        ExplorerPreviewTypeText.Text = string.Empty;
+        ExplorerPreviewKindText.Text = string.Empty;
+    }
+
+    private void ExplorerPreviewCloseButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        ClearExplorerPreview();
+        Announce("EXPLORER / PREVIEW CLOSED");
+        FocusExplorerItems();
+    }
+
+    private void ExplorerItemList_OnSelectionChanged(
+        object sender,
+        SelectionChangedEventArgs eventArgs)
+    {
+        if (_refreshingExplorerPresentation)
+        {
+            return;
+        }
+
+        ClearExplorerRenameError();
+        ClearExplorerPreview();
+        if (ExplorerItemList.SelectedItem is ExplorerWorkspaceItem item)
+        {
+            _ = _explorerWorkspace.SelectItem(item.Id);
+            Announce($"EXPLORER / SELECTED / {item.Name}");
+        }
+        else
+        {
+            _explorerWorkspace.ClearSelection();
+            Announce("EXPLORER / SELECTION CLEARED");
+        }
+    }
+
+    private void ExplorerItemList_OnMouseDoubleClick(
+        object sender,
+        MouseButtonEventArgs eventArgs)
+    {
+        if (eventArgs.ChangedButton != MouseButton.Left ||
+            FindParent<ListBoxItem>(
+                eventArgs.OriginalSource as DependencyObject) is not
+                    ListBoxItem container ||
+            container.DataContext is not ExplorerWorkspaceItem item)
+        {
+            return;
+        }
+
+        ApplyExplorerOpenResult(_explorerWorkspace.OpenItem(item.Id));
+        eventArgs.Handled = true;
+    }
+
+    private void ExplorerRenameEditor_OnLostKeyboardFocus(
+        object sender,
+        KeyboardFocusChangedEventArgs eventArgs)
+    {
+        if (!_refreshingExplorerPresentation && sender is TextBox editor)
+        {
+            CommitExplorerRename(editor);
+        }
+    }
+
+    private void ExplorerWindow_OnPreviewKeyDown(
+        object sender,
+        KeyEventArgs eventArgs)
+    {
+        Key key = eventArgs.Key == Key.System
+            ? eventArgs.SystemKey
+            : eventArgs.Key;
+        if (ExplorerPreviewPanel.Visibility == Visibility.Visible &&
+            key == Key.Escape)
+        {
+            ClearExplorerPreview();
+            Announce("EXPLORER / PREVIEW CLOSED");
+            FocusExplorerItems();
+            eventArgs.Handled = true;
+            return;
+        }
+
+        if (_explorerWorkspace.RenameItemId is not null &&
+            Keyboard.FocusedElement is TextBox editor)
+        {
+            if (key == Key.Enter)
+            {
+                CommitExplorerRename(editor);
+                eventArgs.Handled = true;
+            }
+            else if (key == Key.Escape)
+            {
+                CancelExplorerRename();
+                eventArgs.Handled = true;
+            }
+
+            return;
+        }
+
+        ModifierKeys modifiers = Keyboard.Modifiers;
+        if ((modifiers & ModifierKeys.Alt) != 0)
+        {
+            if (key == Key.Left)
+            {
+                NavigateExplorerHistory(_explorerWorkspace.TryGoBack);
+                eventArgs.Handled = true;
+            }
+            else if (key == Key.Right)
+            {
+                NavigateExplorerHistory(_explorerWorkspace.TryGoForward);
+                eventArgs.Handled = true;
+            }
+            else if (key == Key.Up)
+            {
+                NavigateExplorerHistory(_explorerWorkspace.TryGoUp);
+                eventArgs.Handled = true;
+            }
+
+            return;
+        }
+
+        if (key == Key.N &&
+            modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
+        {
+            CreateExplorerFolder();
+            eventArgs.Handled = true;
+            return;
+        }
+
+        if (!ExplorerItemList.IsKeyboardFocusWithin)
+        {
+            return;
+        }
+
+        if (key == Key.Enter)
+        {
+            ApplyExplorerOpenResult(_explorerWorkspace.OpenSelected());
+            eventArgs.Handled = true;
+        }
+        else if (key == Key.F2)
+        {
+            BeginExplorerRename();
+            eventArgs.Handled = true;
+        }
+        else if (key == Key.Back)
+        {
+            NavigateExplorerHistory(_explorerWorkspace.TryGoUp);
+            eventArgs.Handled = true;
+        }
+    }
 
     private void TaskbarUtilityButton_OnClick(
         object sender,

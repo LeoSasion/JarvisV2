@@ -19,7 +19,8 @@ internal static class PreviewRenderer
         string outputPath,
         double hueDegrees,
         string effectId,
-        double phase)
+        double phase,
+        bool showExplorerPreview = false)
     {
         RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
         List<string> failures = [];
@@ -40,6 +41,17 @@ internal static class PreviewRenderer
             renderHost.Show();
             PumpDispatcher();
             surface.PrepareLayoutRailForSnapshot();
+            if (showExplorerPreview &&
+                !surface.PrepareExplorerPreviewForSnapshot())
+            {
+                failures.Add("explorer-preview-state-preparation-failed");
+                return Receipt(
+                    "blocked",
+                    fullOutputPath,
+                    frame,
+                    failures);
+            }
+
             PumpDispatcher();
             surface.SetClockForSnapshot(
                 new DateTime(2026, 8, 6, 14, 39, 0));

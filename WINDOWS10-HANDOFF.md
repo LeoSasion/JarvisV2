@@ -1,6 +1,10 @@
 # JarvisV2 Windows 10 接力入口
 
-这份文件是迁移包在 Windows 10 上的唯一入口。先阅读，再运行命令。
+这份文件是迁移包在 Windows 10 上的唯一入口，也是
+`scripts/New-Windows10HandoffPackage.ps1` 写入成品包的版本化模板。
+源码工作副本不是迁移包：其中不应保留生成的 `HANDOFF-MANIFEST.json`，
+也不要直接运行包完整性校验。先生成并解压迁移包，再在包根目录阅读本文件、
+运行下列命令。
 
 当前包不是 Windows 10 成品，也不包含可加载的 Win10 原生模块。它保留
 Windows 11 已完成的离线基础，同时为 Win10 提供独立目录、命名规则、
@@ -11,7 +15,8 @@ Windows 11 已完成的离线基础，同时为 Win10 提供独立目录、命�
 
 解压后，仓库根目录应同时存在：
 
-- `HANDOFF-MANIFEST.json`：打包时生成的提交、文件大小和 SHA-256 清单；
+- `HANDOFF-MANIFEST.json`：打包时生成、不会提交到源码仓库的提交、文件大小
+  和 SHA-256 清单；
 - `config/platform-matrix.json`：Win10 / Win11 平台边界；
 - `src/common/`：经过审查的跨版本候选；
 - `src/platforms/windows10/`：Win10 新实现的唯一落点；
@@ -39,9 +44,10 @@ pwsh -NoLogo -NoProfile -File .\scripts\Inspect-Windows10Host.ps1 |
   Tee-Object .\windows10-host-inventory.json
 ```
 
-把输出作为人工审查输入，不要直接复制到现有
+把输出交给自动预检，用于生成或刷新当前主机的兼容档；不要直接复制到现有
 `config/compatibility.json`。Win10 必须拥有新的、精确到 build / UBR /
-Explorer 哈希的兼容档；现有 Win11 档保持原样。
+Explorer 哈希的兼容档；现有 Win11 档保持原样。该流程由代理自动完成，
+不是逐次人工审批门。
 
 ## Win10 第一条开发路线
 
@@ -70,7 +76,10 @@ TID/HWND、原值收据、单模块许可、范围、超时、逆序回滚和恢
   `jarvis-taskbar-icon-size`。
 - 运行时安全目录和状态门继续使用 `JARVIS2`，除非另做有迁移收据的版本升级。
 
-## 永久安全边界
+## 实机运行不变量（非人工审批）
+
+以下条件由自动预检、恢复助手和会话收尾自动执行。满足条件即可继续，
+不需要用户逐条确认。
 
 - 每次实机验证开始时 `%LOCALAPPDATA%\JARVIS2\disabled.flag` 必须存在，
   且不得有陈旧的一次性许可。
@@ -88,7 +97,6 @@ Win11 代码完整保存在 `src/platforms/windows11/`、`mods/windows11/` 和
 
 ```powershell
 pwsh -NoLogo -NoProfile -File .\scripts\Test-PlatformLayout.ps1
-pwsh -NoLogo -NoProfile -File .\scripts\Test-Windows10HandoffPackage.ps1
 pwsh -NoLogo -NoProfile -File .\scripts\Test-Project.ps1
 ```
 

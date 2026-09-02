@@ -90,7 +90,7 @@ public static class DesktopPresenceProbe
                 store.Read() is null;
 
             string scope = "probe-" + Guid.NewGuid().ToString("N");
-            using ManualResetEventSlim activated = new(false);
+            using ManualResetEventSlim callbackDisposedPrimary = new(false);
             using (ControlCenterSingleInstance primary =
                    ControlCenterSingleInstance.AcquireForScope(scope))
             using (ControlCenterSingleInstance secondary =
@@ -98,14 +98,19 @@ public static class DesktopPresenceProbe
             {
                 singleInstanceAdmissionPassed =
                     primary.IsPrimary && !secondary.IsPrimary;
-                primary.StartListening(() => activated.Set());
+                primary.StartListening(() =>
+                {
+                    primary.Dispose();
+                    callbackDisposedPrimary.Set();
+                });
                 secondaryActivationPassed =
                     secondary.SignalPrimary() &&
-                    activated.Wait(TimeSpan.FromSeconds(3));
+                    callbackDisposedPrimary.Wait(TimeSpan.FromSeconds(3));
             }
             using ControlCenterSingleInstance reacquired =
                 ControlCenterSingleInstance.AcquireForScope(scope);
-            primaryReacquirePassed = reacquired.IsPrimary;
+            primaryReacquirePassed =
+                secondaryActivationPassed && reacquired.IsPrimary;
 
             MemoryDesktopHotKeyNative hotKeyNative = new();
             using (DesktopSummonHotKey hotKey = new(hotKeyNative))

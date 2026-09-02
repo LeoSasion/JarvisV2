@@ -28,7 +28,8 @@ internal static class Program
             return 0;
         }
 
-        if (args.Length == 5 && args[0] == "render")
+        if (args.Length == 5 &&
+            args[0] is "render" or "render-explorer-preview")
         {
             if (!TryDouble(args[2], out double hue) ||
                 !TryDouble(args[4], out double phase))
@@ -46,7 +47,8 @@ internal static class Program
                     args[1],
                     hue,
                     args[3],
-                    phase);
+                    phase,
+                    args[0] == "render-explorer-preview");
             Console.WriteLine(
                 JsonSerializer.Serialize(receipt, JsonOptions));
             return receipt.Result ==
@@ -83,6 +85,21 @@ internal static class Program
             return receipt.Result == "passed" ? 0 : 12;
         }
 
+        if (args.Length == 1 &&
+            args[0] == "test-explorer-workspace")
+        {
+            RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
+            _ = new Application
+            {
+                ShutdownMode = ShutdownMode.OnExplicitShutdown,
+            };
+            ExplorerWorkspaceTestReceipt receipt =
+                ExplorerWorkspaceScenarios.Run();
+            Console.WriteLine(
+                JsonSerializer.Serialize(receipt, JsonOptions));
+            return receipt.Result == "passed" ? 0 : 12;
+        }
+
         WriteUsage();
         return 2;
     }
@@ -100,6 +117,8 @@ internal static class Program
         Console.Error.WriteLine(
             "Usage: jarvis-win10-neural-void-preview show " +
             "or render <png-path> <hue> <effect> <phase> " +
+            "or render-explorer-preview <png-path> <hue> <effect> <phase> " +
             "or test-vector-adapter " +
-            "or test-edge-bars");
+            "or test-edge-bars " +
+            "or test-explorer-workspace");
 }
