@@ -110,8 +110,9 @@ rendered and reviewed in a connected graphics session.
 - Owned Task Manager model and command scenarios: 10 / 10 passed
 - Owned Task Manager surface scenarios: 9 / 9 passed, including host-window
   minimize/restore lifecycle, process-instance identity and in-flight restart
-- Owned-window layout scenarios: 24 / 24 passed, including all six splits,
-  both active-window assignments, disabled no-op and compact viewport gates
+- Owned-window layout scenarios: 27 / 27 passed, including all six splits,
+  both active-window assignments, disabled no-op, compact viewport gates,
+  title-click/jitter restore preservation and actual-drag capture loss
 - Control Center audit: 27 / 27 passed
 - Platform layout: 16 / 16 passed
 - Publication boundary: passed for 533 candidate files; no secret values printed
@@ -147,3 +148,11 @@ pointer automation was unavailable (`GetCursorPos` access denied), so hosted
 WPF scenarios and deterministic PNG review are not reported as a live mouse or
 keyboard acceptance session. The final safety state was verified read-only:
 kill switch armed, one-shot module permit absent, `liveExplorer=not-run`.
+
+The interaction-hardening follow-up also preserves that visual baseline. Both
+owned title bars defer layout changes until the system drag threshold is crossed
+and the clamped position actually changes. Plain clicks, repeated clicks,
+sub-threshold jitter and non-drag capture loss preserve maximized restore bounds
+and tiled assignments. An actual drag is finalized on release or capture loss.
+The three new hosted regressions failed against the previous handlers and now
+pass; the complete owned-preview gate remains 26/26 with the same canonical hash.

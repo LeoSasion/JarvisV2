@@ -153,8 +153,9 @@ Current bounded verification for the interactive Explorer revision:
 - owned Task Manager surface scenarios: 9 / 9, including host-window
   minimize/restore sampling lifecycle, same-name PID reuse and an in-flight
   stop/start refresh;
-- owned-window layout scenarios: 24 / 24, including all six splits with either
-  active window and usable compact content;
+- owned-window layout scenarios: 27 / 27, including all six splits with either
+  active window, usable compact content, title-click/jitter restore preservation
+  and actual-drag capture loss;
 - publication boundary: passed for 533 candidate files with no secret values
   printed;
 - current owned-preview audit: 26 / 26 on the locked connected graphics

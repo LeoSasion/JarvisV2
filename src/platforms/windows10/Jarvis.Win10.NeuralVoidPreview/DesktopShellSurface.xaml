@@ -531,7 +531,8 @@
                     BorderThickness="0,0,0,1"
                     MouseLeftButtonDown="ExplorerTitleBar_OnMouseLeftButtonDown"
                     MouseMove="ExplorerTitleBar_OnMouseMove"
-                    MouseLeftButtonUp="ExplorerTitleBar_OnMouseLeftButtonUp">
+                    MouseLeftButtonUp="ExplorerTitleBar_OnMouseLeftButtonUp"
+                    LostMouseCapture="OwnedTitleBar_OnLostMouseCapture">
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="132" /></Grid.ColumnDefinitions>
                         <StackPanel Margin="20,0,0,0" VerticalAlignment="Center" Orientation="Horizontal">
@@ -974,7 +975,8 @@
                     BorderThickness="0,0,0,1"
                     MouseLeftButtonDown="TaskManagerTitleBar_OnMouseLeftButtonDown"
                     MouseMove="TaskManagerTitleBar_OnMouseMove"
-                    MouseLeftButtonUp="TaskManagerTitleBar_OnMouseLeftButtonUp">
+                    MouseLeftButtonUp="TaskManagerTitleBar_OnMouseLeftButtonUp"
+                    LostMouseCapture="OwnedTitleBar_OnLostMouseCapture">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />

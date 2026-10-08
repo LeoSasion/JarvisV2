@@ -25,7 +25,10 @@ rounded to integer device-independent coordinates.
 
 Minimizing retains the assigned pane; restoring returns to it. Closing breaks
 the applied layout, and reopening returns to the last independent floating
-bounds. Dragging either owned title bar returns the desktop to Freeform.
+bounds. Dragging either owned title bar returns the desktop to Freeform only
+after the system drag threshold is crossed and the window actually moves.
+Clicks and sub-threshold pointer jitter preserve the applied layout and saved
+floating bounds. Release or capture loss commits an actual move exactly once.
 Maximize applies the single-window preset; restore reapplies the last usable
 tiled preset, or restores floating bounds when it is no longer available.
 Body clicks and keyboard focus update the active window and stacking order.
@@ -47,10 +50,11 @@ show a live Windows Task Manager or a styled Windows Explorer.
 
 ## Verification
 
-`test-owned-window-layout` runs 16 coordinator scenarios and 8 hosted WPF
+`test-owned-window-layout` runs 16 coordinator scenarios and 11 hosted WPF
 scenarios. Hosted checks cover both active-window choices for all six splits,
 actual element bounds, disabled no-op behavior, compact controls, lifecycle,
-focus and manual movement. Explorer retains at least 44 DIP of content viewport
+focus, manual movement, title clicks/jitter, maximize/restore and capture loss.
+Explorer retains at least 44 DIP of content viewport
 and Task Manager at least 43 DIP in every available split.
 
 The row/column render checks also require actual Task Manager title-rule and

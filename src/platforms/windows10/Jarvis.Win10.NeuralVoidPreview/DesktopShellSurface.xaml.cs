@@ -76,8 +76,14 @@ public partial class DesktopShellSurface :
         CreateBrush(Color.FromRgb(240, 229, 0));
     private bool _draggingExplorer;
     private Point _explorerDragOffset;
+    private Point _explorerDragStart;
+    private bool _explorerDragStarted;
     private bool _draggingTaskManager;
     private Point _taskManagerDragOffset;
+    private Point _taskManagerDragStart;
+    private bool _taskManagerDragStarted;
+    private Point? _ownedTitlePointerOverrideForTest;
+    private MouseButtonState? _ownedTitleButtonOverrideForTest;
     private readonly DataTemplate _explorerFullItemTemplate;
     private readonly DataTemplate _explorerCompactItemTemplate;
     private bool _explorerCompactWidth;
@@ -459,6 +465,59 @@ public partial class DesktopShellSurface :
         CompleteOwnedWindowManualMove(GetOwnedWindowId(window), window);
     }
 
+    internal void RaiseOwnedTitleGestureForTest(
+        string id,
+        Point press,
+        Point? move = null,
+        bool loseCapture = false)
+    {
+        UIElement title = id switch
+        {
+            "explorer" => ExplorerTitleBar,
+            "task-manager" => TaskManagerTitleBar,
+            _ => throw new ArgumentOutOfRangeException(nameof(id)),
+        };
+        try
+        {
+            _ownedTitlePointerOverrideForTest = press;
+            _ownedTitleButtonOverrideForTest = MouseButtonState.Pressed;
+            title.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+            {
+                RoutedEvent = Mouse.MouseDownEvent,
+            });
+            if (move is Point pointer)
+            {
+                _ownedTitlePointerOverrideForTest = pointer;
+                title.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount)
+                {
+                    RoutedEvent = Mouse.MouseMoveEvent,
+                });
+            }
+
+            if (loseCapture)
+            {
+                title.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount)
+                {
+                    RoutedEvent = Mouse.LostMouseCaptureEvent,
+                });
+            }
+            else
+            {
+                _ownedTitleButtonOverrideForTest = MouseButtonState.Released;
+                title.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+                {
+                    RoutedEvent = Mouse.MouseUpEvent,
+                });
+            }
+        }
+        finally
+        {
+            _ownedTitlePointerOverrideForTest = null;
+            _ownedTitleButtonOverrideForTest = null;
+            title.ReleaseMouseCapture();
+        }
+    }
+
     internal void BeginLayoutRailAutoScrollForTest(
         LayoutRailScrollDirection direction) =>
         StartLayoutRailAutoScroll(direction, RailMaxVelocity / 2.0);
@@ -691,10 +750,8 @@ public partial class DesktopShellSurface :
     {
         _clockTimer.Stop();
         TaskManagerPanel.StopSampling();
-        _draggingExplorer = false;
-        _draggingTaskManager = false;
-        ExplorerTitleBar.ReleaseMouseCapture();
-        TaskManagerTitleBar.ReleaseMouseCapture();
+        EndExplorerTitleDrag();
+        EndTaskManagerTitleDrag();
         StopLayoutRailAutoScroll();
         CancelPendingLayoutReveal();
         DetachSystemParameters();
@@ -1648,10 +1705,9 @@ public partial class DesktopShellSurface :
         }
 
         ActivateOwnedWindow(ExplorerWindow);
-        BeginOwnedWindowManualMove(
-            ExplorerOwnedWindowId,
-            ExplorerWindow);
-        Point pointer = eventArgs.GetPosition(DesktopCanvas);
+        Point pointer = _ownedTitlePointerOverrideForTest ?? eventArgs.GetPosition(DesktopCanvas);
+        _explorerDragStart = pointer;
+        _explorerDragStarted = false;
         _explorerDragOffset = new(
             pointer.X - Canvas.GetLeft(ExplorerWindow),
             pointer.Y - Canvas.GetTop(ExplorerWindow));
@@ -1665,33 +1721,38 @@ public partial class DesktopShellSurface :
         MouseEventArgs eventArgs)
     {
         if (!_draggingExplorer ||
-            eventArgs.LeftButton != MouseButtonState.Pressed)
+            (_ownedTitleButtonOverrideForTest ?? eventArgs.LeftButton) != MouseButtonState.Pressed)
         {
             return;
         }
 
-        Point pointer = eventArgs.GetPosition(DesktopCanvas);
-        double left = Math.Clamp(
-            pointer.X - _explorerDragOffset.X,
-            LayoutAxisX + 18.0,
-            1600.0 - ExplorerWindow.Width - 18.0);
-        double top = Math.Clamp(
-            pointer.Y - _explorerDragOffset.Y,
-            18.0,
-            TaskbarTop - ExplorerWindow.Height - 18.0);
-        Canvas.SetLeft(ExplorerWindow, Math.Round(left));
-        Canvas.SetTop(ExplorerWindow, Math.Round(top));
+        Point pointer = _ownedTitlePointerOverrideForTest ?? eventArgs.GetPosition(DesktopCanvas);
+        MoveOwnedWindowFromTitle(
+            ExplorerOwnedWindowId,
+            ExplorerWindow,
+            pointer,
+            _explorerDragStart,
+            _explorerDragOffset,
+            ref _explorerDragStarted);
     }
 
     private void ExplorerTitleBar_OnMouseLeftButtonUp(
         object sender,
         MouseButtonEventArgs eventArgs)
+        => EndExplorerTitleDrag();
+
+    private void EndExplorerTitleDrag()
     {
+        bool moved = _explorerDragStarted;
         _draggingExplorer = false;
+        _explorerDragStarted = false;
         ExplorerTitleBar.ReleaseMouseCapture();
-        CompleteOwnedWindowManualMove(
-            ExplorerOwnedWindowId,
-            ExplorerWindow);
+        if (moved)
+        {
+            CompleteOwnedWindowManualMove(
+                ExplorerOwnedWindowId,
+                ExplorerWindow);
+        }
     }
 
     private void ExplorerMinimizeButton_OnClick(
@@ -2265,10 +2326,9 @@ public partial class DesktopShellSurface :
         }
 
         ActivateOwnedWindow(TaskManagerWindow);
-        BeginOwnedWindowManualMove(
-            TaskManagerOwnedWindowId,
-            TaskManagerWindow);
-        Point pointer = eventArgs.GetPosition(DesktopCanvas);
+        Point pointer = _ownedTitlePointerOverrideForTest ?? eventArgs.GetPosition(DesktopCanvas);
+        _taskManagerDragStart = pointer;
+        _taskManagerDragStarted = false;
         _taskManagerDragOffset = new(
             pointer.X - Canvas.GetLeft(TaskManagerWindow),
             pointer.Y - Canvas.GetTop(TaskManagerWindow));
@@ -2282,33 +2342,55 @@ public partial class DesktopShellSurface :
         MouseEventArgs eventArgs)
     {
         if (!_draggingTaskManager ||
-            eventArgs.LeftButton != MouseButtonState.Pressed)
+            (_ownedTitleButtonOverrideForTest ?? eventArgs.LeftButton) != MouseButtonState.Pressed)
         {
             return;
         }
 
-        Point pointer = eventArgs.GetPosition(DesktopCanvas);
-        double left = Math.Clamp(
-            pointer.X - _taskManagerDragOffset.X,
-            LayoutAxisX + 18.0,
-            1600.0 - TaskManagerWindow.Width - 18.0);
-        double top = Math.Clamp(
-            pointer.Y - _taskManagerDragOffset.Y,
-            18.0,
-            TaskbarTop - TaskManagerWindow.Height - 18.0);
-        Canvas.SetLeft(TaskManagerWindow, Math.Round(left));
-        Canvas.SetTop(TaskManagerWindow, Math.Round(top));
+        Point pointer = _ownedTitlePointerOverrideForTest ?? eventArgs.GetPosition(DesktopCanvas);
+        MoveOwnedWindowFromTitle(
+            TaskManagerOwnedWindowId,
+            TaskManagerWindow,
+            pointer,
+            _taskManagerDragStart,
+            _taskManagerDragOffset,
+            ref _taskManagerDragStarted);
     }
 
     private void TaskManagerTitleBar_OnMouseLeftButtonUp(
         object sender,
         MouseButtonEventArgs eventArgs)
+        => EndTaskManagerTitleDrag();
+
+    private void EndTaskManagerTitleDrag()
     {
+        bool moved = _taskManagerDragStarted;
         _draggingTaskManager = false;
+        _taskManagerDragStarted = false;
         TaskManagerTitleBar.ReleaseMouseCapture();
-        CompleteOwnedWindowManualMove(
-            TaskManagerOwnedWindowId,
-            TaskManagerWindow);
+        if (moved)
+        {
+            CompleteOwnedWindowManualMove(
+                TaskManagerOwnedWindowId,
+                TaskManagerWindow);
+        }
+    }
+
+    private void OwnedTitleBar_OnLostMouseCapture(object sender, MouseEventArgs eventArgs)
+    {
+        if (!ReferenceEquals(eventArgs.OriginalSource, sender))
+        {
+            return;
+        }
+
+        if (ReferenceEquals(sender, ExplorerTitleBar))
+        {
+            EndExplorerTitleDrag();
+        }
+        else if (ReferenceEquals(sender, TaskManagerTitleBar))
+        {
+            EndTaskManagerTitleDrag();
+        }
     }
 
     private void TaskManagerMinimizeButton_OnClick(
@@ -2456,6 +2538,40 @@ public partial class DesktopShellSurface :
         {
             ActivateOwnedWindow(window);
         }
+    }
+
+    private void MoveOwnedWindowFromTitle(
+        OwnedWindowId id,
+        FrameworkElement window,
+        Point pointer,
+        Point start,
+        Point offset,
+        ref bool started)
+    {
+        if (!started &&
+            Math.Abs(pointer.X - start.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(pointer.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance)
+        {
+            return;
+        }
+
+        double left = Math.Round(Math.Clamp(
+            pointer.X - offset.X, LayoutAxisX + 18.0, 1600.0 - window.Width - 18.0));
+        double top = Math.Round(Math.Clamp(
+            pointer.Y - offset.Y, 18.0, TaskbarTop - window.Height - 18.0));
+        if (left == Canvas.GetLeft(window) && top == Canvas.GetTop(window))
+        {
+            return;
+        }
+
+        if (!started)
+        {
+            BeginOwnedWindowManualMove(id, window);
+            started = true;
+        }
+
+        Canvas.SetLeft(window, left);
+        Canvas.SetTop(window, top);
     }
 
     private void BeginOwnedWindowManualMove(

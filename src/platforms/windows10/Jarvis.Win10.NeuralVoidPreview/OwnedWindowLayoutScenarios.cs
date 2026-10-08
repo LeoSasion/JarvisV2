@@ -107,6 +107,9 @@ internal static class OwnedWindowLayoutScenarios
         Add(scenarios, "hosted-minimize-restore-and-maximize-retain-pane", HostedLifecycle);
         Add(scenarios, "hosted-close-and-reopen-return-to-floating-bounds", HostedCloseReopen);
         Add(scenarios, "hosted-body-focus-and-manual-move-update-active-freeform-state", HostedFocusAndMove);
+        Add(scenarios, "hosted-title-click-and-jitter-preserve-maximized-floating-restore", HostedTitleClickPreservesFloatingRestore);
+        Add(scenarios, "hosted-title-clicks-preserve-tiled-layout-and-maximize-restore", HostedTitleClickPreservesTiledLayout);
+        Add(scenarios, "hosted-title-drag-and-capture-loss-commit-only-real-moves", HostedTitleDragCommitsRealMove);
 
         int passed = scenarios.Count(scenario => scenario.Passed);
         return new(
@@ -738,6 +741,119 @@ internal static class OwnedWindowLayoutScenarios
         return explorerActive && taskActive && shell.IsOwnedWindowLayoutFreeform &&
             shell.CurrentLayoutGlyph.IsFreeform && shell.LayoutRailList.SelectedItems.Count == 0 &&
             shell.GetOwnedWindowBoundsForTest("task-manager") == moved;
+    });
+
+    private static bool HostedTitleClickPreservesFloatingRestore() => WithShell(shell =>
+    {
+        _ = shell.PrepareTaskManagerForSnapshot();
+        foreach (string id in new[] { "explorer", "task-manager" })
+        {
+            Rect floating = shell.GetOwnedWindowBoundsForTest(id);
+            Button maximize = id == "explorer" ? shell.ExplorerMaximizeButton : shell.TaskManagerMaximizeButton;
+            Invoke(maximize);
+            Point press = new(WorkArea.Left + 40, WorkArea.Top + 20);
+            shell.RaiseOwnedTitleGestureForTest(id, press);
+            shell.RaiseOwnedTitleGestureForTest(id, press, new Point(
+                press.X + SystemParameters.MinimumHorizontalDragDistance / 2,
+                press.Y + SystemParameters.MinimumVerticalDragDistance / 2));
+            shell.RaiseOwnedTitleGestureForTest(id, press, loseCapture: true);
+            bool maximized = id == "explorer" ? shell.IsExplorerMaximized : shell.IsTaskManagerMaximizedForTest;
+            if (!maximized || shell.GetOwnedWindowBoundsForTest(id) != WorkArea)
+            {
+                return false;
+            }
+
+            Invoke(maximize);
+            if (shell.GetOwnedWindowBoundsForTest(id) != floating)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    private static bool HostedTitleClickPreservesTiledLayout() => WithShell(shell =>
+    {
+        _ = shell.PrepareTaskManagerForSnapshot();
+        foreach (string id in new[] { "explorer", "task-manager" })
+        {
+            ActivateBody(shell, id);
+            _ = shell.SelectLayoutForTest(LayoutPreset.EqualColumns);
+            Rect tiled = shell.GetOwnedWindowBoundsForTest(id);
+            Rect explorer = shell.GetOwnedWindowBoundsForTest("explorer");
+            Rect task = shell.GetOwnedWindowBoundsForTest("task-manager");
+            Point press = new(tiled.Left + 40, tiled.Top + 20);
+            shell.RaiseOwnedTitleGestureForTest(id, press);
+            shell.RaiseOwnedTitleGestureForTest(id, press);
+            shell.RaiseOwnedTitleGestureForTest(id, press, new Point(
+                press.X + SystemParameters.MinimumHorizontalDragDistance / 2,
+                press.Y + SystemParameters.MinimumVerticalDragDistance / 2));
+            shell.RaiseOwnedTitleGestureForTest(id, press, loseCapture: true);
+            if (shell.IsOwnedWindowLayoutFreeform || shell.CurrentLayout != LayoutPreset.EqualColumns ||
+                shell.GetOwnedWindowBoundsForTest("explorer") != explorer ||
+                shell.GetOwnedWindowBoundsForTest("task-manager") != task ||
+                shell.ActiveOwnedWindowId != id)
+            {
+                return false;
+            }
+
+            Button maximize = id == "explorer" ? shell.ExplorerMaximizeButton : shell.TaskManagerMaximizeButton;
+            Invoke(maximize);
+            Invoke(maximize);
+            if (shell.GetOwnedWindowBoundsForTest(id) != tiled ||
+                shell.CurrentLayout != LayoutPreset.EqualColumns || shell.IsOwnedWindowLayoutFreeform)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    private static bool HostedTitleDragCommitsRealMove() => WithShell(shell =>
+    {
+        _ = shell.PrepareTaskManagerForSnapshot();
+        foreach (string id in new[] { "explorer", "task-manager" })
+        {
+            foreach (bool loseCapture in new[] { false, true })
+            {
+                ActivateBody(shell, id);
+                _ = shell.SelectLayoutForTest(LayoutPreset.EqualColumns);
+                Rect tiled = shell.GetOwnedWindowBoundsForTest(id);
+                Point press = new(tiled.Left + 40, tiled.Top + 20);
+                shell.RaiseOwnedTitleGestureForTest(id, press, new Point(press.X + 64, press.Y + 48), loseCapture);
+                Rect moved = shell.GetOwnedWindowBoundsForTest(id);
+                if (!shell.IsOwnedWindowLayoutFreeform || !shell.CurrentLayoutGlyph.IsFreeform ||
+                    shell.LayoutRailList.SelectedItems.Count != 0 || moved == tiled)
+                {
+                    throw new InvalidOperationException($"{id}/lost={loseCapture}: tiled={tiled}, moved={moved}, freeform={shell.IsOwnedWindowLayoutFreeform}, selected={shell.LayoutRailList.SelectedItems.Count}");
+                }
+
+                // A completed or interrupted drag must not leak into the next click.
+                shell.RaiseOwnedTitleGestureForTest(id, new Point(moved.Left + 40, moved.Top + 20));
+                // An available tiled preset takes restore precedence. Make it unavailable
+                // to verify that the committed floating bounds survive maximize/restore.
+                Invoke(id == "explorer" ? shell.TaskManagerMinimizeButton : shell.ExplorerMinimizeButton);
+                Button maximize = id == "explorer" ? shell.ExplorerMaximizeButton : shell.TaskManagerMaximizeButton;
+                Invoke(maximize);
+                if (shell.GetOwnedWindowBoundsForTest(id) != WorkArea)
+                {
+                    return false;
+                }
+
+                Invoke(maximize);
+                if (shell.GetOwnedWindowBoundsForTest(id) != moved)
+                {
+                    throw new InvalidOperationException($"{id}/lost={loseCapture}: drag={moved}, restored={shell.GetOwnedWindowBoundsForTest(id)}");
+                }
+
+                Invoke(id == "explorer" ? shell.TaskbarSystemButton : shell.TaskbarExplorerButton);
+                _ = shell.PrepareTaskManagerForSnapshot();
+            }
+        }
+
+        return true;
     });
 
     private static void ActivateBody(DesktopShellSurface shell, string id)
