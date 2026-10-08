@@ -1,6 +1,6 @@
 # Phase 9 — Explorer Frame Styler
 
-Status: **OFFLINE MODEL COMPLETE — LIVE XAML CONNECTION NOT AUTHORIZED**
+Status: **OFFLINE MODEL COMPLETE — LIVE XAML CONNECTION NOT IMPLEMENTED**
 
 ## Outcome
 
@@ -117,11 +117,13 @@ design must add:
 3. an explicit timeout and guaranteed disconnect;
 4. proof that no desktop-shell Explorer instance is targeted;
 5. a reviewed recovery path;
-6. a new exact user approval for that read-only operation.
+6. a successful Win10 automated preflight under `AGENTS.md` standing
+   authorization, binding the exact read-only command without a second per-run
+   user approval.
 
 Read-only discovery would inventory real runtime class, element name, ancestor
-path, and match count. It would not authorize styling. A later style preview
-would require another gate, a separately launched Explorer process, reviewed
+path, and match count. It would not implement or validate styling. A later
+style preview would require another implementation/evidence gate, a separately launched Explorer process, reviewed
 selectors, a complete original-value receipt, and an explicit rollback timer.
 
 ## Completion criteria
@@ -135,4 +137,4 @@ selectors, a complete original-value receipt, and an explicit rollback timer.
 - [x] CI and the publication boundary include the offline model.
 - [ ] No live XAML connection exists.
 - [ ] No selector has been verified against the current live Explorer build.
-- [ ] No live styling has been authorized or performed.
+- [ ] No live styling has been implemented or performed.

@@ -54,9 +54,9 @@ Admission requires an exact match for:
 
 The first profile is `win10-22h2-19045.6466-x64`. It grants four bounded
 capabilities: read system DWM state, read Shell window topology, set the
-dark-caption attribute on an owned HWND, and run the separately confirmed
-10–60 second desktop text-color preview. It does not authorize an Explorer
-module or live activation.
+dark-caption attribute on an owned HWND, and run a 10–60 second desktop
+text-color preview admitted by the `AGENTS.md` automated preflight. The probe
+itself contains no Explorer-module loader or live-activation implementation.
 
 ## Visual sharing boundary
 

@@ -138,5 +138,7 @@ pre-existing-consumer detection, exact binary identity, one-shot plan
 consumption and failure receipts without linking or calling XAML Diagnostics.
 
 Only after that model and a read-only property-fingerprint TAP implementation
-are independently reviewed should the project consider a new live-read-only
-approval package. Building this DLL does not grant permission to load it.
+are independently reviewed should the project assemble a new live-read-only
+session package. On Windows 10, `AGENTS.md` standing authorization plus a
+successful automated preflight admits that bounded session. Building this DLL
+alone remains disk-only evidence and does not prove that a live load occurred.

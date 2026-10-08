@@ -18,12 +18,13 @@ project's no-global-injection boundary.
 The current readiness script therefore reports
 `windhawk-host-activation-quarantined`; the controller cannot start the service
 or enable M2; and Supervisor rejects `clear-kill-switch`. The historical
-authorized-session sequence below is retained only to explain the recovered
+session sequence below is retained only to explain the recovered
 experiment. It is not an executable runbook.
 
-## What this runbook does not authorize
+## Current quarantine and non-execution boundary
 
-Preparing or passing this runbook does not authorize:
+Preparing or passing this runbook does not change the quarantine or make any
+of these paths reachable:
 
 - clearing `%LOCALAPPDATA%\JARVIS2\disabled.flag`;
 - creating or consuming `active-module.txt`;
@@ -120,15 +121,17 @@ The native metadata also suppresses volatile PE link timestamps. Before a new
 DLL hash is admitted to the controller, two independent fixed-toolchain builds
 must produce the same M2 SHA-256.
 
-## Required human gate
+## Automated admission gate
 
-Before activation, all of the following must be true in the same task:
+Before any future compliant Win10 exact-target M2 activation, all of the
+following must be true in the same bounded session:
 
-1. The user reviews a fresh receipt and Supervisor compatibility report.
+1. Automated preflight verifies a fresh receipt and Supervisor compatibility
+   report.
 2. The kill switch is armed and the permit is absent.
 3. The canonical M2 source/build identity exactly matches the receipt.
 4. M1 is off and remains build-only.
-5. A second recovery terminal is opened from the current plan with
+5. The workflow opens a recovery terminal from the current plan with
    `-ConfirmOpen`. The following read-only command must report `ready=true`,
    a heartbeat no older than four seconds, and the same plan/PID identities:
 
@@ -142,18 +145,24 @@ Before activation, all of the following must be true in the same task:
    dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor --configuration Release --no-build -- arm-kill-switch
    ```
 
-6. The user explicitly approves this exact command and loading only M2:
+6. Automated preflight binds and records this exact command and loading only
+   M2:
 
    ```powershell
    dotnet run --project .\src\platforms\windows11\Jarvis.Supervisor --configuration Release --no-build -- clear-kill-switch --module jarvis-taskbar-icon-size --confirm
    ```
 
-Until step 6 occurs verbatim after steps 1–5, the command is documentation,
-not an action.
+Until steps 1–6 pass in order, the command is documentation, not an action.
+Under `AGENTS.md` standing authorization, no second per-run user approval is
+required. The Phase 6 Windhawk-host quarantine remains an independent blocker.
 
-## Authorized session sequence
+## Historical quarantined session sequence
 
-Only a future, separately authorized task may perform this sequence:
+This sequence records the past Windhawk-host workflow and remains
+non-executable because it uses the quarantined global host. A future private
+exact-target collector must publish a replacement sequence; after its
+implementation gates and `AGENTS.md` automated preflight pass, standing
+authorization admits the bounded session without separate task approval.
 
 1. Re-run readiness, generate a new plan and compare its exact hashes.
 2. With Windhawk still stopped, use the plan-bound controller's
@@ -255,7 +264,8 @@ does not prove physical unload or visual restoration.
 
 ## Recovery boundary
 
-The recovery terminal runs `arm-kill-switch` first. Explorer recovery is a
-separate destructive action and still requires the exact
-`restart-explorer --confirm` approval. There is no watchdog, automatic restart,
-retry loop or force bypass.
+The recovery terminal runs `arm-kill-switch` first. One bounded Explorer
+recovery may run only after the module is quiesced and the kill switch is
+armed, as required by `AGENTS.md`; `restart-explorer --confirm` is an exact
+command-intent token, not a second user-approval gate. There is no watchdog,
+automatic restart, retry loop or force bypass.

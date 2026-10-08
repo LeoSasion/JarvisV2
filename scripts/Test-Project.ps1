@@ -901,7 +901,7 @@ Add-Check `
      $phase3Task.Contains('M1 继续 `build-only`') -and
      $phase3Task.Contains(
          'clear-kill-switch --module jarvis-taskbar-icon-size --confirm')) `
-    'Phase 3 must remain a locked publication/readiness task and preserve exact M2 approval as a separate gate.'
+    'Phase 3 must remain a locked publication/readiness task and preserve exact M2 automated admission as a separate gate.'
 
 $publicationManifestContract =
     $publicationManifest.schemaVersion -eq 1 -and
@@ -1054,9 +1054,9 @@ $m2RunbookContract =
     $m2Checklist.Contains(
         'Do not continue the matrix after the first unexplained failure.')
 Add-Check `
-    'phase3.m2-human-gate-and-stop-matrix' `
+    'phase3.m2-automated-admission-and-stop-matrix' `
     $m2RunbookContract `
-    'The runbook and checklist must require a second recovery terminal, exact approval and immediate stop on the first unexplained failure.'
+    'The runbook and checklist must require a second recovery terminal, exact automated preflight and immediate stop on the first unexplained failure.'
 
 $publicCiContract =
     $publicCi.Contains('permissions:') -and
@@ -1108,7 +1108,7 @@ Add-Check `
 
 $phase4TaskContract =
     $phase4Task.Contains(
-        'Live activation in this task: **FORBIDDEN UNTIL A SEPARATE EXACT APPROVAL**') -and
+        'Live activation performed in this task: **NO — PREFLIGHT WORK ONLY**') -and
     $phase4Task.Contains(
         '`disabled.flag` 在全部开发与演练中保持 armed') -and
     $phase4Task.Contains(
@@ -1119,9 +1119,9 @@ $phase4TaskContract =
     $phase4Task.Contains('恢复终端入口没有 `-ConfirmOpen` 时必须保持 inert') -and
     $phase4Task.Contains('M1 继续 build-only')
 Add-Check `
-    'phase4.task-locked-exact-gate' `
+    'phase4.task-locked-preflight-boundary' `
     $phase4TaskContract `
-    'Phase 4 must stop at the separate exact approval gate while M1 remains build-only and the host remains locked.'
+    'Phase 4 must produce exact preflight evidence while M1 remains build-only and the host remains locked.'
 
 $phase4PlanSchemaRequired =
     @($m2SessionPlanSchema.required)
@@ -1249,11 +1249,11 @@ $phase5ReviewContract =
     $phase5Review.Contains(
         'M2 activation during review: **not performed**') -and
     $phase5Review.Contains(
-        'explicit approval of the exact activation command plus loading only M2')
+        '`AGENTS.md` automated preflight succeeds under standing authorization')
 Add-Check `
     'phase5.safety-review-closure' `
     $phase5ReviewContract `
-    'The Phase 5 review must record the watcher conflict, post-activation bound, reparse closure, serialized-gate constraint and separate live approval.'
+    'The Phase 5 review must record the watcher conflict, post-activation bound, reparse closure, serialized-gate constraint and automated live admission.'
 
 $phase5LeaseSchemaRequired = @($m2RecoveryLeaseSchema.required)
 $phase5LeaseSchemaContract =
@@ -1406,8 +1406,10 @@ Add-Check `
 $phase6OfflineModelSourceContract =
     $phase6Task.Contains(
         '- [x] Build only an offline/mockable launcher skeleton first.') -and
-    $phase6Adr.Contains('Status: accepted for offline modelling only') -and
-    $phase6Adr.Contains('Live implementation: prohibited') -and
+    $phase6Adr.Contains(
+        'Status: accepted exact-host transport boundary; the Phase 6 model remains offline') -and
+    $phase6Adr.Contains(
+        'Win10 live authority: standing authorization after implementation evidence and automated preflight; this ADR provides no collector') -and
     $phase6Adr.Contains(
         'Thread-specific `SetWindowsHookEx`') -and
     $explorerHostModelSource.Contains(
@@ -1473,8 +1475,9 @@ $phase7ControlCenterStaticContract =
     $controlCenterSource.Contains('<OutputType>WinExe</OutputType>') -and
     $controlCenterSource.Contains('<UseWPF>true</UseWPF>') -and
     $controlCenterSource.Contains('SHELL // LOCKED') -and
-    $controlCenterSource.Contains('Text="Conversation"') -and
-    $controlCenterSource.Contains('Text="PI RUNTIME"') -and
+    $controlCenterSource.Contains('Text="{DynamicResource Loc.Conversation.Title}"') -and
+    $controlCenterSource.Contains('Text="{DynamicResource Loc.Stage.Pi}"') -and
+    $controlCenterSource.Contains('Text="{DynamicResource Loc.Nav.SafetySummary}"') -and
     $controlCenterSource.Contains(
         'Writes: desktop-owner approval only') -and
     $controlCenterSource.Contains('Text="{Binding ProposalLabel}"') -and
@@ -1500,6 +1503,8 @@ $phase7ControlCenterStaticContract =
         'Content="{Binding RejectActionLabel}"') -and
     $controlCenterSource.Contains('PiAgentDesktopRuntime.StartAsync') -and
     $controlCenterSource.Contains('SAFE SHUTDOWN') -and
+    $controlCenterSource.Contains('Text="{DynamicResource Loc.Tools.Writes}"') -and
+    $controlCenterSource.Contains('Text="{DynamicResource Loc.Shutdown.Label}"') -and
     $controlCenterSource.Contains('impeccable:surface-seed:32fb29e4') -and
     -not [regex]::IsMatch(
         $controlCenterSource,
@@ -1539,8 +1544,8 @@ $phase7ControlCenterAuditPassed =
     $controlCenterAuditExitCode -eq 0 -and
     $null -ne $controlCenterAudit -and
     $controlCenterAudit.result -eq 'passed' -and
-    $controlCenterAudit.checkCount -eq 18 -and
-    $controlCenterAudit.passedCount -eq 18 -and
+    $controlCenterAudit.checkCount -eq 27 -and
+    $controlCenterAudit.passedCount -eq 27 -and
     $controlCenterAudit.conversationSupported -and
     -not $controlCenterAudit.productionAuthenticationConfigured -and
     -not $controlCenterAudit.executionSupported -and
@@ -1550,7 +1555,7 @@ $phase7ControlCenterAuditPassed =
 Add-Check `
     'phase7.control-center-executable-audit' `
     $phase7ControlCenterAuditPassed `
-    'The Control Center safety/build audit must pass all eighteen checks, including reviewed iteration, encrypted recent-session resume, in-app admission, local runtime lifecycle and streamed-provider probes, without enabling shell execution.'
+    'The Control Center safety/build audit must pass all twenty-seven checks, including reviewed iteration, encrypted recent-session resume, in-app admission, local runtime lifecycle and streamed-provider probes, without enabling shell execution.'
 
 $phase7BridgeStaticContract =
     $explorerBridgeSource.Contains(
@@ -1614,7 +1619,7 @@ $phase8NativeStyleStaticContract =
     $phase8Task.Contains(
         'OWN-PROCESS LIVE / EXPLORER READ-ONLY') -and
     $phase8Task.Contains(
-        'Changing the real Explorer desktop view is not authorized') -and
+        'This task did not implement or perform a real Explorer desktop-view mutation') -and
     $nativeStyleLabSource.Contains(
         'new WindowInteropHelper(ownedWindow).Handle') -and
     $nativeStyleLabSource.Contains(
@@ -1795,7 +1800,7 @@ Add-Check `
 
 $phase8NativeWindowSessionStaticContract =
     $phase8NativeWindowSessionTask.Contains(
-        'LIVE APPLY REQUIRES SEPARATE EXACT APPROVAL') -and
+        'LIVE APPLY REQUIRES EXACT-TARGET AUTOMATED PREFLIGHT') -and
     $phase8NativeWindowSessionTask.Contains(
         'pixel-identical') -and
     $phase8NativeWindowSessionTask.Contains(
@@ -1866,7 +1871,7 @@ Add-Check `
 
 $phase9FrameModelStaticContract =
     $phase9Task.Contains(
-        'OFFLINE MODEL COMPLETE — LIVE XAML CONNECTION NOT AUTHORIZED') -and
+        'OFFLINE MODEL COMPLETE — LIVE XAML CONNECTION NOT IMPLEMENTED') -and
     $phase9Task.Contains('No live XAML connection exists.') -and
     $explorerFrameModelSource.Contains(
         'public const string TabStrip = "tab-strip"') -and
@@ -2526,7 +2531,7 @@ $phase16ReadBridgeStaticContract =
 Add-Check `
     'phase16.xaml-read-bridge-static-unlinked-contract' `
     $phase16ReadBridgeStaticContract `
-    'Phase 16 must compile only a separate real-interface read review object, retain local exact-type and ownership gates, and remain unlinked and unapproved.'
+    'Phase 16 must compile only a separate real-interface read review object, retain local exact-type and ownership gates, and remain unlinked, unexecuted and without a live connection path.'
 
 $explorerXamlReadBridgeAuditOutput = @(
     & $PwshPath `

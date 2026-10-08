@@ -116,8 +116,8 @@ The next gate is a source-only adapter design for translating a future
 `IInspectable` property value into the two canonical forms. It must fail closed
 for every unsupported runtime class and keep all COM access behind an
 unreachable compile gate. Only after that adapter, endpoint admission evidence
-and a fresh compatibility review exist may the project draft an exact
-live-read-only approval command.
+and a fresh compatibility review exist may the project draft an exact bounded
+live-read-only command for the `AGENTS.md` automated preflight.
 
-Phase 13 grants no permission to connect, inject, read Explorer properties or
-modify the desktop.
+Phase 13 implements no endpoint, loader, injected execution, Explorer-property
+read or desktop mutation path.

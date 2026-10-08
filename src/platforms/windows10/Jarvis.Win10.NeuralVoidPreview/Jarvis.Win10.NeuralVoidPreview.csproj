@@ -17,6 +17,8 @@
       Include="..\..\..\common\Jarvis.VisualEffects\Jarvis.VisualEffects.csproj" />
     <ProjectReference
       Include="..\Jarvis.Win10.RgbThemeModel\Jarvis.Win10.RgbThemeModel.csproj" />
+    <ProjectReference
+      Include="..\Jarvis.Win10.OwnedTaskManager\Jarvis.Win10.OwnedTaskManager.csproj" />
   </ItemGroup>
 
   <ItemGroup>

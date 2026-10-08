@@ -4,6 +4,22 @@ This repository builds and operates a native Windows desktop theme system.
 The machine is a dedicated development VM. Automated live validation on
 Windows 10 is part of the normal development workflow.
 
+## Platform ownership
+
+- The active implementation workstream on this checkout is Windows 10. Finish
+  and validate the Win10 backend without waiting for future operating-system
+  backends.
+- Cross-platform contracts may be kept free of Windows presentation and
+  injection assumptions, but this checkout is not currently scoped to
+  implement or live-validate a Linux backend. Explicit user scope authorizes
+  that development or validation work only; a support claim still requires
+  platform registration, a backend manifest and the required evidence gates.
+- Other developers may contribute independently owned desktop-environment
+  backends through pull requests. Do not modify their platform-private roots as
+  part of Win10 feature work.
+- Ubuntu and Arch are validation profiles; GNOME, Plasma and specific wlroots
+  compositors are distinct backend identities.
+
 ## Standing authorization
 
 - The user grants standing authorization for JARVIS2 to build, launch, inject,

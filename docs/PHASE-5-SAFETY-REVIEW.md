@@ -208,7 +208,7 @@ Resolution:
 - `Invoke-M2ControlledLiveValidation.ps1` is inert by default and separates
   `UpdateDisabledInstallation`, `StartDisabledHost`, `EnableOnce`, `Observe`
   and `Recover`;
-- each mutating action requires its own exact confirmation switch;
+- each mutating action requires its own exact command-intent switch;
 - the disabled-installation action accepts only the reviewed old hashes,
   creates verified backups, atomically installs only the canonical new hashes
   and rolls back on failure while Windhawk is stopped and M2 is disabled;
@@ -254,8 +254,9 @@ Status: **resolved and covered by an executable static controller audit**.
 
 ## Live boundary
 
-This review does not authorize `clear-kill-switch`, Windhawk configuration,
-service start, module load or Explorer restart. A new short-lived session plan,
-visible recovery terminal and fresh lease inspection remain mandatory. The
-user's explicit approval of the exact activation command plus loading only M2
-also remains mandatory.
+This review did not execute or validate `clear-kill-switch`, Windhawk
+configuration, service start, module load or Explorer restart. A new
+short-lived session plan, visible recovery terminal and fresh lease inspection
+remain mandatory. On Win10, one exact M2 session is admitted only after the
+`AGENTS.md` automated preflight succeeds under standing authorization; no
+second per-run user approval is required.

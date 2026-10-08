@@ -1,12 +1,13 @@
 # Design QA - Horizon Membrane layout rail and Explorer workspace
 
-- Last approved pre-interactive-Explorer feather baseline:
+- Current approved owned-desktop baseline:
   `docs/screenshots/jarvis-win10-current-ui-baseline.png`
 - Deterministic evidence: 1600 x 900 locked-profile render,
-  SHA-256 `42AD07963D7BA732F5FBC3EABC3B15E28F1E38AACFA13C0243FA69870D6168E2`
+  SHA-256 `DE71FCCB280636402914ED8108DE22D6864870E37F8E9D2B9EF7FC4E7AA69759`
 - Viewport: 1600 x 900 at 96 DPI
-- State: black/yellow desktop, layout rail permanently visible, `LeftMainRightStack`
-  selected, Explorer restored at `(596, 63)` with size `930 x 667`
+- State: black/yellow desktop, layout rail permanently visible, `FREEFORM`,
+  Explorer restored at `(596, 63)` with size `930 x 667`; only the one-window
+  preset is initially available
 - Validation scope: own-process WPF preview only;
   `shellMutationSupported=false`, `liveExplorer=not-run`
 
@@ -14,6 +15,8 @@
 
 The catalog still contains 16 stable topologies: one maximized window, six
 two-window splits, eight three-window structures and one four-quadrant grid.
+Only registered visible owned windows may be tiled. Opening Task Manager
+enables seven presets; three- and four-window entries remain disabled.
 Every definition is an exact cover of a 12 x 12 integer grid. Startup validation
 rejects duplicate IDs, orders, presets or signatures, gaps, overlaps, and any
 catalog that is not closed under horizontal mirror, vertical mirror and
@@ -22,8 +25,8 @@ catalog that is not closed under horizontal mirror, vertical mirror and
 ## Compact rail geometry
 
 Interaction and geometry verdict: **PASS**. The pixel measurements in this
-section describe the last approved rail baseline; the current interactive
-Explorer full frame is awaiting a connected-session render.
+section describe the current approved rail and interactive Explorer full frame,
+rendered and reviewed in a connected graphics session.
 
 - The clipped rail viewport is 86 x 556 and presents about eight to nine items
   instead of expanding all sixteen across the work area.
@@ -104,17 +107,43 @@ Explorer full frame is awaiting a connected-session render.
   exact endpoints, Escape routing, dynamic high-contrast handling and Explorer
   taskbar minimize/restore behavior
 - Explorer workspace scenarios: 21 / 21 passed
+- Owned Task Manager model and command scenarios: 10 / 10 passed
+- Owned Task Manager surface scenarios: 9 / 9 passed, including host-window
+  minimize/restore lifecycle, process-instance identity and in-flight restart
+- Owned-window layout scenarios: 24 / 24 passed, including all six splits,
+  both active-window assignments, disabled no-op and compact viewport gates
 - Control Center audit: 27 / 27 passed
-- Platform layout: 9 / 9 passed
-- Publication boundary: passed for 511 candidate files; no secret values printed
-- Current owned-preview audit: 18 / 20. Under the disconnected Windows session,
-  the vector adapter reports zero visible pixels and the fresh full-frame render
-  is structurally empty, so both pixel-dependent checks fail closed.
-- Last approved pre-interactive-Explorer canonical SHA-256:
-  `42AD07963D7BA732F5FBC3EABC3B15E28F1E38AACFA13C0243FA69870D6168E2`
-- Current evidence state: `functional-passed/current-pixel-pending`. A connected
-  Windows 10 19045.6466, 96-DPI software-render session must produce and visually
-  review a new candidate before the canonical PNG or approved hash changes.
+- Platform layout: 16 / 16 passed
+- Publication boundary: passed for 533 candidate files; no secret values printed
+- Current owned-preview audit: 26 / 26 passed on the connected locked graphics
+  profile; WPF vector adapter 13 / 13, canonical desktop hash matched exactly,
+  and the separate owned Task Manager render passed structural validation
+- Current canonical SHA-256:
+  `DE71FCCB280636402914ED8108DE22D6864870E37F8E9D2B9EF7FC4E7AA69759`
+- Separate owned Task Manager render SHA-256:
+  `FD2DC1342ADA445B0B9515D98CD31901B7F61A0DDE79AE9C5F9805B0F2CE2412`
+- Current evidence state: `locked-profile-approved`. A disconnected graphics
+  session still fails pixel-dependent checks closed and cannot advance either
+  the canonical PNG or approved hash.
 
-Current result: **functional interaction passed; current full-frame pixel
-approval pending**.
+Current result: **functional interaction and current full-frame pixel approval
+passed**.
+
+## Push-preparation boundary (2026-10-09)
+
+This approval covers only the Win10 owned-process slice. It is not a complete
+native-release or real Explorer-injection acceptance. The local whole-project
+audit was run with `-SkipManagedBuild` and did not pass: the locked portable
+Windhawk toolchain is not provisioned, the required lifecycle receipt and
+historical native run summary are missing, and receipt script/lock identities
+do not match. Those evidence gates remain fail-closed. Dedicated preview,
+Control Center and Supervisor Release builds passed with zero warnings/errors.
+Pi Host static checks passed 14/14; no authenticated provider or real Shell
+session was exercised.
+
+The Impeccable final-quality pass preserved the existing Horizon Membrane world
+and drove the compact-pane/content and title-chrome verification above. Native
+pointer automation was unavailable (`GetCursorPos` access denied), so hosted
+WPF scenarios and deterministic PNG review are not reported as a live mouse or
+keyboard acceptance session. The final safety state was verified read-only:
+kill switch armed, one-shot module permit absent, `liveExplorer=not-run`.

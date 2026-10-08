@@ -68,7 +68,8 @@ false, and `liveExplorer` remains `not-run`.
 
 The next gate is not automatic activation. It is a fresh compatibility and
 binary review for a minimal live read-only bridge, followed by a separately
-reviewed write/restore adapter and an exact, temporary-window visual approval.
+reviewed write/restore adapter, exact automated preflight and temporary-window
+visual evidence review.
 
-Phase 15 grants no permission to connect, read or write Explorer, start
-Windhawk, restart Explorer or modify the desktop.
+Phase 15 implements no Explorer connection, property read/write, Windhawk
+start, Explorer restart or desktop mutation path.

@@ -20,7 +20,8 @@ internal static class PreviewRenderer
         double hueDegrees,
         string effectId,
         double phase,
-        bool showExplorerPreview = false)
+        PreviewScene scene = PreviewScene.Desktop,
+        LayoutPreset? layout = null)
     {
         RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
         List<string> failures = [];
@@ -38,10 +39,14 @@ internal static class PreviewRenderer
             DesktopShellSurface surface = new();
             surface.ApplyFrame(frame);
             renderHost = CreateRenderHost(surface);
-            renderHost.Show();
-            PumpDispatcher();
-            surface.PrepareLayoutRailForSnapshot();
-            if (showExplorerPreview &&
+            // Admit the deterministic scene before the first native frame. This
+            // avoids retaining the floating-window clip when a tile is shorter.
+            if (scene == PreviewScene.ExplorerPreview)
+            {
+                renderHost.Show();
+                PumpDispatcher();
+            }
+            if (scene == PreviewScene.ExplorerPreview &&
                 !surface.PrepareExplorerPreviewForSnapshot())
             {
                 failures.Add("explorer-preview-state-preparation-failed");
@@ -49,15 +54,42 @@ internal static class PreviewRenderer
                     "blocked",
                     fullOutputPath,
                     frame,
+                    scene,
                     failures);
             }
 
+            if (scene is PreviewScene.TaskManager or PreviewScene.OwnedWindowLayout &&
+                !surface.PrepareTaskManagerForSnapshot())
+            {
+                failures.Add("task-manager-state-preparation-failed");
+                return Receipt(
+                    "blocked",
+                    fullOutputPath,
+                    frame,
+                    scene,
+                    failures);
+            }
+
+            if (scene == PreviewScene.OwnedWindowLayout &&
+                (layout is not LayoutPreset preset || !surface.SelectLayoutForTest(preset)))
+            {
+                failures.Add("owned-window-layout-unavailable");
+                return Receipt("blocked", fullOutputPath, frame, scene, failures);
+            }
+
+            if (!renderHost.IsVisible)
+            {
+                renderHost.Show();
+            }
+
             PumpDispatcher();
+            surface.PrepareLayoutRailForSnapshot();
             surface.SetClockForSnapshot(
                 new DateTime(2026, 8, 6, 14, 39, 0));
             surface.Measure(new Size(Width, Height));
             surface.Arrange(new Rect(0, 0, Width, Height));
             surface.UpdateLayout();
+            InvalidateVisualTree(surface);
             PumpDispatcher();
 
             RenderTargetBitmap bitmap =
@@ -91,6 +123,13 @@ internal static class PreviewRenderer
                 usefulPixels = HasUsefulPixels(bitmap);
             }
 
+            if (scene == PreviewScene.OwnedWindowLayout &&
+                !HasOwnedWindowChrome(bitmap, surface.GetOwnedWindowBoundsForTest("task-manager")))
+            {
+                failures.Add("owned-window-title-chrome-missing-or-clipped");
+                return Receipt("blocked", fullOutputPath, frame, scene, failures);
+            }
+
             PngBitmapEncoder encoder = new();
             encoder.Frames.Add(BitmapFrame.Create(bitmap));
             string? directory = Path.GetDirectoryName(fullOutputPath);
@@ -118,6 +157,7 @@ internal static class PreviewRenderer
                     "blocked",
                     fullOutputPath,
                     frame,
+                    scene,
                     failures);
             }
 
@@ -125,6 +165,7 @@ internal static class PreviewRenderer
                 "rendered-own-process-preview",
                 fullOutputPath,
                 frame,
+                scene,
                 failures);
         }
         catch (Exception exception) when (
@@ -139,6 +180,7 @@ internal static class PreviewRenderer
                 "blocked",
                 fullOutputPath,
                 null,
+                scene,
                 failures);
         }
         finally
@@ -189,6 +231,19 @@ internal static class PreviewRenderer
         Dispatcher.PushFrame(frame);
     }
 
+    private static void InvalidateVisualTree(DependencyObject node)
+    {
+        if (node is UIElement element)
+        {
+            element.InvalidateVisual();
+        }
+
+        for (int index = 0; index < VisualTreeHelper.GetChildrenCount(node); index++)
+        {
+            InvalidateVisualTree(VisualTreeHelper.GetChild(node, index));
+        }
+    }
+
     private static bool HasUsefulPixels(BitmapSource bitmap)
     {
         int stride = Width * 4;
@@ -213,10 +268,55 @@ internal static class PreviewRenderer
         return false;
     }
 
+    private static bool HasOwnedWindowChrome(BitmapSource bitmap, Rect bounds)
+    {
+        int stride = Width * 4;
+        byte[] pixels = new byte[stride * Height];
+        bitmap.CopyPixels(pixels, stride, 0);
+        bool IsLight(int x, int y)
+        {
+            int offset = y * stride + x * 4;
+            return pixels[offset + 3] >= 64 &&
+                Math.Max(pixels[offset], Math.Max(pixels[offset + 1], pixels[offset + 2])) >= 96;
+        }
+
+        int left = (int)Math.Round(bounds.Left);
+        int top = (int)Math.Round(bounds.Top);
+        int right = (int)Math.Round(bounds.Right);
+        if (left < 0 || top < 0 || right > Width || top + 42 >= Height)
+        {
+            return false;
+        }
+
+        int topRulePixels = 0;
+        for (int x = left + 2; x < right - 2; x++)
+        {
+            if (IsLight(x, top) || IsLight(x, top + 1))
+            {
+                topRulePixels++;
+            }
+        }
+
+        int controlPixels = 0;
+        for (int y = top + 8; y < top + 34; y++)
+        {
+            for (int x = right - 132; x < right - 8; x++)
+            {
+                if (IsLight(x, y))
+                {
+                    controlPixels++;
+                }
+            }
+        }
+
+        return topRulePixels >= bounds.Width * 0.8 && controlPixels >= 40;
+    }
+
     private static PreviewRenderReceipt Receipt(
         string result,
         string outputPath,
         RgbFrame? frame,
+        PreviewScene scene,
         IReadOnlyList<string> failures) =>
         new(
             1,
@@ -232,6 +332,15 @@ internal static class PreviewRenderer
             false,
             true,
             false,
+            false,
+            scene switch
+            {
+                PreviewScene.ExplorerPreview => "owned-explorer-preview",
+                PreviewScene.TaskManager => "owned-task-manager-preview",
+                PreviewScene.OwnedWindowLayout => "owned-window-layout-preview",
+                _ => "owned-desktop",
+            },
+            scene is PreviewScene.TaskManager or PreviewScene.OwnedWindowLayout,
             false,
             false,
             "not-run",

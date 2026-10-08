@@ -177,7 +177,7 @@ The bounded owned-window review is **PASS**:
 - the executable triangular VFX probe passes every stage/frame case and the
   shared RGB model audit passes all 19 checks; the complete Control Center audit
   remains subject to the repository's clean-runner publication gate;
-- publication boundary and cross-platform layout audits pass;
+- publication-boundary and platform-layout audits pass;
 - activation remains false, live Explorer validation remains `not-run`, and no
   mutation was performed.
 

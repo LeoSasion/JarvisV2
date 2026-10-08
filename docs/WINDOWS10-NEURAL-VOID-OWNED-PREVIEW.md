@@ -13,15 +13,14 @@ and this document retain the historical Neural Void name, but the current
 black-and-yellow Horizon Membrane contract supersedes the former multicolor
 aperture and preset descriptions.
 
-![Last approved JARVIS2 Windows 10 feather baseline](screenshots/jarvis-win10-current-ui-baseline.png)
+![Current approved JARVIS2 Windows 10 owned-desktop baseline](screenshots/jarvis-win10-current-ui-baseline.png)
 
-The checked-in image above is the last approved deterministic full-frame
-baseline. It was rendered twice with identical bytes on locked Windows 10 build
-19045.6466 at 96 DPI in software-render mode, then visually reviewed. The
-interactive Explorer workspace added afterward changes the center canvas, so
-this image remains a layout-rail reference rather than current full-frame pixel
-approval. Current interaction and pixel evidence is recorded in
-[`design-qa.md`](../design-qa.md).
+The checked-in image above is the current approved deterministic full-frame
+baseline. It includes the interactive in-memory Explorer workspace, taskbar and
+layout rail. It was rendered repeatedly with identical bytes on locked Windows
+10 build 19045.6466 at 96 DPI in software-render mode, then visually reviewed in
+a connected graphics session. The owned Task Manager is intentionally hidden in
+this canonical desktop scene and has a separate deterministic render below.
 
 ## Visual contract
 
@@ -62,9 +61,13 @@ placeholders; the achromatic opacity feather is the sole gradient exception.
 
 ## Interaction contract
 
-The rail and orthogonal axis remain visible at all times. Selecting any of the
-sixteen layouts moves the selected state, recenters it when needed and updates
-the lower-left current-layout glyph. The catalog validates exact pane coverage, stable order,
+The rail and orthogonal axis remain visible at all times. The desktop starts in
+`FREEFORM`; no tiled preset is selected. Only the single-window preset is enabled
+until a second owned window opens. Explorer plus Task Manager enable the six
+two-window splits as well; unavailable three- and four-window entries stay
+disabled and cannot change window bounds or selection. Selecting an admitted
+layout tiles the registered owned windows and updates the lower-left glyph.
+The catalog validates exact pane coverage, stable order,
 unique topology signatures and horizontal/vertical/rotational closure before the
 surface can run.
 
@@ -96,8 +99,8 @@ The simulated Explorer remains operational within the preview: minimize,
 maximize, close and restore all work, and its taskbar button can activate or
 restore it. Clicking the active taskbar button minimizes Explorer; clicking the
 minimized button restores it without changing the selected layout. The maximize
-control selects the single-window topology; restoring
-returns to the last tiled topology. These interactions affect only controls
+control maximizes only the active owned window; restoring returns that window
+to its saved floating or tiled bounds. These interactions affect only controls
 owned by the WPF preview; they do not invoke or mutate the real Windows Explorer
 process.
 
@@ -127,14 +130,15 @@ dotnet .\src\platforms\windows10\Jarvis.Win10.NeuralVoidPreview\bin\Release\net8
 ```
 
 The render command creates a 1600-by-900 PNG and a JSON receipt for the one
-accepted yellow case. The current approved feather PNG on locked Windows 10
-build 19045.6466 at 96 DPI in software-render mode has SHA-256:
+accepted yellow case. The current approved owned-desktop PNG on locked Windows
+10 build 19045.6466 at 96 DPI in software-render mode has SHA-256:
 
-`42AD07963D7BA732F5FBC3EABC3B15E28F1E38AACFA13C0243FA69870D6168E2`
+`DE71FCCB280636402914ED8108DE22D6864870E37F8E9D2B9EF7FC4E7AA69759`
 
 Current bounded verification for the interactive Explorer revision:
 
 - Release build: passed with zero warnings and zero errors;
+- WPF vector-adapter scenarios: 13 / 13;
 - layout and edge-bar scenarios: 25 / 25, including continuous feather geometry,
   top/middle/bottom mask states, actual adjacent-item hit testing,
   handled white-glyph pointer routing,
@@ -145,18 +149,29 @@ Current bounded verification for the interactive Explorer revision:
 - Explorer workspace scenarios: 21 / 21, including model/UI synchronization,
   owned preview focus containment, extension-aware rename metadata and the
   memory-only API boundary;
-- publication boundary: passed for 511 candidate files with no secret values
+- owned Task Manager model and command scenarios: 10 / 10;
+- owned Task Manager surface scenarios: 9 / 9, including host-window
+  minimize/restore sampling lifecycle, same-name PID reuse and an in-flight
+  stop/start refresh;
+- owned-window layout scenarios: 24 / 24, including all six splits with either
+  active window and usable compact content;
+- publication boundary: passed for 533 candidate files with no secret values
   printed;
-- current owned-preview audit: 18 / 20 while the Windows session is
-  disconnected. The two pixel-dependent checks fail closed because WPF emits
-  zero visible pixels in that session; they are not reported as approved.
+- current owned-preview audit: 26 / 26 on the locked connected graphics
+  profile. The canonical desktop frame matched the approved SHA-256 exactly;
+  the separate owned Task Manager render passed structural validation with
+  SHA-256
+  `FD2DC1342ADA445B0B9515D98CD31901B7F61A0DDE79AE9C5F9805B0F2CE2412`.
 
-The SHA-256 below belongs to the last approved pre-interactive-Explorer frame:
+The row/column render gate also checks the actual Task Manager title rule and
+window-control pixels. Snapshot scenes are admitted before the first native
+frame so a shorter tile cannot retain a floating-window clip. See
+[owned-window layout evidence](WINDOWS10-OWNED-WINDOW-LAYOUT.md).
 
-`42AD07963D7BA732F5FBC3EABC3B15E28F1E38AACFA13C0243FA69870D6168E2`
-
-A connected 96-DPI Windows 10 graphics session must render and visually review a
-new candidate before the canonical PNG or approved hash is advanced.
+When the Windows graphics session is disconnected, the pixel-dependent checks
+fail closed instead of treating a zero-pixel WPF frame as evidence. A canonical
+PNG or approved hash can advance only from a connected locked-profile render and
+visual review.
 
 The receipt and tests remain fail-closed about authority:
 `shellMutationSupported=false`, `liveExplorer=not-run`. They validate the

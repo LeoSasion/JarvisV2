@@ -1,7 +1,8 @@
 # M2 interaction and stability checklist
 
-This checklist is for a future separately authorized M2 session. Every row
-starts as **not run**. Offline builds must not pre-mark a result.
+This checklist is for a future M2 session admitted by the `AGENTS.md` automated
+preflight under Win10 standing authorization. Every row starts as **not run**.
+Offline builds must not pre-mark a result.
 
 ## Session identity
 
@@ -71,6 +72,6 @@ If any item fails, stop immediately and record:
 - readiness/build receipt hashes;
 - whether re-arm succeeded;
 - mapping state after re-arm;
-- whether a separately approved Explorer recovery was required.
+- whether one bounded Explorer recovery was required after quiesce and re-arm.
 
 Do not continue the matrix after the first unexplained failure.

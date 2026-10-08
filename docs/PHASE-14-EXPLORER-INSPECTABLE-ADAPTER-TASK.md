@@ -54,7 +54,7 @@ permission to write any property.
 The next stage may model snapshot-before-write, exact verification and reverse
 restore using only these bounded canonical values. Any real property read or
 write requires a later, separately reviewed compile gate and exact live
-approval.
+automated preflight under the current `AGENTS.md` contract.
 
-Phase 14 grants no permission to connect to Explorer, read a property, load a
-TAP, start Windhawk, restart Explorer or modify the desktop.
+Phase 14 implements no Explorer connection, property read, TAP load, Windhawk
+start, Explorer restart or desktop mutation path.

@@ -115,7 +115,9 @@ The next phase must model a separate collector that accepts one already
 verified HWND/PID/TID and one reviewed DLL path. Its admission must bind the
 module SHA-256, private path/DACL, callback export, architecture, session nonce,
 recovery lease and exact one-shot permit before producing a non-executing
-session package. Live use remains a separate explicit approval gate.
+session package. A Win10 live implementation remains behind the `AGENTS.md`
+automated preflight under standing authorization, not a second per-run user
+approval.
 
 The Windows 10 backend owns a separate offline callback fork. Its published
 package contains no collector executable, and its official live entry is fixed

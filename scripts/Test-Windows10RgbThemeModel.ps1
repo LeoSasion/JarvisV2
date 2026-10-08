@@ -235,8 +235,9 @@ Add-Check `
         ($observedPostEffects -join '|') -eq
             (($expectedPostEffects | Sort-Object) -join '|')) `
     -Detail (
-        'One platform-neutral contract must describe the particle module ' +
-        'graph, ordered post stack, fixed clock and shared RGB binding.')
+        'One Windows-family v1 contract must describe the particle module ' +
+        'graph, ordered post stack, fixed clock and shared RGB binding for ' +
+        'its exact Win10 and Win11 platform scope.')
 
 $vfxParameterCount =
     @(

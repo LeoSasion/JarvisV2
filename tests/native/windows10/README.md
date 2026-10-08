@@ -28,5 +28,6 @@ BridgeCore, empty CallWndProc callback and exact-thread transport forks. The
 shared test entry scripts accept `-Platform windows10`, compile against only
 `src/platforms/windows10`, and do not use a Win11 backend source or binary.
 
-Future native harnesses belong in this directory. No test may load a module
-into Explorer without the separately reviewed live gate.
+Future native harnesses belong in this directory. A Win10 test may load one
+reviewed module into one exact Explorer target only after the `AGENTS.md`
+automated preflight succeeds under standing authorization.

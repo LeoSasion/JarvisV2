@@ -4,13 +4,13 @@ Status: **COMPLETE**
 
 Date opened: 2026-07-24
 Target module: **jarvis-taskbar-icon-size**
-Live activation in this task: **FORBIDDEN UNTIL A SEPARATE EXACT APPROVAL**
+Live activation performed in this task: **NO — PREFLIGHT WORK ONLY**
 
 ## Goal
 
 把 Phase 3 的静态 readiness 推进为可交接的单次会话计划、恢复终端入口和
-只读观测演练。Phase 4 只到达实机加载的最后一道人工门：它可以证明命令、
-源码、构建、宿主和停止逻辑相互绑定，但不能替用户批准或执行加载。
+只读观测演练。Phase 4 只生成后续实机会话所需的精确证据：它可以证明命令、
+源码、构建、宿主和停止逻辑相互绑定，但本阶段不实现或执行加载。
 
 ## Safety contract
 
@@ -75,7 +75,8 @@ Phase 4 完成后仍必须保持：
 - `liveExplorer=not-run`.
 
 真实 M2 加载属于后续独立任务。届时必须重新生成新鲜 evidence、真实打开
-第二恢复终端，并由用户逐字批准 runbook 中的精确命令。
+第二恢复终端，并通过 `AGENTS.md` 规定的 Win10 自动预检；standing
+authorization 下无需第二次逐次用户批准。
 
 ## Execution log
 

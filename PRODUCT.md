@@ -79,7 +79,7 @@ logic and explicit fail-closed platform adapters for native shell work.
   `edit`/`write`, shell access, self-authored policy, unattended approval and
   ungated iteration remain outside the admitted capability set.
 - Native shell changes remain locked behind exact compatibility, build receipt,
-  recovery and one-shot approval gates.
+  recovery, automated preflight and one-shot module-permit gates.
 - Windows 10 and Windows 11 share product behavior and visual tokens where
   technically valid, but never share private symbols, selectors or unsupported
   platform assumptions.

@@ -23,6 +23,15 @@ public sealed class LayoutGlyph : FrameworkElement
                 false,
                 FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty IsFreeformProperty =
+        DependencyProperty.Register(
+            nameof(IsFreeform),
+            typeof(bool),
+            typeof(LayoutGlyph),
+            new FrameworkPropertyMetadata(
+                false,
+                FrameworkPropertyMetadataOptions.AffectsRender));
+
     public static readonly DependencyProperty StrokeProperty =
         DependencyProperty.Register(
             nameof(Stroke),
@@ -51,6 +60,12 @@ public sealed class LayoutGlyph : FrameworkElement
     {
         get => (bool)GetValue(IsSelectedProperty);
         set => SetValue(IsSelectedProperty, value);
+    }
+
+    public bool IsFreeform
+    {
+        get => (bool)GetValue(IsFreeformProperty);
+        set => SetValue(IsFreeformProperty, value);
     }
 
     public Brush Stroke
@@ -82,7 +97,14 @@ public sealed class LayoutGlyph : FrameworkElement
             Math.Max(2.0, Math.Floor(ActualHeight - 12.0)));
 
         drawingContext.DrawRectangle(null, contentPen, frame);
-        DrawTopology(drawingContext, contentPen, frame);
+        if (IsFreeform)
+        {
+            DrawFreeform(drawingContext, contentPen, frame);
+        }
+        else
+        {
+            DrawTopology(drawingContext, contentPen, frame);
+        }
 
         if (IsSelected)
         {
@@ -97,6 +119,32 @@ public sealed class LayoutGlyph : FrameworkElement
                     markerSize,
                     markerSize));
         }
+    }
+
+    private static void DrawFreeform(
+        DrawingContext drawingContext,
+        Pen pen,
+        Rect frame)
+    {
+        const double offset = 5.0;
+        double width = Math.Max(4.0, frame.Width * 0.56);
+        double height = Math.Max(4.0, frame.Height * 0.52);
+        drawingContext.DrawRectangle(
+            null,
+            pen,
+            new Rect(
+                Pixel(frame.Left + offset),
+                Pixel(frame.Top + offset),
+                Pixel(width),
+                Pixel(height)));
+        drawingContext.DrawRectangle(
+            null,
+            pen,
+            new Rect(
+                Pixel(frame.Right - width - offset),
+                Pixel(frame.Bottom - height - offset),
+                Pixel(width),
+                Pixel(height)));
     }
 
     private void DrawTopology(

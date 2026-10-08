@@ -4,6 +4,15 @@
 > `liveExplorer=not-run` labels remain evidence facts; later live validation
 > must independently satisfy the current automated preflight.
 
+## Windows 10 owned desktop
+
+Owned Task Manager v1a 已接入 Neural Void WPF 桌面：真实但只读的进程名、
+PID、CPU、工作集和线程数通过有界快照显示；窗口打开时采样，隐藏、最小化
+或关闭时停止，迟到结果不会回写。`IProcessCounterSource` 把平台数据源与 UI
+分开，后续其他系统后端可拥有自己的采集适配器；当前 Win10 实现仍不提供
+进程/窗口控制、不注入或修改 Explorer，也不声明 Linux 已支持。下一段可见
+工作继续扩展 Win10 自有窗口与布局，并保持这条数据源边界。
+
 ## M1 — Native Taskbar
 
 源码、精确兼容门禁、一次性许可、固定工具链基线和静态约束已经完成。Phase 2 又完成四组严格受限的离线安全切片：GIT cookie 的显式可重试生命周期与 provisional quarantine；不依赖 HWND 的 generation-scoped UI 线程注册表及事务式初始化/清理；以固定 slot、稳定 ID/epoch/generation、独立 observer 和真实能力引用实现的跨线程 claim-or-cancel 派发收据；以及不加载 Explorer 的便携故障注入实验室。single-generation init CAS、创建前 reserve 的 typed kernel ledger、成组保留 registry wait bundle、TAP lifecycle drain、active/retired watcher、callback scope 和 safety pin 约束继续保留。
@@ -13,7 +22,7 @@
 进入 allowlist 前还必须完成：
 
 - 在正确的真实 UI 线程验证同步撤销已应用属性和资源，不依赖当前 HWND 枚举，也不把 retained/unreachable 当成 restored；
-- 在单模块、一次性授权的真实宿主实验中验证 GIT apartment 代理、DispatcherQueue、`WH_CALLWNDPROC`、目标线程退出和 unhook 失败；每个注入点只执行一次，异常立即 re-arm；
+- 在单模块、一次性许可的真实宿主实验中验证 GIT apartment 代理、DispatcherQueue、`WH_CALLWNDPROC`、目标线程退出和 unhook 失败；每个注入点只执行一次，异常立即 re-arm；
 - 为所有实际排队的 Dispatcher、CoreDispatcher、线程池和属性 callback 接入生产收据，并证明最终 seal 与模块 pin 决策一致；
 - 证明撤销线程、Windhawk Hook 生命周期与 Explorer 关闭过程不会互锁，并为重复 Arm、停用和新的 Explorer 生命周期生成专门收据；
 - 完成前不取消“发布外部回调后永久保留 pin”的保守策略，不把离线 90/90 作为 allowlist 或激活依据。
@@ -29,7 +38,7 @@
 
 ## M2 — Taskbar behavior
 
-第一个离线切片已经完成：`jarvis-taskbar-icon-size` 只保留 GPL-3.0 `taskbar-icon-size` 的现代单符号图标尺寸路径，默认关闭，stock 值 24，边界 20-32。完整上游实现涉及三十多个私有 Hook、内存常量改写、opcode scanner、托盘/搜索和多屏几何；这些没有进入当前模块。当前它是 Supervisor 唯一 allowlisted 候选，但仍未获得本轮实机授权，也没有被加载。
+第一个离线切片已经完成：`jarvis-taskbar-icon-size` 只保留 GPL-3.0 `taskbar-icon-size` 的现代单符号图标尺寸路径，默认关闭，stock 值 24，边界 20-32。完整上游实现涉及三十多个私有 Hook、内存常量改写、opcode scanner、托盘/搜索和多屏几何；这些没有进入当前模块。当前它是 Supervisor 唯一 allowlisted 候选，但尚未完成受控实机验证，也没有被加载。
 
 M2 已具备：真实 Shell PID 绑定、精确磁盘和映射映像身份、5 分钟逐模块一次性许可、后台急停监视、热路径纯原子 pass-through，以及 Explorer 重启后无许可自动复载阻断。离线门禁通过不等于实机稳定性通过。
 
@@ -39,7 +48,7 @@ Phase 5 把恢复终端从启动瞬间的 PID 快照升级为一秒心跳、四�
 
 2026-07-27 的受控会话随后证明：即使 M2 保持禁用，Windhawk 服务仍会把基础运行库映射进 Explorer 和大量非目标进程。会话在清除急停前终止，正常恢复保持 Explorer PID 稳定且 M2 映射为 0。Phase 6 因此隔离整个 Windhawk 服务宿主：readiness 固定失败，控制器不再具备启动服务或把 M2 设为启用的可达路径，Supervisor 也在状态锁之前拒绝 `clear-kill-switch`。
 
-[ADR-0001](ADR-0001-EXPLORER-ONLY-HOST.md) 已从 Windhawk 官方源码确认 service → engine → all-process injector 链路，并把未来候选收窄为 Shell 窗口绑定的单一非零线程 ID；它不是实机授权。Phase 18 已交付独立 bridge ABI 与 callback ownership/quiesce 核心；Phase 19 把一个预先审查的 HWND/PID/非零 TID 绑定到 `WH_CALLWNDPROC` 传输状态机；Phase 20 进一步交付磁盘态空 body callback DLL，并用共享、非执行 PE 数据段让 controller 与目标回调看到同一 bridge 状态。当前仍无 collector、loader、消息/视觉处理或 Explorer 连接。下一步必须把 exact-target collector admission、私有模块路径/DACL、模块哈希、恢复终端与一次性许可组合成新的精确审批包；在此之前继续固定 `activationPermitted=false`、`liveExplorer=not-run`、`mutationPerformed=false`。
+[ADR-0001](ADR-0001-EXPLORER-ONLY-HOST.md) 已从 Windhawk 官方源码确认 service → engine → all-process injector 链路，并把未来候选收窄为 Shell 窗口绑定的单一非零线程 ID；它本身不是实机实现或验证证据。Phase 18 已交付独立 bridge ABI 与 callback ownership/quiesce 核心；Phase 19 把一个预先审查的 HWND/PID/非零 TID 绑定到 `WH_CALLWNDPROC` 传输状态机；Phase 20 进一步交付磁盘态空 body callback DLL，并用共享、非执行 PE 数据段让 controller 与目标回调看到同一 bridge 状态。当前仍无 collector、loader、消息/视觉处理或 Explorer 连接。下一步必须把 exact-target collector admission、私有模块路径/DACL、模块哈希、恢复终端与一次性许可组合成新的精确、自动预检驱动的会话包；在此之前继续固定 `activationPermitted=false`、`liveExplorer=not-run`、`mutationPerformed=false`。
 
 在单符号切片完成独立实机稳定性验证之前，不增加任务栏高度、按钮宽度、badge、overflow、托盘或搜索联动。验收必须一次只加载一个 Explorer 模块，并覆盖 100%-200% DPI、双屏、自动隐藏、应用启动/关闭、睡眠唤醒、卸载与急停恢复。任何一项异常都回到 pass-through，不把第二项功能叠上去。
 
@@ -51,7 +60,7 @@ Phase 5 把恢复终端从启动瞬间的 PID 快照升级为一秒心跳、四�
 
 改造文件资源管理器标题栏、导航区和上下文表面。ExplorerBlurMica 可作为 LGPL/GPL 研究对象，但不直接把其配置或二进制混入 M1。
 
-Phase 11–15 已把精确单窗口传输、只读 TAP 外壳、一次性 admission/fingerprint、属性投影和严格逆序恢复建成离线模型。Phase 16 进一步增加了一个针对真实 `IXamlDiagnostics` / `IVisualTreeService2` 接口的独立只读 review object：它只编译、不链接、不执行，便携策略核以 56/56 合成外部调用场景验证本地值来源、精确 `SolidColorBrush` 类型、数组释放和 COM 引用收口。Phase 17 又把视觉树事件收敛为固定容量的三表面唯一发现：512 个句柄、2,048 个事件、64 层祖先上限，58/58 合成拓扑场景通过；真实 `IVisualTreeServiceCallback2` 仍只编译为独立对象，不订阅、不链接、不执行。新鲜主机 review package 已能只读确认 23/23 兼容、急停、许可、Windhawk 服务和 Explorer 映射基线，但会因精确 `C:\` 窗口、visual-tree generation、既有 consumer、恢复终端、链接和控制器六项缺口固定阻断，也不生成命令。现有 TAP 仍在 `SetSite` 返回 `E_ACCESSDENIED`；下一步是审查 connectable 的单窗口只读控制器，获得当次明确批准前不连接 Explorer。
+Phase 11–15 已把精确单窗口传输、只读 TAP 外壳、一次性 admission/fingerprint、属性投影和严格逆序恢复建成离线模型。Phase 16 进一步增加了一个针对真实 `IXamlDiagnostics` / `IVisualTreeService2` 接口的独立只读 review object：它只编译、不链接、不执行，便携策略核以 56/56 合成外部调用场景验证本地值来源、精确 `SolidColorBrush` 类型、数组释放和 COM 引用收口。Phase 17 又把视觉树事件收敛为固定容量的三表面唯一发现：512 个句柄、2,048 个事件、64 层祖先上限，58/58 合成拓扑场景通过；真实 `IVisualTreeServiceCallback2` 仍只编译为独立对象，不订阅、不链接、不执行。新鲜主机 review package 已能只读确认 23/23 兼容、急停、许可、Windhawk 服务和 Explorer 映射基线，但会因精确 `C:\` 窗口、visual-tree generation、既有 consumer、恢复终端、链接和控制器六项缺口固定阻断，也不生成命令。现有 TAP 仍在 `SetSite` 返回 `E_ACCESSDENIED`；下一步是审查 connectable 的单窗口只读控制器，实际连接必须由对应平台的当前执行契约和自动预检准入。
 
 ## M5 — DWM laboratory
 

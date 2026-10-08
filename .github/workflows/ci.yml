@@ -57,7 +57,7 @@ jobs:
               $parseFailures.Add("$($script.Name): $($error.Message)")
             }
           }
-          foreach ($json in Get-ChildItem -LiteralPath .\config -Filter *.json) {
+          foreach ($json in Get-ChildItem -LiteralPath .\config -Filter *.json -File -Recurse) {
             try {
               $null = Get-Content -LiteralPath $json.FullName -Raw |
                 ConvertFrom-Json -Depth 100
@@ -164,6 +164,12 @@ jobs:
         run: >-
           pwsh -NoLogo -NoProfile -File
           .\scripts\Test-Windows10RgbThemeModel.ps1
+
+      - name: Audit Windows 10 owned Task Manager model and telemetry
+        shell: pwsh
+        run: >-
+          pwsh -NoLogo -NoProfile -File
+          .\scripts\Test-Windows10OwnedTaskManager.ps1
 
       - name: Audit Windows 10 Neural Void own-process preview
         shell: pwsh

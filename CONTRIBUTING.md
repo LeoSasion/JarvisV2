@@ -4,6 +4,33 @@ JarvisV2 modifies native Windows shell processes. Live validation is a supported
 development mode on the dedicated Windows 10 VM, but it must remain narrow,
 reversible and fail-closed.
 
+Windows 10 is the primary development backend. The repository is structured so
+future desktop-environment backends can be developed on separate machines and
+merged through pull requests, but no unregistered backend is supported.
+
+## Backend and contract scope
+
+- Give every implementation pull request one backend scope. Do not combine
+  Windows 10, Windows 11, GNOME, Plasma or wlroots implementation changes.
+- Treat Ubuntu and Arch as validation profiles. A Linux backend is identified
+  by its desktop environment and compositor, not its distribution name.
+- Keep platform-private source under its own `src/platforms/<backend>` root.
+  A backend must not reference another backend's source tree.
+- Register an implemented renderer with one uniquely named file under
+  `config/visual-backends`; a manifest is a capability and evidence statement,
+  not an automatic public-support claim.
+- Make shared visual-contract changes in a dedicated contract pull request and
+  run every registered backend test. Do not mix a contract-version change with
+  an unrelated platform feature.
+- The current cross-OS data plane is limited to `jarvis-visual-signal-v1` and
+  `jarvis-retained-vector-scene-v1`. `src/common` otherwise remains a
+  Windows-family shared tree.
+- A shared contract never grants Shell inspection, mutation, injection or
+  device-I/O authority. Those capabilities remain platform-owned and require
+  their own evidence.
+
+See `docs/ADR-0002-VISUAL-BACKEND-CONFORMANCE.md` for the normative boundary.
+
 ## Before opening a pull request
 
 1. State whether the work was tested offline, compiled only, or exercised live.
@@ -17,8 +44,14 @@ reversible and fail-closed.
 
    ```powershell
    pwsh -NoLogo -NoProfile -File .\scripts\Test-PublicationBoundary.ps1
+   pwsh -NoLogo -NoProfile -File .\scripts\Test-PlatformLayout.ps1
    pwsh -NoLogo -NoProfile -File .\scripts\Test-Project.ps1
    ```
+
+   Also run the test named by the changed backend manifest's
+   `ownership.testEntry`. Windows-only checks may be reported as not applicable
+   by a non-Windows backend, but the two repository-boundary checks above still
+   apply.
 
 5. Describe the evidence boundary: static, compiled or live. Never report one
    as another.
@@ -51,6 +84,7 @@ assets from a reference-only project without an explicit compatible license.
 Keep changes narrowly scoped. Include:
 
 - what changed and why;
+- the single backend or shared-contract scope and every changed root;
 - affected host/module;
 - safety and recovery impact;
 - checks run and their exact result;

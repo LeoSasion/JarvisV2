@@ -68,12 +68,12 @@ phase.
 
 ## Future single-window read validation gate
 
-Phase 16 does not generate an executable approval command. A future read-only
-validation package must be created from fresh host evidence and limited to one
+Phase 16 does not generate an executable live-validation command. A future
+read-only validation package must be created from fresh host evidence and limited to one
 visible `CabinetWClass` window whose exact title is `C:\`, for at most 60
 seconds.
 
-Before such a command can be shown, the package must bind:
+Before such a command may run, the package must bind:
 
 1. a fresh compatibility report with every check passed;
 2. the armed kill-switch path and absent one-shot permit;
@@ -82,10 +82,12 @@ Before such a command can be shown, the package must bind:
 5. zero existing XAML Diagnostics consumers;
 6. an available recovery terminal;
 7. all other experimental modules off;
-8. a new explicit approval in the current task.
+8. a passing automated preflight for the exact bounded command under the
+   current Win10 `AGENTS.md` contract.
 
 That future read validation still may not write a property, start Windhawk,
 restart Explorer, terminate a process, or change registry/system files.
 
-Phase 16 grants no permission to connect to Explorer or to run the review
-object.
+Phase 16 provides no executable connection path or live validation evidence.
+Once a future implementation passes every automated preflight check, standing
+authorization requires no second per-run user approval.

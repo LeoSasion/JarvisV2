@@ -3,11 +3,21 @@
   "repositoryName": "JarvisV2",
   "runtimeNamespace": "JARVIS2",
   "layoutContract": "common-plus-versioned-windows-backends-v1",
+  "visualBackendContract": {
+    "contractId": "jarvisv2-visual-backend-manifest-v1",
+    "schemaPath": "config/visual-backend-manifest.schema.json",
+    "manifestRoot": "config/visual-backends",
+    "primaryDevelopmentBackend": "windows10-wpf-owned-preview",
+    "currentWorkstreamScope": "windows10",
+    "unregisteredBackendPolicy": "unsupported"
+  },
   "common": {
     "sourceRoot": "src/common",
-    "role": "Code that is intended to work across supported Windows client families.",
+    "role": "Windows-family shared code. This path is not a cross-operating-system portability claim.",
       "projects": [
         "Jarvis.ControlCenter",
+        "Jarvis.ControlCenter.Diagnostics",
+        "Jarvis.DesktopPresence",
         "Jarvis.DesktopStyleProbe",
         "Jarvis.DesktopStyleSession",
         "Jarvis.PiAgentHost",
@@ -17,18 +27,25 @@
   "platforms": [
     {
       "id": "windows10",
+      "operatingSystemFamily": "windows",
+      "desktopEnvironment": "windows-shell",
+      "compositor": "dwm",
       "sourceRoot": "src/platforms/windows10",
       "modRoot": "mods/windows10",
       "nativeTestRoot": "tests/native/windows10",
       "entryDocument": "WINDOWS10-HANDOFF.md",
-      "status": "owned-horizon-desktop-preview-and-offline-callback-dll-only",
+      "status": "owned-horizon-desktop-with-read-only-task-manager-and-owned-layouts-and-offline-callback-dll-only",
       "compatibilityProfile": "win10-22h2-19045.6466-x64",
       "activationPermitted": false,
       "liveExplorer": "not-run",
-      "nextVisibleSlice": "close native unload and full callback-drain proof before publishing any collector executable or enabling live admission"
+      "nextVisibleSlice": "extend the owned-window registry beyond Explorer and the read-only Task Manager to admit three- and four-window layouts",
+      "nextInjectionSlice": "add a publication/install lease, an exact-thread drain barrier and full HookProc-envelope proof before publishing a collector executable"
     },
     {
       "id": "windows11",
+      "operatingSystemFamily": "windows",
+      "desktopEnvironment": "windows-shell",
+      "compositor": "dwm",
       "sourceRoot": "src/platforms/windows11",
       "modRoot": "mods/windows11",
       "nativeTestRoot": "tests/native/windows11",
@@ -41,6 +58,11 @@
     }
   ],
   "invariants": {
+    "primaryDevelopmentPlatform": "windows10",
+    "oneBackendScopePerPullRequest": true,
+    "distributionNameIsNotBackendIdentity": true,
+    "portableContractGrantsShellAuthority": false,
+    "portableContractGrantsInjectionAuthority": false,
     "wrongPlatformBackendPolicy": "fail-closed",
     "automaticBackendFallback": false,
     "sharedModuleIdsAcrossPlatformBackends": false,

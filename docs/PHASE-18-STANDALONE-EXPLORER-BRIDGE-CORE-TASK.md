@@ -100,8 +100,10 @@ This phase does not provide:
 - a command that clears the kill switch or creates a permit;
 - live Explorer evidence.
 
-The next gate is a separately reviewed, exact-nonzero-thread transport linked
+The next implementation gate is a separately reviewed, exact-nonzero-thread transport linked
 into this core. It must accept an already verified PID/TID only, contain no
 process-name enumeration or global scope, publish at most one external entry,
-and prove recovery-terminal, source-hash and fixed-target receipts before a
-new exact user approval can authorize one live connection.
+and prove recovery-terminal, source-hash and fixed-target receipts. For a
+Win10-owned derivative, a passing `AGENTS.md` automated preflight then admits
+one bounded live connection under standing authorization; no second per-run
+user approval is required.

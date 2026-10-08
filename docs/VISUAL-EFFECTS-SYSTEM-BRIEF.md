@@ -155,8 +155,9 @@ The implementation foundation now includes:
 
 - the `jarvis-visual-signal-v1` frame with linear RGB and ordered semantic
   color channels;
-- the platform-neutral `Jarvis.VisualEffects` library used by the Win10
-  diagnostic consumer and available to a future Win11 renderer;
+- the `net8.0` `Jarvis.VisualEffects` library used by the Win10 diagnostic
+  consumer and available to a future Win11 renderer; only its visual-signal
+  and retained-scene data planes are currently admitted for cross-OS backends;
 - typed particle/post parameter metadata plus schema-versioned inert preset
   data;
 - a backend-neutral retained command buffer for point, line, polyline, arc,

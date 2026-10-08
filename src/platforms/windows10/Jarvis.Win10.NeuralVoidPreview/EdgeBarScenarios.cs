@@ -85,13 +85,13 @@ internal static class EdgeBarScenarios
 
         Add(
             scenarios,
-            "initial-current-layout-is-data-driven",
+            "initial-current-layout-is-freeform-with-truthful-availability",
             () =>
                 surface.LayoutOptionCount == 16 &&
-                surface.CurrentLayout == LayoutPreset.LeftMainRightStack &&
-                surface.CurrentLayoutGlyph.Preset == surface.CurrentLayout &&
-                surface.SelectedLayoutDefinition?.Preset == surface.CurrentLayout &&
-                surface.LayoutRailList.SelectedItems.Count == 1);
+                surface.CurrentLayout is null &&
+                surface.CurrentLayoutGlyph.IsFreeform &&
+                surface.AvailableLayoutCount == 1 &&
+                surface.LayoutRailList.SelectedItems.Count == 0);
 
         Add(
             scenarios,
@@ -112,6 +112,7 @@ internal static class EdgeBarScenarios
             "rail-viewport-is-compact-and-scrollable",
             () =>
             {
+                surface.PreviewLayoutForTest(LayoutPreset.Maximized);
                 LayoutDefinition selected =
                     surface.SelectedLayoutDefinition ??
                     throw new InvalidOperationException(
@@ -214,7 +215,7 @@ internal static class EdgeBarScenarios
             "edge-boundaries-remain-stable-after-pointer-leave",
             () =>
             {
-                surface.SelectLayoutForTest(LayoutPreset.FourQuadrants);
+                surface.PreviewLayoutForTest(LayoutPreset.FourQuadrants);
                 surface.ScrollLayoutRailToBoundaryForTest(true);
                 double bottomOffset = surface.LayoutRailScrollableHeight;
                 surface.BeginLayoutRailAutoScrollForTest(
@@ -236,7 +237,8 @@ internal static class EdgeBarScenarios
                     surface.LayoutRailScrollDirection ==
                         LayoutRailScrollDirection.None &&
                     surface.IsSelectedLayoutFullyVisible &&
-                    surface.CurrentLayout == LayoutPreset.FourQuadrants &&
+                    surface.SelectedLayoutDefinition?.Preset == LayoutPreset.FourQuadrants &&
+                    surface.CurrentLayout is null &&
                     LayoutGlyphsSharePermanentAxis(surface) &&
                     MaskEndIsOpaque(
                         surface.LayoutRailFeatherMask,
@@ -279,7 +281,7 @@ internal static class EdgeBarScenarios
             "auto-scroll-preserves-selection-and-stops-on-leave",
             () =>
             {
-                LayoutPreset selected = surface.CurrentLayout;
+                LayoutPreset? selected = surface.CurrentLayout;
                 surface.ScrollLayoutRailToBoundaryForTest(false);
                 surface.BeginLayoutRailAutoScrollForTest(
                     LayoutRailScrollDirection.Down);
@@ -570,7 +572,7 @@ internal static class EdgeBarScenarios
             () =>
             {
                 surface.ScrollLayoutRailToFractionForTest(0.5);
-                LayoutPreset layoutBefore = surface.CurrentLayout;
+                LayoutPreset? layoutBefore = surface.CurrentLayout;
                 object? selectedBefore = surface.LayoutRailList.SelectedItem;
 
                 bool slowRouted =
@@ -616,6 +618,7 @@ internal static class EdgeBarScenarios
             "actual-adjacent-layout-centers-drive-visible-bidirectional-scroll",
             () =>
             {
+                _ = surface.PrepareTaskManagerForSnapshot();
                 IReadOnlyList<(
                     ListBoxItem Item,
                     UIElement HitSource,
@@ -629,7 +632,7 @@ internal static class EdgeBarScenarios
                         surface.AdjacentRailProbeDetailForTest);
                 }
 
-                LayoutPreset layoutBefore = surface.CurrentLayout;
+                LayoutPreset? layoutBefore = surface.CurrentLayout;
                 object? selectedBefore = surface.LayoutRailList.SelectedItem;
                 double offsetBefore = surface.LayoutRailVerticalOffset;
                 double upperDistance = Math.Abs(
@@ -725,7 +728,7 @@ internal static class EdgeBarScenarios
                     NearlyEqual(
                         surface.LayoutRailVerticalOffset,
                         topOffset);
-                surface.SelectLayoutForTest(LayoutPreset.FourQuadrants);
+                surface.PreviewLayoutForTest(LayoutPreset.FourQuadrants);
                 return
                     firstVisible &&
                     visibleSelectionPreservedOffset &&
@@ -735,13 +738,24 @@ internal static class EdgeBarScenarios
 
         Add(
             scenarios,
-            "every-catalog-layout-updates-current-slot",
+            "available-layouts-apply-and-unavailable-layouts-preserve-current-slot",
             () =>
             {
                 foreach (LayoutDefinition definition in LayoutCatalog.All)
                 {
-                    surface.SelectLayoutForTest(definition.Preset);
-                    if (surface.CurrentLayout != definition.Preset ||
+                    LayoutPreset? before = surface.CurrentLayout;
+                    bool applied = surface.SelectLayoutForTest(definition.Preset);
+                    if (definition.PaneCount > surface.VisibleOwnedWindowCount)
+                    {
+                        if (applied || surface.CurrentLayout != before)
+                        {
+                            return false;
+                        }
+
+                        continue;
+                    }
+
+                    if (!applied || surface.CurrentLayout != definition.Preset ||
                         surface.CurrentLayoutGlyph.Preset != definition.Preset ||
                         surface.SelectedLayoutDefinition?.Preset != definition.Preset ||
                         surface.LayoutRailList.SelectedItems.Count != 1 ||
@@ -805,6 +819,7 @@ internal static class EdgeBarScenarios
             "explorer-is-right-side-floating-window",
             () =>
             {
+                Invoke(surface.ExplorerCloseButton);
                 surface.RestoreExplorerForTest();
                 return
                     Canvas.GetLeft(surface.ExplorerWindow) == 596.0 &&
@@ -824,6 +839,7 @@ internal static class EdgeBarScenarios
             () =>
             {
                 surface.SelectLayoutForTest(LayoutPreset.NarrowLeftWideRight);
+                Rect tiled = surface.GetOwnedWindowBoundsForTest("explorer");
                 surface.SelectLayoutForTest(LayoutPreset.Maximized);
                 bool expanded =
                     surface.IsExplorerMaximized &&
@@ -835,8 +851,7 @@ internal static class EdgeBarScenarios
                 return
                     expanded &&
                     !surface.IsExplorerMaximized &&
-                    Canvas.GetLeft(surface.ExplorerWindow) == 596.0 &&
-                    surface.ExplorerWindow.Width == 930.0;
+                    surface.GetOwnedWindowBoundsForTest("explorer") == tiled;
             });
 
         Add(
@@ -844,21 +859,22 @@ internal static class EdgeBarScenarios
             "inner-explorer-controls-preserve-layout-state",
             () =>
             {
-                surface.SelectLayoutForTest(LayoutPreset.TopSplitBottomMain);
+                surface.SelectLayoutForTest(LayoutPreset.EqualColumns);
+                Rect tiled = surface.GetOwnedWindowBoundsForTest("explorer");
                 Invoke(surface.ExplorerMinimizeButton);
                 bool minimized =
                     surface.ExplorerWindow.Visibility == Visibility.Collapsed;
                 Invoke(surface.TaskbarExplorerButton);
                 bool restoredTiled =
                     surface.ExplorerWindow.Visibility == Visibility.Visible &&
-                    surface.CurrentLayout == LayoutPreset.TopSplitBottomMain;
+                    surface.CurrentLayout == LayoutPreset.EqualColumns;
                 Invoke(surface.TaskbarExplorerButton);
                 bool minimizedFromActiveTaskbar =
                     surface.ExplorerWindow.Visibility == Visibility.Collapsed;
                 Invoke(surface.TaskbarExplorerButton);
                 bool restoredFromTaskbar =
                     surface.ExplorerWindow.Visibility == Visibility.Visible &&
-                    surface.CurrentLayout == LayoutPreset.TopSplitBottomMain;
+                    surface.CurrentLayout == LayoutPreset.EqualColumns;
                 Invoke(surface.ExplorerMaximizeButton);
                 bool expanded =
                     surface.IsExplorerMaximized &&
@@ -878,14 +894,13 @@ internal static class EdgeBarScenarios
                     expanded &&
                     restoredMaximized &&
                     !surface.IsExplorerMaximized &&
-                    surface.CurrentLayout == LayoutPreset.TopSplitBottomMain &&
-                    Canvas.GetLeft(surface.ExplorerWindow) == 596.0 &&
-                    surface.ExplorerWindow.Width == 930.0;
+                    surface.CurrentLayout == LayoutPreset.EqualColumns &&
+                    surface.GetOwnedWindowBoundsForTest("explorer") == tiled;
             });
 
         int passedCount = scenarios.Count(scenario => scenario.Passed);
         EdgeBarTestReceipt receipt = new(
-            8,
+            9,
             "jarvisv2-layout-rail-edge-bar-test",
             passedCount == scenarios.Count ? "passed" : "failed",
             scenarios.Count,

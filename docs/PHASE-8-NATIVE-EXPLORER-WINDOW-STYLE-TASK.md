@@ -1,6 +1,6 @@
 # Phase 8: Native Explorer window style session
 
-Status: **IMPLEMENTED — LIVE APPLY REQUIRES SEPARATE EXACT APPROVAL**
+Status: **IMPLEMENTED — LIVE APPLY REQUIRES EXACT-TARGET AUTOMATED PREFLIGHT**
 
 ## Why this replaces the desktop text-color direction
 
@@ -37,7 +37,7 @@ The temporary window is closed after visual evidence is captured.
 - [x] Limit every preview to 10–60 seconds.
 - [x] Route TTL, Ctrl+C and exceptions through default reset.
 - [x] Never reset a replacement HWND.
-- [x] Require separate exact apply and reset confirmations.
+- [x] Require distinct exact apply and reset command-intent tokens.
 - [x] Do not change the client area, geometry, registry, service or process.
 - [x] Do not inject, hook, start Windhawk, restart Explorer or terminate a
   process.
@@ -51,14 +51,16 @@ The temporary window is closed after visual evidence is captured.
 The deliberately high-contrast colors make a visual no-op impossible to
 mistake for success.
 
-## Acceptance before live approval
+## Acceptance before live apply
 
 1. Release build is warning-free.
 2. All offline policy scenarios pass.
 3. Static audit proves the exact seven-entry native API allowlist.
 4. A read-only plan binds the live temporary window HWND/PID/title.
 5. Public CI and the project gate run only offline audit.
-6. The user reviews and approves the exact apply and emergency reset commands.
+6. The automated preflight binds the exact apply and emergency-reset command
+   intent and recovery state. Under Win10 standing authorization, no separate
+   per-run user approval is required.
 
 ## Acceptance after a live preview
 

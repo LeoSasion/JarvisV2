@@ -92,5 +92,6 @@ Phase 17 does not:
 - change the registry or system files.
 
 A later phase must review a connectable single-window read controller and
-produce a new fresh package. Only then may the exact 60-second read command be
-shown for a new explicit approval in the current task.
+produce a new fresh package. The exact 60-second read command may run only
+after the `AGENTS.md` automated preflight succeeds under Win10 standing
+authorization; no second per-run user approval is required.

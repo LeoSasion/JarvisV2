@@ -1,12 +1,19 @@
 # Neural Void global VFX parameter contract
 
-`config/neural-void-global-vfx-contract.json` is the platform-neutral
+`config/neural-void-global-vfx-contract.json` is the Windows-family v1
 authoring contract for the future Neural Void particle system and
-post-processing compositor. It is shared by the Win10 and Win11 directions.
+post-processing compositor. Its exact platform scope is Windows 10 and Windows
+11; that scope must not be silently widened for a future Linux backend.
 `src/common/Jarvis.VisualEffects` owns the pure .NET data model, RGB sampler,
 visual-signal frame, contract compiler and inert-preset compiler. The current
 Win10 theme model embeds the JSON inputs and acts as the first diagnostic
 consumer, but no particle/post renderer or VFX editor is enabled.
+
+The narrower `jarvis-visual-signal-v1` and
+`jarvis-retained-vector-scene-v1` data planes are admitted for cross-OS renderer
+conformance. Generalizing the wider global-VFX authoring model requires a new
+contract version after a second real platform implementation proves the shared
+shape. See `ADR-0002-VISUAL-BACKEND-CONFORMANCE.md`.
 
 The design follows the parameter vocabulary used by 3D film tools and game
 engines:

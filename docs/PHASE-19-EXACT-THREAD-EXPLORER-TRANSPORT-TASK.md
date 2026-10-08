@@ -105,7 +105,8 @@ does not provide a collector that resolves module/procedure addresses or calls
 the adapter.
 
 The next development gate is a separate exact-target collector admission and
-session-bound module package. Any first live use will still require a fresh
-compatibility report, armed kill switch, exact source and binary hashes, one
-active module, visible recovery terminal and explicit approval of the exact
-one-shot command.
+session-bound module package. Any first Win10 live use will still require a
+fresh compatibility report, armed kill switch, exact source and binary hashes,
+one active module, visible recovery terminal and an automated preflight that
+binds the exact one-shot command. Under `AGENTS.md` standing authorization, no
+second per-run user approval is required.

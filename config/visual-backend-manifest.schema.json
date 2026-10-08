@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvisv2.local/schemas/visual-backend-manifest.schema.json",
+  "title": "JarvisV2 visual backend manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "contractId",
+    "backendId",
+    "platformId",
+    "target",
+    "ownership",
+    "contracts",
+    "capabilities",
+    "evidence"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "contractId": {
+      "const": "jarvisv2-visual-backend-manifest-v1"
+    },
+    "backendId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "platformId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "target": {
+      "$ref": "#/$defs/target"
+    },
+    "ownership": {
+      "$ref": "#/$defs/ownership"
+    },
+    "contracts": {
+      "$ref": "#/$defs/contracts"
+    },
+    "capabilities": {
+      "$ref": "#/$defs/capabilities"
+    },
+    "evidence": {
+      "$ref": "#/$defs/evidence"
+    }
+  },
+  "$defs": {
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operatingSystemFamily",
+        "desktopEnvironment",
+        "compositor",
+        "distributionProfiles"
+      ],
+      "properties": {
+        "operatingSystemFamily": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "desktopEnvironment": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "compositor": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "distributionProfiles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+          }
+        }
+      }
+    },
+    "ownership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceRoot",
+        "testEntry",
+        "pullRequestScope"
+      ],
+      "properties": {
+        "sourceRoot": {
+          "type": "string",
+          "pattern": "^src/platforms/[a-z0-9][a-z0-9-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)+$"
+        },
+        "testEntry": {
+          "type": "string",
+          "pattern": "^scripts/Test-[A-Za-z0-9-]+\\.ps1$"
+        },
+        "pullRequestScope": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        }
+      }
+    },
+    "contracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visualSignal",
+        "retainedVectorScene"
+      ],
+      "properties": {
+        "visualSignal": {
+          "const": "jarvis-visual-signal-v1"
+        },
+        "retainedVectorScene": {
+          "const": "jarvis-retained-vector-scene-v1"
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surfaceScope",
+        "ownedProcessRendering",
+        "shellIntegration",
+        "foreignProcessCode",
+        "injectionRequired",
+        "physicalDeviceIo",
+        "primitiveKinds"
+      ],
+      "properties": {
+        "surfaceScope": {
+          "enum": [
+            "owned-process",
+            "desktop-shell",
+            "foreign-process"
+          ]
+        },
+        "ownedProcessRendering": {
+          "type": "boolean"
+        },
+        "shellIntegration": {
+          "type": "boolean"
+        },
+        "foreignProcessCode": {
+          "type": "boolean"
+        },
+        "injectionRequired": {
+          "type": "boolean"
+        },
+        "physicalDeviceIo": {
+          "type": "boolean"
+        },
+        "primitiveKinds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "point",
+              "line",
+              "polyline",
+              "arc",
+              "path",
+              "rectangle",
+              "ellipse",
+              "plane"
+            ]
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "implementationStatus",
+        "highestEvidence",
+        "publicSupportDeclared",
+        "activationPermitted",
+        "liveShell",
+        "mutationPerformed"
+      ],
+      "properties": {
+        "implementationStatus": {
+          "enum": [
+            "prototype",
+            "implemented",
+            "supported"
+          ]
+        },
+        "highestEvidence": {
+          "enum": [
+            "static",
+            "compiled",
+            "owned-process-live",
+            "shell-live"
+          ]
+        },
+        "publicSupportDeclared": {
+          "type": "boolean"
+        },
+        "activationPermitted": {
+          "type": "boolean"
+        },
+        "liveShell": {
+          "enum": [
+            "not-run",
+            "passed",
+            "failed"
+          ]
+        },
+        "mutationPerformed": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

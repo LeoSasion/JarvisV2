@@ -1,5 +1,13 @@
 namespace Jarvis.Win10.NeuralVoidPreview;
 
+internal enum PreviewScene
+{
+    Desktop,
+    ExplorerPreview,
+    TaskManager,
+    OwnedWindowLayout,
+}
+
 internal sealed record PreviewRenderReceipt(
     int SchemaVersion,
     string ReceiptType,
@@ -15,6 +23,9 @@ internal sealed record PreviewRenderReceipt(
     bool OwnProcessOnly,
     bool ShellMutationSupported,
     bool DeviceIntegrationSupported,
+    string SurfaceState,
+    bool ReadOnlyProcessTelemetry,
+    bool ProcessControlSupported,
     bool ActivationPermitted,
     string LiveExplorer,
     bool MutationPerformed,

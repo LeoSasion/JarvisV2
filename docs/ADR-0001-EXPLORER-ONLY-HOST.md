@@ -1,8 +1,8 @@
 # ADR-0001: Explorer-only host boundary
 
-- Status: accepted for offline modelling only
+- Status: accepted exact-host transport boundary; the Phase 6 model remains offline
 - Date: 2026-07-27
-- Live implementation: prohibited
+- Win10 live authority: standing authorization after implementation evidence and automated preflight; this ADR provides no collector
 - Supersedes: Windhawk service as a JarvisV2 activation host
 
 ## Context
@@ -51,7 +51,7 @@ The considered transport mechanisms are:
 | `AppInit_DLLs` | rejected | Global, legacy, registry-backed and incompatible with the project boundary. |
 | Global `SetWindowsHookEx` | rejected | A zero thread ID affects the caller's desktop and repeats the exact broad-scope mistake. |
 | Remote memory plus remote thread/APC | rejected for Phase 6 | Broad rights, more lifetime states, and easy scope expansion; Windhawk already demonstrates why this transport must not be inherited wholesale. |
-| Thread-specific `SetWindowsHookEx` | review candidate only | Microsoft documents a nonzero thread ID as thread-scoped, so it can express one exact Shell-window thread without process enumeration. It still injects a DLL and is not approved for live use. |
+| Thread-specific `SetWindowsHookEx` | review candidate only | Microsoft documents a nonzero thread ID as thread-scoped, so it can express one exact Shell-window thread without process enumeration. It still injects a DLL and therefore requires the exact implementation, lifecycle evidence and automated preflight described below. |
 
 Microsoft documents that `GetShellWindow` returns the Shell desktop window and
 `GetWindowThreadProcessId` returns that window's creator PID and TID. These
@@ -105,12 +105,13 @@ Implementation note (2026-08-03): Phase 18 now implements this standalone ABI
 and its callback ownership core. Phase 19 adds the separately reviewable
 exact-thread transport lifecycle plus a Win32 adapter that CI compiles only to
 an unlinked object. Neither phase adds a collector, loader, exported Hook
-procedure or live connection, so the decision below remains unchanged.
+procedure or live connection, so the implementation prerequisites below remain
+unsatisfied.
 
-## Live gate remains closed
+## Live implementation prerequisites
 
-This ADR does not authorize a collector, launcher, Hook, injection, module
-conversion or Explorer experiment. Before any live proposal:
+This ADR does not itself provide a collector, launcher, Hook, injection path,
+module conversion or Explorer experiment. Before any live session:
 
 1. the standalone bridge must exist and pass its native fault lab;
 2. the collector and transport must be separate binaries;
@@ -119,8 +120,12 @@ conversion or Explorer experiment. Before any live proposal:
    enumeration, `dwm.exe`, service, driver, Explorer restart or force-stop
    path;
 5. the host must remain locked by default with a fresh recovery design;
-6. a new exact user approval must name the exact binaries, hashes, PID, TID and
-   one-shot command.
+6. the automated preflight must bind and record the exact binaries, hashes,
+   PID, TID and one-shot command.
+
+For a Win10-owned implementation, satisfying these prerequisites and the
+current `AGENTS.md` automated preflight is sufficient under the repository's
+standing authorization. No second per-run user approval is required.
 
 ## Primary references
 

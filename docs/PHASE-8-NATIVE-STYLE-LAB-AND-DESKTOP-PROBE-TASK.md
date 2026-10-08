@@ -62,9 +62,10 @@ live inspection only. Neither track loads a module into Explorer.
 5. readiness still fails only on the Windhawk host quarantine;
 6. all preview processes are closed and the repository is committed cleanly.
 
-## Separate future approval
+## Future Explorer-mutation gate
 
-Changing the real Explorer desktop view is not authorized by this task. A
-future desktop-style mutation must be reversible, scoped to the exact observed
-PID/TID/HWND set, reviewed with an exact rollback command, and explicitly
-approved by the user in that task.
+This task did not implement or perform a real Explorer desktop-view mutation.
+A future desktop-style mutation must be reversible, scoped to the exact
+observed PID/TID/HWND set, bound to an exact rollback command, and admitted by
+the `AGENTS.md` automated preflight. Win10 standing authorization requires no
+second per-run user approval.

@@ -130,14 +130,14 @@ PID/TID/HWND/title/start-time drift, reused instances, non-unique matches,
 selector mismatch, incomplete original snapshots, mutation claims and
 apply/restore order.
 
-## Remaining gate before one visual approval
+## Remaining technical gate before the first live visual run
 
 The next technical stage must implement and portable-build a standalone,
 single-PID/single-TID XAML transport. Windhawk remains quarantined and is not an
 acceptable live transport because its base runtime is not restricted to the
 one temporary Explorer process.
 
-Before the one combined visual approval, JarvisV2 must show:
+Before the first combined live visual run, JarvisV2 must show:
 
 - a fresh compatibility report;
 - exact probe, transport and selector-profile SHA-256 values;
@@ -148,5 +148,8 @@ Before the one combined visual approval, JarvisV2 must show:
 - one exact command that applies the three-surface pack for 60 seconds,
   captures screenshots, restores in reverse and closes the temporary window.
 
-Only that final command needs visual approval. This document, the candidate
-profile, UI Automation hints and synthetic preview plan do not authorize it.
+Once those technical artifacts pass the `AGENTS.md` automated preflight, the
+standing Windows 10 authorization admits that final bounded command without a
+separate per-run approval. This document, the candidate profile, UI Automation
+hints and synthetic preview plan remain offline evidence; none implements a
+loader or proves a live run.

@@ -69,7 +69,7 @@ Phase 5 把恢复能力从“曾经打开一个窗口”提升为短租约安全
   与 schema 同时绑定到 session plan；输出前必须通过 schema。
 - [ ] 在主机自然清除残余基础映射后，生成新的真实 session plan。
 - [ ] 另一个任务中重新展示 fresh compatibility/readiness、恢复终端租约
-  和精确恢复命令，等待新的明确实机授权。
+  和精确恢复命令，并通过 `AGENTS.md` 规定的 Win10 自动预检。
 
 ## Acceptance criteria
 
@@ -83,12 +83,12 @@ Phase 5 把恢复能力从“曾经打开一个窗口”提升为短租约安全
 5. `disabled.flag` 仍存在，`active-module.txt` 仍不存在。
 6. 没有 Windhawk 启动、模块加载、Explorer 重启或系统进程终止。
 7. 任何后续激活都必须重新生成未过期 session plan、打开可见恢复终端，
-   让 Supervisor 读到新鲜租约，并获得用户对精确命令的新授权。
+   让 Supervisor 读到新鲜租约并通过自动预检；无需逐次用户批准。
 
 ## Evidence boundary
 
 Phase 5 只能证明租约解析、身份绑定和故障拒绝在离线 fixture 中按预期
 工作。它不能证明可见窗口在未来实机加载期间一定不会被外部因素关闭，
 也不能证明 M2 的原生 Hook 稳定。真实观察若发现窗口消失，最后心跳最多
-4 秒后失效；已开始的实机观察仍必须立即执行人工 `arm-kill-switch` 恢复
-流程。此任务不把离线通过冒充实机稳定性。
+4 秒后失效；已开始的实机观察仍必须立即执行 `arm-kill-switch` 恢复流程，
+该动作可由 recovery helper 自动执行。此任务不把离线通过冒充实机稳定性。

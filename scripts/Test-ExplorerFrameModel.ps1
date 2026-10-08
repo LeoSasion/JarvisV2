@@ -110,10 +110,10 @@ Add-Check `
     )
 
 Add-Check `
-    -Name 'docs.live-connection-remains-unauthorized' `
+    -Name 'docs.live-connection-remains-unimplemented' `
     -Passed (
         $taskText.Contains(
-            'OFFLINE MODEL COMPLETE — LIVE XAML CONNECTION NOT AUTHORIZED') -and
+            'OFFLINE MODEL COMPLETE — LIVE XAML CONNECTION NOT IMPLEMENTED') -and
         $taskText.Contains('No live XAML connection exists.') -and
         $taskText.Contains('InitializeXamlDiagnosticsEx') -and
         $taskText.Contains('explicit rollback timer')

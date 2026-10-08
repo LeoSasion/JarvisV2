@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Jarvis.VisualEffects;
+using Jarvis.Win10.OwnedTaskManager;
 
 namespace Jarvis.Win10.NeuralVoidPreview;
 
@@ -33,6 +34,14 @@ public partial class DesktopShellSurface :
     internal const double TaskbarTop = 800.0;
     internal const double LayoutRailCenterY = 330.0;
     internal const double LayoutRailViewportCenterY = LayoutViewportHeight / 2.0;
+    internal static readonly Rect OwnedWorkArea = new(148.0, 24.0, 1428.0, 752.0);
+
+    private static readonly OwnedWindowId ExplorerOwnedWindowId =
+        new("explorer");
+    private static readonly OwnedWindowId TaskManagerOwnedWindowId =
+        new("task-manager");
+    private const double ExplorerCompactWidthThreshold = 820.0;
+    private const double ExplorerCompactHeightThreshold = 400.0;
 
     private static readonly TimeSpan RailReducedMotionInterval =
         TimeSpan.FromMilliseconds(200);
@@ -54,6 +63,7 @@ public partial class DesktopShellSurface :
     private readonly DispatcherTimer _clockTimer;
     private readonly DispatcherTimer _railScrollTimer;
     private readonly ExplorerWorkspace _explorerWorkspace = new();
+    private readonly OwnedWindowLayoutCoordinator _ownedWindowLayouts = new();
     private readonly LinearGradientBrush _layoutRailMaskNone =
         CreateLayoutRailFeatherMask(false, false);
     private readonly LinearGradientBrush _layoutRailMaskTop =
@@ -64,12 +74,14 @@ public partial class DesktopShellSurface :
         CreateLayoutRailFeatherMask(true, true);
     private SolidColorBrush _accentBrush =
         CreateBrush(Color.FromRgb(240, 229, 0));
-    private LayoutPreset _currentLayout = LayoutPreset.LeftMainRightStack;
-    private LayoutPreset _lastTiledLayout = LayoutPreset.LeftMainRightStack;
     private bool _draggingExplorer;
     private Point _explorerDragOffset;
-    private Rect _explorerRestoreBounds = new(596, 63, 930, 667);
-    private bool _explorerMaximized;
+    private bool _draggingTaskManager;
+    private Point _taskManagerDragOffset;
+    private readonly DataTemplate _explorerFullItemTemplate;
+    private readonly DataTemplate _explorerCompactItemTemplate;
+    private bool _explorerCompactWidth;
+    private bool _explorerCompactHeight;
     private ScrollViewer? _layoutRailScrollViewer;
     private LayoutRailScrollDirection _layoutRailScrollDirection;
     private bool _layoutRailRenderingSubscribed;
@@ -90,6 +102,22 @@ public partial class DesktopShellSurface :
     public DesktopShellSurface()
     {
         InitializeComponent();
+        _explorerFullItemTemplate = ExplorerItemList.ItemTemplate;
+        _explorerCompactItemTemplate =
+            (DataTemplate)FindResource("ExplorerCompactItemTemplate");
+        if (!_ownedWindowLayouts.TryRegister(
+                ExplorerOwnedWindowId,
+                OwnedWindowLifecycle.Visible,
+                GetOwnedWindowBounds(ExplorerWindow)) ||
+            !_ownedWindowLayouts.TryRegister(
+                TaskManagerOwnedWindowId,
+                OwnedWindowLifecycle.Closed,
+                GetOwnedWindowBounds(TaskManagerWindow)))
+        {
+            throw new InvalidOperationException(
+                "The owned desktop window registration could not be initialized.");
+        }
+
         _explorerWorkspace.Changed += ExplorerWorkspace_OnChanged;
         LayoutRailHitRegion.AddHandler(
             Mouse.PreviewMouseMoveEvent,
@@ -112,7 +140,8 @@ public partial class DesktopShellSurface :
         {
             IsEnabled = false,
         };
-        ApplyLayoutSelection(_currentLayout);
+        ApplyCurrentLayoutPresentation();
+        RefreshLayoutAvailability();
         RefreshExplorerPresentation();
     }
 
@@ -130,7 +159,19 @@ public partial class DesktopShellSurface :
         }
     }
 
-    internal LayoutPreset CurrentLayout => _currentLayout;
+    internal LayoutPreset? CurrentLayout => _ownedWindowLayouts.AppliedPreset;
+
+    internal bool IsOwnedWindowLayoutFreeform => CurrentLayout is null;
+
+    internal int VisibleOwnedWindowCount => _ownedWindowLayouts.VisibleWindowCount;
+
+    internal int AvailableLayoutCount =>
+        LayoutCatalog.All.Count(
+            definition =>
+                _ownedWindowLayouts.GetAvailability(definition.Preset).IsEnabled);
+
+    internal string? ActiveOwnedWindowId =>
+        _ownedWindowLayouts.ActiveWindowId?.Value;
 
     internal bool IsLayoutRailOpen =>
         LayoutRailPanel.Visibility == Visibility.Visible &&
@@ -142,7 +183,27 @@ public partial class DesktopShellSurface :
     internal LayoutDefinition? SelectedLayoutDefinition =>
         LayoutRailList.SelectedItem as LayoutDefinition;
 
-    internal bool IsExplorerMaximized => _explorerMaximized;
+    internal bool IsExplorerMaximized =>
+        IsOwnedWindowMaximized(ExplorerOwnedWindowId);
+
+    internal bool IsTaskManagerMaximizedForTest =>
+        IsOwnedWindowMaximized(TaskManagerOwnedWindowId);
+
+    internal bool IsExplorerCompactWidthForTest => _explorerCompactWidth;
+
+    internal bool IsExplorerCompactHeightForTest => _explorerCompactHeight;
+
+    internal bool IsTaskManagerVisibleForTest =>
+        TaskManagerWindow.Visibility == Visibility.Visible;
+
+    internal bool IsTaskManagerRunningForTest =>
+        TaskManagerRunningIndicator.Visibility == Visibility.Visible;
+
+    internal bool IsTaskManagerSamplingForTest =>
+        TaskManagerPanel.IsSamplingActiveForTest;
+
+    internal double TaskManagerIndicatorOpacityForTest =>
+        TaskManagerRunningIndicator.Opacity;
 
     internal ExplorerWorkspace ExplorerWorkspaceForTest => _explorerWorkspace;
 
@@ -311,21 +372,91 @@ public partial class DesktopShellSurface :
             ExplorerPreviewNameForTest == "PROJECT_BRIEF_0826.DOCX";
     }
 
-    internal void SelectLayoutForTest(LayoutPreset preset)
+    internal bool PrepareTaskManagerForSnapshot()
     {
-        SelectLayout(preset, false);
+        TaskManagerPanel.StopSampling();
+        TaskManagerPanel.ApplySnapshotForPreview(
+            new OwnedTaskSnapshot(
+                1,
+                "captured-read-only-process-snapshot",
+                new DateTimeOffset(2026, 8, 6, 6, 39, 0, TimeSpan.Zero),
+                8,
+                10,
+                2,
+                8,
+                64,
+                0,
+                true,
+                false,
+                false,
+                false,
+                [
+                    new("JARVIS2", 4200, 18.6, true, 440_401_920, 34),
+                    new("CODEX", 5012, 11.8, true, 361_758_720, 29),
+                    new("EXPLORER", 1244, 3.2, true, 188_743_680, 42),
+                    new("DWM", 820, 2.1, true, 108_003_328, 19),
+                    new("POWERSHELL", 6124, 1.6, true, 84_934_656, 17),
+                    new("SEARCHAPP", 1940, 0.7, true, 73_400_320, 15),
+                    new("SVCHOST", 1092, 0.3, true, 38_797_312, 12),
+                    new("SYSTEM", 4, 0.1, true, 4_194_304, 198),
+                ]));
+        _ = _ownedWindowLayouts.TrySetLifecycle(
+            TaskManagerOwnedWindowId,
+            OwnedWindowLifecycle.Visible);
+        ApplyCoordinatorBounds(
+            TaskManagerOwnedWindowId,
+            TaskManagerWindow);
+        TaskManagerWindow.Visibility = Visibility.Visible;
+        TaskManagerRunningIndicator.Visibility = Visibility.Visible;
+        TaskManagerRunningIndicator.Opacity = 1.0;
+        ActivateOwnedWindow(TaskManagerWindow);
+        RefreshLayoutAvailability();
+        return
+            TaskManagerPanel.ProcessRows.Count == 8 &&
+            TaskManagerPanel.SamplingStateForTest == "DETERMINISTIC PREVIEW";
+    }
+
+    internal bool SelectLayoutForTest(LayoutPreset preset)
+    {
+        bool applied = SelectLayout(preset, false);
+        CancelPendingLayoutReveal();
+        RevealSelectedLayout();
+        return applied;
+    }
+
+    internal void PreviewLayoutForTest(LayoutPreset preset)
+    {
+        SyncRailSelection(preset);
         CancelPendingLayoutReveal();
         RevealSelectedLayout();
     }
 
     internal void RestoreExplorerForTest()
     {
-        if (_explorerMaximized)
-        {
-            SelectLayout(_lastTiledLayout, false);
-        }
-
         RestoreExplorer();
+    }
+
+    internal bool IsLayoutAvailableForTest(LayoutPreset preset) =>
+        _ownedWindowLayouts.GetAvailability(preset).IsEnabled;
+
+    internal Rect GetOwnedWindowBoundsForTest(string id) =>
+        id switch
+        {
+            "explorer" => GetOwnedWindowBounds(ExplorerWindow),
+            "task-manager" => GetOwnedWindowBounds(TaskManagerWindow),
+            _ => throw new ArgumentOutOfRangeException(nameof(id)),
+        };
+
+    internal void MoveOwnedWindowForTest(string id, Rect bounds)
+    {
+        FrameworkElement window = id switch
+        {
+            "explorer" => ExplorerWindow,
+            "task-manager" => TaskManagerWindow,
+            _ => throw new ArgumentOutOfRangeException(nameof(id)),
+        };
+        SetOwnedWindowBounds(window, bounds);
+        CompleteOwnedWindowManualMove(GetOwnedWindowId(window), window);
     }
 
     internal void BeginLayoutRailAutoScrollForTest(
@@ -358,6 +489,11 @@ public partial class DesktopShellSurface :
                 LayoutRailList.Items[index + 1] is not LayoutDefinition lower ||
                 upper.PaneCount != middle.PaneCount ||
                 middle.PaneCount != lower.PaneCount)
+            {
+                continue;
+            }
+
+            if (!_ownedWindowLayouts.GetAvailability(middle.Preset).IsEnabled)
             {
                 continue;
             }
@@ -546,6 +682,7 @@ public partial class DesktopShellSurface :
         AttachSystemParameters();
         RefreshClock();
         _clockTimer.Start();
+        UpdateOwnedWindowLayoutDensity();
         PrepareLayoutRailPresentation();
         Focus();
     }
@@ -553,6 +690,11 @@ public partial class DesktopShellSurface :
     private void Surface_OnUnloaded(object sender, RoutedEventArgs eventArgs)
     {
         _clockTimer.Stop();
+        TaskManagerPanel.StopSampling();
+        _draggingExplorer = false;
+        _draggingTaskManager = false;
+        ExplorerTitleBar.ReleaseMouseCapture();
+        TaskManagerTitleBar.ReleaseMouseCapture();
         StopLayoutRailAutoScroll();
         CancelPendingLayoutReveal();
         DetachSystemParameters();
@@ -670,6 +812,14 @@ public partial class DesktopShellSurface :
         if (_hostWindow?.WindowState == WindowState.Minimized)
         {
             StopLayoutRailAutoScroll();
+            TaskManagerPanel.StopSampling();
+            return;
+        }
+
+        if (TaskManagerWindow.Visibility == Visibility.Visible &&
+            TaskManagerRunningIndicator.Visibility == Visibility.Visible)
+        {
+            TaskManagerPanel.StartSampling();
         }
     }
 
@@ -719,12 +869,20 @@ public partial class DesktopShellSurface :
     {
         if (eventArgs.OriginalSource is not DependencyObject source ||
             ItemsControl.ContainerFromElement(LayoutRailList, source) is not
-                ListBoxItem { DataContext: LayoutDefinition definition })
+                ListBoxItem { DataContext: LayoutDefinition definition } item)
         {
             return;
         }
 
-        SelectLayout(definition.Preset, true);
+        if (item.IsEnabled)
+        {
+            _ = SelectLayout(definition.Preset, true);
+        }
+        else
+        {
+            AnnounceUnavailableLayout(definition.Preset);
+        }
+
         eventArgs.Handled = true;
     }
 
@@ -736,49 +894,94 @@ public partial class DesktopShellSurface :
         if (eventArgs.Key is Key.Enter or Key.Space &&
             LayoutRailList.SelectedItem is LayoutDefinition definition)
         {
-            SelectLayout(definition.Preset, true);
+            if (_ownedWindowLayouts.GetAvailability(definition.Preset).IsEnabled)
+            {
+                _ = SelectLayout(definition.Preset, true);
+            }
+            else
+            {
+                AnnounceUnavailableLayout(definition.Preset);
+            }
+
             eventArgs.Handled = true;
         }
     }
 
-    private void SelectLayout(LayoutPreset preset, bool announce)
+    private bool SelectLayout(LayoutPreset preset, bool announce)
     {
         StopLayoutRailAutoScroll();
         LayoutDefinition definition = LayoutCatalog.Get(preset);
-        if (preset != LayoutPreset.Maximized)
+        OwnedLayoutAvailability availability =
+            _ownedWindowLayouts.GetAvailability(preset);
+        if (!availability.IsEnabled)
         {
-            _lastTiledLayout = preset;
+            ApplyCurrentLayoutPresentation();
+            RefreshLayoutAvailability();
+            if (announce)
+            {
+                AnnounceUnavailableLayout(preset);
+            }
+
+            return false;
         }
 
-        _currentLayout = preset;
-        ApplyLayoutSelection(preset);
-        if (preset == LayoutPreset.Maximized)
+        OwnedLayoutApplyResult result =
+            _ownedWindowLayouts.TryApply(preset, OwnedWorkArea);
+        if (!result.Succeeded)
         {
-            RestoreExplorer();
-            ExpandExplorerBounds();
-        }
-        else if (_explorerMaximized)
-        {
-            RestoreExplorerBounds();
+            ApplyCurrentLayoutPresentation();
+            RefreshLayoutAvailability();
+            if (announce)
+            {
+                Announce($"LAYOUT / {result.Status.ToString().ToUpperInvariant()}");
+            }
+
+            return false;
         }
 
+        ApplyOwnedLayoutResult(result);
+        ApplyCurrentLayoutPresentation();
+        RefreshLayoutAvailability();
         QueueRevealSelectedLayout();
         if (announce)
         {
             Announce($"LAYOUT / {definition.Id.ToUpperInvariant()}");
         }
+
+        return true;
     }
 
-    private void ApplyLayoutSelection(LayoutPreset preset)
+    private void ApplyCurrentLayoutPresentation()
     {
+        if (_ownedWindowLayouts.AppliedPreset is not LayoutPreset preset)
+        {
+            LayoutRailList.SelectedIndex = -1;
+            CurrentLayoutGlyph.IsFreeform = true;
+            CurrentLayoutGlyph.IsSelected = true;
+            const string freeformName = "Current layout: Freeform";
+            AutomationProperties.SetName(CurrentLayoutButton, freeformName);
+            AutomationProperties.SetHelpText(
+                CurrentLayoutButton,
+                "Owned windows keep their independent floating bounds.");
+            CurrentLayoutButton.ToolTip = freeformName;
+            UpdateOwnedWindowControlNames();
+            return;
+        }
+
         LayoutDefinition definition = LayoutCatalog.Get(preset);
         SyncRailSelection(preset);
+        CurrentLayoutGlyph.IsFreeform = false;
         CurrentLayoutGlyph.Preset = preset;
         CurrentLayoutGlyph.IsSelected = true;
         string accessibleName =
             $"Current layout: {definition.AutomationName}";
         AutomationProperties.SetName(CurrentLayoutButton, accessibleName);
+        AutomationProperties.SetHelpText(
+            CurrentLayoutButton,
+            $"Applied to {definition.PaneCount} owned window " +
+            $"{(definition.PaneCount == 1 ? "pane" : "panes")}.");
         CurrentLayoutButton.ToolTip = accessibleName;
+        UpdateOwnedWindowControlNames();
     }
 
     private void SyncRailSelection(LayoutPreset preset)
@@ -794,14 +997,26 @@ public partial class DesktopShellSurface :
 
     private void PrepareLayoutRailPresentation()
     {
-        SyncRailSelection(_currentLayout);
+        ApplyCurrentLayoutPresentation();
         _layoutRailMinimumOffset = null;
         LayoutRailList.UpdateLayout();
+        RefreshLayoutAvailability();
         RevealSelectedLayout();
     }
 
     private void FocusSelectedLayout()
     {
+        if (LayoutRailList.SelectedItem is null)
+        {
+            LayoutDefinition? firstAvailable = LayoutCatalog.All.FirstOrDefault(
+                definition =>
+                    _ownedWindowLayouts.GetAvailability(definition.Preset).IsEnabled);
+            if (firstAvailable is not null)
+            {
+                LayoutRailList.SelectedValue = firstAvailable.Preset;
+            }
+        }
+
         if (LayoutRailList.SelectedItem is not object selected)
         {
             return;
@@ -813,6 +1028,41 @@ public partial class DesktopShellSurface :
         {
             item.Focus();
         }
+    }
+
+    private void RefreshLayoutAvailability()
+    {
+        LayoutRailList.ApplyTemplate();
+        LayoutRailList.UpdateLayout();
+        foreach (LayoutDefinition definition in LayoutCatalog.All)
+        {
+            if (LayoutRailList.ItemContainerGenerator.ContainerFromItem(
+                    definition) is not ListBoxItem item)
+            {
+                continue;
+            }
+
+            OwnedLayoutAvailability availability =
+                _ownedWindowLayouts.GetAvailability(definition.Preset);
+            item.IsEnabled = availability.IsEnabled;
+            string helpText = availability.IsEnabled
+                ? $"Apply {definition.AutomationName} to visible JARVIS windows."
+                : availability.StatusText + ".";
+            item.ToolTip = availability.IsEnabled
+                ? definition.AutomationName
+                : $"{definition.AutomationName} / {availability.StatusText}";
+            AutomationProperties.SetHelpText(item, helpText);
+            AutomationProperties.SetItemStatus(
+                item,
+                availability.IsEnabled ? "Available" : "Unavailable");
+        }
+    }
+
+    private void AnnounceUnavailableLayout(LayoutPreset preset)
+    {
+        OwnedLayoutAvailability availability =
+            _ownedWindowLayouts.GetAvailability(preset);
+        Announce($"LAYOUT / {availability.StatusText}");
     }
 
     private void RevealSelectedLayout()
@@ -1397,6 +1647,10 @@ public partial class DesktopShellSurface :
             return;
         }
 
+        ActivateOwnedWindow(ExplorerWindow);
+        BeginOwnedWindowManualMove(
+            ExplorerOwnedWindowId,
+            ExplorerWindow);
         Point pointer = eventArgs.GetPosition(DesktopCanvas);
         _explorerDragOffset = new(
             pointer.X - Canvas.GetLeft(ExplorerWindow),
@@ -1411,8 +1665,7 @@ public partial class DesktopShellSurface :
         MouseEventArgs eventArgs)
     {
         if (!_draggingExplorer ||
-            eventArgs.LeftButton != MouseButtonState.Pressed ||
-            _explorerMaximized)
+            eventArgs.LeftButton != MouseButtonState.Pressed)
         {
             return;
         }
@@ -1436,6 +1689,9 @@ public partial class DesktopShellSurface :
     {
         _draggingExplorer = false;
         ExplorerTitleBar.ReleaseMouseCapture();
+        CompleteOwnedWindowManualMove(
+            ExplorerOwnedWindowId,
+            ExplorerWindow);
     }
 
     private void ExplorerMinimizeButton_OnClick(
@@ -1445,8 +1701,15 @@ public partial class DesktopShellSurface :
 
     private void MinimizeExplorer()
     {
+        _ = _ownedWindowLayouts.TrySetLifecycle(
+            ExplorerOwnedWindowId,
+            OwnedWindowLifecycle.Minimized);
         ExplorerWindow.Visibility = Visibility.Collapsed;
         ExplorerRunningIndicator.Opacity = 0.45;
+        ApplyCurrentLayoutPresentation();
+        RefreshLayoutAvailability();
+        UpdateOwnedWindowZOrder();
+        QueueTaskbarFocus(TaskbarExplorerButton);
         Announce("EXPLORER / MINIMIZED");
     }
 
@@ -1454,24 +1717,33 @@ public partial class DesktopShellSurface :
         object sender,
         RoutedEventArgs eventArgs)
     {
-        if (!_explorerMaximized)
-        {
-            SelectLayout(LayoutPreset.Maximized, false);
-            Announce("EXPLORER / EXPANDED");
-        }
-        else
-        {
-            SelectLayout(_lastTiledLayout, false);
-            Announce("EXPLORER / RESTORED");
-        }
+        RestoreExplorer();
+        bool wasMaximized = IsExplorerMaximized;
+        OwnedLayoutApplyResult result =
+            _ownedWindowLayouts.TryToggleMaximize(
+                ExplorerOwnedWindowId,
+                OwnedWorkArea);
+        ApplyOwnedLayoutResult(result);
+        ApplyCurrentLayoutPresentation();
+        RefreshLayoutAvailability();
+        Announce(wasMaximized
+            ? "EXPLORER / RESTORED"
+            : "EXPLORER / EXPANDED");
     }
 
     private void ExplorerCloseButton_OnClick(
         object sender,
         RoutedEventArgs eventArgs)
     {
+        _ = _ownedWindowLayouts.TrySetLifecycle(
+            ExplorerOwnedWindowId,
+            OwnedWindowLifecycle.Closed);
         ExplorerWindow.Visibility = Visibility.Collapsed;
         ExplorerRunningIndicator.Visibility = Visibility.Collapsed;
+        ApplyCurrentLayoutPresentation();
+        RefreshLayoutAvailability();
+        UpdateOwnedWindowZOrder();
+        QueueTaskbarFocus(TaskbarExplorerButton);
         Announce("EXPLORER / CLOSED");
     }
 
@@ -1479,50 +1751,51 @@ public partial class DesktopShellSurface :
         object sender,
         RoutedEventArgs eventArgs)
     {
-        if (ExplorerWindow.Visibility == Visibility.Visible)
+        if (ExplorerWindow.Visibility == Visibility.Visible &&
+            IsOwnedWindowActive(ExplorerOwnedWindowId))
         {
             MinimizeExplorer();
         }
         else
         {
+            bool wasVisible = ExplorerWindow.Visibility == Visibility.Visible;
             RestoreExplorer();
-            Announce("EXPLORER / RESTORED");
+            if (_ownedWindowLayouts.AppliedPreset == LayoutPreset.Maximized)
+            {
+                OwnedLayoutApplyResult result =
+                    _ownedWindowLayouts.TryApply(
+                        LayoutPreset.Maximized,
+                        OwnedWorkArea);
+                ApplyOwnedLayoutResult(result);
+                ApplyCurrentLayoutPresentation();
+            }
+
+            Announce(wasVisible
+                ? "EXPLORER / ACTIVE"
+                : "EXPLORER / RESTORED");
+            _ = Dispatcher.BeginInvoke(
+                DispatcherPriority.Input,
+                new Action(() => _ = ExplorerItemList.Focus()));
         }
     }
 
     private void RestoreExplorer()
     {
+        bool wasVisible =
+            ExplorerWindow.Visibility == Visibility.Visible;
+        _ = _ownedWindowLayouts.TrySetLifecycle(
+            ExplorerOwnedWindowId,
+            OwnedWindowLifecycle.Visible);
+        ApplyCoordinatorBounds(ExplorerOwnedWindowId, ExplorerWindow);
         ExplorerWindow.Visibility = Visibility.Visible;
         ExplorerRunningIndicator.Visibility = Visibility.Visible;
         ExplorerRunningIndicator.Opacity = 1.0;
-    }
-
-    private void ExpandExplorerBounds()
-    {
-        if (_explorerMaximized)
+        ActivateOwnedWindow(ExplorerWindow);
+        RefreshLayoutAvailability();
+        if (!wasVisible)
         {
-            return;
+            ApplyCurrentLayoutPresentation();
         }
-
-        _explorerRestoreBounds = new(
-            Canvas.GetLeft(ExplorerWindow),
-            Canvas.GetTop(ExplorerWindow),
-            ExplorerWindow.Width,
-            ExplorerWindow.Height);
-        Canvas.SetLeft(ExplorerWindow, 148.0);
-        Canvas.SetTop(ExplorerWindow, 24.0);
-        ExplorerWindow.Width = 1428.0;
-        ExplorerWindow.Height = 752.0;
-        _explorerMaximized = true;
-    }
-
-    private void RestoreExplorerBounds()
-    {
-        Canvas.SetLeft(ExplorerWindow, _explorerRestoreBounds.X);
-        Canvas.SetTop(ExplorerWindow, _explorerRestoreBounds.Y);
-        ExplorerWindow.Width = _explorerRestoreBounds.Width;
-        ExplorerWindow.Height = _explorerRestoreBounds.Height;
-        _explorerMaximized = false;
     }
 
     private void ExplorerBackButton_OnClick(
@@ -1980,6 +2253,384 @@ public partial class DesktopShellSurface :
             NavigateExplorerHistory(_explorerWorkspace.TryGoUp);
             eventArgs.Handled = true;
         }
+    }
+
+    private void TaskManagerTitleBar_OnMouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs eventArgs)
+    {
+        if (FindParent<Button>(eventArgs.OriginalSource as DependencyObject) is not null)
+        {
+            return;
+        }
+
+        ActivateOwnedWindow(TaskManagerWindow);
+        BeginOwnedWindowManualMove(
+            TaskManagerOwnedWindowId,
+            TaskManagerWindow);
+        Point pointer = eventArgs.GetPosition(DesktopCanvas);
+        _taskManagerDragOffset = new(
+            pointer.X - Canvas.GetLeft(TaskManagerWindow),
+            pointer.Y - Canvas.GetTop(TaskManagerWindow));
+        _draggingTaskManager = true;
+        TaskManagerTitleBar.CaptureMouse();
+        eventArgs.Handled = true;
+    }
+
+    private void TaskManagerTitleBar_OnMouseMove(
+        object sender,
+        MouseEventArgs eventArgs)
+    {
+        if (!_draggingTaskManager ||
+            eventArgs.LeftButton != MouseButtonState.Pressed)
+        {
+            return;
+        }
+
+        Point pointer = eventArgs.GetPosition(DesktopCanvas);
+        double left = Math.Clamp(
+            pointer.X - _taskManagerDragOffset.X,
+            LayoutAxisX + 18.0,
+            1600.0 - TaskManagerWindow.Width - 18.0);
+        double top = Math.Clamp(
+            pointer.Y - _taskManagerDragOffset.Y,
+            18.0,
+            TaskbarTop - TaskManagerWindow.Height - 18.0);
+        Canvas.SetLeft(TaskManagerWindow, Math.Round(left));
+        Canvas.SetTop(TaskManagerWindow, Math.Round(top));
+    }
+
+    private void TaskManagerTitleBar_OnMouseLeftButtonUp(
+        object sender,
+        MouseButtonEventArgs eventArgs)
+    {
+        _draggingTaskManager = false;
+        TaskManagerTitleBar.ReleaseMouseCapture();
+        CompleteOwnedWindowManualMove(
+            TaskManagerOwnedWindowId,
+            TaskManagerWindow);
+    }
+
+    private void TaskManagerMinimizeButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs) =>
+        MinimizeTaskManager();
+
+    private void TaskManagerMaximizeButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        RestoreTaskManager();
+        bool wasMaximized = IsTaskManagerMaximizedForTest;
+        OwnedLayoutApplyResult result =
+            _ownedWindowLayouts.TryToggleMaximize(
+                TaskManagerOwnedWindowId,
+                OwnedWorkArea);
+        ApplyOwnedLayoutResult(result);
+        ApplyCurrentLayoutPresentation();
+        RefreshLayoutAvailability();
+        Announce(wasMaximized
+            ? "TASK MANAGER / RESTORED"
+            : "TASK MANAGER / EXPANDED");
+    }
+
+    private void TaskManagerCloseButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs) =>
+        CloseTaskManager();
+
+    private void TaskManagerWindow_OnPreviewKeyDown(
+        object sender,
+        KeyEventArgs eventArgs)
+    {
+        if (eventArgs.Key == Key.Escape)
+        {
+            CloseTaskManager();
+            eventArgs.Handled = true;
+        }
+    }
+
+    private void TaskbarSystemButton_OnClick(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        if (TaskManagerWindow.Visibility == Visibility.Visible &&
+            IsOwnedWindowActive(TaskManagerOwnedWindowId))
+        {
+            MinimizeTaskManager();
+        }
+        else
+        {
+            bool wasClosed = GetOwnedWindowState(TaskManagerOwnedWindowId)
+                .Lifecycle == OwnedWindowLifecycle.Closed;
+            RestoreTaskManager();
+            if (_ownedWindowLayouts.AppliedPreset == LayoutPreset.Maximized)
+            {
+                OwnedLayoutApplyResult result =
+                    _ownedWindowLayouts.TryApply(
+                        LayoutPreset.Maximized,
+                        OwnedWorkArea);
+                ApplyOwnedLayoutResult(result);
+                ApplyCurrentLayoutPresentation();
+            }
+
+            Announce(
+                wasClosed
+                    ? "TASK MANAGER / OPENED / READ ONLY"
+                    : "TASK MANAGER / ACTIVE");
+        }
+    }
+
+    private void RestoreTaskManager()
+    {
+        _ = _ownedWindowLayouts.TrySetLifecycle(
+            TaskManagerOwnedWindowId,
+            OwnedWindowLifecycle.Visible);
+        ApplyCoordinatorBounds(
+            TaskManagerOwnedWindowId,
+            TaskManagerWindow);
+        TaskManagerWindow.Visibility = Visibility.Visible;
+        TaskManagerRunningIndicator.Visibility = Visibility.Visible;
+        TaskManagerRunningIndicator.Opacity = 1.0;
+        ActivateOwnedWindow(TaskManagerWindow);
+        RefreshLayoutAvailability();
+        TaskManagerPanel.StartSampling();
+        _ = Dispatcher.BeginInvoke(
+            DispatcherPriority.Input,
+            new Action(() => _ = TaskManagerMinimizeButton.Focus()));
+    }
+
+    private void MinimizeTaskManager()
+    {
+        TaskManagerPanel.StopSampling();
+        _ = _ownedWindowLayouts.TrySetLifecycle(
+            TaskManagerOwnedWindowId,
+            OwnedWindowLifecycle.Minimized);
+        TaskManagerWindow.Visibility = Visibility.Collapsed;
+        TaskManagerRunningIndicator.Visibility = Visibility.Visible;
+        TaskManagerRunningIndicator.Opacity = 0.45;
+        ApplyCurrentLayoutPresentation();
+        RefreshLayoutAvailability();
+        UpdateOwnedWindowZOrder();
+        QueueTaskbarFocus(TaskbarSystemButton);
+        Announce("TASK MANAGER / MINIMIZED / SAMPLING PAUSED");
+    }
+
+    private void CloseTaskManager()
+    {
+        TaskManagerPanel.StopSampling();
+        _ = _ownedWindowLayouts.TrySetLifecycle(
+            TaskManagerOwnedWindowId,
+            OwnedWindowLifecycle.Closed);
+        TaskManagerWindow.Visibility = Visibility.Collapsed;
+        TaskManagerRunningIndicator.Visibility = Visibility.Collapsed;
+        ApplyCurrentLayoutPresentation();
+        RefreshLayoutAvailability();
+        UpdateOwnedWindowZOrder();
+        QueueTaskbarFocus(TaskbarSystemButton);
+        Announce("TASK MANAGER / CLOSED / SAMPLING STOPPED");
+    }
+
+    private void ActivateOwnedWindow(FrameworkElement window)
+    {
+        OwnedWindowId id = GetOwnedWindowId(window);
+        _ = _ownedWindowLayouts.TryActivate(id);
+        UpdateOwnedWindowZOrder();
+    }
+
+    private void OwnedWindow_OnPreviewMouseDown(
+        object sender,
+        MouseButtonEventArgs eventArgs)
+    {
+        if (sender is FrameworkElement window)
+        {
+            ActivateOwnedWindow(window);
+        }
+    }
+
+    private void OwnedWindow_OnGotKeyboardFocus(
+        object sender,
+        KeyboardFocusChangedEventArgs eventArgs)
+    {
+        if (sender is FrameworkElement window)
+        {
+            ActivateOwnedWindow(window);
+        }
+    }
+
+    private void BeginOwnedWindowManualMove(
+        OwnedWindowId id,
+        FrameworkElement window)
+    {
+        if (_ownedWindowLayouts.AppliedPreset is null)
+        {
+            return;
+        }
+
+        _ = _ownedWindowLayouts.TrySetManualBounds(
+            id,
+            GetOwnedWindowBounds(window));
+        ApplyCurrentLayoutPresentation();
+        RefreshLayoutAvailability();
+    }
+
+    private void CompleteOwnedWindowManualMove(
+        OwnedWindowId id,
+        FrameworkElement window)
+    {
+        _ = _ownedWindowLayouts.TrySetManualBounds(
+            id,
+            GetOwnedWindowBounds(window));
+        ApplyCurrentLayoutPresentation();
+        RefreshLayoutAvailability();
+    }
+
+    private void ApplyOwnedLayoutResult(OwnedLayoutApplyResult result)
+    {
+        if (!result.Succeeded)
+        {
+            return;
+        }
+
+        foreach (OwnedWindowPlacement placement in result.Placements)
+        {
+            FrameworkElement window = placement.WindowId == ExplorerOwnedWindowId
+                ? ExplorerWindow
+                : placement.WindowId == TaskManagerOwnedWindowId
+                    ? TaskManagerWindow
+                    : throw new InvalidOperationException(
+                        $"Unregistered owned window placement {placement.WindowId}.");
+            SetOwnedWindowBounds(window, placement.Bounds);
+        }
+
+        UpdateOwnedWindowZOrder();
+        UpdateOwnedWindowLayoutDensity();
+    }
+
+    private void ApplyCoordinatorBounds(
+        OwnedWindowId id,
+        FrameworkElement window)
+    {
+        SetOwnedWindowBounds(window, GetOwnedWindowState(id).Bounds);
+        UpdateOwnedWindowLayoutDensity();
+    }
+
+    private void UpdateOwnedWindowZOrder()
+    {
+        Panel.SetZIndex(
+            ExplorerWindow,
+            IsOwnedWindowActive(ExplorerOwnedWindowId) ? 8 : 5);
+        Panel.SetZIndex(
+            TaskManagerWindow,
+            IsOwnedWindowActive(TaskManagerOwnedWindowId) ? 8 : 5);
+    }
+
+    private void UpdateOwnedWindowLayoutDensity()
+    {
+        _explorerCompactWidth =
+            ExplorerWindow.Width < ExplorerCompactWidthThreshold;
+        _explorerCompactHeight =
+            ExplorerWindow.Height < ExplorerCompactHeightThreshold;
+        bool compact = _explorerCompactWidth || _explorerCompactHeight;
+        ExplorerFolderPanel.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        ExplorerActionPanel.Visibility = _explorerCompactHeight ? Visibility.Collapsed : Visibility.Visible;
+        ExplorerStoragePanel.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        ExplorerFolderColumn.Width = compact
+            ? new GridLength(0.0)
+            : new GridLength(286.0);
+        ExplorerFolderDividerColumn.Width = compact
+            ? new GridLength(0.0)
+            : new GridLength(1.0);
+        ExplorerFullHeader.Visibility = _explorerCompactWidth
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        ExplorerCompactHeader.Visibility = _explorerCompactWidth
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        ExplorerItemList.ItemTemplate = _explorerCompactWidth
+            ? _explorerCompactItemTemplate
+            : _explorerFullItemTemplate;
+        ExplorerTitleText.Text = _explorerCompactWidth
+            ? "JARVIS2 / EXPLORER"
+            : "JARVIS2 / FILE EXPLORER";
+        ExplorerActionRow.Height = _explorerCompactHeight
+            ? new GridLength(0.0)
+            : new GridLength(90.0);
+        ExplorerStorageRow.Height = compact
+            ? new GridLength(0.0)
+            : new GridLength(101.0);
+        TaskManagerPanel.SetLayoutDensity(
+            TaskManagerWindow.Width < ExplorerCompactWidthThreshold,
+            TaskManagerWindow.Height < ExplorerCompactHeightThreshold);
+        TaskManagerTitleText.Text = TaskManagerWindow.Width < ExplorerCompactWidthThreshold
+            ? "TASK MANAGER"
+            : "JARVIS2 / TASK MANAGER";
+    }
+
+    private void UpdateOwnedWindowControlNames()
+    {
+        string explorerAction = IsExplorerMaximized ? "Restore" : "Maximize";
+        AutomationProperties.SetName(
+            ExplorerMaximizeButton,
+            $"{explorerAction} Explorer");
+        ExplorerMaximizeButton.ToolTip = $"{explorerAction.ToUpperInvariant()} EXPLORER";
+        string taskManagerAction = IsTaskManagerMaximizedForTest
+            ? "Restore"
+            : "Maximize";
+        AutomationProperties.SetName(
+            TaskManagerMaximizeButton,
+            $"{taskManagerAction} Task Manager");
+        TaskManagerMaximizeButton.ToolTip =
+            $"{taskManagerAction.ToUpperInvariant()} TASK MANAGER";
+    }
+
+    private bool IsOwnedWindowActive(OwnedWindowId id) =>
+        _ownedWindowLayouts.ActiveWindowId == id;
+
+    private bool IsOwnedWindowMaximized(OwnedWindowId id) =>
+        _ownedWindowLayouts.AppliedPreset == LayoutPreset.Maximized &&
+        GetOwnedWindowState(id).AssignedPaneIndex == 0;
+
+    private OwnedWindowState GetOwnedWindowState(OwnedWindowId id) =>
+        _ownedWindowLayouts.TryGetWindow(id, out OwnedWindowState? state) &&
+        state is not null
+            ? state
+            : throw new InvalidOperationException(
+                $"Owned window {id} is not registered.");
+
+    private static OwnedWindowId GetOwnedWindowId(FrameworkElement window) =>
+        window.Name switch
+        {
+            "ExplorerWindow" => ExplorerOwnedWindowId,
+            "TaskManagerWindow" => TaskManagerOwnedWindowId,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(window),
+                window.Name,
+                "The element is not a registered owned window."),
+        };
+
+    private static Rect GetOwnedWindowBounds(FrameworkElement window) =>
+        new(
+            Canvas.GetLeft(window),
+            Canvas.GetTop(window),
+            window.Width,
+            window.Height);
+
+    private static void SetOwnedWindowBounds(
+        FrameworkElement window,
+        Rect bounds)
+    {
+        Canvas.SetLeft(window, bounds.X);
+        Canvas.SetTop(window, bounds.Y);
+        window.Width = bounds.Width;
+        window.Height = bounds.Height;
+    }
+
+    private void QueueTaskbarFocus(Button button)
+    {
+        _ = Dispatcher.BeginInvoke(
+            DispatcherPriority.Input,
+            new Action(() => _ = button.Focus()));
     }
 
     private void TaskbarUtilityButton_OnClick(

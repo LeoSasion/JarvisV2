@@ -13,12 +13,21 @@ $modelRoot = Join-Path $root (
     'src\platforms\windows10\Jarvis.Win10.RgbThemeModel')
 $visualEffectsRoot = Join-Path $root (
     'src\common\Jarvis.VisualEffects')
+$taskManagerModelRoot = Join-Path $root (
+    'src\platforms\windows10\Jarvis.Win10.OwnedTaskManager')
 $projectPath = Join-Path $sourceRoot (
     'Jarvis.Win10.NeuralVoidPreview.csproj')
 $surfacePath = Join-Path $sourceRoot (
     'DesktopShellSurface.xaml')
 $surfaceCodePath = Join-Path $sourceRoot (
     'DesktopShellSurface.xaml.cs')
+$taskManagerSurfacePath = Join-Path $sourceRoot 'TaskManagerSurface.xaml'
+$taskManagerSurfaceCodePath = Join-Path $sourceRoot (
+    'TaskManagerSurface.xaml.cs')
+$taskManagerSurfaceScenariosPath = Join-Path $sourceRoot (
+    'TaskManagerSurfaceScenarios.cs')
+$taskManagerProjectPath = Join-Path $taskManagerModelRoot (
+    'Jarvis.Win10.OwnedTaskManager.csproj')
 $explorerWorkspacePath = Join-Path $sourceRoot 'ExplorerWorkspace.cs'
 $explorerScenariosPath = Join-Path $sourceRoot (
     'ExplorerWorkspaceScenarios.cs')
@@ -39,12 +48,14 @@ $apertureFramePath = Join-Path $sourceRoot (
 $windowPath = Join-Path $sourceRoot 'MainWindow.xaml'
 $themePath = Join-Path $root (
     'config\windows10-neural-void-rgb-theme.json')
+$visualBackendManifestPath = Join-Path $root (
+    'config\visual-backends\windows10-wpf-owned-preview.json')
 $renderRoot = Join-Path $root (
     'artifacts\win10-neural-void-preview-tests')
 $currentFeatherBaselinePath = Join-Path $root (
     'docs\screenshots\jarvis-win10-current-ui-baseline.png')
 $approvedFeatherTargetSha256 =
-    '42AD07963D7BA732F5FBC3EABC3B15E28F1E38AACFA13C0243FA69870D6168E2'
+    'DE71FCCB280636402914ED8108DE22D6864870E37F8E9D2B9EF7FC4E7AA69759'
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()
@@ -82,6 +93,12 @@ $sourceText = @(
 ) -join [Environment]::NewLine
 $surfaceText = [IO.File]::ReadAllText($surfacePath)
 $surfaceCodeText = [IO.File]::ReadAllText($surfaceCodePath)
+$taskManagerSurfaceText = [IO.File]::ReadAllText($taskManagerSurfacePath)
+$taskManagerSurfaceCodeText =
+    [IO.File]::ReadAllText($taskManagerSurfaceCodePath)
+$taskManagerSurfaceScenariosText =
+    [IO.File]::ReadAllText($taskManagerSurfaceScenariosPath)
+$taskManagerProjectText = [IO.File]::ReadAllText($taskManagerProjectPath)
 $explorerWorkspaceText = [IO.File]::ReadAllText($explorerWorkspacePath)
 $explorerScenariosText = [IO.File]::ReadAllText($explorerScenariosPath)
 $layoutCatalogText = [IO.File]::ReadAllText($layoutCatalogPath)
@@ -98,9 +115,13 @@ $wpfVectorScenariosText =
 $apertureFrameText = [IO.File]::ReadAllText($apertureFramePath)
 $windowText = [IO.File]::ReadAllText($windowPath)
 $themeText = [IO.File]::ReadAllText($themePath)
+$visualBackendManifest =
+    Get-Content -LiteralPath $visualBackendManifestPath -Raw |
+        ConvertFrom-Json
 
 $forbiddenMutationPattern = (
-    '(?i)\b(?:DllImport|LibraryImport|GetProcessesByName|Process\.|' +
+    '(?i)\b(?:DllImport|LibraryImport|GetProcessesByName|' +
+    '(?-i:Process)\s*\.|' +
     'Registry|SendMessage|PostMessage|SetWindowLong|SetWindowPos|' +
     'DwmSetWindowAttribute|SetWindowsHookEx|OpenProcess|' +
     'CreateRemoteThread|WriteProcessMemory|HidD_|SetupDi|' +
@@ -114,6 +135,76 @@ Add-Check `
     -Detail (
         'The preview may render WPF controls and PNGs only; native, ' +
         'process, registry, Shell and device APIs are forbidden.')
+
+$forbiddenTaskManagerControlPattern =
+    '(?i)\b(?:Kill|TerminateProcess|OpenProcess|SetPriorityClass|' +
+    'CreateRemoteThread|WriteProcessMemory|SetWindowsHookEx|' +
+    'SetWindowPos|SetWindowLong|SendMessage|PostMessage)\b'
+Add-Check `
+    -Name 'source.task-manager-ui-consumes-read-only-model' `
+    -Passed (
+        $taskManagerProjectText.Contains('<OutputType>Exe</OutputType>') -and
+        $taskManagerSurfaceText.Contains(
+            'AutomationProperties.Name="Read-only process telemetry"') -and
+        $surfaceText.Contains('OWNED / READ ONLY') -and
+        $taskManagerSurfaceText.Contains('PROCESS CONTROL ABSENT') -and
+        $taskManagerSurfaceCodeText.Contains('TaskSnapshotSampler') -and
+        $taskManagerSurfaceCodeText.Contains('WindowsProcessSnapshotSource') -and
+        $taskManagerSurfaceCodeText.Contains('StopSampling()') -and
+        $taskManagerSurfaceScenariosText.Contains(
+            'system-button-owns-complete-window-lifecycle') -and
+        -not [regex]::IsMatch(
+            $taskManagerSurfaceCodeText,
+            $forbiddenTaskManagerControlPattern)) `
+    -Detail (
+        'The owned Task Manager must consume the injected read-only sampler, ' +
+        'label its capability boundary and expose no process, window or ' +
+        'injection control API.')
+
+$expectedPrimitiveKinds = @(
+    'point',
+    'line',
+    'polyline',
+    'arc',
+    'path',
+    'rectangle',
+    'ellipse',
+    'plane'
+)
+Add-Check `
+    -Name 'contract.visual-backend-manifest' `
+    -Passed (
+        $visualBackendManifest.schemaVersion -eq 1 -and
+        $visualBackendManifest.contractId -ceq
+            'jarvisv2-visual-backend-manifest-v1' -and
+        $visualBackendManifest.backendId -ceq
+            'windows10-wpf-owned-preview' -and
+        $visualBackendManifest.platformId -ceq 'windows10' -and
+        $visualBackendManifest.ownership.sourceRoot -ceq
+            'src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview' -and
+        $visualBackendManifest.ownership.testEntry -ceq
+            'scripts/Test-Windows10NeuralVoidPreview.ps1' -and
+        $visualBackendManifest.contracts.visualSignal -ceq
+            'jarvis-visual-signal-v1' -and
+        $visualBackendManifest.contracts.retainedVectorScene -ceq
+            'jarvis-retained-vector-scene-v1' -and
+        $visualBackendManifest.capabilities.surfaceScope -ceq
+            'owned-process' -and
+        $visualBackendManifest.capabilities.ownedProcessRendering -and
+        -not $visualBackendManifest.capabilities.shellIntegration -and
+        -not $visualBackendManifest.capabilities.foreignProcessCode -and
+        -not $visualBackendManifest.capabilities.injectionRequired -and
+        -not $visualBackendManifest.capabilities.physicalDeviceIo -and
+        (@($visualBackendManifest.capabilities.primitiveKinds) -join '|') -ceq
+            ($expectedPrimitiveKinds -join '|') -and
+        -not $visualBackendManifest.evidence.publicSupportDeclared -and
+        -not $visualBackendManifest.evidence.activationPermitted -and
+        $visualBackendManifest.evidence.liveShell -ceq 'not-run' -and
+        -not $visualBackendManifest.evidence.mutationPerformed) `
+    -Detail (
+        'The Win10 renderer manifest must bind the two portable data-plane ' +
+        'contracts and every supported primitive to this owned-process test ' +
+        'without claiming Shell, injection, device-I/O or public support.')
 
 Add-Check `
     -Name 'project.shared-rgb-frame-engine' `
@@ -137,6 +228,10 @@ $requiredRoleNames = @(
     'TaskbarSearchButton',
     'TaskbarTaskViewButton',
     'TaskbarExplorerButton',
+    'TaskbarSystemButton',
+    'TaskManagerWindow',
+    'TaskManagerPanel',
+    'TaskManagerRunningIndicator',
     'TaskbarNetworkButton',
     'TaskbarClockButton'
 )
@@ -252,8 +347,8 @@ Add-Check `
             'ScrollToVerticalOffset\(target\);\s*LayoutRailList\.UpdateLayout\(\);' -and
         $surfaceCodeText.Contains('LayoutItemHeight = 64.0') -and
         $surfaceCodeText.Contains('LayoutViewportHeight = 556.0') -and
-        $surfaceCodeText.Contains('ExpandExplorerBounds()') -and
-        $surfaceCodeText.Contains('_lastTiledLayout') -and
+        $surfaceCodeText.Contains('_ownedWindowLayouts.TryApply(') -and
+        $surfaceCodeText.Contains('_ownedWindowLayouts.TryToggleMaximize(') -and
         $surfaceCodeText.Contains('ExplorerTitleBar_OnMouseMove(') -and
         $surfaceCodeText.Contains('MinimizeExplorer()') -and
         $surfaceCodeText.Contains('RestoreExplorer()') -and
@@ -263,7 +358,7 @@ Add-Check `
         'a continuous boundary-aware feather, then map pointer distance from ' +
         'its center through a nonlinear display-frame-synchronized velocity ' +
         'curve without dwell, snap or post-leave offset changes, ' +
-        'select one of sixteen layouts, ' +
+        'apply only layouts admitted by the owned-window registry, ' +
         'synchronize maximize/restore state, and keep the inner Explorer ' +
         'controls operational.')
 
@@ -563,6 +658,10 @@ $featherEvidenceState =
     else {
         'non-comparable-not-run'
     }
+$taskManagerRenderAttempted = $false
+$taskManagerStructuralRenderPassed = $false
+$taskManagerRenderSha256 = $null
+$taskManagerVisualEvidenceState = 'not-run'
 
 $buildOutput = @(
     & $DotnetPath build `
@@ -633,7 +732,7 @@ if ($buildExitCode -eq 0) {
             $edgeExitCode -eq 0 -and
             $null -ne $edgeReceipt -and
             $edgeReceipt.result -eq 'passed' -and
-            $edgeReceipt.schemaVersion -eq 8 -and
+            $edgeReceipt.schemaVersion -eq 9 -and
             $edgeReceipt.scenarioCount -eq 25 -and
             $edgeReceipt.passedCount -eq
                 $edgeReceipt.scenarioCount -and
@@ -681,6 +780,76 @@ if ($buildExitCode -eq 0) {
         -Detail (
             "Explorer workspace test exit $explorerExitCode; scenarios " +
             $explorerScenarioDetail + '.')
+
+    $taskManagerSurfaceOutput = @(
+        & $DotnetPath $assemblyPath test-task-manager-surface 2>&1
+    )
+    $taskManagerSurfaceExitCode = $LASTEXITCODE
+    $taskManagerSurfaceReceipt = $null
+    try {
+        $taskManagerSurfaceReceipt =
+            ($taskManagerSurfaceOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $taskManagerSurfaceReceipt = $null
+    }
+    $taskManagerScenarioDetail =
+        if ($null -eq $taskManagerSurfaceReceipt) {
+            'receipt-unavailable'
+        }
+        else {
+            "$($taskManagerSurfaceReceipt.passedCount)/" +
+                "$($taskManagerSurfaceReceipt.scenarioCount)"
+        }
+    Add-Check `
+        -Name 'interaction.owned-task-manager-scenarios' `
+        -Passed (
+            $taskManagerSurfaceExitCode -eq 0 -and
+            $null -ne $taskManagerSurfaceReceipt -and
+            $taskManagerSurfaceReceipt.result -eq 'passed' -and
+            $taskManagerSurfaceReceipt.schemaVersion -eq 1 -and
+            $taskManagerSurfaceReceipt.scenarioCount -eq 9 -and
+            $taskManagerSurfaceReceipt.passedCount -eq
+                $taskManagerSurfaceReceipt.scenarioCount -and
+            $taskManagerSurfaceReceipt.ownProcessOnly -and
+            $taskManagerSurfaceReceipt.readOnlyProcessTelemetry -and
+            -not $taskManagerSurfaceReceipt.processControlSupported -and
+            $taskManagerSurfaceReceipt.samplingStopsWhenHidden -and
+            $taskManagerSurfaceReceipt.liveExplorer -eq 'not-run' -and
+            -not $taskManagerSurfaceReceipt.mutationPerformed) `
+        -Detail (
+            "Owned Task Manager surface exit $taskManagerSurfaceExitCode; " +
+            "scenarios $taskManagerScenarioDetail.")
+
+    $ownedLayoutOutput = @(
+        & $DotnetPath $assemblyPath test-owned-window-layout 2>&1
+    )
+    $ownedLayoutExitCode = $LASTEXITCODE
+    $ownedLayoutReceipt = $null
+    try {
+        $ownedLayoutReceipt = ($ownedLayoutOutput -join [Environment]::NewLine) |
+            ConvertFrom-Json
+    }
+    catch {
+        $ownedLayoutReceipt = $null
+    }
+    Add-Check `
+        -Name 'interaction.owned-window-layout-scenarios' `
+        -Passed (
+            $ownedLayoutExitCode -eq 0 -and
+            $null -ne $ownedLayoutReceipt -and
+            $ownedLayoutReceipt.receiptType -ceq 'jarvisv2-win10-owned-window-layout-test' -and
+            $ownedLayoutReceipt.result -eq 'passed' -and
+            $ownedLayoutReceipt.schemaVersion -eq 1 -and
+            $ownedLayoutReceipt.scenarioCount -eq 24 -and
+            $ownedLayoutReceipt.passedCount -eq $ownedLayoutReceipt.scenarioCount -and
+            $ownedLayoutReceipt.ownProcessOnly -and
+            -not $ownedLayoutReceipt.thirdPartyWindowControlSupported -and
+            -not $ownedLayoutReceipt.shellMutationSupported -and
+            $ownedLayoutReceipt.liveExplorer -eq 'not-run' -and
+            -not $ownedLayoutReceipt.mutationPerformed) `
+        -Detail "Owned layout coordinator and hosted WPF scenarios exit $ownedLayoutExitCode."
 
     $null = New-Item `
         -ItemType Directory `
@@ -834,8 +1003,155 @@ if ($buildExitCode -eq 0) {
             'single-yellow. A non-locked host may pass only as a ' +
             'non-comparable structural result. The locked 96-DPI Windows 10 ' +
             '19045.6466 profile passes only when the actual SHA-256 strictly ' +
-            'matches the explicitly approved current canonical. ' +
-            ($renderDetails -join '; '))
+             'matches the explicitly approved current canonical. ' +
+             ($renderDetails -join '; '))
+
+    $taskManagerRenderAttempted = $true
+    $taskManagerOutputPath =
+        Join-Path $renderRoot 'owned-task-manager.png'
+    $taskManagerRenderOutput = @(
+        & $DotnetPath `
+            $assemblyPath `
+            render-task-manager `
+            $taskManagerOutputPath `
+            '56.470588' `
+            'static' `
+            '0' 2>&1
+    )
+    $taskManagerRenderExitCode = $LASTEXITCODE
+    $taskManagerRenderReceipt = $null
+    try {
+        $taskManagerRenderReceipt =
+            ($taskManagerRenderOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json
+    }
+    catch {
+        $taskManagerRenderReceipt = $null
+    }
+
+    $taskManagerPngValid = $false
+    if (Test-Path -LiteralPath $taskManagerOutputPath -PathType Leaf) {
+        $taskManagerBytes =
+            [IO.File]::ReadAllBytes($taskManagerOutputPath)
+        if ($taskManagerBytes.Length -gt 4096 -and
+            $taskManagerBytes[0] -eq 0x89 -and
+            $taskManagerBytes[1] -eq 0x50 -and
+            $taskManagerBytes[2] -eq 0x4E -and
+            $taskManagerBytes[3] -eq 0x47) {
+            $taskManagerWidth =
+                ([int]$taskManagerBytes[16] * 16777216) +
+                ([int]$taskManagerBytes[17] * 65536) +
+                ([int]$taskManagerBytes[18] * 256) +
+                [int]$taskManagerBytes[19]
+            $taskManagerHeight =
+                ([int]$taskManagerBytes[20] * 16777216) +
+                ([int]$taskManagerBytes[21] * 65536) +
+                ([int]$taskManagerBytes[22] * 256) +
+                [int]$taskManagerBytes[23]
+            $taskManagerPngValid =
+                $taskManagerWidth -eq 1600 -and
+                $taskManagerHeight -eq 900
+        }
+    }
+
+    if ($taskManagerPngValid) {
+        $taskManagerRenderSha256 =
+            (Get-FileHash `
+                -LiteralPath $taskManagerOutputPath `
+                -Algorithm SHA256).Hash
+    }
+    $taskManagerStructuralRenderPassed =
+        $taskManagerRenderExitCode -eq 0 -and
+        $null -ne $taskManagerRenderReceipt -and
+        $taskManagerRenderReceipt.result -eq
+            'rendered-own-process-preview' -and
+        $taskManagerRenderReceipt.surfaceState -eq
+            'owned-task-manager-preview' -and
+        $taskManagerRenderReceipt.accentHex -eq '#FFF000' -and
+        -not $taskManagerRenderReceipt.desktopContainsDeviceUi -and
+        $taskManagerRenderReceipt.ownProcessOnly -and
+        $taskManagerRenderReceipt.readOnlyProcessTelemetry -and
+        -not $taskManagerRenderReceipt.processControlSupported -and
+        -not $taskManagerRenderReceipt.shellMutationSupported -and
+        -not $taskManagerRenderReceipt.deviceIntegrationSupported -and
+        -not $taskManagerRenderReceipt.activationPermitted -and
+        $taskManagerRenderReceipt.liveExplorer -eq 'not-run' -and
+        -not $taskManagerRenderReceipt.mutationPerformed -and
+        $taskManagerPngValid
+    $taskManagerVisualEvidenceState =
+        if ($taskManagerStructuralRenderPassed) {
+            'structural-render-pass'
+        }
+        else {
+            'render-blocked'
+        }
+    $taskManagerFailureDetail =
+        if ($null -eq $taskManagerRenderReceipt) {
+            'receipt-unavailable'
+        }
+        else {
+            @($taskManagerRenderReceipt.failures) -join ','
+        }
+    Add-Check `
+        -Name 'render.owned-task-manager-evidence' `
+        -Passed $taskManagerStructuralRenderPassed `
+        -Detail (
+            'The deterministic owned Task Manager scene must render as a ' +
+            '1600x900 PNG with read-only telemetry and no process, Shell, ' +
+            'injection or device-control capability. ' +
+            "state=$taskManagerVisualEvidenceState/" +
+            "sha256=$taskManagerRenderSha256/" +
+            "failures=$taskManagerFailureDetail")
+
+    $ownedLayoutRenderPassed = $true
+    $ownedLayoutRenderDetails = [Collections.Generic.List[string]]::new()
+    foreach ($ownedLayoutPreset in @('EqualColumns', 'EqualRows')) {
+        $ownedLayoutOutputPath = Join-Path $renderRoot (
+            "owned-layout-$ownedLayoutPreset.png")
+        $ownedLayoutOutput = @(
+            & $DotnetPath $assemblyPath render-owned-layout `
+                $ownedLayoutOutputPath '56.470588' 'static' '0' `
+                $ownedLayoutPreset 2>&1
+        )
+        $ownedLayoutExitCode = $LASTEXITCODE
+        $ownedLayoutReceipt = $null
+        try {
+            $ownedLayoutReceipt =
+                ($ownedLayoutOutput -join [Environment]::NewLine) |
+                    ConvertFrom-Json
+        }
+        catch {
+            $ownedLayoutReceipt = $null
+        }
+
+        $ownedLayoutCasePassed =
+            $ownedLayoutExitCode -eq 0 -and
+            $null -ne $ownedLayoutReceipt -and
+            $ownedLayoutReceipt.result -eq 'rendered-own-process-preview' -and
+            $ownedLayoutReceipt.surfaceState -eq 'owned-window-layout-preview' -and
+            $ownedLayoutReceipt.width -eq 1600 -and
+            $ownedLayoutReceipt.height -eq 900 -and
+            $ownedLayoutReceipt.ownProcessOnly -and
+            $ownedLayoutReceipt.readOnlyProcessTelemetry -and
+            -not $ownedLayoutReceipt.processControlSupported -and
+            -not $ownedLayoutReceipt.shellMutationSupported -and
+            -not $ownedLayoutReceipt.activationPermitted -and
+            $ownedLayoutReceipt.liveExplorer -eq 'not-run' -and
+            -not $ownedLayoutReceipt.mutationPerformed -and
+            (Test-Path -LiteralPath $ownedLayoutOutputPath -PathType Leaf)
+        $ownedLayoutRenderPassed =
+            $ownedLayoutRenderPassed -and $ownedLayoutCasePassed
+        $ownedLayoutRenderDetails.Add(
+            "$ownedLayoutPreset=$ownedLayoutCasePassed/exit=$ownedLayoutExitCode")
+    }
+    Add-Check `
+        -Name 'render.owned-two-pane-layout-chrome' `
+        -Passed $ownedLayoutRenderPassed `
+        -Detail (
+            'Column and row layouts must render real owned panes. The renderer ' +
+            'must reject a clipped Task Manager top rule or missing title controls; ' +
+            'this is structural evidence, not live Shell validation. ' +
+            ($ownedLayoutRenderDetails -join '; '))
 }
 
 $featherEvidenceStateConsistent =
@@ -939,6 +1255,11 @@ $passed = $failures.Count -eq 0
     featherPixelComparable = $featherPixelComparable
     featherPixelApproved = $featherPixelApproved
     featherEvidenceState = $featherEvidenceState
+    taskManagerRenderAttempted = $taskManagerRenderAttempted
+    taskManagerStructuralRenderPassed =
+        $taskManagerStructuralRenderPassed
+    taskManagerRenderSha256 = $taskManagerRenderSha256
+    taskManagerVisualEvidenceState = $taskManagerVisualEvidenceState
     pixelBaselineProfile = [ordered]@{
         build = $targetPixelBaselineBuild
         ubr = $targetPixelBaselineUbr
@@ -952,6 +1273,8 @@ $passed = $failures.Count -eq 0
         $passed -and $featherPixelApproved
     shellMutationSupported = $false
     deviceIntegrationSupported = $false
+    readOnlyProcessTelemetry = $true
+    processControlSupported = $false
     activationPermitted = $false
     liveExplorer = 'not-run'
     mutationPerformed = $false

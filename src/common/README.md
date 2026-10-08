@@ -3,19 +3,28 @@
 This directory contains projects intended to be shared by Windows 10 and
 Windows 11 after platform-specific admission.
 
+The directory name does not declare cross-operating-system portability. Future
+Linux backends must consume only explicitly admitted contracts and must not
+reference the remaining Windows-family projects. Renderer registration and the
+current portable data-plane allowlist are defined by
+`config/visual-backends` and ADR-0002.
+
 Do not move code here merely because it compiles on both systems. A component
 belongs here only when it has no private Win11 symbol, Win11-only selector or
 Win11-only DWM assumption. Existing assembly names and namespaces remain
 stable.
 
-`Jarvis.VisualEffects` is a platform-neutral `net8.0` library for the visual
-state shared by Win10 and Win11 renderers. It owns continuous RGB sampling,
+`Jarvis.VisualEffects` is a `net8.0` library with two admitted cross-OS data
+planes: `jarvis-visual-signal-v1` and
+`jarvis-retained-vector-scene-v1`. It owns continuous RGB sampling,
 the `jarvis-visual-signal-v1` linear-sRGB semantic frame, the typed Neural Void
 particle/post contract and schema-versioned inert preset validation. It has no
 WPF, native Windows, Shell or device SDK dependency. Unknown preset versions,
 enabled effects, malformed channels and device-I/O requests fail closed to an
-inactive state. Its retained vector-scene contract stores mathematical point,
-line, polyline, arc and plane commands in a design coordinate space, separates
+inactive state. The wider `neural-void-global-vfx-v1` contract remains scoped
+to Windows 10 and Windows 11 and must not be silently widened. The retained
+vector-scene contract stores mathematical point, line, polyline, arc and plane
+commands in a design coordinate space, separates
 static from per-frame updates and rejects literal colors, bitmaps, runtime
 effects, unstable ordering and quality-budget overflow.
 

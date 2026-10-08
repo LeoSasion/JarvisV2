@@ -22,8 +22,9 @@ Live activation in this task: **FORBIDDEN**
 - [x] 不加载任何模块，不终止或重启 Explorer。
 - [x] M1 继续 `build-only`，不得进入 Supervisor allowlist。
 - [x] M2 只生成 read-only readiness evidence，不执行激活。
-- [x] 实机加载前仍必须展示新鲜兼容报告，并由用户逐字批准精确
-      `clear-kill-switch --module jarvis-taskbar-icon-size --confirm` 命令。
+- [x] 实机加载前仍必须由自动预检核对新鲜兼容报告，并绑定精确
+      `clear-kill-switch --module jarvis-taskbar-icon-size --confirm` 命令；
+      Win10 standing authorization 下无需逐次用户批准。
 - [x] `JarvisV2` 是仓库与展示名称；状态目录、信号量、模块 ID 和收据中的
       `JARVIS2` 是稳定安全协议，不在本阶段迁移。
 
@@ -53,10 +54,10 @@ Live activation in this task: **FORBIDDEN**
       另行记录不可枚举进程数量，并要求 Explorer 本身可完整枚举。
 - [x] 调用 Supervisor `inspect`，核对全部兼容检查。
 - [x] 核对 canonical run、当前 M2 源码、0 warning / 0 error 和 allowlist。
-- [x] 输出 exact approval command，但脚本不得执行它。
+- [x] 输出供自动预检绑定的 exact bounded command，但脚本不得执行它。
 - [x] 默认只写 stdout；指定 artifact path 时拒绝覆盖和目录逃逸。
 
-### P3.3 — Baseline and human-validation package
+### P3.3 — Baseline and operator-validation package
 
 - [x] 增加只读 Explorer CPU、内存、handle、thread 基线采样器。
 - [x] 增加一次一个模块的受控实机 runbook。
@@ -85,7 +86,9 @@ Live activation in this task: **FORBIDDEN**
 
 只有 P3.0—P3.5 全部完成、公开边界和完整门禁通过、canonical 收据更新、
 本地主机仍 locked，并且没有执行 live activation 时，Phase 3 才能标记完成。
-即使完成，M2 也只能进入“等待精确命令批准”状态，不能自动加载。
+即使完成，M2 也只能在 `AGENTS.md` standing authorization 下由一次成功的
+自动预检准入有界验证；不得跳过 exact target、产物哈希、单模块许可、恢复助手
+和最终回收状态等技术门禁直接加载。
 
 ## Execution log
 

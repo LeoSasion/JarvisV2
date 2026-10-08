@@ -30,9 +30,9 @@ DLL and a TAP CLSID. The TAP DLL is injected into the named process, and its
 
 This means an eventual File Explorer implementation is a controlled in-process
 component even when its controller is a separate executable. Calling the API
-is itself a live module-load event and must remain behind a fresh exact
-approval. A UI Automation hint, successful portable build or offline state
-machine cannot substitute for that approval.
+is itself a live module-load event and must remain behind the `AGENTS.md`
+exact-target automated preflight. A UI Automation hint, successful portable
+build or offline state machine cannot substitute for that preflight.
 
 The reviewed GPL File Explorer Styler confirms the practical WinUI 3 shape:
 
@@ -154,5 +154,7 @@ read-only TAP DLL and exact-PID controller. That source must:
 - portable-build to exact hashes with zero warnings.
 
 Loading that future DLL would still be a live injection event. It requires a
-fresh compatibility report, reviewed hashes, a recovery terminal and the
-user's exact current approval. Phase 11 grants none of those permissions.
+fresh compatibility report, reviewed hashes, a recovery terminal and a
+successful `AGENTS.md` automated preflight. Win10 standing authorization needs
+no second per-run user approval; Phase 11 itself provides no live loader or
+connection path.

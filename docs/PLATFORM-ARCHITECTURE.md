@@ -22,26 +22,58 @@ tests/native/
   common/
   windows10/
   windows11/
+config/visual-backends/      one conformance manifest per implemented renderer
 ```
 
 The `scripts/` directory remains flat. These scripts are stable repository
 entry points and may dispatch to platform-specific paths; moving them would
 create churn without improving backend separation.
 
+## Cross-platform direction
+
+Windows 10 remains the primary development backend. This does not require
+future desktop environments to inherit WPF, User32, DWM, Explorer or Windows
+injection assumptions. The current cross-OS data-plane boundary is deliberately
+smaller than `src/common`:
+
+- `jarvis-visual-signal-v1`;
+- `jarvis-retained-vector-scene-v1`.
+
+Every implemented renderer owns one manifest under
+`config/visual-backends`. The manifest binds a backend ID to one platform root,
+one test entry, explicit capabilities and truthful evidence. The only current
+registration is the Win10 WPF owned-process preview; it grants no Shell or
+injection authority. An unregistered backend is unsupported.
+
+Future Linux backends are identified by desktop environment and compositor,
+not by distribution. Ubuntu and Arch may be validation profiles for GNOME,
+Plasma or a specific wlroots backend, but they are not interchangeable system
+UI hosts. No Linux backend is implemented, registered, validated or supported
+in this revision.
+
+Platform developers may work concurrently in separate backend roots and merge
+through independent pull requests. An ordinary feature pull request owns one
+backend. Shared contract changes are reviewed separately and must keep all
+registered backend tests green. See
+`ADR-0002-VISUAL-BACKEND-CONFORMANCE.md`.
+
 ## Common layer
 
 `src/common` currently contains:
 
 - `Jarvis.ControlCenter` and `Jarvis.ControlCenter.Diagnostics`;
+- `Jarvis.DesktopPresence`;
 - `Jarvis.DesktopStyleProbe`;
 - `Jarvis.DesktopStyleSession`;
 - `Jarvis.PiAgentHost`;
 - `Jarvis.VisualEffects`.
 
 These projects keep their existing namespaces and assembly names. “Common”
-means they are candidates for both Windows 10 and Windows 11, not that every
-operation has already been validated on both systems. Each live operation
-still requires a platform compatibility profile and exact target evidence.
+means Windows-family sharing between Windows 10 and Windows 11. It is not a
+cross-operating-system support or portability claim, and future Linux backends
+must not acquire dependencies on this directory merely because of its name.
+Each live operation still requires a platform compatibility profile and exact
+target evidence.
 
 `Jarvis.PiAgentHost` pins the official Pi Agent SDK behind an isolated Node.js
 sidecar and bounded LF-delimited JSONL. The managed desktop bridge now owns the
@@ -76,13 +108,15 @@ Explorer. See `docs/PI-AGENT-DESKTOP-HOST.md`,
 `docs/PI-AGENT-DESKTOP-CONVERSATION-SURFACE.md`, plus
 `docs/PI-AGENT-WORKSPACE-EDIT-APPROVAL.md` for the exact decision boundary.
 
-Neural Void visual effects use one platform-neutral
+Neural Void visual effects use one Windows-family
 `neural-void-global-vfx-v1` parameter contract for Win10 and Win11. It defines
 the shared particle-module vocabulary, render order, post stack, quality
 budgets and RGB binding while leaving every effect disabled.
 `Jarvis.VisualEffects` now implements this contract, the RGB sampler, a
 linear-sRGB semantic signal frame and schema-versioned inert preset validation
-without WPF or native Windows dependencies. It also defines a retained
+without WPF or native Windows dependencies. Its visual signal and retained
+scene data planes are admitted for future cross-OS renderer work; that does not
+widen the v1 global-VFX platform scope. It also defines a retained
 point/line/polyline/arc/compound-path/rectangle/ellipse/plane command buffer
 with deterministic ordering, semantic color binding, a bounded 64-DIP
 overscan margin and explicit quality budgets. Compound paths retain multiple

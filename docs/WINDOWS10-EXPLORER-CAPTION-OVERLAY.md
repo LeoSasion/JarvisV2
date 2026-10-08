@@ -24,8 +24,8 @@ the Explorer window it visually covers. It:
 - ends 138 DPI-aware DIPs before Explorer's native caption controls, leaving
   the real minimize, maximize and close visuals and interactions unobscured;
 - appears only while the admitted Explorer window is foreground;
-- closes after a confirmed 10-60 second TTL or immediately when the target
-  identity retires.
+- closes after a 10-60 second TTL admitted by the exact command-intent token or
+  immediately when the target identity retires.
 
 It does not call a DWM setter, send a message to Explorer, install a hook,
 inject a DLL, start Windhawk, restart Explorer, change the registry or clear
@@ -42,7 +42,7 @@ powershell -NoLogo -NoProfile -File `
 The audit enforces the native import allowlist, own-HWND style boundary,
 foreground/TTL/retirement behavior, negative mutation receipt fields, exact
 profile capability and Release build. Its offline policy model covers both TTL
-limits, the explicit confirmation gate, DPI-aware native-control reservation
+limits, the explicit command-intent gate, DPI-aware native-control reservation
 and narrow-window width clamping.
 
 ## Neural Void visual contract v2
@@ -57,8 +57,10 @@ legible without adding an interactive panel.
 
 This v2 visual contract has passed offline build, policy and source-boundary
 checks. The live evidence below applies to v1; v2 must not be described as
-visually verified until a fresh, explicitly approved single-window preview has
-been captured before, during and after expiry.
+visually verified until a fresh, preflight-admitted single-window preview has
+been captured before, during and after expiry. Under `AGENTS.md` standing
+authorization, the command-intent token does not require a second per-run user
+approval.
 
 ## Bounded visual preview
 

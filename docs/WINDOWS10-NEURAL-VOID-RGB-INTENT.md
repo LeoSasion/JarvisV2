@@ -31,10 +31,12 @@ post processing. A Galaxy View-like control surface can later expose these
 parameters without making individual windows own independent effect engines.
 
 The theme intent records the direction, while the separate
-`neural-void-global-vfx-v1` contract now provides a validated, platform-neutral
-parameter vocabulary:
+`neural-void-global-vfx-v1` contract now provides a validated Windows-family
+parameter vocabulary with an exact Win10 and Win11 platform scope. Future
+cross-OS backends may consume the narrower visual-signal and retained-scene
+contracts without silently widening this v1 contract:
 
-- the common renderer remains capable of
+- the retained-scene contract remains capable of
   point/line/arc/compound-path/rectangle/ellipse/plane geometry, while this
   frame grammar uses only its orthogonal subset and consumes the shared RGB
   frame;

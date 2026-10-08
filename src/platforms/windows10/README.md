@@ -1,5 +1,11 @@
 # Windows 10 backend
 
+The current owned desktop additionally delivers a read-only Task Manager and
+actual [owned-window layout execution](../../../docs/WINDOWS10-OWNED-WINDOW-LAYOUT.md).
+Explorer starts in Freeform; opening Task Manager admits six two-window splits.
+Compact panes preserve their content and controls. These are WPF-owned surfaces;
+the live Explorer injection workstream remains separately gated.
+
 The first Win10 vertical slice is implemented in
 `Jarvis.Win10.NativeStyleProbe`. It reads exact host and DWM state, verifies
 the reviewed dark-caption attribute on an owned HWND, and provides an
@@ -92,6 +98,18 @@ The implementation and deterministic safety model are offline-verified; the
 v1 rail has not yet been described as live visually verified. See
 `docs/WINDOWS10-TASKBAR-EDGE-OVERLAY.md`.
 
+The eleventh slice, `Jarvis.Win10.OwnedTaskManager`, adds a real read-only
+process counter source and bounded snapshot model to the owned Neural Void WPF
+desktop. Its ledger shows process name, PID, normalized CPU, working set and
+thread count, with no end-task, priority, launch, window-control or injection
+capability. Sampling starts when the owned window opens and stops while it is
+hidden, minimized or closed; late in-flight results are discarded. The UI
+depends on injectable `IProcessCounterSource`, leaving a clean source-adapter
+seam for a future independently owned OS backend without treating WPF or the
+Windows process reader as portable. This is own-process UI and process
+telemetry only: it does not contact or modify Explorer, and `liveExplorer`
+remains `not-run`. See `docs/WINDOWS10-OWNED-TASK-MANAGER.md`.
+
 The platform-neutral `Jarvis.VisualEffects` library and
 `neural-void-global-vfx-v1` contract now define 30 typed
 parameters across five particle modules and five ordered post effects, plus
@@ -116,6 +134,8 @@ See `docs/WINDOWS10-EXPLORER-CAPTION-SESSION.md` for the bounded
 single-window transaction and its two failed visual observations.
 See `docs/WINDOWS10-EXPLORER-CAPTION-OVERLAY.md` for the owned, click-through
 fallback and its visual verification procedure.
+See `docs/WINDOWS10-OWNED-TASK-MANAGER.md` for the real read-only telemetry,
+owned-window lifecycle and future source-adapter seam.
 
 The owned `Jarvis.Win10.NativeStyleProbe` now consumes the same RGB frame for
 its client surface while retaining the single reviewed Win10 dark-caption

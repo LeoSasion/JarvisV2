@@ -1,0 +1,48 @@
+{
+  "$schema": "../visual-backend-manifest.schema.json",
+  "schemaVersion": 1,
+  "contractId": "jarvisv2-visual-backend-manifest-v1",
+  "backendId": "windows10-wpf-owned-preview",
+  "platformId": "windows10",
+  "target": {
+    "operatingSystemFamily": "windows",
+    "desktopEnvironment": "windows-shell",
+    "compositor": "dwm",
+    "distributionProfiles": []
+  },
+  "ownership": {
+    "sourceRoot": "src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview",
+    "testEntry": "scripts/Test-Windows10NeuralVoidPreview.ps1",
+    "pullRequestScope": "windows10"
+  },
+  "contracts": {
+    "visualSignal": "jarvis-visual-signal-v1",
+    "retainedVectorScene": "jarvis-retained-vector-scene-v1"
+  },
+  "capabilities": {
+    "surfaceScope": "owned-process",
+    "ownedProcessRendering": true,
+    "shellIntegration": false,
+    "foreignProcessCode": false,
+    "injectionRequired": false,
+    "physicalDeviceIo": false,
+    "primitiveKinds": [
+      "point",
+      "line",
+      "polyline",
+      "arc",
+      "path",
+      "rectangle",
+      "ellipse",
+      "plane"
+    ]
+  },
+  "evidence": {
+    "implementationStatus": "implemented",
+    "highestEvidence": "compiled",
+    "publicSupportDeclared": false,
+    "activationPermitted": false,
+    "liveShell": "not-run",
+    "mutationPerformed": false
+  }
+}

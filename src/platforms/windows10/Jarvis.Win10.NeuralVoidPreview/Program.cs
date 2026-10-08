@@ -28,9 +28,24 @@ internal static class Program
             return 0;
         }
 
-        if (args.Length == 5 &&
-            args[0] is "render" or "render-explorer-preview")
+        if ((args.Length == 5 && args[0] is
+                "render" or
+                "render-explorer-preview" or
+                "render-task-manager") ||
+            (args.Length == 6 && args[0] == "render-owned-layout"))
         {
+            LayoutPreset? layout = null;
+            if (args[0] == "render-owned-layout")
+            {
+                if (!Enum.TryParse(args[5], out LayoutPreset parsed) || !Enum.IsDefined(parsed))
+                {
+                    WriteUsage();
+                    return 2;
+                }
+
+                layout = parsed;
+            }
+
             if (!TryDouble(args[2], out double hue) ||
                 !TryDouble(args[4], out double phase))
             {
@@ -48,7 +63,15 @@ internal static class Program
                     hue,
                     args[3],
                     phase,
-                    args[0] == "render-explorer-preview");
+                    args[0] switch
+                    {
+                        "render-explorer-preview" =>
+                            PreviewScene.ExplorerPreview,
+                        "render-task-manager" => PreviewScene.TaskManager,
+                        "render-owned-layout" => PreviewScene.OwnedWindowLayout,
+                        _ => PreviewScene.Desktop,
+                    },
+                    layout);
             Console.WriteLine(
                 JsonSerializer.Serialize(receipt, JsonOptions));
             return receipt.Result ==
@@ -86,6 +109,21 @@ internal static class Program
         }
 
         if (args.Length == 1 &&
+            args[0] == "test-owned-window-layout")
+        {
+            RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
+            _ = new Application
+            {
+                ShutdownMode = ShutdownMode.OnExplicitShutdown,
+            };
+            OwnedWindowLayoutTestReceipt receipt =
+                OwnedWindowLayoutScenarios.Run();
+            Console.WriteLine(
+                JsonSerializer.Serialize(receipt, JsonOptions));
+            return receipt.Result == "passed" ? 0 : 12;
+        }
+
+        if (args.Length == 1 &&
             args[0] == "test-explorer-workspace")
         {
             RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
@@ -95,6 +133,21 @@ internal static class Program
             };
             ExplorerWorkspaceTestReceipt receipt =
                 ExplorerWorkspaceScenarios.Run();
+            Console.WriteLine(
+                JsonSerializer.Serialize(receipt, JsonOptions));
+            return receipt.Result == "passed" ? 0 : 12;
+        }
+
+        if (args.Length == 1 &&
+            args[0] == "test-task-manager-surface")
+        {
+            RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
+            _ = new Application
+            {
+                ShutdownMode = ShutdownMode.OnExplicitShutdown,
+            };
+            TaskManagerSurfaceTestReceipt receipt =
+                TaskManagerSurfaceScenarios.Run();
             Console.WriteLine(
                 JsonSerializer.Serialize(receipt, JsonOptions));
             return receipt.Result == "passed" ? 0 : 12;
@@ -118,7 +171,11 @@ internal static class Program
             "Usage: jarvis-win10-neural-void-preview show " +
             "or render <png-path> <hue> <effect> <phase> " +
             "or render-explorer-preview <png-path> <hue> <effect> <phase> " +
+            "or render-task-manager <png-path> <hue> <effect> <phase> " +
+            "or render-owned-layout <png-path> <hue> <effect> <phase> <preset> " +
             "or test-vector-adapter " +
             "or test-edge-bars " +
-            "or test-explorer-workspace");
+            "or test-owned-window-layout " +
+            "or test-explorer-workspace " +
+            "or test-task-manager-surface");
 }
