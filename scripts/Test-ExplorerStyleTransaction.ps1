@@ -69,6 +69,7 @@ $tapText = [IO.File]::ReadAllText($tapPath)
 $harnessText = [IO.File]::ReadAllText($harnessPath)
 $tapAuditText = [IO.File]::ReadAllText($tapAuditPath)
 $taskText = [IO.File]::ReadAllText($taskPath)
+$taskProse = $taskText -replace '\s+', ' '
 $contractText = [IO.File]::ReadAllText($contractPath)
 $schemaText = [IO.File]::ReadAllText($schemaPath)
 $contract = $contractText | ConvertFrom-Json -Depth 100
@@ -255,14 +256,17 @@ Add-Check `
 Add-Check `
     -Name 'docs.no-platform-write-or-live-claim' `
     -Passed (
-        $taskText.Contains(
+        $taskProse.Contains(
             'OFFLINE TRANSACTION MODEL COMPLETE — NO PLATFORM WRITE'
         ) -and
-        $taskText.Contains(
+        $taskProse.Contains(
             'The model never interprets a failed API result as proof that no mutation'
         ) -and
-        $taskText.Contains(
-            'Phase 15 grants no permission to connect, read or write Explorer'
+        $taskProse.Contains(
+            'Phase 15 implements no Explorer connection, property read/write, Windhawk start, Explorer restart or desktop mutation path.'
+        ) -and
+        $taskProse.Contains(
+            'exact automated preflight and temporary-window visual evidence review.'
         )
     ) `
     -Detail 'Documentation must separate simulated attempts from platform writes.'

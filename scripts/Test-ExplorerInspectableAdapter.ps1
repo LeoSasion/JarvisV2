@@ -66,6 +66,7 @@ $tapText = [IO.File]::ReadAllText($tapPath)
 $harnessText = [IO.File]::ReadAllText($harnessPath)
 $tapAuditText = [IO.File]::ReadAllText($tapAuditPath)
 $taskText = [IO.File]::ReadAllText($taskPath)
+$taskProse = $taskText -replace '\s+', ' '
 $contractText = [IO.File]::ReadAllText($contractPath)
 $schemaText = [IO.File]::ReadAllText($schemaPath)
 $contract = $contractText | ConvertFrom-Json -Depth 100
@@ -203,14 +204,17 @@ Add-Check `
 Add-Check `
     -Name 'docs.no-live-property-read-claim' `
     -Passed (
-        $taskText.Contains(
+        $taskProse.Contains(
             'OFFLINE PROJECTION MODEL COMPLETE — NO IINSPECTABLE READ'
         ) -and
-        $taskText.Contains(
+        $taskProse.Contains(
             'They are not proof that Explorer was read'
         ) -and
-        $taskText.Contains(
-            'Phase 14 grants no permission to connect to Explorer'
+        $taskProse.Contains(
+            'Phase 14 implements no Explorer connection, property read, TAP load, Windhawk start, Explorer restart or desktop mutation path.'
+        ) -and
+        $taskProse.Contains(
+            'Any real property read or write requires a later, separately reviewed compile gate and exact live automated preflight under the current `AGENTS.md` contract.'
         )
     ) `
     -Detail 'Documentation must distinguish projection fixtures from Explorer evidence.'

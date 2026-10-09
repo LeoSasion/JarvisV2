@@ -65,6 +65,7 @@ $tapText = [IO.File]::ReadAllText($tapPath)
 $harnessText = [IO.File]::ReadAllText($harnessPath)
 $tapAuditText = [IO.File]::ReadAllText($tapAuditPath)
 $taskText = [IO.File]::ReadAllText($taskPath)
+$taskProse = $taskText -replace '\s+', ' '
 $contractText = [IO.File]::ReadAllText($contractPath)
 $contractSchemaText = [IO.File]::ReadAllText($contractSchemaPath)
 $contract = $contractText | ConvertFrom-Json -Depth 100
@@ -259,16 +260,18 @@ Add-Check `
 Add-Check `
     -Name 'docs.no-endpoint-attempt-property-read-or-live-claim' `
     -Passed (
-        $taskText.Contains(
+        $taskProse.Contains(
             'OFFLINE MODELS COMPLETE — NO ENDPOINT ATTEMPT OR PROPERTY READ'
         ) -and
-        $taskText.Contains(
+        $taskProse.Contains(
             'These hashes are evidence identifiers only.'
         ) -and
-        $taskText.Contains(
-            'Phase 13 grants no permission to connect, inject, read Explorer properties or'
+        $taskProse.Contains(
+            'Phase 13 implements no endpoint, loader, injected execution, Explorer-property read or desktop mutation path.'
         ) -and
-        $taskText.Contains('modify the desktop.')
+        $taskProse.Contains(
+            'live-read-only command for the `AGENTS.md` automated preflight.'
+        )
     ) `
     -Detail (
         'Phase 13 documentation must distinguish canonical offline values from ' +

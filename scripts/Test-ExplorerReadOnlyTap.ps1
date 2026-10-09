@@ -432,6 +432,7 @@ $harnessText = [IO.File]::ReadAllText($harnessPath)
 $contractText = [IO.File]::ReadAllText($contractPath)
 $contractSchemaText = [IO.File]::ReadAllText($contractSchemaPath)
 $taskText = [IO.File]::ReadAllText($taskPath)
+$taskProse = $taskText -replace '\s+', ' '
 $contract = $contractText | ConvertFrom-Json -Depth 100
 $contractSchema = $contractSchemaText | ConvertFrom-Json -Depth 100
 $allSourceText = @(
@@ -610,18 +611,24 @@ Add-Check `
 Add-Check `
     -Name 'docs.build-is-not-live-readonly-validation' `
     -Passed (
-        $taskText.Contains(
+        $taskProse.Contains(
             'OFFLINE TAP BUILD COMPLETE — DLL NEVER LOADED'
         ) -and
-        $taskText.Contains(
+        $taskProse.Contains(
             'This is an ABI and binary-shape milestone, not a live read-only probe.'
         ) -and
-        $taskText.Contains('propertyReadSupported=false') -and
-        $taskText.Contains('Building this DLL does not grant permission to load it.')
+        $taskProse.Contains('propertyReadSupported=false') -and
+        $taskProse.Contains(
+            'On Windows 10, `AGENTS.md` standing authorization plus a successful automated preflight admits that bounded session.'
+        ) -and
+        $taskProse.Contains(
+            'Building this DLL alone remains disk-only evidence and does not prove that a live load occurred.'
+        )
     ) `
     -Detail (
         'Phase 12 documentation must distinguish an offline DLL build from a ' +
-        'live read-only connection and preserve the next approval boundary.'
+        'live read-only connection and preserve standing authorization with ' +
+        'the automated-preflight boundary.'
     )
 
 $compiler = $null
