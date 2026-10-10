@@ -136,15 +136,15 @@ Add-Check `
             'jarvisv2-pi-agent-desktop-host-v1' -and
         $contract.upstream.package -eq
             '@earendil-works/pi-coding-agent' -and
-        $contract.upstream.exactVersion -eq '0.82.1' -and
+        $contract.upstream.exactVersion -eq '1.1.0' -and
         $contract.upstream.repository -eq
             'https://github.com/earendil-works/pi' -and
         $contract.upstream.license -eq 'MIT' -and
         $contract.runtime.sdkImportModel -eq
             'pinned-package-core-module-adapter' -and
-        $package.dependencies.'@earendil-works/pi-ai' -eq '0.82.1' -and
+        $package.dependencies.'@earendil-works/pi-ai' -eq '1.1.0' -and
         $package.dependencies.'@earendil-works/pi-coding-agent' -eq
-            '0.82.1') `
+            '1.1.0') `
     -Detail (
         'The sidecar must pin the reviewed official Pi package exactly, ' +
         'without a floating range.')
@@ -349,7 +349,7 @@ Add-Check `
         $schema.title -eq
             'JarvisV2 Pi Agent desktop host contract' -and
         $schema.properties.upstream.properties.exactVersion.const -eq
-            '0.82.1' -and
+            '1.1.0' -and
         $schema.properties.runtime.properties.nodeMinimumMajor.const -eq
             22 -and
         $schema.properties.runtime.properties.sdkImportModel.const -eq
@@ -964,16 +964,16 @@ if (Test-Path -LiteralPath $lockPath -PathType Leaf) {
     $lockText = [IO.File]::ReadAllText($lockPath)
     $lockValid =
         $lockText.Contains(
-            "'@earendil-works/pi-ai@0.82.1'") -and
+            "'@earendil-works/pi-ai@1.1.0'") -and
         $lockText.Contains(
-            "'@earendil-works/pi-coding-agent@0.82.1'") -and
+            "'@earendil-works/pi-coding-agent@1.1.0'") -and
         $lockText.Contains('integrity:')
 }
 Add-Check `
     -Name 'dependency.frozen-lock' `
     -Passed $lockValid `
     -Detail (
-        'pnpm-lock.yaml must pin Pi 0.82.1 and retain registry integrity ' +
+        'pnpm-lock.yaml must pin Pi 1.1.0 and retain registry integrity ' +
         'hashes; lifecycle scripts are not required.')
 
 if (-not $StaticOnly) {
@@ -1075,7 +1075,7 @@ if (-not $StaticOnly) {
             $null -ne $inspectReceipt -and
             $inspectReceipt.result -eq
                 'passed-embedded-dependency' -and
-            $inspectReceipt.installedVersion -eq '0.82.1' -and
+            $inspectReceipt.installedVersion -eq '1.1.0' -and
             $inspectReceipt.sdkImportModel -eq
                 'pinned-package-core-module-adapter' -and
             @($inspectReceipt.missingExports).Count -eq 0 -and
@@ -1454,7 +1454,7 @@ if (-not $StaticOnly) {
                 'jarvisv2-pi-agent-desktop-host-v1' -and
             $bridgeReceipt.package -eq
                 '@earendil-works/pi-coding-agent' -and
-            $bridgeReceipt.installedVersion -eq '0.82.1' -and
+            $bridgeReceipt.installedVersion -eq '1.1.0' -and
             $bridgeReceipt.desktopLaunchImplemented -and
             $bridgeReceipt.readyObserved -and
             $bridgeReceipt.helloPassed -and
@@ -1755,7 +1755,7 @@ $passed = $failures.Count -eq 0
     passedCount = @($checks | Where-Object passed).Count
     integrationMode = 'sdk-sidecar-jsonl'
     embeddedPackage = '@earendil-works/pi-coding-agent'
-    embeddedVersion = '0.82.1'
+    embeddedVersion = '1.1.0'
     transportProbeImplemented = $true
     sessionCreationEnabled = $true
     promptingEnabled = $false

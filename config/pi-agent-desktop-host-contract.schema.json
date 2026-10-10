@@ -37,7 +37,7 @@
           "const": "@earendil-works/pi-coding-agent"
         },
         "exactVersion": {
-          "const": "0.82.1"
+          "const": "1.1.0"
         },
         "repository": {
           "const": "https://github.com/earendil-works/pi"

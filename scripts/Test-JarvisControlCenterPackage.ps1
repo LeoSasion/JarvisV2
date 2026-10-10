@@ -288,8 +288,8 @@ if ($null -ne $receipt) {
 $piPackage = Get-Content -LiteralPath (
     Join-Path $package 'runtime\pi-agent\package.json') -Raw |
     ConvertFrom-Json
-if ($piPackage.dependencies.'@earendil-works/pi-ai' -ne '0.82.1' -or
-    $piPackage.dependencies.'@earendil-works/pi-coding-agent' -ne '0.82.1') {
+if ($piPackage.dependencies.'@earendil-works/pi-ai' -ne '1.1.0' -or
+    $piPackage.dependencies.'@earendil-works/pi-coding-agent' -ne '1.1.0') {
     $failures.Add('The packaged Pi dependency versions are not exact.')
 }
 
@@ -328,7 +328,7 @@ catch {
 if ($nodeExitCode -ne 0 -or
     $null -eq $nodeReceipt -or
     $nodeReceipt.result -ne 'passed-embedded-dependency' -or
-    $nodeReceipt.installedVersion -ne '0.82.1' -or
+    $nodeReceipt.installedVersion -ne '1.1.0' -or
     -not $nodeReceipt.piOffline -or
     $nodeReceipt.modelNetworkAllowed -or
     $nodeReceipt.credentialTransportAllowed -or

@@ -54,7 +54,7 @@ public static class UiText
             ["Loc.Nav.Evidence"] = "Evidence",
             ["Loc.Nav.LocalTime"] = "Local time",
             ["Loc.Nav.SafetySummary"] =
-                "PI AGENT // 0.82.1\nTOOLS // READ + PROPOSE\nSHELL // LOCKED",
+                "PI AGENT // 1.1.0\nTOOLS // READ + PROPOSE\nSHELL // LOCKED",
             ["Loc.Conversation.Title"] = "Conversation",
             ["Loc.Conversation.Shortcuts"] =
                 "CTRL+ENTER / SEND ONCE    ESC / CANCEL",
@@ -406,7 +406,7 @@ public static class UiText
             ["Loc.Nav.Evidence"] = "证据",
             ["Loc.Nav.LocalTime"] = "本地时间",
             ["Loc.Nav.SafetySummary"] =
-                "PI AGENT // 0.82.1\n工具 // 读取 + 提案\nSHELL // 锁定",
+                "PI AGENT // 1.1.0\n工具 // 读取 + 提案\nSHELL // 锁定",
             ["Loc.Conversation.Title"] = "对话",
             ["Loc.Conversation.Shortcuts"] =
                 "CTRL+ENTER / 发送一次    ESC / 取消",

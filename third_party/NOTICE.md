@@ -101,7 +101,7 @@ model.
 ## Pi coding agent
 
 - Package: `@earendil-works/pi-coding-agent`
-- Version: `0.82.1`
+- Version: `1.1.0`
 - Package integrity:
   `sha512-zbkAhoIuDPMF3pKuja0ajZabrMWU29FUMV9A/XMXT/XC1yXs5xt6t6t13GogQFsDrDqbFP4DkZQO1w8rWRAzYA==`
 - License: MIT

@@ -39,7 +39,7 @@ export function validateContract(contract) {
   if (
     contract.upstream?.package !==
       "@earendil-works/pi-coding-agent" ||
-    contract.upstream?.exactVersion !== "0.82.1"
+    contract.upstream?.exactVersion !== "1.1.0"
   ) {
     failures.push("upstream");
   }

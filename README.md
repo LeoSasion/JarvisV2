@@ -4,7 +4,7 @@
 
 ## Independent Jarvis desktop runtime
 
-The native WPF Control Center now embeds the reviewed Pi 0.82.1 sidecar behind
+The native WPF Control Center now embeds the reviewed Pi 1.1.0 sidecar behind
 a current-user named pipe and can be published as a self-contained Windows x64
 directory with bundled Node and Pi dependencies. Local deterministic mode is
 the default. An opt-in OpenAI Responses provider uses `gpt-5.6-sol`, SSE,

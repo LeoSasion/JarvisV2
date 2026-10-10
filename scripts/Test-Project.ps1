@@ -7837,9 +7837,9 @@ $piAgentSidecarOnly =
     $piAgentPackage.private -eq $true -and
     $piAgentPackage.type -eq 'module' -and
     $piAgentDependencies.Count -eq 2 -and
-    $piAgentPackage.dependencies.'@earendil-works/pi-ai' -eq '0.82.1' -and
+    $piAgentPackage.dependencies.'@earendil-works/pi-ai' -eq '1.1.0' -and
     $piAgentPackage.dependencies.'@earendil-works/pi-coding-agent' -eq
-        '0.82.1' -and
+        '1.1.0' -and
     [regex]::Matches(
         $piAgentRuntimeSource,
         'from\s+"node:net"').Count -eq 1 -and

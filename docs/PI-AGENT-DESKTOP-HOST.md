@@ -5,7 +5,7 @@ JarvisV2 will embed the official
 The desktop host is a .NET/WPF process, so the first cross-language boundary
 uses strict LF-delimited JSONL over standard input and output.
 
-The Pi Agent and Pi AI dependencies are pinned exactly to `0.82.1`. Pi exposes
+The Pi Agent and Pi AI dependencies are pinned exactly to `1.1.0`. Pi exposes
 both an SDK for in-process JavaScript applications and RPC for
 language-neutral clients. The sidecar resolves the pinned package entry and
 loads only its reviewed core SDK modules through a fail-closed local adapter.

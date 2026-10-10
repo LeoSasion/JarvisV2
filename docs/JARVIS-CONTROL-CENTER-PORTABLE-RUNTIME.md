@@ -3,7 +3,7 @@
 The Control Center can now run outside the Codex workspace from one portable
 Windows x64 directory. The package is self-contained for .NET and bundles the
 reviewed Node executable plus a flat, hash-receipted 34-package runtime closure
-for the exact Pi 0.82.1 core modules used by JARVIS. It also bundles the fixed
+for the exact Pi 1.1.0 core modules used by JARVIS. It also bundles the fixed
 Git for Windows runtime used by reviewed iteration repository gates.
 
 ## Package layout

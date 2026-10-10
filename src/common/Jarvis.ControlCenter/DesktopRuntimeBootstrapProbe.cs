@@ -284,7 +284,7 @@ public static class DesktopRuntimeBootstrapProbe
                 JsonSerializer.Serialize(new
                 {
                     name = $"@earendil-works/{package}",
-                    version = "0.82.1",
+                    version = "1.1.0",
                 }));
         }
     }
@@ -320,7 +320,7 @@ public static class DesktopRuntimeBootstrapProbe
             .Select(name => new
             {
                 name,
-                version = "0.82.1",
+                version = "1.1.0",
                 packageJsonSha256 = ComputeSha256(Path.Combine(
                     projectRoot,
                     "node_modules",

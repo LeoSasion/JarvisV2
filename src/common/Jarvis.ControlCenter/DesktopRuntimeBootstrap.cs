@@ -371,7 +371,7 @@ public static class DesktopRuntimeBootstrap
                     !packageVersions.TryGetValue(
                         packageName,
                         out string? version) ||
-                    version != "0.82.1")
+                    version != "1.1.0")
                 {
                     return false;
                 }

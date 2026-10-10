@@ -236,7 +236,7 @@ public sealed class PiAgentSidecarController : IAsyncDisposable
 
     public const string ContractId = "jarvisv2-pi-agent-desktop-host-v1";
     public const string PackageName = "@earendil-works/pi-coding-agent";
-    public const string ExpectedVersion = "0.82.1";
+    public const string ExpectedVersion = "1.1.0";
 
     private static readonly IReadOnlySet<string> AllowedTurnToolNames =
         new HashSet<string>(
