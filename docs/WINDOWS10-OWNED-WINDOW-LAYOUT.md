@@ -32,6 +32,10 @@ floating bounds. Release or capture loss commits an actual move exactly once.
 Maximize applies the single-window preset; restore reapplies the last usable
 tiled preset, or restores floating bounds when it is no longer available.
 Body clicks and keyboard focus update the active window and stacking order.
+Rail keyboard navigation steps between enabled presets only: arrow keys skip
+disabled layouts, Home and End jump to the first and last enabled preset, each
+step previews without moving windows, Enter commits the previewed preset, and
+Escape returns focus to the active owned window.
 
 Below 820 DIP width, Explorer uses a compact file ledger and Task Manager uses
 process name, PID and CPU columns. Below 400 DIP height, auxiliary summaries
@@ -50,10 +54,14 @@ show a live Windows Task Manager or a styled Windows Explorer.
 
 ## Verification
 
-`test-owned-window-layout` runs 16 coordinator scenarios and 11 hosted WPF
+`test-owned-window-layout` runs 16 coordinator scenarios and 13 hosted WPF
 scenarios. Hosted checks cover both active-window choices for all six splits,
 actual element bounds, disabled no-op behavior, compact controls, lifecycle,
-focus, manual movement, title clicks/jitter, maximize/restore and capture loss.
+focus, manual movement, title clicks/jitter, maximize/restore, capture loss,
+and rail keyboard navigation: arrow keys step between enabled presets and skip
+disabled ones while previewing without moving windows, Home and End jump to the
+first and last enabled preset, Enter commits the previewed preset, and Escape
+returns keyboard focus to the active owned window.
 Explorer retains at least 44 DIP of content viewport
 and Task Manager at least 43 DIP in every available split.
 

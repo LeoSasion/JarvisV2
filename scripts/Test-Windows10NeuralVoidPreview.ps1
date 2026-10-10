@@ -842,7 +842,7 @@ if ($buildExitCode -eq 0) {
             $ownedLayoutReceipt.receiptType -ceq 'jarvisv2-win10-owned-window-layout-test' -and
             $ownedLayoutReceipt.result -eq 'passed' -and
             $ownedLayoutReceipt.schemaVersion -eq 1 -and
-            $ownedLayoutReceipt.scenarioCount -eq 27 -and
+            $ownedLayoutReceipt.scenarioCount -eq 29 -and
             $ownedLayoutReceipt.passedCount -eq $ownedLayoutReceipt.scenarioCount -and
             $ownedLayoutReceipt.ownProcessOnly -and
             -not $ownedLayoutReceipt.thirdPartyWindowControlSupported -and

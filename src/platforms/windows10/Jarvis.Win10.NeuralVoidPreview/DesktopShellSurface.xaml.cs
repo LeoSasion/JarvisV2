@@ -437,6 +437,36 @@ public partial class DesktopShellSurface :
         RevealSelectedLayout();
     }
 
+    internal void RaiseRailKeyForTest(Key key) =>
+        LayoutRailList.RaiseEvent(
+            new KeyEventArgs(
+                Keyboard.PrimaryDevice,
+                PresentationSource.FromVisual(LayoutRailList) ??
+                    throw new InvalidOperationException(
+                        "The rail test host was not connected."),
+                0,
+                key)
+            {
+                RoutedEvent = PreviewKeyDownEvent,
+            });
+
+    internal LayoutPreset? LayoutRailSelectedValueForTest =>
+        LayoutRailList.SelectedValue is LayoutPreset preset ? preset : null;
+
+    internal string InteractionStatusForTest =>
+        InteractionStatusText.Text;
+
+    internal void FocusLayoutRailForTest() => _ = LayoutRailList.Focus();
+
+    internal bool LayoutRailHasKeyboardFocusForTest =>
+        LayoutRailPanel.IsKeyboardFocusWithin;
+
+    internal bool ExplorerItemsHaveKeyboardFocusForTest =>
+        ExplorerItemList.IsKeyboardFocusWithin;
+
+    internal bool TaskManagerPanelHasKeyboardFocusForTest =>
+        TaskManagerPanel.IsKeyboardFocusWithin;
+
     internal void RestoreExplorerForTest()
     {
         RestoreExplorer();
@@ -961,7 +991,92 @@ public partial class DesktopShellSurface :
             }
 
             eventArgs.Handled = true;
+            return;
         }
+
+        if (eventArgs.Key == Key.Escape)
+        {
+            // Only consume Escape when the rail itself holds keyboard focus;
+            // otherwise stop any active rail motion and let the key bubble to
+            // the owning window's global Escape action.
+            if (LayoutRailPanel.IsKeyboardFocusWithin)
+            {
+                ReturnRailFocusToActiveWindow();
+                eventArgs.Handled = true;
+            }
+
+            return;
+        }
+
+        LayoutDefinition? target = eventArgs.Key switch
+        {
+            Key.Up => StepEnabledLayout(-1),
+            Key.Down => StepEnabledLayout(1),
+            Key.Home => EdgeEnabledLayout(first: true),
+            Key.End => EdgeEnabledLayout(first: false),
+            _ => null,
+        };
+        if (target is not null)
+        {
+            PreviewRailSelection(target);
+            eventArgs.Handled = true;
+        }
+    }
+
+    private LayoutDefinition? StepEnabledLayout(int delta)
+    {
+        List<LayoutDefinition> items =
+            [.. LayoutRailList.Items.OfType<LayoutDefinition>()];
+        for (int index = LayoutRailList.SelectedIndex + delta;
+                index >= 0 && index < items.Count;
+                index += delta)
+        {
+            if (_ownedWindowLayouts.GetAvailability(
+                    items[index].Preset).IsEnabled)
+            {
+                return items[index];
+            }
+        }
+
+        return null;
+    }
+
+    private LayoutDefinition? EdgeEnabledLayout(bool first)
+    {
+        List<LayoutDefinition> ordered =
+            [.. LayoutRailList.Items.OfType<LayoutDefinition>()];
+        if (!first)
+        {
+            ordered.Reverse();
+        }
+
+        return ordered.FirstOrDefault(definition =>
+            _ownedWindowLayouts.GetAvailability(definition.Preset).IsEnabled);
+    }
+
+    private void PreviewRailSelection(LayoutDefinition definition)
+    {
+        SyncRailSelection(definition.Preset);
+        CancelPendingLayoutReveal();
+        RevealSelectedLayout();
+        Announce($"LAYOUT PREVIEW / {definition.Id.ToUpperInvariant()}");
+    }
+
+    private void ReturnRailFocusToActiveWindow()
+    {
+        if (ActiveOwnedWindowId == "task-manager" &&
+            TaskManagerWindow.Visibility == Visibility.Visible)
+        {
+            _ = Dispatcher.BeginInvoke(
+                DispatcherPriority.Input,
+                new Action(() => _ = TaskManagerPanel.Focus()));
+        }
+        else
+        {
+            FocusExplorerItems();
+        }
+
+        Announce("RAIL CLOSED / FOCUS RETURNED TO ACTIVE WINDOW");
     }
 
     private bool SelectLayout(LayoutPreset preset, bool announce)

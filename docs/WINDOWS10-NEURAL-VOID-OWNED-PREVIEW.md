@@ -83,8 +83,10 @@ immediately without snapping or changing the physical offset. Reduced-motion
 environments use a fixed 200-millisecond tick and bounded 1-to-32-pixel
 pressure-dependent steps, avoiding delayed full-item jumps.
 
-Escape from the permanently visible layout list stops any active rail motion
-without consuming the key, preserving the owning window's global Escape action.
+Escape from the permanently visible layout list stops any active rail motion;
+when the rail itself holds keyboard focus, Escape also returns that focus to the
+active owned window and is consumed, otherwise it bubbles without consuming the
+key, preserving the owning window's global Escape action.
 If Windows high contrast changes while the surface is open, rail motion stops and
 the opacity feather immediately becomes fully opaque; the normal boundary-aware
 mask returns when high contrast is disabled.

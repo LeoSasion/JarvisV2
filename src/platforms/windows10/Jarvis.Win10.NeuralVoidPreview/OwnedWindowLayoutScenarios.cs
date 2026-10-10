@@ -110,6 +110,8 @@ internal static class OwnedWindowLayoutScenarios
         Add(scenarios, "hosted-title-click-and-jitter-preserve-maximized-floating-restore", HostedTitleClickPreservesFloatingRestore);
         Add(scenarios, "hosted-title-clicks-preserve-tiled-layout-and-maximize-restore", HostedTitleClickPreservesTiledLayout);
         Add(scenarios, "hosted-title-drag-and-capture-loss-commit-only-real-moves", HostedTitleDragCommitsRealMove);
+        Add(scenarios, "hosted-arrow-keys-skip-disabled-layouts-and-preview-preserves-applied-state", HostedArrowPreviewNavigation);
+        Add(scenarios, "hosted-escape-returns-focus-to-active-window", HostedEscapeReturnsFocus);
 
         int passed = scenarios.Count(scenario => scenario.Passed);
         return new(
@@ -893,6 +895,118 @@ internal static class OwnedWindowLayoutScenarios
             host.Content = null;
             host.Close();
         }
+    }
+
+    private static bool HostedArrowPreviewNavigation() => WithShell(shell =>
+    {
+        _ = shell.PrepareTaskManagerForSnapshot();
+        if (!shell.SelectLayoutForTest(LayoutPreset.EqualColumns))
+        {
+            return false;
+        }
+
+        shell.UpdateLayout();
+        Rect explorer = shell.GetOwnedWindowBoundsForTest("explorer");
+        Rect task = shell.GetOwnedWindowBoundsForTest("task-manager");
+        shell.PreviewLayoutForTest(LayoutPreset.EqualColumns);
+        LayoutPreset[] expected =
+        [
+            LayoutPreset.WideLeftNarrowRight,
+            LayoutPreset.NarrowLeftWideRight,
+            LayoutPreset.EqualRows,
+            LayoutPreset.WideTopNarrowBottom,
+            LayoutPreset.NarrowTopWideBottom,
+        ];
+        foreach (LayoutPreset preset in expected)
+        {
+            shell.RaiseRailKeyForTest(Key.Down);
+            if (shell.LayoutRailSelectedValueForTest != preset ||
+                shell.CurrentLayout != LayoutPreset.EqualColumns)
+            {
+                return false;
+            }
+        }
+
+        // Further Down must not select the disabled three- or four-pane presets.
+        shell.RaiseRailKeyForTest(Key.Down);
+        if (shell.LayoutRailSelectedValueForTest !=
+                LayoutPreset.NarrowTopWideBottom ||
+            shell.CurrentLayout != LayoutPreset.EqualColumns)
+        {
+            return false;
+        }
+
+        shell.RaiseRailKeyForTest(Key.End);
+        if (shell.LayoutRailSelectedValueForTest !=
+                LayoutPreset.NarrowTopWideBottom)
+        {
+            return false;
+        }
+
+        shell.RaiseRailKeyForTest(Key.Home);
+        if (shell.LayoutRailSelectedValueForTest != LayoutPreset.Maximized ||
+            shell.CurrentLayout != LayoutPreset.EqualColumns)
+        {
+            return false;
+        }
+
+        // Previewing must not have moved any window.
+        if (shell.GetOwnedWindowBoundsForTest("explorer") != explorer ||
+            shell.GetOwnedWindowBoundsForTest("task-manager") != task ||
+            !shell.InteractionStatusForTest.StartsWith(
+                "LAYOUT PREVIEW / ",
+                StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        // Enter commits the previewed preset: the active window fills the work
+        // area and the extra visible window keeps its previous pane bounds.
+        shell.RaiseRailKeyForTest(Key.Enter);
+        shell.UpdateLayout();
+        return shell.CurrentLayout == LayoutPreset.Maximized &&
+            shell.GetOwnedWindowBoundsForTest("task-manager") == WorkArea &&
+            shell.GetOwnedWindowBoundsForTest("explorer") == explorer &&
+            shell.InteractionStatusForTest == "LAYOUT / MAXIMIZED";
+    });
+
+    private static bool HostedEscapeReturnsFocus() => WithShell(shell =>
+    {
+        _ = shell.PrepareTaskManagerForSnapshot();
+        ActivateBody(shell, "explorer");
+        shell.FocusLayoutRailForTest();
+        PumpIdle();
+        if (!shell.LayoutRailHasKeyboardFocusForTest)
+        {
+            return false;
+        }
+
+        shell.RaiseRailKeyForTest(Key.Escape);
+        PumpIdle();
+        if (!shell.ExplorerItemsHaveKeyboardFocusForTest ||
+            shell.InteractionStatusForTest !=
+                "RAIL CLOSED / FOCUS RETURNED TO ACTIVE WINDOW")
+        {
+            return false;
+        }
+
+        ActivateBody(shell, "task-manager");
+        shell.FocusLayoutRailForTest();
+        PumpIdle();
+        shell.RaiseRailKeyForTest(Key.Escape);
+        PumpIdle();
+        return shell.TaskManagerPanelHasKeyboardFocusForTest &&
+            !shell.ExplorerItemsHaveKeyboardFocusForTest &&
+            shell.CurrentLayout is null;
+    });
+
+    private static void PumpIdle()
+    {
+        DispatcherFrame frame = new();
+        _ = Dispatcher.CurrentDispatcher.BeginInvoke(
+            DispatcherPriority.ApplicationIdle,
+            new Action(() => frame.Continue = false));
+        Dispatcher.PushFrame(frame);
     }
 
     private static OwnedWindowState State(
