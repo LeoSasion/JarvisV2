@@ -185,6 +185,43 @@ public partial class TaskManagerSurface : UserControl
 
     internal double ProcessViewportHeightForTest => ProcessList.ActualHeight;
 
+    internal bool ProcessListHasKeyboardFocusForTest =>
+        ProcessList.IsKeyboardFocusWithin;
+
+    internal string SelectedProcessName =>
+        (ProcessList.SelectedItem as TaskManagerProcessRow)?.ProcessName ??
+            string.Empty;
+
+    /// <summary>
+    /// Moves the read-only process selection by a relative offset and scrolls
+    /// it into view. Returns false when the target index is out of range, so
+    /// callers can keep the announcement stable at the edges.
+    /// </summary>
+    internal bool TryMoveProcessSelection(int delta) =>
+        MoveProcessSelection(ProcessList.SelectedIndex + delta);
+
+    /// <summary>
+    /// Selects the first or last process row and scrolls it into view.
+    /// Returns false when the ledger is empty.
+    /// </summary>
+    internal bool TrySelectEdgeProcess(bool first) =>
+        ProcessRows.Count == 0
+            ? false
+            : MoveProcessSelection(first ? 0 : ProcessRows.Count - 1);
+
+    private bool MoveProcessSelection(int index)
+    {
+        if (index < 0 || index >= ProcessRows.Count)
+        {
+            return false;
+        }
+
+        TaskManagerProcessRow row = ProcessRows[index];
+        ProcessList.SelectedItem = row;
+        ProcessList.ScrollIntoView(row);
+        return true;
+    }
+
     internal void SetLayoutDensity(bool compactWidth, bool compactHeight)
     {
         _compactWidth = compactWidth;

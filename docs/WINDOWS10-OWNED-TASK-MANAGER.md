@@ -58,6 +58,13 @@ their identity and selection while PID, name and process start time remain the
 same; a restarted process receives a new row. Pausing after a read fault removes
 the retrying label.
 
+The process ledger is keyboard navigable even though its rows stay non-focusable:
+while focus is inside the list, Up/Down move the read-only selection by one row,
+Home and End jump to the first and last row, the selection scrolls into view with
+an accent selection rail marking it, and each move announces the selected process
+through the shared live region. Edge presses clamp without changing the copy, and
+Escape keeps its window-close contract.
+
 The window participates in [owned-window layouts](WINDOWS10-OWNED-WINDOW-LAYOUT.md)
 and preserves a usable process ledger in compact panes.
 

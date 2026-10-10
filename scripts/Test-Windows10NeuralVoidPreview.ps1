@@ -809,7 +809,7 @@ if ($buildExitCode -eq 0) {
             $null -ne $taskManagerSurfaceReceipt -and
             $taskManagerSurfaceReceipt.result -eq 'passed' -and
             $taskManagerSurfaceReceipt.schemaVersion -eq 1 -and
-            $taskManagerSurfaceReceipt.scenarioCount -eq 9 -and
+            $taskManagerSurfaceReceipt.scenarioCount -eq 10 -and
             $taskManagerSurfaceReceipt.passedCount -eq
                 $taskManagerSurfaceReceipt.scenarioCount -and
             $taskManagerSurfaceReceipt.ownProcessOnly -and

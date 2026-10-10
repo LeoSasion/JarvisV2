@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Jarvis.Win10.OwnedTaskManager;
@@ -40,6 +41,7 @@ internal static class TaskManagerSurfaceScenarios
         Add(scenarios, "same-pid-and-name-restart-replaces-row-and-selection", ProcessInstanceIdentity);
         Add(scenarios, "rapid-stop-start-refreshes-after-retired-capture", RapidSamplingRestart);
         Add(scenarios, "stop-after-read-fault-clears-retrying-copy", StopAfterReadFault);
+        Add(scenarios, "process-ledger-supports-keyboard-selection-and-announcement", ProcessLedgerKeyboardNavigation);
 
         int passed = scenarios.Count(scenario => scenario.Passed);
         return new TaskManagerSurfaceTestReceipt(
@@ -393,6 +395,79 @@ internal static class TaskManagerSurfaceScenarios
         host.Show();
         PumpDispatcher();
         return new HostedTaskManager(surface, host);
+    }
+
+    private static bool ProcessLedgerKeyboardNavigation()
+    {
+        DesktopShellSurface shell = new();
+        Window host = CreateHost(shell);
+        try
+        {
+            host.Show();
+            PumpDispatcher();
+            if (!shell.PrepareTaskManagerForSnapshot())
+            {
+                return false;
+            }
+
+            shell.FocusTaskManagerProcessListForTest();
+            PumpDispatcher();
+            if (!shell.TaskManagerProcessListHasKeyboardFocusForTest)
+            {
+                return false;
+            }
+
+            shell.RaiseTaskManagerKeyForTest(Key.Down);
+            if (shell.SelectedProcessNameForTest != "JARVIS2" ||
+                shell.InteractionStatusForTest != "PROCESS / JARVIS2")
+            {
+                return false;
+            }
+
+            shell.RaiseTaskManagerKeyForTest(Key.Down);
+            if (shell.SelectedProcessNameForTest != "CODEX" ||
+                shell.InteractionStatusForTest != "PROCESS / CODEX")
+            {
+                return false;
+            }
+
+            shell.RaiseTaskManagerKeyForTest(Key.Up);
+            if (shell.SelectedProcessNameForTest != "JARVIS2")
+            {
+                return false;
+            }
+
+            shell.RaiseTaskManagerKeyForTest(Key.End);
+            if (shell.SelectedProcessNameForTest != "SYSTEM")
+            {
+                return false;
+            }
+
+            // Down at the last row must clamp: selection and copy stay put.
+            shell.RaiseTaskManagerKeyForTest(Key.Down);
+            if (shell.SelectedProcessNameForTest != "SYSTEM" ||
+                shell.InteractionStatusForTest != "PROCESS / SYSTEM")
+            {
+                return false;
+            }
+
+            shell.RaiseTaskManagerKeyForTest(Key.Home);
+            if (shell.SelectedProcessNameForTest != "JARVIS2")
+            {
+                return false;
+            }
+
+            // Escape keeps its existing window-close contract.
+            shell.RaiseTaskManagerKeyForTest(Key.Escape);
+            PumpDispatcher();
+            return !shell.IsTaskManagerVisibleForTest &&
+                shell.InteractionStatusForTest ==
+                    "TASK MANAGER / CLOSED / SAMPLING STOPPED";
+        }
+        finally
+        {
+            host.Close();
+        }
     }
 
     private static Window CreateHost(UIElement content) =>

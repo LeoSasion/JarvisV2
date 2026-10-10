@@ -456,7 +456,29 @@ public partial class DesktopShellSurface :
     internal string InteractionStatusForTest =>
         InteractionStatusText.Text;
 
+    internal bool TaskManagerProcessListHasKeyboardFocusForTest =>
+        TaskManagerPanel.ProcessListHasKeyboardFocusForTest;
+
+    internal string SelectedProcessNameForTest =>
+        TaskManagerPanel.SelectedProcessName;
+
     internal void FocusLayoutRailForTest() => _ = LayoutRailList.Focus();
+
+    internal void FocusTaskManagerProcessListForTest() =>
+        _ = TaskManagerPanel.ProcessList.Focus();
+
+    internal void RaiseTaskManagerKeyForTest(Key key) =>
+        TaskManagerWindow.RaiseEvent(
+            new KeyEventArgs(
+                Keyboard.PrimaryDevice,
+                PresentationSource.FromVisual(TaskManagerWindow) ??
+                    throw new InvalidOperationException(
+                        "The Task Manager test host was not connected."),
+                0,
+                key)
+            {
+                RoutedEvent = PreviewKeyDownEvent,
+            });
 
     internal bool LayoutRailHasKeyboardFocusForTest =>
         LayoutRailPanel.IsKeyboardFocusWithin;
@@ -2544,6 +2566,38 @@ public partial class DesktopShellSurface :
         {
             CloseTaskManager();
             eventArgs.Handled = true;
+            return;
+        }
+
+        // The read-only process ledger keeps its rows non-focusable for the
+        // compact visual language, so arrow/Home/End navigation is driven here
+        // and announced through the shared live region.
+        if (!TaskManagerPanel.ProcessListHasKeyboardFocusForTest)
+        {
+            return;
+        }
+
+        bool moved = eventArgs.Key switch
+        {
+            Key.Up => TaskManagerPanel.TryMoveProcessSelection(-1),
+            Key.Down => TaskManagerPanel.TryMoveProcessSelection(1),
+            Key.Home => TaskManagerPanel.TrySelectEdgeProcess(first: true),
+            Key.End => TaskManagerPanel.TrySelectEdgeProcess(first: false),
+            _ => false,
+        };
+        if (moved)
+        {
+            AnnounceSelectedProcess();
+            eventArgs.Handled = true;
+        }
+    }
+
+    private void AnnounceSelectedProcess()
+    {
+        string name = TaskManagerPanel.SelectedProcessName;
+        if (name.Length != 0)
+        {
+            Announce($"PROCESS / {name.ToUpperInvariant()}");
         }
     }
 

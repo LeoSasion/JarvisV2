@@ -46,14 +46,28 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{StaticResource QuietRuleBrush}"
-                            BorderThickness="0,0,0,1">
-                            <ContentPresenter
-                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-                        </Border>
+                        <Grid>
+                            <Border
+                                x:Name="RowFrame"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{StaticResource QuietRuleBrush}"
+                                BorderThickness="0,0,0,1">
+                                <ContentPresenter
+                                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                            </Border>
+                            <Border
+                                x:Name="SelectionRail"
+                                Width="2"
+                                HorizontalAlignment="Left"
+                                Background="Transparent" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="RowFrame" Property="Background" Value="#0B0B09" />
+                                <Setter TargetName="SelectionRail" Property="Background" Value="{Binding AccentBrush, ElementName=Root}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
