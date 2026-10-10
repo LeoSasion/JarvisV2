@@ -133,7 +133,7 @@ The render command creates a 1600-by-900 PNG and a JSON receipt for the one
 accepted yellow case. The current approved owned-desktop PNG on locked Windows
 10 build 19045.6466 at 96 DPI in software-render mode has SHA-256:
 
-`DE71FCCB280636402914ED8108DE22D6864870E37F8E9D2B9EF7FC4E7AA69759`
+`017999E0A925D23660F1234C76E63024728CDE3ADECFBAE05B9806125D7B84C1`
 
 Current bounded verification for the interactive Explorer revision:
 

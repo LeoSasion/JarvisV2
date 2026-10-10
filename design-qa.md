@@ -3,7 +3,7 @@
 - Current approved owned-desktop baseline:
   `docs/screenshots/jarvis-win10-current-ui-baseline.png`
 - Deterministic evidence: 1600 x 900 locked-profile render,
-  SHA-256 `DE71FCCB280636402914ED8108DE22D6864870E37F8E9D2B9EF7FC4E7AA69759`
+  SHA-256 `017999E0A925D23660F1234C76E63024728CDE3ADECFBAE05B9806125D7B84C1`
 - Viewport: 1600 x 900 at 96 DPI
 - State: black/yellow desktop, layout rail permanently visible, `FREEFORM`,
   Explorer restored at `(596, 63)` with size `930 x 667`; only the one-window
@@ -120,7 +120,7 @@ rendered and reviewed in a connected graphics session.
   profile; WPF vector adapter 13 / 13, canonical desktop hash matched exactly,
   and the separate owned Task Manager render passed structural validation
 - Current canonical SHA-256:
-  `DE71FCCB280636402914ED8108DE22D6864870E37F8E9D2B9EF7FC4E7AA69759`
+  `017999E0A925D23660F1234C76E63024728CDE3ADECFBAE05B9806125D7B84C1`
 - Separate owned Task Manager render SHA-256:
   `FD2DC1342ADA445B0B9515D98CD31901B7F61A0DDE79AE9C5F9805B0F2CE2412`
 - Current evidence state: `locked-profile-approved`. A disconnected graphics
@@ -156,3 +156,31 @@ sub-threshold jitter and non-drag capture loss preserve maximized restore bounds
 and tiled assignments. An actual drag is finalized on release or capture loss.
 The three new hosted regressions failed against the previous handlers and now
 pass; the complete owned-preview gate remains 26/26 with the same canonical hash.
+
+## Locked-profile re-approval on the new Windows 10 host (2026-10-11)
+
+The clone moved to a second physical Windows 10 machine: Pro 22H2, build
+19045.6466, UBR 6466, x64, 96 DPI, software-only rendering — the same locked
+pixel profile as the original VM. The first render on the new host produced a
+different SHA-256 (`9B5F27C2…`) while every structural check passed. Diagnosis:
+the owned desktop renders mono text with `Cascadia Mono, Consolas`; the new
+host had neither Cascadia Mono nor any substitute installed, so WPF fell back
+and 1.72% of pixels differed. Installing Microsoft's official CascadiaMono.ttf
+from the cascadia-code v2407.24 release (SHA-256 `08026F61…`) reduced the
+difference to 794 pixels (0.06%) against the old canonical; a sweep of twelve
+official CascadiaMono releases never reproduced the old VM's exact rasterizer
+output, so the residual is host-level rasterization/GDI state, not app code.
+
+Under explicit user authorization for this machine, the checked-in canonical
+PNG and approved hash were re-advanced to the new host's deterministic output:
+`017999E0A925D23660F1234C76E63024728CDE3ADECFBAE05B9806125D7B84C1`. Two back-to-back
+renders on this host hash identically. The old canonical remains recorded here
+as the original VM's approved value; CI runs on GitHub-hosted runners and does
+not gate on this hash, so no CI contract changes. This re-approval is scoped to
+the owned-process preview pixel baseline only — it is not live Shell evidence
+and does not relax any other gate.
+
+Host facts for this record: Windows 10 Pro 22H2 19045.6466 x64; .NET SDK
+8.0.425; PowerShell 7.6.6; explorer.exe 10.0.19041.6159 SHA-256
+`988A56D8…E97E`; kill switch state untouched, `liveExplorer=not-run`, no
+mutation performed during this re-approval.
