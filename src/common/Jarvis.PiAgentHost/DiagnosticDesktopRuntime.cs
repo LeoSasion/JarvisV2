@@ -954,15 +954,36 @@ public static class PiAgentDesktopRuntimeProbe
             !context.TryGetProperty(
                 "messages",
                 out JsonElement messages) ||
-            messages.ValueKind != JsonValueKind.Array ||
-            messages.GetArrayLength() !=
-                checkpoint.Turns.Count * 2 + 1)
+            messages.ValueKind != JsonValueKind.Array)
         {
             return false;
         }
 
         JsonElement[] contextMessages =
             messages.EnumerateArray().ToArray();
+
+        // Pi 1.x appends a structured system loadout update (prompt sections +
+        // tool declarations) between the restored transcript and the current
+        // prompt; Pi 0.x carried the system prompt outside the message array.
+        // Accept either framing, but require at most one system message in the
+        // exact 1.x position and keep the turn pairs and current prompt
+        // strictly verified below.
+        int expectedPairCount = checkpoint.Turns.Count * 2;
+        if (contextMessages.Length == expectedPairCount + 2)
+        {
+            if (!contextMessages[expectedPairCount].TryGetProperty(
+                    "role",
+                    out JsonElement loadoutRole) ||
+                loadoutRole.GetString() != "system")
+            {
+                return false;
+            }
+        }
+        else if (contextMessages.Length != expectedPairCount + 1)
+        {
+            return false;
+        }
+
         for (
             int index = 0;
             index < checkpoint.Turns.Count;
@@ -970,7 +991,8 @@ public static class PiAgentDesktopRuntimeProbe
         {
             PiAgentConversationCheckpointTurn expected =
                 checkpoint.Turns[index];
-            JsonElement user = contextMessages[index * 2];
+            JsonElement user =
+                contextMessages[index * 2];
             JsonElement assistant =
                 contextMessages[index * 2 + 1];
             if (
