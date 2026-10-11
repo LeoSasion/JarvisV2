@@ -3,7 +3,7 @@
 - Current approved owned-desktop baseline:
   `docs/screenshots/jarvis-win10-current-ui-baseline.png`
 - Deterministic evidence: 1600 x 900 locked-profile render,
-  SHA-256 `017999E0A925D23660F1234C76E63024728CDE3ADECFBAE05B9806125D7B84C1`
+  SHA-256 `9A4DFB3BAF6B79A42F271718D09821B1CA3174FD6901B22FDF23D73D70F07CE6`
 - Viewport: 1600 x 900 at 96 DPI
 - State: black/yellow desktop, layout rail permanently visible, `FREEFORM`,
   Explorer restored at `(596, 63)` with size `930 x 667`; only the one-window
@@ -120,7 +120,7 @@ rendered and reviewed in a connected graphics session.
   profile; WPF vector adapter 13 / 13, canonical desktop hash matched exactly,
   and the separate owned Task Manager render passed structural validation
 - Current canonical SHA-256:
-  `017999E0A925D23660F1234C76E63024728CDE3ADECFBAE05B9806125D7B84C1`
+  `9A4DFB3BAF6B79A42F271718D09821B1CA3174FD6901B22FDF23D73D70F07CE6`
 - Separate owned Task Manager render SHA-256:
   `FD2DC1342ADA445B0B9515D98CD31901B7F61A0DDE79AE9C5F9805B0F2CE2412`
 - Current evidence state: `locked-profile-approved`. A disconnected graphics
@@ -245,3 +245,36 @@ Scope limits: this host had no fullscreen window during the session, so
 paths remain offline-verified only. This is bounded owned-window evidence — it
 does not validate module injection, does not enable Windhawk host activation,
 and does not change the caption-write revocation or any other gate.
+
+## State-lock tokens and taste-audit corrections (2026-10-12)
+
+Mechanical UI audit against the installed taste-skill rules found the preview
+already color-locked (zero hardcoded accent hexes, 40 `AccentBrush` bindings),
+shape-locked (all-sharp, zero corner radii), and free of banned string tells
+(zero em-dashes or middle-dot separators in UI strings). Two corrections to the
+audit method itself: pressed feedback lives in the shared `BareButton` control
+template (`IsPressed` dims to 0.74; keyboard focus draws an accent border) and
+is inherited by all six button styles, so a style-level trigger grep
+undercounts coverage; scrollbar page buttons are intentionally invisible
+(`Opacity=0`, non-focusable) and need no pressed state.
+
+Shipped changes: one `DisabledOpacity` resource (0.35) replaces the drifting
+per-style values 0.34 / 0.28 / 0.48, and the layout-rail option focus ring now
+uses the accent border like every other interactive family instead of a quiet
+grey rule. The rename editor's focus affordance is structural: it exists only
+while renaming and carries an accent caret, selection brush, and underline.
+The 45 uppercase mono labels are functional chrome (column headers, rail
+navigation, status strips), not decorative eyebrows; none were removed.
+
+Pure `#000000` remains an intentional override of the taste default against
+pure black: true black is load-bearing for the feather transparency contract
+and keeps compositing cost at zero - geek minimalism and performance economy,
+per the owner's decision.
+
+Because the ACCESS action button renders disabled in the canonical frame, the
+disabled-opacity lock shifts its pixels; under the established re-approval
+process the checked-in canonical PNG and approved hash advance to this host's
+deterministic output `9A4DFB3BAF6B79A42F271718D09821B1CA3174FD6901B22FDF23D73D70F07CE6`
+(gate-observed and independently re-rendered identically). The separate Task
+Manager render hash is unchanged. This is an owned-process preview pixel
+baseline change only; it is not live Shell evidence and relaxes no other gate.

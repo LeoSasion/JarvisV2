@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="clr-namespace:Jarvis.Win10.NeuralVoidPreview"
+    xmlns:System="clr-namespace:System;assembly=System.Runtime"
     Width="1600"
     Height="900"
     Background="#000000"
@@ -25,6 +26,9 @@
         <SolidColorBrush x:Key="PrimaryRuleBrush" Color="#C2C2BE" />
         <SolidColorBrush x:Key="SecondaryRuleBrush" Color="#626562" />
         <SolidColorBrush x:Key="QuietRuleBrush" Color="#303230" />
+
+        <!-- State-lock tokens: one disabled opacity for every interactive family. -->
+        <System:Double x:Key="DisabledOpacity">0.35</System:Double>
 
         <CollectionViewSource
             x:Key="LayoutDefinitionsView"
@@ -96,7 +100,7 @@
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Style.Triggers>
                 <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Opacity" Value="0.34" />
+                    <Setter Property="Opacity" Value="{StaticResource DisabledOpacity}" />
                     <Setter Property="Cursor" Value="Arrow" />
                     <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
                 </Trigger>
@@ -110,7 +114,7 @@
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Style.Triggers>
                 <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Opacity" Value="0.28" />
+                    <Setter Property="Opacity" Value="{StaticResource DisabledOpacity}" />
                     <Setter Property="Cursor" Value="Arrow" />
                     <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
                 </Trigger>
@@ -334,13 +338,13 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Cursor" Value="Arrow" />
-                                <Setter Property="Opacity" Value="0.48" />
+                                <Setter Property="Opacity" Value="{StaticResource DisabledOpacity}" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="ItemFrame" Property="Background" Value="#090909" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                <Setter TargetName="ItemFrame" Property="BorderBrush" Value="{StaticResource SecondaryRuleBrush}" />
+                                <Setter TargetName="ItemFrame" Property="BorderBrush" Value="{Binding AccentBrush, ElementName=Root}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
