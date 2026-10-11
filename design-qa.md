@@ -184,3 +184,38 @@ Host facts for this record: Windows 10 Pro 22H2 19045.6466 x64; .NET SDK
 8.0.425; PowerShell 7.6.6; explorer.exe 10.0.19041.6159 SHA-256
 `988A56D8…E97E`; kill switch state untouched, `liveExplorer=not-run`, no
 mutation performed during this re-approval.
+
+## Provisioned-toolchain native rebuild and first bounded live preview on this host (2026-10-11)
+
+The locked portable Windhawk 1.7.3 toolchain was pre-provisioned on this host
+without executing the installer: the hash-and-signature-verified offline
+installer payload was carved with 7-Zip, and `windhawk.ini` was taken from a
+silent-portable probe extraction. The complete compile-input aggregate
+reproduces the lock byte-for-byte (8397 files / 570199839 bytes /
+`990DB4CE…6E8B`), and the pinned CPython 3.14.3 launcher, interpreter and four
+runtime DLLs match their locked hashes exactly. `Build-NativeMod.ps1` compiled
+both reviewed modules into immutable run `20261010T221518556Z-dc5c0762`; the
+committed canonical receipt was refreshed accordingly.
+
+Exact-host admission initially blocked this machine because the profile's
+Explorer version strings (`10.0.19041.4522`) no longer matched what the host
+serves (`10.0.19041.6159`), while size and SHA-256 were byte-identical — the
+served strings come from servicing-updated MUI resources, not from explorer.exe
+bytes. Under the AGENTS.md compatibility-refresh rule the profile was updated
+to the observed identity with size and SHA-256 unchanged.
+
+With admission passing, the read-only Shell surface probe and desktop style
+probe both ran live on this host as `read-only-inspection` (no text collected,
+kill switch armed, permit absent, Explorer PID/start-time identities unchanged).
+The first bounded live preview on this host then ran under the profile's
+`run-bounded-desktop-text-color-preview` capability: session
+`20261011T144652132Z-f00a3827`, preset `neural-emerald`, TTL 30 seconds, on
+the exact admitted FolderView HWND of desktop Shell PID 6188. The journal was
+written before the first SET; apply readback observed `#FFFFFF → #00FF9A` with
+an accepted nonclient-only redraw; TTL rollback restored and re-verified
+`#FFFFFF` with a second accepted redraw, `state=recovered`. Explorer was not
+restarted or terminated, no registry write occurred, the kill switch stayed
+armed, the one-shot permit stayed absent, and `activationPermitted=false`
+throughout. This is bounded non-module desktop evidence only: it does not
+validate Win11 module compatibility, does not enable Windhawk host activation,
+and does not relax any other gate.
