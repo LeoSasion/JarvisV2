@@ -36,7 +36,6 @@ internal enum OwnedLayoutApplyStatus
     Applied,
     RestoredFreeform,
     NoVisibleWindow,
-    InsufficientVisibleWindows,
     UnknownOwnedWindow,
     UnknownLayout,
     InvalidWorkArea,
@@ -179,10 +178,10 @@ internal sealed class OwnedWindowLayoutCoordinator
             preset,
             required,
             visible,
-            visible >= required,
+            true,
             visible >= required
                 ? "AVAILABLE"
-                : $"REQUIRES {required} VISIBLE JARVIS WINDOWS; {visible} VISIBLE");
+                : $"FILLS {visible} OF {required} PANES");
     }
 
     public bool TryActivate(OwnedWindowId id)
@@ -256,6 +255,7 @@ internal sealed class OwnedWindowLayoutCoordinator
         }
 
         BreakLayoutCore();
+        _lastTiledPreset = null;
         entry.Bounds = bounds;
         entry.FloatingBounds = bounds;
         ActivateCore(entry);
@@ -412,15 +412,6 @@ internal sealed class OwnedWindowLayoutCoordinator
         {
             return Result(
                 OwnedLayoutApplyStatus.NoVisibleWindow,
-                null,
-                required,
-                []);
-        }
-
-        if (visible.Count < required)
-        {
-            return Result(
-                OwnedLayoutApplyStatus.InsufficientVisibleWindows,
                 null,
                 required,
                 []);

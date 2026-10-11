@@ -3,7 +3,7 @@
 - Current approved owned-desktop baseline:
   `docs/screenshots/jarvis-win10-current-ui-baseline.png`
 - Deterministic evidence: 1600 x 900 locked-profile render,
-  SHA-256 `76D3FF62E50303B82A63E08E1625408C3E42E5D38CEA9AB02877D175B606EEEE`
+  SHA-256 `F472A0C14D08348B49A44D878202A3F69330D78A6226244D2B2A499EE2C70AC2`
 - Viewport: 1600 x 900 at 96 DPI
 - State: black/yellow desktop, layout rail permanently visible, `FREEFORM`,
   Explorer restored at `(596, 63)` with size `930 x 667`; only the one-window
@@ -120,9 +120,9 @@ rendered and reviewed in a connected graphics session.
   profile; WPF vector adapter 13 / 13, canonical desktop hash matched exactly,
   and the separate owned Task Manager render passed structural validation
 - Current canonical SHA-256:
-  `76D3FF62E50303B82A63E08E1625408C3E42E5D38CEA9AB02877D175B606EEEE`
+  `F472A0C14D08348B49A44D878202A3F69330D78A6226244D2B2A499EE2C70AC2`
 - Separate owned Task Manager render SHA-256:
-  `2FACE1769938D581BD35279624ED0300CE22516B2CBC103F4B564714A2623307`
+  `3971C3ECB2D725C9F5EB12F6F95A95E43600E16EF41D4F91DED57055A2BDEACF`
 - Current evidence state: `locked-profile-approved`. A disconnected graphics
   session still fails pixel-dependent checks closed and cannot advance either
   the canonical PNG or approved hash.
@@ -305,3 +305,30 @@ separate Task Manager render from `FD2DC1342ADA445B0B9515D98CD31901B7F61A0DDE79A
 to `2FACE1769938D581BD35279624ED0300CE22516B2CBC103F4B564714A2623307`
 (gate-observed, independently re-rendered identically). Owned-process preview
 pixel baseline only; not live Shell evidence; no other gate relaxes.
+
+## Always-selectable rail with partial fill; title double-click (2026-10-12, owner-directed)
+
+Live exploration feedback: the gated rail read as "cannot light up" and the
+Explorer lacked Windows-style minimize-by-title-bar habits. The owner chose the
+product-level alternative to gating: every preset is always selectable, and a
+preset with more panes than visible windows fills its leading panes (active
+window into the primary pane, then activation order) and leaves spare panes
+empty; rail items announce "fills N of M panes" instead of disabling. Owned
+window title bars now toggle maximize/restore on double-click, matching Windows
+muscle memory; single click and drag semantics are unchanged, and a manual
+title drag clears the remembered tiled preset so restore returns floating
+bounds. Maximizing then restoring re-applies the last tiled preset even when it
+is only partially fillable.
+
+Scenario suites moved 29->30 (partial-fill placement proof replaces the
+insufficient-windows no-op; hosted double-click scenario added) and the edge-bar
+suite renamed its slot scenario to every-layout-applies-and-selects-with-partial-
+fill. All green: layout 30/30, edge bars 25/25, full preview gate passed except
+the pixel canonical, which moved because rail glyphs no longer render dimmed in
+the canonical frame: desktop canonical advances from
+`76D3FF62E50303B82A63E08E1625408C3E42E5D38CEA9AB02877D175B606EEEE` to
+`F472A0C14D08348B49A44D878202A3F69330D78A6226244D2B2A499EE2C70AC2` and the Task
+Manager render from `2FACE1769938D581BD35279624ED0300CE22516B2CBC103F4B564714A2623307`
+to `3971C3ECB2D725C9F5EB12F6F95A95E43600E16EF41D4F91DED57055A2BDEACF`
+(gate-observed, independently re-rendered identically). Owned-process preview
+baseline only; not live Shell evidence; no other gate relaxes.

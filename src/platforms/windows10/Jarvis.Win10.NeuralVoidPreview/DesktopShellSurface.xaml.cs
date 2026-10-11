@@ -83,6 +83,7 @@ public partial class DesktopShellSurface :
     private Point _taskManagerDragStart;
     private bool _taskManagerDragStarted;
     private Point? _ownedTitlePointerOverrideForTest;
+    private int? _ownedTitleClickCountOverrideForTest;
     private MouseButtonState? _ownedTitleButtonOverrideForTest;
     private readonly DataTemplate _explorerFullItemTemplate;
     private readonly DataTemplate _explorerCompactItemTemplate;
@@ -174,7 +175,8 @@ public partial class DesktopShellSurface :
     internal int AvailableLayoutCount =>
         LayoutCatalog.All.Count(
             definition =>
-                _ownedWindowLayouts.GetAvailability(definition.Preset).IsEnabled);
+                _ownedWindowLayouts.GetAvailability(definition.Preset)
+                    .StatusText == "AVAILABLE");
 
     internal string? ActiveOwnedWindowId =>
         _ownedWindowLayouts.ActiveWindowId?.Value;
@@ -495,6 +497,9 @@ public partial class DesktopShellSurface :
     }
 
     internal bool IsLayoutAvailableForTest(LayoutPreset preset) =>
+        _ownedWindowLayouts.GetAvailability(preset).StatusText == "AVAILABLE";
+
+    internal bool IsLayoutSelectableForTest(LayoutPreset preset) =>
         _ownedWindowLayouts.GetAvailability(preset).IsEnabled;
 
     internal Rect GetOwnedWindowBoundsForTest(string id) =>
@@ -521,7 +526,8 @@ public partial class DesktopShellSurface :
         string id,
         Point press,
         Point? move = null,
-        bool loseCapture = false)
+        bool loseCapture = false,
+        int clickCount = 1)
     {
         UIElement title = id switch
         {
@@ -533,6 +539,7 @@ public partial class DesktopShellSurface :
         {
             _ownedTitlePointerOverrideForTest = press;
             _ownedTitleButtonOverrideForTest = MouseButtonState.Pressed;
+            _ownedTitleClickCountOverrideForTest = clickCount;
             title.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
             {
                 RoutedEvent = Mouse.MouseDownEvent,
@@ -566,6 +573,7 @@ public partial class DesktopShellSurface :
         {
             _ownedTitlePointerOverrideForTest = null;
             _ownedTitleButtonOverrideForTest = null;
+            _ownedTitleClickCountOverrideForTest = null;
             title.ReleaseMouseCapture();
         }
     }
@@ -1139,7 +1147,11 @@ public partial class DesktopShellSurface :
         QueueRevealSelectedLayout();
         if (announce)
         {
-            Announce($"LAYOUT / {definition.Id.ToUpperInvariant()}");
+            string fillSuffix = result.VisibleWindowCount < definition.PaneCount
+                ? $" / FILLS {result.VisibleWindowCount} OF {definition.PaneCount}"
+                : string.Empty;
+            Announce(
+                $"LAYOUT / {definition.Id.ToUpperInvariant()}{fillSuffix}");
         }
 
         return true;
@@ -1238,17 +1250,25 @@ public partial class DesktopShellSurface :
 
             OwnedLayoutAvailability availability =
                 _ownedWindowLayouts.GetAvailability(definition.Preset);
-            item.IsEnabled = availability.IsEnabled;
-            string helpText = availability.IsEnabled
+            int fillCount = Math.Min(
+                availability.RequiredPaneCount,
+                availability.VisibleWindowCount);
+            bool fillsAll = fillCount == availability.RequiredPaneCount;
+            item.IsEnabled = true;
+            string helpText = fillsAll
                 ? $"Apply {definition.AutomationName} to visible JARVIS windows."
-                : availability.StatusText + ".";
-            item.ToolTip = availability.IsEnabled
+                : $"{definition.AutomationName} fills the first {fillCount} of " +
+                  $"{availability.RequiredPaneCount} panes; spare panes stay empty.";
+            item.ToolTip = fillsAll
                 ? definition.AutomationName
-                : $"{definition.AutomationName} / {availability.StatusText}";
+                : $"{definition.AutomationName} / FILLS {fillCount} OF " +
+                  $"{availability.RequiredPaneCount} PANES";
             AutomationProperties.SetHelpText(item, helpText);
             AutomationProperties.SetItemStatus(
                 item,
-                availability.IsEnabled ? "Available" : "Unavailable");
+                fillsAll
+                    ? "Available"
+                    : $"Fills {fillCount} of {availability.RequiredPaneCount} panes");
         }
     }
 
@@ -1841,6 +1861,15 @@ public partial class DesktopShellSurface :
             return;
         }
 
+        if ((_ownedTitleClickCountOverrideForTest ?? eventArgs.ClickCount) == 2)
+        {
+            ExplorerTitleBar.ReleaseMouseCapture();
+            _draggingExplorer = false;
+            ToggleExplorerMaximize();
+            eventArgs.Handled = true;
+            return;
+        }
+
         ActivateOwnedWindow(ExplorerWindow);
         Point pointer = _ownedTitlePointerOverrideForTest ?? eventArgs.GetPosition(DesktopCanvas);
         _explorerDragStart = pointer;
@@ -1913,7 +1942,9 @@ public partial class DesktopShellSurface :
 
     private void ExplorerMaximizeButton_OnClick(
         object sender,
-        RoutedEventArgs eventArgs)
+        RoutedEventArgs eventArgs) => ToggleExplorerMaximize();
+
+    private void ToggleExplorerMaximize()
     {
         RestoreExplorer();
         bool wasMaximized = IsExplorerMaximized;
@@ -2462,6 +2493,15 @@ public partial class DesktopShellSurface :
             return;
         }
 
+        if ((_ownedTitleClickCountOverrideForTest ?? eventArgs.ClickCount) == 2)
+        {
+            TaskManagerTitleBar.ReleaseMouseCapture();
+            _draggingTaskManager = false;
+            ToggleTaskManagerMaximize();
+            eventArgs.Handled = true;
+            return;
+        }
+
         ActivateOwnedWindow(TaskManagerWindow);
         Point pointer = _ownedTitlePointerOverrideForTest ?? eventArgs.GetPosition(DesktopCanvas);
         _taskManagerDragStart = pointer;
@@ -2537,7 +2577,9 @@ public partial class DesktopShellSurface :
 
     private void TaskManagerMaximizeButton_OnClick(
         object sender,
-        RoutedEventArgs eventArgs)
+        RoutedEventArgs eventArgs) => ToggleTaskManagerMaximize();
+
+    private void ToggleTaskManagerMaximize()
     {
         RestoreTaskManager();
         bool wasMaximized = IsTaskManagerMaximizedForTest;

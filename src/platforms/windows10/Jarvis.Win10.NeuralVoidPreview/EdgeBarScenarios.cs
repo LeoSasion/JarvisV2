@@ -738,23 +738,12 @@ internal static class EdgeBarScenarios
 
         Add(
             scenarios,
-            "available-layouts-apply-and-unavailable-layouts-preserve-current-slot",
+            "every-layout-applies-and-selects-with-partial-fill",
             () =>
             {
                 foreach (LayoutDefinition definition in LayoutCatalog.All)
                 {
-                    LayoutPreset? before = surface.CurrentLayout;
                     bool applied = surface.SelectLayoutForTest(definition.Preset);
-                    if (definition.PaneCount > surface.VisibleOwnedWindowCount)
-                    {
-                        if (applied || surface.CurrentLayout != before)
-                        {
-                            return false;
-                        }
-
-                        continue;
-                    }
-
                     if (!applied || surface.CurrentLayout != definition.Preset ||
                         surface.CurrentLayoutGlyph.Preset != definition.Preset ||
                         surface.SelectedLayoutDefinition?.Preset != definition.Preset ||

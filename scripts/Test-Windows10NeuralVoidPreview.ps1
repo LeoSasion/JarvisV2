@@ -55,7 +55,7 @@ $renderRoot = Join-Path $root (
 $currentFeatherBaselinePath = Join-Path $root (
     'docs\screenshots\jarvis-win10-current-ui-baseline.png')
 $approvedFeatherTargetSha256 =
-    '76D3FF62E50303B82A63E08E1625408C3E42E5D38CEA9AB02877D175B606EEEE'
+    'F472A0C14D08348B49A44D878202A3F69330D78A6226244D2B2A499EE2C70AC2'
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()
@@ -842,7 +842,7 @@ if ($buildExitCode -eq 0) {
             $ownedLayoutReceipt.receiptType -ceq 'jarvisv2-win10-owned-window-layout-test' -and
             $ownedLayoutReceipt.result -eq 'passed' -and
             $ownedLayoutReceipt.schemaVersion -eq 1 -and
-            $ownedLayoutReceipt.scenarioCount -eq 29 -and
+            $ownedLayoutReceipt.scenarioCount -eq 30 -and
             $ownedLayoutReceipt.passedCount -eq $ownedLayoutReceipt.scenarioCount -and
             $ownedLayoutReceipt.ownProcessOnly -and
             -not $ownedLayoutReceipt.thirdPartyWindowControlSupported -and

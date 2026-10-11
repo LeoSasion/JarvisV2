@@ -38,11 +38,15 @@ internal static class OwnedWindowLayoutScenarios
     public static OwnedWindowLayoutTestReceipt Run()
     {
         List<OwnedWindowLayoutScenario> scenarios = [];
-        Add(scenarios, "availability-counts-are-1-7-15-16", AvailabilityCounts);
         Add(
             scenarios,
-            "insufficient-three-and-four-pane-layouts-are-transactional-no-ops",
-            InsufficientLayoutsAreNoOps);
+            "all-presets-selectable-with-fill-notes-1-7-15-16-full",
+            AvailabilityCounts);
+        Add(
+            scenarios,
+            "partial-fill-places-visible-windows-in-leading-panes",
+            PartialFillPlacesLeadingPanes);
+
         Add(
             scenarios,
             "all-sixteen-layouts-place-active-window-in-primary-pane",
@@ -77,8 +81,8 @@ internal static class OwnedWindowLayoutScenarios
             MaximizeRestoresUsableTiledLayout);
         Add(
             scenarios,
-            "maximize-restores-freeform-when-last-tiled-layout-is-unavailable",
-            MaximizeRestoresFreeformFallback);
+            "maximize-restores-last-tiled-layout-even-partially-filled",
+            MaximizeRestoresLastTiledEvenPartial);
         Add(
             scenarios,
             "unknown-window-id-is-rejected-without-state-change",
@@ -99,18 +103,19 @@ internal static class OwnedWindowLayoutScenarios
             scenarios,
             "invalid-work-area-is-a-transactional-no-op",
             InvalidWorkAreaIsNoOp);
-        Add(scenarios, "hosted-starts-freeform-with-one-available-layout", HostedInitialState);
-        Add(scenarios, "hosted-open-enables-exactly-seven-layouts", HostedAvailability);
+        Add(scenarios, "hosted-starts-freeform-with-all-layouts-selectable", HostedInitialState);
+        Add(scenarios, "hosted-title-double-click-toggles-maximize-and-restore", HostedTitleDoubleClickToggles);
+        Add(scenarios, "hosted-open-keeps-all-sixteen-layouts-selectable", HostedAvailability);
         Add(scenarios, "hosted-six-splits-place-both-active-window-choices", HostedSplitBounds);
         Add(scenarios, "hosted-compact-layouts-retain-content-and-controls", HostedCompactContent);
-        Add(scenarios, "hosted-disabled-layouts-preserve-bounds-and-selection", HostedDisabledNoOp);
+        Add(scenarios, "hosted-partial-fill-moves-windows-and-keeps-rail-live", HostedPartialFill);
         Add(scenarios, "hosted-minimize-restore-and-maximize-retain-pane", HostedLifecycle);
         Add(scenarios, "hosted-close-and-reopen-return-to-floating-bounds", HostedCloseReopen);
         Add(scenarios, "hosted-body-focus-and-manual-move-update-active-freeform-state", HostedFocusAndMove);
         Add(scenarios, "hosted-title-click-and-jitter-preserve-maximized-floating-restore", HostedTitleClickPreservesFloatingRestore);
         Add(scenarios, "hosted-title-clicks-preserve-tiled-layout-and-maximize-restore", HostedTitleClickPreservesTiledLayout);
         Add(scenarios, "hosted-title-drag-and-capture-loss-commit-only-real-moves", HostedTitleDragCommitsRealMove);
-        Add(scenarios, "hosted-arrow-keys-skip-disabled-layouts-and-preview-preserves-applied-state", HostedArrowPreviewNavigation);
+        Add(scenarios, "hosted-arrow-keys-step-every-layout-and-preview-preserves-applied-state", HostedArrowPreviewNavigation);
         Add(scenarios, "hosted-escape-returns-focus-to-active-window", HostedEscapeReturnsFocus);
 
         int passed = scenarios.Count(scenario => scenario.Passed);
@@ -135,10 +140,12 @@ internal static class OwnedWindowLayoutScenarios
         {
             OwnedWindowLayoutCoordinator coordinator =
                 CreateCoordinator(visibleCount);
-            int enabled = LayoutCatalog.All.Count(
-                definition =>
-                    coordinator.GetAvailability(definition.Preset).IsEnabled);
-            if (enabled != expected[visibleCount - 1])
+            int full = LayoutCatalog.All.Count(definition =>
+                coordinator.GetAvailability(definition.Preset).StatusText ==
+                    "AVAILABLE");
+            bool allSelectable = LayoutCatalog.All.All(definition =>
+                coordinator.GetAvailability(definition.Preset).IsEnabled);
+            if (full != expected[visibleCount - 1] || !allSelectable)
             {
                 return false;
             }
@@ -147,25 +154,41 @@ internal static class OwnedWindowLayoutScenarios
         return true;
     }
 
-    private static bool InsufficientLayoutsAreNoOps()
+    private static bool PartialFillPlacesLeadingPanes()
     {
         foreach (int visibleCount in new[] { 1, 2 })
         {
             OwnedWindowLayoutCoordinator coordinator =
                 CreateCoordinator(visibleCount);
-            string before = Fingerprint(coordinator.CaptureSnapshot());
             foreach (LayoutDefinition definition in LayoutCatalog.All.Where(
-                         definition => definition.PaneCount is 3 or 4))
+                         definition => definition.PaneCount > visibleCount))
             {
                 OwnedLayoutApplyResult result = coordinator.TryApply(
                     definition.Preset,
                     WorkArea);
-                if (result.Status !=
-                        OwnedLayoutApplyStatus.InsufficientVisibleWindows ||
-                    result.Placements.Count != 0 ||
-                    Fingerprint(coordinator.CaptureSnapshot()) != before)
+                IReadOnlyList<Rect> panes =
+                    OwnedWindowLayoutCoordinator.ScaleWithInternalGap(
+                        definition.Preset,
+                        WorkArea);
+                int primary = OwnedWindowLayoutCoordinator.PrimaryPaneIndex(
+                    definition);
+                if (result.Status != OwnedLayoutApplyStatus.Applied ||
+                    result.Placements.Count != visibleCount ||
+                    !panes.Contains(result.Placements[0].Bounds) ||
+                    result.Placements[0].PaneIndex != primary ||
+                    !result.Placements[0].IsActive ||
+                    coordinator.GetAvailability(definition.Preset).StatusText !=
+                        $"FILLS {visibleCount} OF {definition.PaneCount} PANES")
                 {
                     return false;
+                }
+
+                foreach (OwnedWindowPlacement placement in result.Placements)
+                {
+                    if (!panes.Contains(placement.Bounds))
+                    {
+                        return false;
+                    }
                 }
             }
         }
@@ -329,9 +352,9 @@ internal static class OwnedWindowLayoutScenarios
             Beta,
             OwnedWindowLifecycle.Minimized);
         OwnedWindowState whileMinimized = State(coordinator, Beta);
-        bool unavailable = !coordinator
+        string whileStatus = coordinator
             .GetAvailability(LayoutPreset.EqualColumns)
-            .IsEnabled;
+            .StatusText;
         bool restored = coordinator.TrySetLifecycle(
             Beta,
             OwnedWindowLifecycle.Visible);
@@ -340,12 +363,13 @@ internal static class OwnedWindowLayoutScenarios
             applied.Status == OwnedLayoutApplyStatus.Applied &&
             minimized &&
             restored &&
-            unavailable &&
+            whileStatus == "FILLS 1 OF 2 PANES" &&
             whileMinimized.AssignedPaneIndex == before.AssignedPaneIndex &&
             whileMinimized.Bounds == before.Bounds &&
             after.AssignedPaneIndex == before.AssignedPaneIndex &&
             after.Bounds == before.Bounds &&
-            coordinator.GetAvailability(LayoutPreset.EqualColumns).IsEnabled &&
+            coordinator.GetAvailability(LayoutPreset.EqualColumns).StatusText ==
+                "AVAILABLE" &&
             coordinator.AppliedPreset == LayoutPreset.EqualColumns &&
             coordinator.ActiveWindowId == Beta;
     }
@@ -415,7 +439,7 @@ internal static class OwnedWindowLayoutScenarios
             State(coordinator, Alpha).AssignedPaneIndex == 0;
     }
 
-    private static bool MaximizeRestoresFreeformFallback()
+    private static bool MaximizeRestoresLastTiledEvenPartial()
     {
         OwnedWindowLayoutCoordinator coordinator = CreateCoordinator(3);
         OwnedWindowState original = State(coordinator, Alpha);
@@ -433,14 +457,21 @@ internal static class OwnedWindowLayoutScenarios
         OwnedLayoutApplyResult restored = coordinator.TryToggleMaximize(
             Alpha,
             WorkArea);
+        IReadOnlyList<Rect> panes =
+            OwnedWindowLayoutCoordinator.ScaleWithInternalGap(
+                LayoutPreset.ThreeColumns,
+                WorkArea);
+        int primary = OwnedWindowLayoutCoordinator.PrimaryPaneIndex(
+            LayoutCatalog.Get(LayoutPreset.ThreeColumns));
         OwnedWindowState final = State(coordinator, Alpha);
         return
             maximized.Status == OwnedLayoutApplyStatus.Applied &&
-            restored.Status == OwnedLayoutApplyStatus.RestoredFreeform &&
-            restored.AppliedPreset is null &&
-            coordinator.AppliedPreset is null &&
-            final.Bounds == original.FloatingBounds &&
-            final.AssignedPaneIndex is null;
+            restored.Status == OwnedLayoutApplyStatus.Applied &&
+            restored.AppliedPreset == LayoutPreset.ThreeColumns &&
+            coordinator.AppliedPreset == LayoutPreset.ThreeColumns &&
+            final.Bounds == panes[primary] &&
+            final.AssignedPaneIndex == primary &&
+            original.FloatingBounds != panes[primary];
     }
 
     private static bool UnknownIdIsNoOp()
@@ -588,6 +619,7 @@ internal static class OwnedWindowLayoutScenarios
     private static bool HostedInitialState() => WithShell(shell =>
         shell.IsOwnedWindowLayoutFreeform && shell.CurrentLayoutGlyph.IsFreeform &&
         shell.VisibleOwnedWindowCount == 1 && shell.AvailableLayoutCount == 1 &&
+        LayoutCatalog.All.All(definition => shell.IsLayoutSelectableForTest(definition.Preset)) &&
         shell.LayoutRailList.SelectedItems.Count == 0 &&
         shell.ActiveOwnedWindowId == "explorer");
 
@@ -597,7 +629,39 @@ internal static class OwnedWindowLayoutScenarios
         shell.UpdateLayout();
         return shell.VisibleOwnedWindowCount == 2 && shell.AvailableLayoutCount == 7 &&
             shell.IsOwnedWindowLayoutFreeform && LayoutCatalog.All.All(definition =>
+                shell.IsLayoutSelectableForTest(definition.Preset) &&
                 shell.IsLayoutAvailableForTest(definition.Preset) == (definition.PaneCount <= 2));
+    });
+
+    private static bool HostedTitleDoubleClickToggles() => WithShell(shell =>
+    {
+        _ = shell.PrepareTaskManagerForSnapshot();
+        foreach (string id in new[] { "explorer", "task-manager" })
+        {
+            Rect floating = shell.GetOwnedWindowBoundsForTest(id);
+            Point press = new(WorkArea.Left + 40, WorkArea.Top + 20);
+            shell.RaiseOwnedTitleGestureForTest(id, press, clickCount: 2);
+            shell.UpdateLayout();
+            bool maximized = id == "explorer"
+                ? shell.IsExplorerMaximized
+                : shell.IsTaskManagerMaximizedForTest;
+            if (!maximized || shell.GetOwnedWindowBoundsForTest(id) != WorkArea)
+            {
+                return false;
+            }
+
+            shell.RaiseOwnedTitleGestureForTest(id, press, clickCount: 2);
+            shell.UpdateLayout();
+            bool restoredAgain = id == "explorer"
+                ? !shell.IsExplorerMaximized
+                : !shell.IsTaskManagerMaximizedForTest;
+            if (!restoredAgain || shell.GetOwnedWindowBoundsForTest(id) != floating)
+            {
+                return false;
+            }
+        }
+
+        return true;
     });
 
     private static bool HostedSplitBounds() => WithShell(shell =>
@@ -676,19 +740,25 @@ internal static class OwnedWindowLayoutScenarios
         return true;
     });
 
-    private static bool HostedDisabledNoOp() => WithShell(shell =>
+    private static bool HostedPartialFill() => WithShell(shell =>
     {
         _ = shell.PrepareTaskManagerForSnapshot();
-        _ = shell.SelectLayoutForTest(LayoutPreset.EqualColumns);
-        Rect explorer = shell.GetOwnedWindowBoundsForTest("explorer");
-        Rect task = shell.GetOwnedWindowBoundsForTest("task-manager");
         foreach (LayoutDefinition definition in LayoutCatalog.All.Where(layout => layout.PaneCount > 2))
         {
             ListBoxItem item = (ListBoxItem)shell.LayoutRailList.ItemContainerGenerator.ContainerFromItem(definition);
-            if (item.IsEnabled || !AutomationProperties.GetHelpText(item).Contains("REQUIRES", StringComparison.Ordinal) ||
-                shell.SelectLayoutForTest(definition.Preset) || shell.CurrentLayout != LayoutPreset.EqualColumns ||
-                shell.GetOwnedWindowBoundsForTest("explorer") != explorer ||
-                shell.GetOwnedWindowBoundsForTest("task-manager") != task)
+            if (!item.IsEnabled ||
+                !AutomationProperties.GetHelpText(item).Contains("fills the first", StringComparison.Ordinal) ||
+                !shell.SelectLayoutForTest(definition.Preset))
+            {
+                return false;
+            }
+
+            shell.UpdateLayout();
+            IReadOnlyList<Rect> panes = OwnedWindowLayoutCoordinator.ScaleWithInternalGap(definition.Preset, WorkArea);
+            Rect explorer = shell.GetOwnedWindowBoundsForTest("explorer");
+            Rect task = shell.GetOwnedWindowBoundsForTest("task-manager");
+            if (shell.CurrentLayout != definition.Preset ||
+                !panes.Contains(explorer) || !panes.Contains(task) || explorer == task)
             {
                 return false;
             }
@@ -927,10 +997,11 @@ internal static class OwnedWindowLayoutScenarios
             }
         }
 
-        // Further Down must not select the disabled three- or four-pane presets.
+        // Further Down now steps into the three-pane family: every preset is
+        // selectable and partial fill applies on commit.
         shell.RaiseRailKeyForTest(Key.Down);
         if (shell.LayoutRailSelectedValueForTest !=
-                LayoutPreset.NarrowTopWideBottom ||
+                LayoutPreset.ThreeColumns ||
             shell.CurrentLayout != LayoutPreset.EqualColumns)
         {
             return false;
@@ -938,7 +1009,7 @@ internal static class OwnedWindowLayoutScenarios
 
         shell.RaiseRailKeyForTest(Key.End);
         if (shell.LayoutRailSelectedValueForTest !=
-                LayoutPreset.NarrowTopWideBottom)
+                LayoutPreset.FourQuadrants)
         {
             return false;
         }

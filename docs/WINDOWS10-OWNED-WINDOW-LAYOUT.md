@@ -7,19 +7,23 @@ overlapping windows instead of claiming that a tiled preset is applied.
 
 ## Availability and placement
 
-The catalog contains sixteen exact-cover topologies. A preset is available
-only when enough registered windows are visible. The initial Explorer enables
-the single-window maximized preset; opening Task Manager enables that preset
-and all six two-window splits. Three- and four-window layouts remain disabled
-with an explanation of the required visible-window count. Selecting an
-unavailable layout changes neither bounds nor the applied preset. It never
-creates a window or restores a minimized window to fill a pane.
+The catalog contains sixteen exact-cover topologies, and every preset is
+always selectable. When fewer windows are visible than the preset has panes,
+selecting it fills the leading panes in placement order - active window into
+the primary pane, then activation order - and leaves spare panes empty; the
+rail item announces "fills N of M panes" instead of disabling itself. The
+initial Explorer fully fills only the maximized preset; opening Task Manager
+fully fills that preset plus all six two-window splits.
 
 The active window occupies the largest pane. Equal-area panes use top-to-bottom,
 left-to-right order; remaining participants follow activation order and then
 registration order. Extra visible windows retain their bounds. The usable area
 is `(148, 24, 1428, 752)` DIP, internal gaps are 12 DIP, and placement edges are
-rounded to integer device-independent coordinates.
+rounded to integer device-independent coordinates. Maximizing then restoring
+returns the last applied tiled preset even when it is now only partially
+fillable. Double-clicking an owned window title bar toggles maximize and
+restore, matching Windows muscle memory; single click and drag behavior are
+unchanged.
 
 ## Lifecycle and compact presentation
 
