@@ -219,3 +219,29 @@ armed, the one-shot permit stayed absent, and `activationPermitted=false`
 throughout. This is bounded non-module desktop evidence only: it does not
 validate Win11 module compatibility, does not enable Windhawk host activation,
 and does not relax any other gate.
+
+## First bounded owned taskbar-edge overlay session on this host (2026-10-11)
+
+Under the profile's `run-bounded-owned-taskbar-edge-overlay-preview` capability,
+the owned edge overlay ran against the exact admitted primary taskbar
+(`Shell_TrayWnd`, HWND `0x2008C`, desktop Shell PID 6188 / thread 6316) for a
+30-second TTL. Receipt `passed-owned-overlay-session-completed`: 637 visible
+rendered frames, zero hidden samples, one reposition, target never retired;
+`explorerMutationPerformed=false`, `injectionRequested=false`, mouse-transparent,
+no-activate, owned-window-only, and `moduleActivationPermitted=false` throughout.
+
+Visual evidence: full-screen captures before launch, while the rail was visible,
+and after TTL expiry. A sampled comparison of the taskbar strip (y 1158–1200,
+x 0–1400, excluding the tray/clock region) found 519 changed sample pairs
+during the session and **zero** between before and after — the taskbar returned
+pixel-identical outside unrelated clock changes. Visual review of the during
+capture confirms the emerald edge rail with its central chevron along the top
+border, confined to the gap between the app-icon cluster and the tray, matching
+the `neural-void-taskbar-edge-canary-v1` contract; no taskbar content is
+obscured.
+
+Scope limits: this host had no fullscreen window during the session, so
+`fullscreenRetreatSamples=0` and `accessibilityRetreatSamples=0`; the retreat
+paths remain offline-verified only. This is bounded owned-window evidence — it
+does not validate module injection, does not enable Windhawk host activation,
+and does not change the caption-write revocation or any other gate.
