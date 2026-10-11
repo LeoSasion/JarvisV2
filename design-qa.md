@@ -3,7 +3,7 @@
 - Current approved owned-desktop baseline:
   `docs/screenshots/jarvis-win10-current-ui-baseline.png`
 - Deterministic evidence: 1600 x 900 locked-profile render,
-  SHA-256 `9A4DFB3BAF6B79A42F271718D09821B1CA3174FD6901B22FDF23D73D70F07CE6`
+  SHA-256 `76D3FF62E50303B82A63E08E1625408C3E42E5D38CEA9AB02877D175B606EEEE`
 - Viewport: 1600 x 900 at 96 DPI
 - State: black/yellow desktop, layout rail permanently visible, `FREEFORM`,
   Explorer restored at `(596, 63)` with size `930 x 667`; only the one-window
@@ -120,9 +120,9 @@ rendered and reviewed in a connected graphics session.
   profile; WPF vector adapter 13 / 13, canonical desktop hash matched exactly,
   and the separate owned Task Manager render passed structural validation
 - Current canonical SHA-256:
-  `9A4DFB3BAF6B79A42F271718D09821B1CA3174FD6901B22FDF23D73D70F07CE6`
+  `76D3FF62E50303B82A63E08E1625408C3E42E5D38CEA9AB02877D175B606EEEE`
 - Separate owned Task Manager render SHA-256:
-  `FD2DC1342ADA445B0B9515D98CD31901B7F61A0DDE79AE9C5F9805B0F2CE2412`
+  `2FACE1769938D581BD35279624ED0300CE22516B2CBC103F4B564714A2623307`
 - Current evidence state: `locked-profile-approved`. A disconnected graphics
   session still fails pixel-dependent checks closed and cannot advance either
   the canonical PNG or approved hash.
@@ -278,3 +278,30 @@ deterministic output `9A4DFB3BAF6B79A42F271718D09821B1CA3174FD6901B22FDF23D73D70
 (gate-observed and independently re-rendered identically). The separate Task
 Manager render hash is unchanged. This is an owned-process preview pixel
 baseline change only; it is not live Shell evidence and relaxes no other gate.
+
+## Pure-white selection and brighter disabled state (2026-10-12, owner-directed)
+
+Live exploration feedback on this host: the layout rail read as unselectable
+and the surface overall too dark. Root cause of "unlightable": rail presets are
+gated by visible owned-window count (Explorer starts alone; Task Manager
+registers closed), so multi-pane presets correctly start disabled — but the
+previous 0.35 disabled-opacity lock made those glyphs dimmer than the earlier
+0.48 and read as dead rather than gated. The owner directed a rollback of that
+darkening plus pure-white selection highlights.
+
+Shipped: `DisabledOpacity` returns to 0.48 (still one token, now matching the
+brightest prior value), and a `SelectionBrush` (#FFFFFF) replaces accent-colored
+selection marks across every interactive family — Explorer row rail and signal
+squares, selected item name text, layout-rail glyph corner brackets and marker,
+the current-layout taskbar glyph, and Task Manager process rows. Accent stays
+on focus rings, caret/selection-in-text, hover thumb, and the feathered axis;
+selection is now always pure white everywhere.
+
+Canonical consequence: the current-layout glyph carries selection in the
+canonical frame, so both pixel baselines move — desktop canonical advances from
+`9A4DFB3BAF6B79A42F271718D09821B1CA3174FD6901B22FDF23D73D70F07CE6` to
+`76D3FF62E50303B82A63E08E1625408C3E42E5D38CEA9AB02877D175B606EEEE` and the
+separate Task Manager render from `FD2DC1342ADA445B0B9515D98CD31901B7F61A0DDE79AE9C5F9805B0F2CE2412`
+to `2FACE1769938D581BD35279624ED0300CE22516B2CBC103F4B564714A2623307`
+(gate-observed, independently re-rendered identically). Owned-process preview
+pixel baseline only; not live Shell evidence; no other gate relaxes.

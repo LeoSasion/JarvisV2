@@ -135,7 +135,7 @@ The render command creates a 1600-by-900 PNG and a JSON receipt for the one
 accepted yellow case. The current approved owned-desktop PNG on locked Windows
 10 build 19045.6466 at 96 DPI in software-render mode has SHA-256:
 
-`9A4DFB3BAF6B79A42F271718D09821B1CA3174FD6901B22FDF23D73D70F07CE6`
+`76D3FF62E50303B82A63E08E1625408C3E42E5D38CEA9AB02877D175B606EEEE`
 
 Current bounded verification for the interactive Explorer revision:
 
@@ -164,7 +164,7 @@ Current bounded verification for the interactive Explorer revision:
   profile. The canonical desktop frame matched the approved SHA-256 exactly;
   the separate owned Task Manager render passed structural validation with
   SHA-256
-  `FD2DC1342ADA445B0B9515D98CD31901B7F61A0DDE79AE9C5F9805B0F2CE2412`.
+  `2FACE1769938D581BD35279624ED0300CE22516B2CBC103F4B564714A2623307`.
 
 The row/column render gate also checks the actual Task Manager title rule and
 window-control pixels. Snapshot scenes are admitted before the first native

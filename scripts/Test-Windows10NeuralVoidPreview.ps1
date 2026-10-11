@@ -55,7 +55,7 @@ $renderRoot = Join-Path $root (
 $currentFeatherBaselinePath = Join-Path $root (
     'docs\screenshots\jarvis-win10-current-ui-baseline.png')
 $approvedFeatherTargetSha256 =
-    '9A4DFB3BAF6B79A42F271718D09821B1CA3174FD6901B22FDF23D73D70F07CE6'
+    '76D3FF62E50303B82A63E08E1625408C3E42E5D38CEA9AB02877D175B606EEEE'
 
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()

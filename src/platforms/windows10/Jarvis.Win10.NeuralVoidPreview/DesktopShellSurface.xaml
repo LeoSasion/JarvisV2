@@ -28,7 +28,10 @@
         <SolidColorBrush x:Key="QuietRuleBrush" Color="#303230" />
 
         <!-- State-lock tokens: one disabled opacity for every interactive family. -->
-        <System:Double x:Key="DisabledOpacity">0.35</System:Double>
+        <System:Double x:Key="DisabledOpacity">0.48</System:Double>
+
+        <!-- Selection highlight is pure white across every interactive family. -->
+        <SolidColorBrush x:Key="SelectionBrush" Color="#FFFFFF" />
 
         <CollectionViewSource
             x:Key="LayoutDefinitionsView"
@@ -155,7 +158,7 @@
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="RowFrame" Property="Background" Value="#0B0B09" />
-                                <Setter TargetName="SelectionRail" Property="Background" Value="{Binding AccentBrush, ElementName=Root}" />
+                                <Setter TargetName="SelectionRail" Property="Background" Value="{StaticResource SelectionBrush}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
                                 <Setter TargetName="RowFrame" Property="BorderBrush" Value="{Binding AccentBrush, ElementName=Root}" />
@@ -252,6 +255,7 @@
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
                     <Setter TargetName="SelectionSignal" Property="Visibility" Value="Visible" />
+                                            <Setter TargetName="ItemNameText" Property="Foreground" Value="{StaticResource SelectionBrush}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsRenameTarget}" Value="True">
                     <Setter TargetName="ItemNameText" Property="Visibility" Value="Collapsed" />
@@ -792,7 +796,7 @@
                                         </Grid>
                                         <TextBlock Grid.Column="2" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" FontFamily="{StaticResource MonoFont}" FontSize="13" Text="{Binding TypeLabel}" TextTrimming="CharacterEllipsis" />
                                         <TextBlock Grid.Column="3" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" FontFamily="{StaticResource MonoFont}" FontSize="13" Text="{Binding ModifiedAt, StringFormat={}{0:yyyy-MM-dd HH:mm}}" />
-                                        <Rectangle x:Name="SelectionSignal" Grid.Column="4" Width="6" Height="6" Fill="{Binding AccentBrush, ElementName=Root}" Visibility="Collapsed" />
+                                        <Rectangle x:Name="SelectionSignal" Grid.Column="4" Width="6" Height="6" Fill="{StaticResource SelectionBrush}" Visibility="Collapsed" />
                                     </Grid>
                                     <DataTemplate.Triggers>
                                         <DataTrigger Binding="{Binding Kind}" Value="Folder">
@@ -819,6 +823,7 @@
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                             <Setter TargetName="SelectionSignal" Property="Visibility" Value="Visible" />
+                                            <Setter TargetName="ItemNameText" Property="Foreground" Value="{StaticResource SelectionBrush}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding IsRenameTarget}" Value="True">
                                             <Setter TargetName="ItemNameText" Property="Visibility" Value="Collapsed" />
@@ -1119,8 +1124,8 @@
                                     IsHitTestVisible="False"
                                     Preset="{Binding Preset}"
                                     IsSelected="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type ListBoxItem}}}"
-                                    Stroke="{StaticResource TextBrush}"
-                                    Accent="{Binding AccentBrush, RelativeSource={RelativeSource AncestorType={x:Type local:DesktopShellSurface}}}" />
+                                                                        Stroke="{StaticResource TextBrush}"
+                                                                        Accent="{StaticResource SelectionBrush}" />
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
@@ -1157,8 +1162,8 @@
                         Preset="LeftMainRightStack"
                         IsFreeform="True"
                         Stroke="{StaticResource TextBrush}"
-                        Accent="{Binding AccentBrush, ElementName=Root}"
-                        IsSelected="True" />
+                                                Accent="{StaticResource SelectionBrush}"
+                                                IsSelected="True" />
                 </Button>
 
                 <Button x:Name="TaskbarSearchButton" Canvas.Left="170" Canvas.Top="0" Style="{StaticResource TaskbarButton}" Click="TaskbarUtilityButton_OnClick" CommandParameter="SEARCH" AutomationProperties.Name="Search">

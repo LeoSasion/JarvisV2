@@ -25,6 +25,7 @@
         <SolidColorBrush x:Key="SecondaryTextBrush" Color="#A7A7A1" />
         <SolidColorBrush x:Key="SecondaryRuleBrush" Color="#626562" />
         <SolidColorBrush x:Key="QuietRuleBrush" Color="#303230" />
+        <SolidColorBrush x:Key="SelectionBrush" Color="#FFFFFF" />
 
         <Style TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />
@@ -65,7 +66,7 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="RowFrame" Property="Background" Value="#0B0B09" />
-                                <Setter TargetName="SelectionRail" Property="Background" Value="{Binding AccentBrush, ElementName=Root}" />
+                                <Setter TargetName="SelectionRail" Property="Background" Value="{StaticResource SelectionBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
