@@ -103,7 +103,18 @@ internal static class OwnedWindowLayoutScenarios
             scenarios,
             "invalid-work-area-is-a-transactional-no-op",
             InvalidWorkAreaIsNoOp);
+        Add(scenarios, "auto-restore-validates-before-mutating", AutoRestoreValidatesBeforeMutating);
+        Add(scenarios, "auto-restore-prefers-minimized-mru-window", AutoRestorePrefersMinimizedMru);
         Add(scenarios, "hosted-starts-freeform-with-all-layouts-selectable", HostedInitialState);
+        Add(scenarios, "hosted-layout-opens-missing-owned-window", HostedLayoutOpensMissingWindow);
+        Add(scenarios, "hosted-rail-describes-planned-window-restore", HostedRailDescribesPlannedRestore);
+        Add(scenarios, "hosted-current-layout-reports-occupied-panes", HostedCurrentLayoutReportsOccupiedPanes);
+        Add(scenarios, "hosted-layout-restores-minimized-explorer", () => HostedLayoutRestoresMinimizedWindow("explorer"));
+        Add(scenarios, "hosted-layout-restores-minimized-task-manager", () => HostedLayoutRestoresMinimizedWindow("task-manager"));
+        Add(scenarios, "hosted-layout-recovers-after-all-windows-closed", HostedLayoutRecoversAllClosed);
+        Add(scenarios, "hosted-single-pane-keeps-spare-window-closed", HostedSinglePaneKeepsSpareClosed);
+        Add(scenarios, "hosted-passive-actions-leave-spare-window-minimized", HostedPassiveActionsKeepSpareMinimized);
+        Add(scenarios, "hosted-snapshot-render-host-excludes-pointer-input", HostedSnapshotHostExcludesPointerInput);
         Add(scenarios, "hosted-title-double-click-toggles-maximize-and-restore", HostedTitleDoubleClickToggles);
         Add(scenarios, "hosted-open-keeps-all-sixteen-layouts-selectable", HostedAvailability);
         Add(scenarios, "hosted-six-splits-place-both-active-window-choices", HostedSplitBounds);
@@ -355,6 +366,8 @@ internal static class OwnedWindowLayoutScenarios
         string whileStatus = coordinator
             .GetAvailability(LayoutPreset.EqualColumns)
             .StatusText;
+        OwnedLayoutApplyResult maximized = coordinator.TryToggleMaximize(Alpha, WorkArea);
+        OwnedLayoutApplyResult tiledAgain = coordinator.TryToggleMaximize(Alpha, WorkArea);
         bool restored = coordinator.TrySetLifecycle(
             Beta,
             OwnedWindowLifecycle.Visible);
@@ -364,6 +377,8 @@ internal static class OwnedWindowLayoutScenarios
             minimized &&
             restored &&
             whileStatus == "FILLS 1 OF 2 PANES" &&
+            maximized.Status == OwnedLayoutApplyStatus.Applied &&
+            tiledAgain.AppliedPreset == LayoutPreset.EqualColumns &&
             whileMinimized.AssignedPaneIndex == before.AssignedPaneIndex &&
             whileMinimized.Bounds == before.Bounds &&
             after.AssignedPaneIndex == before.AssignedPaneIndex &&
@@ -615,6 +630,258 @@ internal static class OwnedWindowLayoutScenarios
 
         return coordinator;
     }
+
+    private static bool AutoRestoreValidatesBeforeMutating()
+    {
+        OwnedWindowLayoutCoordinator coordinator = CreateCoordinator(2);
+        _ = coordinator.TrySetLifecycle(Beta, OwnedWindowLifecycle.Minimized);
+        string before = Fingerprint(coordinator.CaptureSnapshot());
+        OwnedLayoutApplyResult unknown = coordinator.TryApply(
+            (LayoutPreset)(-1), WorkArea, restoreHiddenWindows: true);
+        if (unknown.Status != OwnedLayoutApplyStatus.UnknownLayout ||
+            Fingerprint(coordinator.CaptureSnapshot()) != before)
+        {
+            return false;
+        }
+
+        foreach ((LayoutPreset preset, Rect invalid) in new[]
+        {
+            (LayoutPreset.FourQuadrants, Rect.Empty),
+            (LayoutPreset.FourQuadrants, new Rect(0, 0, 1, 1)),
+            (LayoutPreset.EqualRows, new Rect(1e308, 24, 1e308, 752)),
+            (LayoutPreset.EqualRows, new Rect(0, 24, 5e307, 752)),
+        })
+        {
+            OwnedLayoutApplyResult result = coordinator.TryApply(
+                preset, invalid, restoreHiddenWindows: true);
+            if (result.Status != OwnedLayoutApplyStatus.InvalidWorkArea ||
+                result.Placements.Count != 0 ||
+                Fingerprint(coordinator.CaptureSnapshot()) != before)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool AutoRestorePrefersMinimizedMru()
+    {
+        OwnedWindowLayoutCoordinator coordinator = CreateCoordinator(4);
+        _ = coordinator.TryActivate(Beta);
+        _ = coordinator.TryActivate(Alpha);
+        _ = coordinator.TrySetLifecycle(Beta, OwnedWindowLifecycle.Closed);
+        _ = coordinator.TrySetLifecycle(Gamma, OwnedWindowLifecycle.Minimized);
+        _ = coordinator.TrySetLifecycle(Delta, OwnedWindowLifecycle.Minimized);
+        OwnedLayoutApplyResult result = coordinator.TryApply(
+            LayoutPreset.EqualColumns, WorkArea, restoreHiddenWindows: true);
+        if (!result.Succeeded ||
+            !result.Placements.Select(placement => placement.WindowId).SequenceEqual([Alpha, Delta]) ||
+            State(coordinator, Gamma).Lifecycle != OwnedWindowLifecycle.Minimized ||
+            State(coordinator, Beta).Lifecycle != OwnedWindowLifecycle.Closed)
+        {
+            return false;
+        }
+
+        string applied = Fingerprint(coordinator.CaptureSnapshot());
+        return coordinator.TryApply(
+                LayoutPreset.EqualColumns, WorkArea, restoreHiddenWindows: true).Succeeded &&
+            Fingerprint(coordinator.CaptureSnapshot()) == applied;
+    }
+
+    private static bool HostedLayoutRestoresMinimizedWindow(string id) => WithShell(shell =>
+    {
+        _ = shell.PrepareTaskManagerForSnapshot();
+        Button minimize = id == "explorer"
+            ? shell.ExplorerMinimizeButton
+            : shell.TaskManagerMinimizeButton;
+        Invoke(minimize);
+        PumpIdle();
+        string? active = shell.ActiveOwnedWindowId;
+        shell.PreviewLayoutForTest(LayoutPreset.EqualColumns);
+        shell.FocusLayoutRailForTest();
+        PumpIdle();
+        IInputElement? focusBeforeCommit = Keyboard.FocusedElement;
+        if (shell.VisibleOwnedWindowCount != 1)
+        {
+            return false;
+        }
+
+        shell.RaiseRailKeyForTest(Key.Enter);
+        shell.UpdateLayout();
+        PumpIdle();
+        IReadOnlyList<Rect> panes = OwnedWindowLayoutCoordinator.ScaleWithInternalGap(
+            LayoutPreset.EqualColumns, WorkArea);
+        string other = id == "explorer" ? "task-manager" : "explorer";
+        Border indicator = id == "explorer"
+            ? shell.ExplorerRunningIndicator
+            : shell.TaskManagerRunningIndicator;
+        return shell.VisibleOwnedWindowCount == 2 &&
+            focusBeforeCommit is not null &&
+            ReferenceEquals(Keyboard.FocusedElement, focusBeforeCommit) &&
+            shell.ActiveOwnedWindowId == active && active == other &&
+            shell.GetOwnedWindowBoundsForTest(other) == panes[0] &&
+            shell.GetOwnedWindowBoundsForTest(id) == panes[1] &&
+            indicator.Visibility == Visibility.Visible && indicator.Opacity == 1.0 &&
+            (id != "task-manager" || shell.TaskManagerPanel.IsSamplingActiveForTest);
+    });
+
+    private static bool HostedLayoutRecoversAllClosed() => WithShell(shell =>
+    {
+        Invoke(shell.ExplorerCloseButton);
+        PumpIdle();
+        if (shell.VisibleOwnedWindowCount != 0 ||
+            !shell.SelectLayoutForTest(LayoutPreset.EqualColumns))
+        {
+            return false;
+        }
+
+        shell.UpdateLayout();
+        return shell.VisibleOwnedWindowCount == 2 &&
+            shell.ExplorerWindow.Visibility == Visibility.Visible &&
+            shell.TaskManagerWindow.Visibility == Visibility.Visible &&
+            shell.ExplorerRunningIndicator.Visibility == Visibility.Visible &&
+            shell.TaskManagerRunningIndicator.Visibility == Visibility.Visible &&
+            shell.TaskManagerPanel.IsSamplingActiveForTest;
+    });
+
+    private static bool HostedSinglePaneKeepsSpareClosed() => WithShell(shell =>
+    {
+        if (!shell.SelectLayoutForTest(LayoutPreset.Maximized))
+        {
+            return false;
+        }
+
+        Invoke(shell.ExplorerMaximizeButton);
+        return shell.VisibleOwnedWindowCount == 1 &&
+            shell.TaskManagerWindow.Visibility == Visibility.Collapsed &&
+            shell.TaskManagerRunningIndicator.Visibility == Visibility.Collapsed &&
+            !shell.TaskManagerPanel.IsSamplingActiveForTest;
+    });
+
+    private static bool HostedSnapshotHostExcludesPointerInput()
+    {
+        DesktopShellSurface surface = new();
+        Window host = PreviewRenderer.CreateRenderHost(surface);
+        try
+        {
+            return host.Content is UIElement stage &&
+                !stage.IsHitTestVisible && !surface.IsHitTestVisible;
+        }
+        finally
+        {
+            host.Content = null;
+            host.Close();
+        }
+    }
+
+    private static bool HostedPassiveActionsKeepSpareMinimized() => WithShell(shell =>
+    {
+        _ = shell.PrepareTaskManagerForSnapshot();
+        _ = shell.SelectLayoutForTest(LayoutPreset.EqualColumns);
+        Invoke(shell.TaskManagerMinimizeButton);
+        PumpIdle();
+        Rect beforePreview = shell.GetOwnedWindowBoundsForTest("explorer");
+        foreach (Key key in new[] { Key.Down, Key.End, Key.Home })
+        {
+            shell.RaiseRailKeyForTest(key);
+            if (shell.VisibleOwnedWindowCount != 1 ||
+                shell.GetOwnedWindowBoundsForTest("explorer") != beforePreview ||
+                shell.CurrentLayout != LayoutPreset.EqualColumns)
+            {
+                return false;
+            }
+        }
+
+        Invoke(shell.ExplorerMaximizeButton);
+        Invoke(shell.ExplorerMaximizeButton);
+        if (shell.CurrentLayout != LayoutPreset.EqualColumns ||
+            shell.VisibleOwnedWindowCount != 1)
+        {
+            return false;
+        }
+
+        Invoke(shell.TaskbarExplorerButton);
+        Invoke(shell.TaskbarExplorerButton);
+        PumpIdle();
+        return shell.VisibleOwnedWindowCount == 1 &&
+            shell.ExplorerWindow.Visibility == Visibility.Visible &&
+            shell.TaskManagerWindow.Visibility == Visibility.Collapsed &&
+            !shell.TaskManagerPanel.IsSamplingActiveForTest;
+    });
+
+    private static bool HostedCurrentLayoutReportsOccupiedPanes() => WithShell(shell =>
+    {
+        foreach (string hidden in new[] { "task-manager", "explorer" })
+        {
+            string other = hidden == "task-manager" ? "explorer" : "task-manager";
+            ActivateBody(shell, other);
+            if (!shell.SelectLayoutForTest(LayoutPreset.FourQuadrants) ||
+                !AutomationProperties.GetHelpText(shell.CurrentLayoutButton).Contains(
+                    "2 of 4 panes", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            Rect hiddenBounds = shell.GetOwnedWindowBoundsForTest(hidden);
+            Invoke(hidden == "task-manager"
+                ? shell.TaskManagerMinimizeButton : shell.ExplorerMinimizeButton);
+            if (!AutomationProperties.GetHelpText(shell.CurrentLayoutButton).Contains(
+                    "1 of 4 panes", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            Button maximizeOther = other == "explorer"
+                ? shell.ExplorerMaximizeButton : shell.TaskManagerMaximizeButton;
+            Invoke(maximizeOther);
+            Invoke(maximizeOther);
+            Invoke(hidden == "task-manager"
+                ? shell.TaskbarSystemButton : shell.TaskbarExplorerButton);
+            PumpIdle();
+            if (shell.GetOwnedWindowBoundsForTest(hidden) != hiddenBounds ||
+                !AutomationProperties.GetHelpText(shell.CurrentLayoutButton).Contains(
+                    "2 of 4 panes", StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    private static bool HostedRailDescribesPlannedRestore() => WithShell(shell =>
+    {
+        LayoutDefinition definition = LayoutCatalog.Get(LayoutPreset.EqualColumns);
+        ListBoxItem item = (ListBoxItem)shell.LayoutRailList.ItemContainerGenerator
+            .ContainerFromItem(definition);
+        return AutomationProperties.GetHelpText(item).Contains(
+            "restores 1", StringComparison.Ordinal) &&
+            AutomationProperties.GetItemStatus(item).Contains(
+                "2 of 2", StringComparison.Ordinal);
+    });
+
+    private static bool HostedLayoutOpensMissingWindow() => WithShell(shell =>
+    {
+        if (shell.VisibleOwnedWindowCount != 1 ||
+            !shell.SelectLayoutForTest(LayoutPreset.EqualColumns))
+        {
+            return false;
+        }
+
+        shell.UpdateLayout();
+        PumpIdle();
+        IReadOnlyList<Rect> panes = OwnedWindowLayoutCoordinator.ScaleWithInternalGap(
+            LayoutPreset.EqualColumns, WorkArea);
+        return shell.VisibleOwnedWindowCount == 2 &&
+            shell.TaskManagerWindow.Visibility == Visibility.Visible &&
+            shell.TaskManagerRunningIndicator.Visibility == Visibility.Visible &&
+            shell.TaskManagerRunningIndicator.Opacity == 1.0 &&
+            shell.TaskManagerPanel.IsSamplingActiveForTest &&
+            shell.ActiveOwnedWindowId == "explorer" &&
+            shell.GetOwnedWindowBoundsForTest("explorer") == panes[0] &&
+            shell.GetOwnedWindowBoundsForTest("task-manager") == panes[1];
+    });
 
     private static bool HostedInitialState() => WithShell(shell =>
         shell.IsOwnedWindowLayoutFreeform && shell.CurrentLayoutGlyph.IsFreeform &&
@@ -1049,7 +1316,9 @@ internal static class OwnedWindowLayoutScenarios
         PumpIdle();
         if (!shell.LayoutRailHasKeyboardFocusForTest)
         {
-            return false;
+            throw new InvalidOperationException(
+                $"escape/rail-before: focus={Keyboard.FocusedElement?.GetType().Name}, " +
+                $"active={shell.ActiveOwnedWindowId}");
         }
 
         shell.RaiseRailKeyForTest(Key.Escape);
@@ -1058,7 +1327,9 @@ internal static class OwnedWindowLayoutScenarios
             shell.InteractionStatusForTest !=
                 "RAIL CLOSED / FOCUS RETURNED TO ACTIVE WINDOW")
         {
-            return false;
+            throw new InvalidOperationException(
+                $"escape/explorer-return: focus={Keyboard.FocusedElement?.GetType().Name}, " +
+                $"active={shell.ActiveOwnedWindowId}, status={shell.InteractionStatusForTest}");
         }
 
         ActivateBody(shell, "task-manager");
@@ -1066,9 +1337,16 @@ internal static class OwnedWindowLayoutScenarios
         PumpIdle();
         shell.RaiseRailKeyForTest(Key.Escape);
         PumpIdle();
-        return shell.TaskManagerPanelHasKeyboardFocusForTest &&
-            !shell.ExplorerItemsHaveKeyboardFocusForTest &&
-            shell.CurrentLayout is null;
+        if (!shell.TaskManagerPanelHasKeyboardFocusForTest ||
+            shell.ExplorerItemsHaveKeyboardFocusForTest ||
+            shell.CurrentLayout is not null)
+        {
+            throw new InvalidOperationException(
+                $"escape/task-manager-return: focus={Keyboard.FocusedElement?.GetType().Name}, " +
+                $"active={shell.ActiveOwnedWindowId}, layout={shell.CurrentLayout}");
+        }
+
+        return true;
     });
 
     private static void PumpIdle()

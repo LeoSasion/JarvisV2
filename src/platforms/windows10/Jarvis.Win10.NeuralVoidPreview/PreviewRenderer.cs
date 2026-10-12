@@ -193,7 +193,7 @@ internal static class PreviewRenderer
         }
     }
 
-    private static Window CreateRenderHost(
+    internal static Window CreateRenderHost(
         DesktopShellSurface surface)
     {
         double hostWidth =
@@ -201,6 +201,9 @@ internal static class PreviewRenderer
         double hostHeight = hostWidth * Height / Width;
         Viewbox stage = new()
         {
+            // Deterministic evidence must not inherit hover from the live
+            // desktop pointer. Interactive show-mode uses a different host.
+            IsHitTestVisible = false,
             Width = hostWidth,
             Height = hostHeight,
             Stretch = Stretch.Uniform,

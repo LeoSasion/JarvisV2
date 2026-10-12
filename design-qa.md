@@ -268,8 +268,9 @@ navigation, status strips), not decorative eyebrows; none were removed.
 
 Pure `#000000` remains an intentional override of the taste default against
 pure black: true black is load-bearing for the feather transparency contract
-and keeps compositing cost at zero - geek minimalism and performance economy,
-per the owner's decision.
+and avoids adding decorative blur or glow effects - geek minimalism and
+performance economy, per the owner's decision. This is a design rationale,
+not evidence of zero rendering or compositing cost.
 
 Because the ACCESS action button renders disabled in the canonical frame, the
 disabled-opacity lock shifts its pixels; under the established re-approval
@@ -332,3 +333,69 @@ Manager render from `2FACE1769938D581BD35279624ED0300CE22516B2CBC103F4B564714A26
 to `3971C3ECB2D725C9F5EB12F6F95A95E43600E16EF41D4F91DED57055A2BDEACF`
 (gate-observed, independently re-rendered identically). Owned-process preview
 baseline only; not live Shell evidence; no other gate relaxes.
+
+## Explicit layout commit restores registered surfaces (2026-10-13)
+
+The previous always-selectable revision implemented partial placement only:
+spare panes remained empty, and even registered closed/minimized surfaces were
+not restored. This revision adds the missing automatic-restore path for an
+explicit rail commit. The planner prefers minimized surfaces, then closed
+surfaces, ordered by MRU and registration order, and restores only the number
+needed by the preset. It preserves the existing active window and commits
+lifecycle changes only after the complete pane geometry has been validated.
+The WPF surface synchronizes visibility, running markers and Task Manager
+sampling without queuing focus to a newly restored window.
+
+Keyboard preview still neither moves nor restores windows. Maximize/restore
+and taskbar activation retain their visible-window-only placement behavior.
+Rail metadata describes the planned restore; current-layout metadata reports
+actual visible occupied panes rather than the topology's nominal pane count.
+
+Scope limit: there are still only two registered UI surfaces, Explorer and
+Task Manager. Two-pane presets can be filled automatically; three/four-pane
+presets may still have empty panes. No additional Explorer instance or native
+Windows window is created. Multi-instance Explorer remains unimplemented.
+
+Verification on this host: the new closed-window restore, planned-restore
+metadata, and actual-fill metadata regressions each failed before their fixes
+and passed afterwards. Layout scenarios pass 41/41 (18 coordinator, 23 hosted),
+including three additional consecutive runs. Edge bars pass 25/25, Explorer
+workspace 21/21 and Task Manager surface 10/10. The full owned-preview gate
+passes 26/26 with `locked-profile-approved`; the Task Manager model gate passes
+10/10. No golden PNG or approved hash was changed: the pure-black field and
+pure-white selection remain intact. This is own-process interaction evidence,
+not live Shell styling, injection or third-party window control.
+
+Pre-commit review found two additional regressions and blocked publication:
+Task Manager taskbar restoration left occupied-pane metadata stale, and finite
+rectangle components could still produce nonfinite edges/panes. Both were
+reproduced by the tests before fixing restoration refresh and finite geometry
+validation. Coverage now also checks actual keyboard-focus preservation,
+hidden-window arrow/Home/End previews, taskbar activation, and remembered
+maximize/restore without restoring unrelated windows.
+
+A transient canonical mismatch was traced by pixel comparison to the Terminal
+shortcut hover region only (23790 changed pixels, bounds x=199..347,
+y=301..469); a sample background pixel changed from #000000 to the button's
+#090909 hover color. The snapshot host was receiving live pointer input.
+Pointer hit-testing is now disabled only on the deterministic render stage,
+with a new regression that failed before the fix. Interactive show-mode uses
+a separate host and is unchanged. Three independent fixed renders match the
+existing approved hash; the golden was not advanced.
+
+One intermediate run reported an intermittent Escape-focus failure. Five
+alternating baseline/candidate runs all passed, so its cause was not established
+and it is not claimed fixed. Phase-specific failure diagnostics were added
+without weakening assertions or adding automatic retries. The final candidate
+then passed three consecutive 41/41 runs and the full 26/26 preview gate.
+
+The final review exposed a longer minimize -> maximize -> remembered-layout
+restore -> taskbar-restore sequence that cleared a hidden window's pane
+association while retaining its matching bounds. Coordinator and hosted
+regressions reproduced it for both surface choices. The coordinator now keeps
+the last successfully validated pane geometry and recovers a minimized
+window's association only when its retained bounds exactly match an unoccupied
+current pane; breaking layout clears that geometry. No window is moved or
+unrelated surface revived by this reconciliation. After the fix, the parent
+again verified three consecutive 41/41 runs, the full 26/26 preview gate,
+Task Manager model and platform gates, with the same approved canonical hash.

@@ -1128,7 +1128,8 @@ public partial class DesktopShellSurface :
         }
 
         OwnedLayoutApplyResult result =
-            _ownedWindowLayouts.TryApply(preset, OwnedWorkArea);
+            _ownedWindowLayouts.TryApply(
+                preset, OwnedWorkArea, restoreHiddenWindows: true);
         if (!result.Succeeded)
         {
             ApplyCurrentLayoutPresentation();
@@ -1182,10 +1183,13 @@ public partial class DesktopShellSurface :
         string accessibleName =
             $"Current layout: {definition.AutomationName}";
         AutomationProperties.SetName(CurrentLayoutButton, accessibleName);
+        int filledPaneCount = _ownedWindowLayouts.CaptureSnapshot().Windows.Count(
+            window => window.Lifecycle == OwnedWindowLifecycle.Visible &&
+                window.AssignedPaneIndex.HasValue);
         AutomationProperties.SetHelpText(
             CurrentLayoutButton,
-            $"Applied to {definition.PaneCount} owned window " +
-            $"{(definition.PaneCount == 1 ? "pane" : "panes")}.");
+            $"{filledPaneCount} of {definition.PaneCount} panes filled by " +
+            "visible owned windows.");
         CurrentLayoutButton.ToolTip = accessibleName;
         UpdateOwnedWindowControlNames();
     }
@@ -1240,6 +1244,7 @@ public partial class DesktopShellSurface :
     {
         LayoutRailList.ApplyTemplate();
         LayoutRailList.UpdateLayout();
+        int registeredCount = _ownedWindowLayouts.CaptureSnapshot().Windows.Count;
         foreach (LayoutDefinition definition in LayoutCatalog.All)
         {
             if (LayoutRailList.ItemContainerGenerator.ContainerFromItem(
@@ -1252,21 +1257,30 @@ public partial class DesktopShellSurface :
                 _ownedWindowLayouts.GetAvailability(definition.Preset);
             int fillCount = Math.Min(
                 availability.RequiredPaneCount,
-                availability.VisibleWindowCount);
+                registeredCount);
+            int restoreCount = Math.Max(0, fillCount - availability.VisibleWindowCount);
             bool fillsAll = fillCount == availability.RequiredPaneCount;
             item.IsEnabled = true;
-            string helpText = fillsAll
+            string helpText = restoreCount > 0
+                ? $"{definition.AutomationName} restores {restoreCount} owned " +
+                  $"window{(restoreCount == 1 ? string.Empty : "s")} and fills " +
+                  $"{fillCount} of {availability.RequiredPaneCount} panes. " +
+                  "Spare panes stay empty; only registered JARVIS windows are used."
+                : fillsAll
                 ? $"Apply {definition.AutomationName} to visible JARVIS windows."
                 : $"{definition.AutomationName} fills the first {fillCount} of " +
                   $"{availability.RequiredPaneCount} panes; spare panes stay empty.";
-            item.ToolTip = fillsAll
+            item.ToolTip = restoreCount > 0
+                ? $"{definition.AutomationName} / FILLS {fillCount} OF " +
+                  $"{availability.RequiredPaneCount} / RESTORES {restoreCount}"
+                : fillsAll
                 ? definition.AutomationName
                 : $"{definition.AutomationName} / FILLS {fillCount} OF " +
                   $"{availability.RequiredPaneCount} PANES";
             AutomationProperties.SetHelpText(item, helpText);
             AutomationProperties.SetItemStatus(
                 item,
-                fillsAll
+                fillsAll && restoreCount == 0
                     ? "Available"
                     : $"Fills {fillCount} of {availability.RequiredPaneCount} panes");
         }
@@ -2676,6 +2690,8 @@ public partial class DesktopShellSurface :
 
     private void RestoreTaskManager()
     {
+        bool wasVisible =
+            TaskManagerWindow.Visibility == Visibility.Visible;
         _ = _ownedWindowLayouts.TrySetLifecycle(
             TaskManagerOwnedWindowId,
             OwnedWindowLifecycle.Visible);
@@ -2687,6 +2703,11 @@ public partial class DesktopShellSurface :
         TaskManagerRunningIndicator.Opacity = 1.0;
         ActivateOwnedWindow(TaskManagerWindow);
         RefreshLayoutAvailability();
+        if (!wasVisible)
+        {
+            ApplyCurrentLayoutPresentation();
+        }
+
         TaskManagerPanel.StartSampling();
         _ = Dispatcher.BeginInvoke(
             DispatcherPriority.Input,
@@ -2828,6 +2849,19 @@ public partial class DesktopShellSurface :
                     : throw new InvalidOperationException(
                         $"Unregistered owned window placement {placement.WindowId}.");
             SetOwnedWindowBounds(window, placement.Bounds);
+            if (window.Visibility != Visibility.Visible)
+            {
+                window.Visibility = Visibility.Visible;
+                Border indicator = placement.WindowId == ExplorerOwnedWindowId
+                    ? ExplorerRunningIndicator
+                    : TaskManagerRunningIndicator;
+                indicator.Visibility = Visibility.Visible;
+                indicator.Opacity = 1.0;
+                if (placement.WindowId == TaskManagerOwnedWindowId)
+                {
+                    TaskManagerPanel.StartSampling();
+                }
+            }
         }
 
         UpdateOwnedWindowZOrder();

@@ -98,6 +98,7 @@ internal sealed class OwnedWindowLayoutCoordinator
     private LayoutPreset? _appliedPreset;
     private LayoutPreset? _lastTiledPreset;
     private OwnedWindowId? _activeWindowId;
+    private IReadOnlyList<Rect> _committedPaneBounds = [];
 
     public LayoutPreset? AppliedPreset => _appliedPreset;
 
@@ -238,6 +239,23 @@ internal sealed class OwnedWindowLayoutCoordinator
             entry.Bounds = entry.FloatingBounds;
             entry.AssignedPaneIndex = null;
         }
+        else if (previous == OwnedWindowLifecycle.Minimized)
+        {
+            // A visible-only reapply may have cleared the old association.
+            // Recover it only from unoccupied, currently committed geometry.
+            entry.AssignedPaneIndex = null;
+            for (int paneIndex = 0; paneIndex < _committedPaneBounds.Count; paneIndex++)
+            {
+                if (entry.Bounds == _committedPaneBounds[paneIndex] &&
+                    !_windows.Values.Any(window =>
+                        window.Lifecycle == OwnedWindowLifecycle.Visible &&
+                        window.AssignedPaneIndex == paneIndex))
+                {
+                    entry.AssignedPaneIndex = paneIndex;
+                    break;
+                }
+            }
+        }
 
         ActivateCore(entry);
         return true;
@@ -264,8 +282,9 @@ internal sealed class OwnedWindowLayoutCoordinator
 
     public OwnedLayoutApplyResult TryApply(
         LayoutPreset preset,
-        Rect workArea) =>
-        TryApplyCore(preset, workArea, null);
+        Rect workArea,
+        bool restoreHiddenWindows = false) =>
+        TryApplyCore(preset, workArea, null, restoreHiddenWindows);
 
     public OwnedLayoutApplyResult TryToggleMaximize(
         OwnedWindowId id,
@@ -378,12 +397,17 @@ internal sealed class OwnedWindowLayoutCoordinator
                 return [];
             }
 
-            result.Add(
-                new Rect(
-                    paneLeft,
-                    paneTop,
-                    paneRight - paneLeft,
-                    paneBottom - paneTop));
+            Rect bounds = new(
+                paneLeft,
+                paneTop,
+                paneRight - paneLeft,
+                paneBottom - paneTop);
+            if (!IsValidBounds(bounds))
+            {
+                return [];
+            }
+
+            result.Add(bounds);
         }
 
         return new ReadOnlyCollection<Rect>(result);
@@ -392,7 +416,8 @@ internal sealed class OwnedWindowLayoutCoordinator
     private OwnedLayoutApplyResult TryApplyCore(
         LayoutPreset preset,
         Rect workArea,
-        OwnedWindowId? requestedActive)
+        OwnedWindowId? requestedActive,
+        bool restoreHiddenWindows = false)
     {
         if (!Enum.IsDefined(preset))
         {
@@ -408,6 +433,18 @@ internal sealed class OwnedWindowLayoutCoordinator
         List<WindowEntry> visible = _windows.Values
             .Where(window => window.Lifecycle == OwnedWindowLifecycle.Visible)
             .ToList();
+        if (restoreHiddenWindows && visible.Count < required)
+        {
+            // Plan against registered own-process windows only. Do not change
+            // lifecycle until the work area and complete geometry are valid.
+            IEnumerable<WindowEntry> hidden = OrderByMostRecent(
+                _windows.Values.Where(window =>
+                    window.Lifecycle == OwnedWindowLifecycle.Minimized))
+                .Concat(OrderByMostRecent(_windows.Values.Where(window =>
+                    window.Lifecycle == OwnedWindowLifecycle.Closed)));
+            visible.AddRange(hidden.Take(required - visible.Count));
+        }
+
         if (visible.Count == 0)
         {
             return Result(
@@ -501,12 +538,14 @@ internal sealed class OwnedWindowLayoutCoordinator
         foreach (OwnedWindowPlacement placement in placements)
         {
             WindowEntry participant = _windows[placement.WindowId];
+            participant.Lifecycle = OwnedWindowLifecycle.Visible;
             participant.Bounds = placement.Bounds;
             participant.AssignedPaneIndex = placement.PaneIndex;
         }
 
         _activeWindowId = active.Id;
         _appliedPreset = preset;
+        _committedPaneBounds = paneBounds;
         if (preset != LayoutPreset.Maximized)
         {
             _lastTiledPreset = preset;
@@ -569,6 +608,7 @@ internal sealed class OwnedWindowLayoutCoordinator
     private void BreakLayoutCore()
     {
         _appliedPreset = null;
+        _committedPaneBounds = [];
         foreach (WindowEntry window in _windows.Values)
         {
             window.AssignedPaneIndex = null;
@@ -599,6 +639,8 @@ internal sealed class OwnedWindowLayoutCoordinator
         double.IsFinite(bounds.Y) &&
         double.IsFinite(bounds.Width) &&
         double.IsFinite(bounds.Height) &&
+        double.IsFinite(bounds.Right) &&
+        double.IsFinite(bounds.Bottom) &&
         bounds.Width > 0.0 &&
         bounds.Height > 0.0;
 
