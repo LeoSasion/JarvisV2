@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using Jarvis.VisualEffects;
 using Jarvis.Win10.OwnedTaskManager;
+using static Jarvis.Win10.NeuralVoidPreview.VisualTreeSearch;
 
 namespace Jarvis.Win10.NeuralVoidPreview;
 
@@ -191,12 +192,15 @@ public partial class DesktopShellSurface :
         Button minimize = CreateExplorerTitleButton("Minimize", id,
             new System.Windows.Shapes.Path { Width = 16, StrokeThickness = 1.4,
                 Stroke = (Brush)FindResource("TextBrush"), Data = Geometry.Parse("M 0,1 L 16,1") });
+        minimize.Click += ExplorerMinimizeButton_OnClick;
         Button maximize = CreateExplorerTitleButton("Maximize", id,
             new System.Windows.Shapes.Rectangle { Width = 15, Height = 15, StrokeThickness = 1.5,
                 Stroke = (Brush)FindResource("TextBrush") });
+        maximize.Click += ExplorerMaximizeButton_OnClick;
         Button close = CreateExplorerTitleButton("Close", id,
             new System.Windows.Shapes.Path { Width = 16, Height = 16, StrokeThickness = 1.5,
                 Stroke = (Brush)FindResource("TextBrush"), Data = Geometry.Parse("M 1,1 L 15,15 M 15,1 L 1,15") });
+        close.Click += ExplorerCloseButton_OnClick;
         Grid titleGrid = new();
         titleGrid.ColumnDefinitions.Add(new ColumnDefinition());
         titleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(132) });
@@ -251,13 +255,9 @@ public partial class DesktopShellSurface :
         {
             Style = (Style)FindResource("WindowControlButton"),
             Content = glyph,
-            CommandParameter = id,
             ToolTip = $"{action.ToUpperInvariant()} EXPLORER / {id.Value}",
         };
         AutomationProperties.SetName(button, $"{action} Explorer {id.Value}");
-        if (action == "Minimize") button.Click += ExplorerMinimizeButton_OnClick;
-        else if (action == "Maximize") button.Click += ExplorerMaximizeButton_OnClick;
-        else if (action == "Close") button.Click += ExplorerCloseButton_OnClick;
         return button;
     }
 
@@ -1325,7 +1325,6 @@ public partial class DesktopShellSurface :
         }
 
         ApplyOwnedLayoutResult(result);
-        ApplyCurrentLayoutPresentation();
         RefreshLayoutAvailability();
         QueueRevealSelectedLayout();
         if (announce)
@@ -1982,29 +1981,6 @@ public partial class DesktopShellSurface :
             ? FindVisualDescendant<LayoutGlyph>(container)
             : null;
 
-    private static T? FindVisualDescendant<T>(DependencyObject parent)
-        where T : DependencyObject
-    {
-        int childCount = VisualTreeHelper.GetChildrenCount(parent);
-        for (int index = 0; index < childCount; index++)
-        {
-            DependencyObject child =
-                VisualTreeHelper.GetChild(parent, index);
-            if (child is T match)
-            {
-                return match;
-            }
-
-            T? nested = FindVisualDescendant<T>(child);
-            if (nested is not null)
-            {
-                return nested;
-            }
-        }
-
-        return null;
-    }
-
     private Rect GetBoundsOnDesktop(FrameworkElement element)
     {
         Point origin =
@@ -2118,15 +2094,7 @@ public partial class DesktopShellSurface :
 
     private void MinimizeExplorer(ExplorerEntry entry)
     {
-        EndExplorerTitleDrag(entry);
-        entry.Surface.SuspendInteraction();
-        _ = _ownedWindowLayouts.TrySetLifecycle(entry.Id, OwnedWindowLifecycle.Minimized);
-        entry.Frame.Visibility = Visibility.Collapsed;
-        ApplyCurrentLayoutPresentation();
-        RefreshLayoutAvailability();
-        UpdateOwnedWindowZOrder();
-        RefreshExplorerTaskbarState();
-        QueueTaskbarFocus(TaskbarExplorerButton);
+        HideExplorer(entry, OwnedWindowLifecycle.Minimized);
         Announce($"EXPLORER / MINIMIZED / {entry.Id.Value}");
     }
 
@@ -2139,7 +2107,6 @@ public partial class DesktopShellSurface :
         bool wasMaximized = IsOwnedWindowMaximized(entry.Id);
         OwnedLayoutApplyResult result = _ownedWindowLayouts.TryToggleMaximize(entry.Id, OwnedWorkArea);
         ApplyOwnedLayoutResult(result);
-        ApplyCurrentLayoutPresentation();
         RefreshLayoutAvailability();
         Announce($"EXPLORER / {(wasMaximized ? "RESTORED" : "EXPANDED")} / {entry.Id.Value}");
     }
@@ -2149,26 +2116,31 @@ public partial class DesktopShellSurface :
 
     private void CloseExplorer(ExplorerEntry entry)
     {
+        HideExplorer(entry, OwnedWindowLifecycle.Closed);
+        Announce($"EXPLORER / CLOSED / {entry.Id.Value}");
+    }
+
+    private void HideExplorer(ExplorerEntry entry, OwnedWindowLifecycle lifecycle)
+    {
         EndExplorerTitleDrag(entry);
         entry.Surface.SuspendInteraction();
-        _ = _ownedWindowLayouts.TrySetLifecycle(entry.Id, OwnedWindowLifecycle.Closed);
+        _ = _ownedWindowLayouts.TrySetLifecycle(entry.Id, lifecycle);
         entry.Frame.Visibility = Visibility.Collapsed;
         ApplyCurrentLayoutPresentation();
         RefreshLayoutAvailability();
         UpdateOwnedWindowZOrder();
         RefreshExplorerTaskbarState();
         QueueTaskbarFocus(TaskbarExplorerButton);
-        Announce($"EXPLORER / CLOSED / {entry.Id.Value}");
     }
 
     private ExplorerEntry RecentExplorer()
     {
+        if (_ownedWindowLayouts.ActiveWindowId is OwnedWindowId active &&
+            _explorers.TryGetValue(active, out ExplorerEntry? activeEntry)) return activeEntry;
         OwnedWindowState[] states = _ownedWindowLayouts.CaptureSnapshot().Windows
             .Where(state => _explorers.ContainsKey(state.Id))
             .OrderByDescending(state => state.ActivationOrdinal)
             .ThenByDescending(state => state.RegistrationOrder).ToArray();
-        if (_ownedWindowLayouts.ActiveWindowId is OwnedWindowId active &&
-            _explorers.TryGetValue(active, out ExplorerEntry? activeEntry)) return activeEntry;
         OwnedWindowState target = states.FirstOrDefault(state => state.Lifecycle != OwnedWindowLifecycle.Closed) ?? states[0];
         return _explorers[target.Id];
     }
@@ -2193,7 +2165,6 @@ public partial class DesktopShellSurface :
         if (_ownedWindowLayouts.AppliedPreset == LayoutPreset.Maximized)
         {
             ApplyOwnedLayoutResult(_ownedWindowLayouts.TryApply(LayoutPreset.Maximized, OwnedWorkArea));
-            ApplyCurrentLayoutPresentation();
         }
         entry.Surface.FocusExplorerItems();
     }
@@ -2367,7 +2338,6 @@ public partial class DesktopShellSurface :
                 TaskManagerOwnedWindowId,
                 OwnedWorkArea);
         ApplyOwnedLayoutResult(result);
-        ApplyCurrentLayoutPresentation();
         RefreshLayoutAvailability();
         Announce(wasMaximized
             ? "TASK MANAGER / RESTORED"
@@ -2443,7 +2413,6 @@ public partial class DesktopShellSurface :
                         LayoutPreset.Maximized,
                         OwnedWorkArea);
                 ApplyOwnedLayoutResult(result);
-                ApplyCurrentLayoutPresentation();
             }
 
             Announce(
@@ -2603,6 +2572,7 @@ public partial class DesktopShellSurface :
     {
         if (!result.Succeeded)
         {
+            ApplyCurrentLayoutPresentation();
             return;
         }
 
@@ -2626,6 +2596,7 @@ public partial class DesktopShellSurface :
         RefreshExplorerTaskbarState();
         UpdateOwnedWindowZOrder();
         UpdateOwnedWindowLayoutDensity();
+        ApplyCurrentLayoutPresentation();
     }
 
     private void ApplyCoordinatorBounds(
@@ -2787,23 +2758,6 @@ public partial class DesktopShellSurface :
     {
         InteractionStatusText.Text = text;
         AutomationProperties.SetName(InteractionStatusText, text);
-    }
-
-    private static T? FindParent<T>(DependencyObject? source)
-        where T : DependencyObject
-    {
-        DependencyObject? current = source;
-        while (current is not null)
-        {
-            if (current is T match)
-            {
-                return match;
-            }
-
-            current = VisualTreeHelper.GetParent(current);
-        }
-
-        return null;
     }
 
     private static SolidColorBrush CreateBrush(Color color)

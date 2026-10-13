@@ -30,6 +30,7 @@ $taskManagerProjectPath = Join-Path $taskManagerModelRoot (
     'Jarvis.Win10.OwnedTaskManager.csproj')
 $explorerSurfacePath = Join-Path $sourceRoot 'ExplorerSurface.xaml'
 $explorerSurfaceCodePath = Join-Path $sourceRoot 'ExplorerSurface.xaml.cs'
+$visualTreeSearchPath = Join-Path $sourceRoot 'VisualTreeSearch.cs'
 $explorerWorkspacePath = Join-Path $sourceRoot 'ExplorerWorkspace.cs'
 $explorerScenariosPath = Join-Path $sourceRoot (
     'ExplorerWorkspaceScenarios.cs')
@@ -107,8 +108,10 @@ $desktopOwningXamlText = @(
 ) -join [Environment]::NewLine
 $explorerSurfaceCodeText = [IO.File]::ReadAllText($explorerSurfaceCodePath)
 $explorerWorkspaceText = [IO.File]::ReadAllText($explorerWorkspacePath)
+$visualTreeSearchText = [IO.File]::ReadAllText($visualTreeSearchPath)
 $explorerOwningCodeText = @(
-    $surfaceCodeText, $explorerSurfaceCodeText, $explorerWorkspaceText
+    $surfaceCodeText, $explorerSurfaceCodeText, $explorerWorkspaceText,
+    $visualTreeSearchText
 ) -join [Environment]::NewLine
 $explorerScenariosText = [IO.File]::ReadAllText($explorerScenariosPath)
 $layoutCatalogText = [IO.File]::ReadAllText($layoutCatalogPath)
@@ -866,7 +869,7 @@ if ($buildExitCode -eq 0) {
             $ownedLayoutReceipt.receiptType -ceq 'jarvisv2-win10-owned-window-layout-test' -and
             $ownedLayoutReceipt.result -eq 'passed' -and
             $ownedLayoutReceipt.schemaVersion -eq 1 -and
-            $ownedLayoutReceipt.scenarioCount -eq 54 -and
+            $ownedLayoutReceipt.scenarioCount -eq 55 -and
             $ownedLayoutReceipt.passedCount -eq $ownedLayoutReceipt.scenarioCount -and
             $ownedLayoutReceipt.ownProcessOnly -and
             -not $ownedLayoutReceipt.thirdPartyWindowControlSupported -and

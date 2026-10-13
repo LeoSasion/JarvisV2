@@ -105,6 +105,7 @@ internal static class OwnedWindowLayoutScenarios
             InvalidWorkAreaIsNoOp);
         Add(scenarios, "auto-restore-validates-before-mutating", AutoRestoreValidatesBeforeMutating);
         Add(scenarios, "auto-restore-prefers-minimized-mru-window", AutoRestorePrefersMinimizedMru);
+        Add(scenarios, "wpf-shared-visual-search-preserves-null-start-and-depth-first-contract", SharedVisualSearchContract);
         Add(scenarios, "hosted-starts-freeform-with-all-layouts-selectable", HostedInitialState);
         Add(scenarios, "hosted-layout-opens-missing-owned-window", HostedLayoutOpensMissingWindow);
         Add(scenarios, "hosted-rail-describes-planned-window-restore", HostedRailDescribesPlannedRestore);
@@ -155,6 +156,65 @@ internal static class OwnedWindowLayoutScenarios
             "not-run",
             false,
             scenarios);
+    }
+
+    private static bool SharedVisualSearchContract()
+    {
+        Type helper = typeof(DesktopShellSurface).Assembly.GetType(
+            "Jarvis.Win10.NeuralVoidPreview.VisualTreeSearch") ??
+            throw new InvalidOperationException("Shared visual-tree search helper absent.");
+        DependencyObject? Search(string method, Type match, DependencyObject? source)
+        {
+            System.Reflection.MethodInfo definition = helper.GetMethod(method,
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic) ??
+                throw new InvalidOperationException($"Shared visual-tree search method absent: {method}.");
+            return (DependencyObject?)definition.MakeGenericMethod(match).Invoke(null, [source]);
+        }
+        void Require(bool condition, string detail)
+        {
+            if (!condition) throw new InvalidOperationException(detail);
+        }
+
+        StackPanel root = new();
+        Grid firstBranch = new();
+        StackPanel deepBranch = new();
+        TextBlock depthFirst = new();
+        TextBlock laterInBranch = new();
+        TextBlock laterSibling = new();
+        deepBranch.Children.Add(depthFirst);
+        firstBranch.Children.Add(deepBranch);
+        firstBranch.Children.Add(laterInBranch);
+        root.Children.Add(firstBranch);
+        root.Children.Add(laterSibling);
+
+        Require(ReferenceEquals(Search("FindVisualDescendant", typeof(Grid), root), firstBranch),
+            "Descendant search must include direct children.");
+        Require(ReferenceEquals(Search("FindVisualDescendant", typeof(TextBlock), root), depthFirst),
+            "Descendant search must preserve child order and depth-first traversal, not breadth-first.");
+        Require(ReferenceEquals(Search("FindVisualDescendant", typeof(StackPanel), root), deepBranch),
+            "Descendant search must exclude the starting matching node.");
+        Require(Search("FindVisualDescendant", typeof(TextBlock), depthFirst) is null &&
+            Search("FindVisualDescendant", typeof(Button), root) is null,
+            "A matching leaf or tree without a match must return null.");
+        Require(ReferenceEquals(Search("FindParent", typeof(TextBlock), depthFirst), depthFirst) &&
+            ReferenceEquals(Search("FindParent", typeof(StackPanel), root), root),
+            "Parent search must include the starting matching source.");
+        Require(ReferenceEquals(Search("FindParent", typeof(StackPanel), depthFirst), deepBranch) &&
+            ReferenceEquals(Search("FindParent", typeof(Grid), depthFirst), firstBranch),
+            "Parent search must return the nearest matching visual ancestor.");
+        Require(Search("FindParent", typeof(Button), depthFirst) is null &&
+            Search("FindParent", typeof(Grid), root) is null &&
+            Search("FindParent", typeof(TextBlock), null) is null,
+            "Parent search must return null for missing ancestors and a null source.");
+        try
+        {
+            _ = Search("FindVisualDescendant", typeof(TextBlock), null);
+            throw new InvalidOperationException("Descendant search must retain the null-argument exception.");
+        }
+        catch (System.Reflection.TargetInvocationException exception) when (exception.InnerException is ArgumentNullException)
+        {
+            return true;
+        }
     }
 
     private static bool AvailabilityCounts()

@@ -105,11 +105,12 @@ rendered and reviewed in a connected graphics session.
 - Layout and edge-bar scenarios: 25 / 25
 - Explorer workspace scenarios: 30 / 30; three consecutive unfiltered passes
 - Owned Task Manager surface scenarios: 10 / 10
-- Owned-window layout scenarios: 54 / 54 (18 coordinator, 36 hosted);
+- Owned-window layout scenarios: 55 / 55 (18 coordinator, 36 hosted,
+  1 WPF visual-tree contract);
   three consecutive unfiltered passes
 - WPF vector adapter: 13 / 13
 - Platform layout: 16 / 16
-- Publication boundary: passed for 535 candidate files; no secret values printed
+- Publication boundary: passed for 536 candidate files; no secret values printed
 - Full owned-preview audit: 26 / 26, `locked-profile-approved`
 - Extended actual-predicate owning-XAML probe: 90 / 90 mutations detected
   (15 canaries across both owners and full/hidden/compact-template placements)
@@ -576,3 +577,31 @@ The historical Escape-focus flake remains **UNDIAGNOSED**, not repaired or
 suppressed. Fresh Explorer auto-fill during rail commit remains deferred. No
 new feature, real filesystem/OS launch, native Shell/service activation,
 dependency, palette or golden change is included; this is own-process evidence.
+
+## Scoped semantic cleanup (2026-10-13)
+
+Six reviewed cleanup findings were applied: sole configured title-button IDs,
+shared stateless visual traversal, shared Explorer hide sequencing, direct
+dynamic title-button Click wiring, the existing active-Explorer fast return,
+and layout-result presentation completion. Only the five immediately adjacent
+caller copies were removed; failed results still complete presentation. Named
+lifecycle wrappers, announcements, focus guards, primary aliases and Task
+Manager-specific lifecycle paths remain. Hidden ContextMenu rows are unchanged.
+
+The new reflection-discovered WPF traversal regression compiled before failing
+because the helper was absent, then passed with the unchanged extracted bodies.
+Every small refactor retained the existing unfiltered behavioral tests. Final
+Release `--warnaserror`, three consecutive workspace 30/30 and layout 55/55
+runs, edge 25/25, Task Manager 10/10, vector 13/13, preview 26/26, platform 16/16,
+publication for 536 files and the unchanged actual-AST 90/90 probe passed. The
+canonical, Task Manager render, palette and historical evidence remain exact.
+
+Physical production-source metrics, including the new 47-line helper:
+DesktopShellSurface 2815 → 2769 lines, ExplorerSurface 673 → 634;
+combined 3488 → 3450 lines and 128214 → 126935 bytes. The 60-line regression
+means all edited C# totals instead grow by 22 lines / 2280 bytes. Local commands,
+receipts, hashes and per-file metrics are recorded in
+`jarvis-cleanup/implementation/cleanup-verification.json` under the Hermes
+scratch root. The implementation receipt was captured before staging; Release
+remains ready. The historical Escape flake stays **UNDIAGNOSED**, and fresh
+auto-fill remains deferred.

@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using static Jarvis.Win10.NeuralVoidPreview.VisualTreeSearch;
 
 namespace Jarvis.Win10.NeuralVoidPreview;
 
@@ -628,46 +629,6 @@ public partial class ExplorerSurface : UserControl
             NavigateExplorerHistory(_explorerWorkspace.TryGoUp);
             eventArgs.Handled = true;
         }
-    }
-
-    private static T? FindVisualDescendant<T>(DependencyObject parent)
-        where T : DependencyObject
-    {
-        int childCount = VisualTreeHelper.GetChildrenCount(parent);
-        for (int index = 0; index < childCount; index++)
-        {
-            DependencyObject child =
-                VisualTreeHelper.GetChild(parent, index);
-            if (child is T match)
-            {
-                return match;
-            }
-
-            T? nested = FindVisualDescendant<T>(child);
-            if (nested is not null)
-            {
-                return nested;
-            }
-        }
-
-        return null;
-    }
-
-    private static T? FindParent<T>(DependencyObject? source)
-        where T : DependencyObject
-    {
-        DependencyObject? current = source;
-        while (current is not null)
-        {
-            if (current is T match)
-            {
-                return match;
-            }
-
-            current = VisualTreeHelper.GetParent(current);
-        }
-
-        return null;
     }
 
 }

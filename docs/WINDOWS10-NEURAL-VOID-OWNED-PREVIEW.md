@@ -159,7 +159,8 @@ Current bounded verification for manual multi-instance Explorer:
   cap/reopen, already-focused valid/invalid blur, lifecycle/focus-intent races
   and unload cleanup; three consecutive unfiltered runner passes;
 - owned Task Manager surface scenarios: 10 / 10;
-- owned-window layout scenarios: 54 / 54 (18 coordinator, 36 hosted), including
+- owned-window layout scenarios: 55 / 55 (18 coordinator, 36 hosted,
+  1 WPF visual-tree contract), including
   real populated three/four-pane placement, usable compact controls and exact
   secondary title/lifecycle/focus routing, intervening Search/foreign-Explorer
   focus races and current-layout-button cancellation/normal rail handoff;
@@ -169,17 +170,19 @@ Current bounded verification for manual multi-instance Explorer:
   or new session allocation; non-active MRU/registration ordering is retained;
   three consecutive unfiltered runner passes;
 - platform layout: 16 / 16;
-- publication boundary: passed for 535 candidate files with no secret values
-  printed; publication requirements include the control and workspace owners;
+- publication boundary: passed for 536 candidate files with no secret values
+  printed; publication requirements include the control, workspace and shared
+  visual-tree helper owners;
 - current owned-preview audit: 26 / 26, `locked-profile-approved`. The default
   desktop matched the unchanged approved SHA-256 exactly. The Task Manager
   structural render retains SHA-256
   `3971C3ECB2D725C9F5EB12F6F95A95E43600E16EF41D4F91DED57055A2BDEACF`.
 
 The source gate reads `ExplorerSurface.xaml/.cs` as the actual control owner and
-checks the shell, control and workspace code against the filesystem/OS-launch
-ban. Applicable desktop-owner negative XAML bans examine both shell and Explorer
-owning texts with unchanged matching rules, including image, square geometry,
+checks the shell, control, workspace and shared `VisualTreeSearch` code against
+the filesystem/OS-launch ban. Applicable desktop-owner negative XAML bans examine
+both shell and Explorer owning texts with unchanged matching rules, including
+image, square geometry,
 gradient/glow, device content, Start, HueSlider and obsolete-handler bans.
 Positive-role checks and window-root constraints remain unchanged. The original
 60/60 mutation record covered only ten canaries and remains real but partial

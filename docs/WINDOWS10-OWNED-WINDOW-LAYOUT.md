@@ -129,8 +129,11 @@ show a live Windows Task Manager or a styled Windows Explorer.
 
 ## Verification
 
-`test-owned-window-layout` passes 54/54 scenarios: 18 coordinator and 36 hosted
-WPF scenarios. The existing coordinator is reused without a model rewrite.
+`test-owned-window-layout` passes 55/55 scenarios: 18 coordinator, 36 hosted
+WPF scenarios and one real WPF visual-tree contract. The shared traversal keeps
+depth-first child order, excludes the descendant starting node, includes the
+parent starting source and preserves null behavior. The existing coordinator
+is reused without a model rewrite.
 New hosted traces cover exact secondary lifecycle/content retention, title
 click/jitter/drag/capture loss/double-click, body activation, MRU stacking, rail
 focus return, actual populated three/four-pane bounds and usable controls.
@@ -155,7 +158,7 @@ handoff with preview/Escape intact, without pre-focusing the intended item.
 All previous scenarios and assertions remain intact. The historical
 Escape-focus flake remains **UNDIAGNOSED**, not fixed or suppressed.
 The full preview gate passed 26/26, edge-bar 25/25, Task Manager surface 10/10,
-platform layout 16/16 and publication boundary for 535 files. Both recorded
+platform layout 16/16 and publication boundary for 536 files. Both recorded
 render hashes are unchanged. The original actual-expression owning-XAML probe
 missed 24 Explorer insertions and then rejected its 60 tested mutations; that
 real but partial record remains unchanged in
