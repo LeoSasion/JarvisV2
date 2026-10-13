@@ -517,6 +517,283 @@ internal static class ExplorerWorkspaceScenarios
                     !surface.ExplorerEmptyStateVisibleForTest;
             }));
 
+        Add(
+            scenarios,
+            "hosted-taskbar-new-explorer-creates-real-independent-surface",
+            () => WithHostedSurface(surface =>
+            {
+                ContextMenu? menu = surface.TaskbarExplorerButton.ContextMenu;
+                if (menu is null)
+                {
+                    throw new InvalidOperationException(
+                        "New Explorer window is absent from TaskbarExplorerButton.ContextMenu.");
+                }
+
+                if (menu.IsOpen)
+                {
+                    return false;
+                }
+
+                menu.PlacementTarget = surface.TaskbarExplorerButton;
+                menu.IsOpen = true;
+                PumpDispatcher();
+                MenuItem? create = menu.Items.OfType<MenuItem>().SingleOrDefault(
+                    item => Equals(item.Header, "_New Explorer window"));
+                if (create is null || !create.IsEnabled)
+                {
+                    throw new InvalidOperationException("Discoverable New Explorer window action is absent.");
+                }
+
+                create.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                menu.IsOpen = false;
+                PumpDispatcher();
+                FrameworkElement[] explorers = Descendants(surface)
+                    .OfType<FrameworkElement>()
+                    .Where(element => element.GetType().Name == "ExplorerSurface")
+                    .ToArray();
+                return surface.VisibleOwnedWindowCount == 2 &&
+                    surface.ActiveOwnedWindowId is not null and not "explorer" &&
+                    explorers.Length == 2 &&
+                    explorers.All(explorer => Descendants(explorer)
+                        .OfType<ListBox>().Any(list => list.Items.Count == 6));
+            }));
+
+        Add(scenarios, "hosted-sessions-own-navigation-selection-rename-folder-and-preview",
+            () => WithHostedSurface(shell =>
+            {
+                string secondaryId = CreateViaTaskbarMenu(shell);
+                ExplorerSurface primary = shell.GetExplorerSurfaceForTest("explorer");
+                ExplorerSurface secondary = shell.GetExplorerSurfaceForTest(secondaryId);
+                Require(!ReferenceEquals(primary.Workspace, secondary.Workspace), "workspaces must be independent");
+                Invoke(secondary.ExplorerUpButton);
+                PumpDispatcher();
+                Require(secondary.Workspace.CurrentLocationId == ExplorerWorkspace.NeuralStorageId &&
+                    primary.Workspace.CurrentLocationId == ExplorerWorkspace.DocumentsId, "secondary navigation crossed sessions");
+                secondary.ExplorerItemList.SelectedItem = secondary.Workspace.Items.Single(item => item.Id == ExplorerWorkspace.ProjectsId);
+                Invoke(secondary.ExplorerOpenButton);
+                PumpDispatcher();
+                Invoke(secondary.ExplorerBackButton);
+                PumpDispatcher();
+                Invoke(secondary.ExplorerForwardButton);
+                PumpDispatcher();
+                Require(secondary.Workspace.CurrentLocationId == ExplorerWorkspace.ProjectsId &&
+                    !primary.Workspace.CanGoBack, "history is not independent");
+                _ = secondary.Workspace.TryNavigateTo(ExplorerWorkspace.ArchiveId);
+                Invoke(secondary.ExplorerNewFolderButton);
+                PumpDispatcher();
+                TextBox folderEditor = RenameEditor(secondary);
+                folderEditor.Text = "SESSION_FOLDER";
+                RaiseKey(folderEditor, System.Windows.Input.Key.Enter);
+                PumpDispatcher();
+                Require(secondary.Workspace.Items.Single().Name == "SESSION_FOLDER" &&
+                    primary.Workspace.Items.Count == 6, "new folder changed the other tree");
+                Invoke(secondary.ExplorerOpenButton);
+                PumpDispatcher();
+                Require(secondary.ExplorerEmptyState.Visibility == Visibility.Visible &&
+                    primary.ExplorerItemList.Items.Count == 6, "new folder empty state is not local");
+                _ = secondary.Workspace.TryNavigateTo(ExplorerWorkspace.DocumentsId);
+                secondary.ExplorerItemList.SelectedIndex = 0;
+                primary.ExplorerItemList.SelectedIndex = 0;
+                Invoke(primary.ExplorerRenameButton);
+                PumpDispatcher();
+                TextBox primaryEditor = RenameEditor(primary);
+                _ = primaryEditor.Focus();
+                primaryEditor.Text = "PRIMARY_ONLY.TXT";
+                Invoke(secondary.ExplorerRenameButton);
+                // Same seeded item ID, but an editor from a different surface.
+                // A routed key raised on the secondary must not consume that editor.
+                RaiseKey(secondary, System.Windows.Input.Key.Enter);
+                Require(secondary.Workspace.Items[0].Name == "PROJECT_BRIEF_0826.DOCX" &&
+                    secondary.Workspace.RenameItemId == ExplorerWorkspace.ProjectBriefId,
+                    "shared seed ID cross-routed the primary rename editor into secondary");
+                _ = secondary.Workspace.CancelRename();
+                RaiseKey(primaryEditor, System.Windows.Input.Key.Enter);
+                PumpDispatcher();
+                Require(primary.Workspace.Items[0].Name == "PRIMARY_ONLY.TXT" &&
+                    secondary.Workspace.Items[0].Name == "PROJECT_BRIEF_0826.DOCX", "rename leaked across workspaces");
+                _ = secondary.ExplorerItemList.Focus();
+                Invoke(secondary.ExplorerRenameButton);
+                PumpDispatcher();
+                TextBox editor = RenameEditor(secondary);
+                editor.Text = "BAD?.TXT";
+                RaiseKey(editor, System.Windows.Input.Key.Enter);
+                PumpDispatcher();
+                Require(secondary.Workspace.RenameItemId is not null &&
+                    secondary.ExplorerRenameErrorText.Visibility == Visibility.Visible && editor.IsKeyboardFocused,
+                    "secondary invalid rename must remain correctable");
+                editor.Text = "SECONDARY_ONLY.MD";
+                RaiseKey(editor, System.Windows.Input.Key.Enter);
+                PumpDispatcher();
+                Invoke(secondary.ExplorerOpenButton);
+                PumpDispatcher();
+                Require(secondary.ExplorerPreviewPanel.Visibility == Visibility.Visible &&
+                    secondary.ExplorerPreviewNameText.Text == "SECONDARY_ONLY.MD" &&
+                    primary.ExplorerPreviewPanel.Visibility == Visibility.Collapsed,
+                    "preview is not owned by secondary");
+                Invoke(secondary.ExplorerPreviewCloseButton);
+                PumpDispatcher();
+                secondary.ExplorerItemList.SelectedIndex = 1;
+                Require(primary.Workspace.SelectedItemId == ExplorerWorkspace.ProjectBriefId &&
+                    secondary.Workspace.SelectedItemId == ExplorerWorkspace.SpecificationsId,
+                    "selection shared an identity across sessions");
+                return true;
+            }));
+
+        Add(scenarios, "hosted-keyboard-menu-four-session-cap-is-inert-and-reopenable",
+            () => WithHostedSurface(shell =>
+            {
+                for (int index = 0; index < 3; index++) _ = CreateViaTaskbarMenu(shell);
+                string[] ids = shell.ExplorerSessionIdsForTest.ToArray();
+                Require(ids.Length == 4 && ids.Distinct().Count() == 4, "four distinct real sessions required");
+                ExplorerSurface retained = shell.GetExplorerSurfaceForTest(ids[1]);
+                RaiseKey(shell.TaskbarExplorerButton, System.Windows.Input.Key.Apps);
+                PumpDispatcher();
+                ContextMenu menu = shell.TaskbarExplorerButton.ContextMenu;
+                MenuItem create = menu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "_New Explorer window"));
+                Require(!create.IsEnabled &&
+                    System.Windows.Automation.AutomationProperties.GetHelpText(create).Contains("4", StringComparison.Ordinal) &&
+                    System.Windows.Automation.AutomationProperties.GetHelpText(create).Contains("retained", StringComparison.OrdinalIgnoreCase),
+                    "New must be disabled with a clear retained-session cap explanation");
+                Require(menu.IsOpen, "Apps key must open discoverable Explorer session commands");
+                string? active = shell.ActiveOwnedWindowId;
+                Rect[] bounds = ids.Select(shell.GetOwnedWindowBoundsForTest).ToArray();
+                for (int index = 0; index < 3; index++) create.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                PumpDispatcher();
+                Require(shell.ExplorerSessionIdsForTest.SequenceEqual(ids) && shell.ActiveOwnedWindowId == active &&
+                    ids.Select(shell.GetOwnedWindowBoundsForTest).SequenceEqual(bounds), "cap action is not inert");
+                menu.IsOpen = false;
+                Invoke(OwnedWindowLayoutScenarios.ExplorerTitleButton(shell, ids[1], "Close"));
+                PumpDispatcher();
+                OwnedWindowLayoutScenarios.InvokeSessionMenu(shell, ids[1], "Reopen");
+                PumpDispatcher();
+                Require(ReferenceEquals(retained, shell.GetExplorerSurfaceForTest(ids[1])) &&
+                    shell.ExplorerSessionIdsForTest.Count == 4 && !create.IsEnabled,
+                    "closing must retain identity and may not free a fifth allocation slot");
+                foreach (string id in ids)
+                    Invoke(OwnedWindowLayoutScenarios.ExplorerTitleButton(shell, id, "Minimize"));
+                PumpDispatcher();
+                Require(shell.ExplorerRunningIndicator.Visibility == Visibility.Visible && shell.ExplorerRunningIndicator.Opacity == 0.45,
+                    "aggregate running marker must distinguish all minimized from all closed");
+                foreach (string id in ids)
+                    Invoke(OwnedWindowLayoutScenarios.ExplorerTitleButton(shell, id, "Close"));
+                PumpDispatcher();
+                Require(shell.ExplorerRunningIndicator.Visibility == Visibility.Collapsed, "closed retained sessions are not running");
+                OwnedWindowLayoutScenarios.InvokeSessionMenu(shell, ids[2], "Reopen");
+                PumpDispatcher();
+                return shell.ActiveOwnedWindowId == ids[2] && shell.VisibleOwnedWindowCount == 1 &&
+                    shell.ExplorerSessionIdsForTest.Count == 4 && shell.ExplorerRunningIndicator.Opacity == 1.0;
+            }));
+
+        Add(scenarios, "hosted-deferred-focus-respects-session-lifecycle-intent-and-unload",
+            () => WithHostedSurface(shell =>
+            {
+                string id = CreateViaTaskbarMenu(shell);
+                ExplorerSurface secondary = shell.GetExplorerSurfaceForTest(id);
+                ExplorerSurface primary = shell.GetExplorerSurfaceForTest("explorer");
+                secondary.ExplorerItemList.SelectedIndex = 0;
+                _ = secondary.ExplorerItemList.Focus();
+                Invoke(secondary.ExplorerRenameButton);
+                _ = primary.ExplorerItemList.Focus();
+                PumpDispatcher();
+                Require(primary.ExplorerItemList.IsKeyboardFocusWithin && shell.ActiveOwnedWindowId == "explorer",
+                    "stale secondary rename focus stole newer primary focus intent");
+                _ = secondary.Workspace.CancelRename();
+                _ = secondary.ExplorerItemList.Focus();
+                Invoke(secondary.ExplorerRenameButton);
+                PumpDispatcher();
+                TextBox editor = RenameEditor(secondary);
+                editor.Text = "BAD?.TXT";
+                RaiseKey(editor, System.Windows.Input.Key.Enter);
+                _ = primary.ExplorerItemList.Focus();
+                PumpDispatcher();
+                Require(primary.ExplorerItemList.IsKeyboardFocusWithin && shell.ActiveOwnedWindowId == "explorer",
+                    "invalid-rename correction focus stole newer primary intent");
+                _ = secondary.Workspace.CancelRename();
+                _ = secondary.ExplorerItemList.Focus();
+                Invoke(secondary.ExplorerNewFolderButton);
+                Invoke(OwnedWindowLayoutScenarios.ExplorerTitleButton(shell, id, "Minimize"));
+                PumpDispatcher();
+                Require(!secondary.IsKeyboardFocusWithin && shell.ActiveOwnedWindowId != id,
+                    "hidden session executed deferred new-folder focus");
+                OwnedWindowLayoutScenarios.InvokeSessionMenu(shell, id, "Restore");
+                PumpDispatcher();
+                Require(secondary.IsKeyboardFocusWithin && shell.ActiveOwnedWindowId == id,
+                    "exact restore did not honor current session focus intent");
+                _ = secondary.Workspace.CancelRename();
+                secondary.ExplorerItemList.SelectedIndex = 0;
+                Invoke(secondary.ExplorerOpenButton);
+                Invoke(OwnedWindowLayoutScenarios.ExplorerTitleButton(shell, id, "Close"));
+                PumpDispatcher();
+                Require(!secondary.IsKeyboardFocusWithin, "closed session executed deferred preview focus");
+                OwnedWindowLayoutScenarios.InvokeSessionMenu(shell, id, "Reopen");
+                PumpDispatcher();
+                Require(secondary.ExplorerPreviewPanel.Visibility == Visibility.Visible &&
+                    secondary.ExplorerPreviewCloseButton.IsKeyboardFocused,
+                    "owned preview and its focus target were not retained on exact reopen");
+                Invoke(secondary.ExplorerPreviewCloseButton);
+                Invoke(secondary.ExplorerRenameButton);
+                shell.FocusLayoutRailForTest();
+                PumpDispatcher();
+                Require(shell.LayoutRailHasKeyboardFocusForTest, "pending Explorer work stole rail focus");
+                shell.RaiseRailKeyForTest(System.Windows.Input.Key.Escape);
+                PumpDispatcher();
+                Require(secondary.IsKeyboardFocusWithin, "explicit rail return did not regain owning session");
+                Window host = Window.GetWindow(shell);
+                Invoke(secondary.ExplorerNewFolderButton);
+                _ = secondary.ExplorerItemList.CaptureMouse();
+                host.Content = null;
+                PumpDispatcher();
+                Require(System.Windows.Input.Mouse.Captured is null &&
+                    shell.ExplorerSessionIdsForTest.All(sessionId =>
+                        !shell.GetExplorerSurfaceForTest(sessionId).IsLoaded &&
+                        !HasPendingDispatcherWork(shell.GetExplorerSurfaceForTest(sessionId))),
+                    "unload leaked instance capture or deferred focus work");
+                return true;
+            }));
+
+        Add(scenarios, "hosted-keyboard-new-and-restore-preserve-newer-external-focus",
+            () => WithHostedSurface(shell =>
+            {
+                RaiseKey(shell.TaskbarExplorerButton, System.Windows.Input.Key.Apps);
+                PumpDispatcher();
+                ContextMenu menu = shell.TaskbarExplorerButton.ContextMenu;
+                MenuItem create = menu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "_New Explorer window"));
+                _ = create.Focus();
+                RaiseMenuEnter(create);
+                PumpDispatcher();
+                Require(shell.ExplorerSessionIdsForTest.Count == 2 && !menu.IsOpen && shell.ActiveOwnedWindowId is not null and not "explorer",
+                    "keyboard Enter on New Explorer window did not create a real session and close menu");
+                string id = shell.ActiveOwnedWindowId!;
+                ExplorerSurface surface = shell.GetExplorerSurfaceForTest(id);
+                surface.ExplorerItemList.SelectedIndex = 0;
+                _ = surface.ExplorerItemList.Focus();
+                Invoke(surface.ExplorerRenameButton);
+                _ = shell.TaskbarSearchButton.Focus();
+                PumpDispatcher();
+                Require(shell.TaskbarSearchButton.IsKeyboardFocused,
+                    "pending rename focus overrode newer external taskbar keyboard intent");
+                Invoke(OwnedWindowLayoutScenarios.ExplorerTitleButton(shell, id, "Minimize"));
+                PumpDispatcher();
+                RaiseKey(shell.TaskbarExplorerButton, System.Windows.Input.Key.Apps);
+                PumpDispatcher();
+                MenuItem restore = menu.Items.OfType<MenuItem>().Single(item => item.CommandParameter is OwnedWindowId owned && owned.Value == id);
+                _ = restore.Focus();
+                RaiseMenuEnter(restore);
+                PumpDispatcher();
+                Require(surface.IsKeyboardFocusWithin && shell.ActiveOwnedWindowId == id && !menu.IsOpen,
+                    "keyboard ID-bearing Restore did not focus its exact retained session");
+                return true;
+            }));
+
+        Add(scenarios, "hosted-already-focused-invalid-rename-blur-preserves-search-focus",
+            () => HostedRenameBlurPreservesNewerFocus(validName: false, foreignExplorer: false));
+        Add(scenarios, "hosted-already-focused-valid-rename-blur-preserves-search-focus",
+            () => HostedRenameBlurPreservesNewerFocus(validName: true, foreignExplorer: false));
+        Add(scenarios, "hosted-already-focused-invalid-rename-blur-preserves-foreign-explorer",
+            () => HostedRenameBlurPreservesNewerFocus(validName: false, foreignExplorer: true));
+        Add(scenarios, "hosted-already-focused-valid-rename-blur-preserves-foreign-explorer",
+            () => HostedRenameBlurPreservesNewerFocus(validName: true, foreignExplorer: true));
+
         int passedCount = scenarios.Count(scenario => scenario.Passed);
         return new(
             1,
@@ -539,6 +816,45 @@ internal static class ExplorerWorkspaceScenarios
         output.WriteLine(JsonSerializer.Serialize(receipt, JsonOptions));
         return receipt.Result == "passed" ? 0 : 12;
     }
+
+    private static bool HostedRenameBlurPreservesNewerFocus(bool validName, bool foreignExplorer) =>
+        WithHostedSurface(shell =>
+        {
+            string id = CreateViaTaskbarMenu(shell);
+            ExplorerSurface secondary = shell.GetExplorerSurfaceForTest(id);
+            ExplorerSurface primary = shell.GetExplorerSurfaceForTest("explorer");
+            secondary.ExplorerItemList.SelectedIndex = 0;
+            _ = secondary.ExplorerItemList.Focus();
+            Invoke(secondary.ExplorerRenameButton);
+            PumpDispatcher();
+            TextBox editor = RenameEditor(secondary);
+            Require(ReferenceEquals(System.Windows.Input.Keyboard.FocusedElement, editor) &&
+                editor.IsKeyboardFocused && shell.ActiveOwnedWindowId == id,
+                "blur regression requires an already-focused owning editor, not pending initial focus");
+            string name = validName ? "BLUR_ONLY.TXT" : "BAD?.TXT";
+            editor.Text = name;
+            int reactivations = 0;
+            secondary.ActivationRequested += () => reactivations++;
+            Control destination = foreignExplorer ? primary.ExplorerItemList : shell.TaskbarSearchButton;
+            _ = destination.Focus();
+            Require(ReferenceEquals(System.Windows.Input.Keyboard.FocusedElement, destination),
+                "newer blur destination must actually receive keyboard focus before draining");
+            PumpDispatcher();
+            ExplorerWorkspaceItem item = secondary.Workspace.Items.Single(item => item.Id == ExplorerWorkspace.ProjectBriefId);
+            bool statePreserved = validName
+                ? secondary.Workspace.RenameItemId is null && item.Name == name && item.TypeLabel == "TXT" &&
+                    secondary.ExplorerRenameErrorText.Visibility == Visibility.Collapsed
+                : secondary.Workspace.RenameItemId == item.Id && item.Name == "PROJECT_BRIEF_0826.DOCX" &&
+                    secondary.ExplorerRenameErrorText.Visibility == Visibility.Visible && editor.IsVisible && editor.Text == name;
+            Require(ReferenceEquals(System.Windows.Input.Keyboard.FocusedElement, destination) &&
+                shell.ActiveOwnedWindowId == (foreignExplorer ? "explorer" : id) && reactivations == 0 &&
+                !HasPendingDispatcherWork(secondary) && statePreserved &&
+                primary.Workspace.Items[0].Name == "PROJECT_BRIEF_0826.DOCX" && primary.Workspace.RenameItemId is null,
+                $"already-focused blur/valid={validName}/foreign={foreignExplorer}: " +
+                $"focus={(System.Windows.Input.Keyboard.FocusedElement as FrameworkElement)?.Name}, " +
+                $"active={shell.ActiveOwnedWindowId}, reactivations={reactivations}, statePreserved={statePreserved}");
+            return true;
+        });
 
     private static string Signature(ExplorerWorkspaceSnapshot snapshot) =>
         string.Join(
@@ -590,6 +906,58 @@ internal static class ExplorerWorkspaceScenarios
             DispatcherPriority.ApplicationIdle,
             new Action(() => frame.Continue = false));
         Dispatcher.PushFrame(frame);
+    }
+
+    internal static string CreateViaTaskbarMenu(DesktopShellSurface shell)
+    {
+        ContextMenu menu = shell.TaskbarExplorerButton.ContextMenu ??
+            throw new InvalidOperationException("Explorer session menu absent");
+        menu.PlacementTarget = shell.TaskbarExplorerButton;
+        menu.IsOpen = true;
+        PumpDispatcher();
+        MenuItem create = menu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "_New Explorer window"));
+        Require(create.IsEnabled, "New Explorer window disabled before cap");
+        create.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        menu.IsOpen = false;
+        PumpDispatcher();
+        return shell.ActiveOwnedWindowId ?? throw new InvalidOperationException("created Explorer not active");
+    }
+
+    private static TextBox RenameEditor(ExplorerSurface surface) =>
+        Descendants(surface).OfType<TextBox>().First(editor => editor.IsVisible && editor.DataContext is ExplorerWorkspaceItem { IsRenameTarget: true });
+
+    internal static void RaiseKey(UIElement source, System.Windows.Input.Key key) =>
+        source.RaiseEvent(new System.Windows.Input.KeyEventArgs(
+            System.Windows.Input.Keyboard.PrimaryDevice,
+            PresentationSource.FromVisual(source) ?? throw new InvalidOperationException("key source not hosted"),
+            Environment.TickCount, key) { RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent });
+
+    private static void RaiseMenuEnter(MenuItem source) =>
+        source.RaiseEvent(new System.Windows.Input.KeyEventArgs(
+            System.Windows.Input.Keyboard.PrimaryDevice,
+            PresentationSource.FromVisual(source) ?? throw new InvalidOperationException("menu source not hosted"),
+            Environment.TickCount, System.Windows.Input.Key.Enter) { RoutedEvent = System.Windows.Input.Keyboard.KeyDownEvent });
+
+    private static bool HasPendingDispatcherWork(ExplorerSurface surface) =>
+        surface.GetType().GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .Any(field => field.GetValue(surface) is DispatcherOperation { Status: DispatcherOperationStatus.Pending });
+
+    private static void Require(bool condition, string message)
+    {
+        if (!condition) throw new InvalidOperationException(message);
+    }
+
+    internal static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
+    {
+        for (int index = 0; index < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            DependencyObject child = System.Windows.Media.VisualTreeHelper.GetChild(parent, index);
+            yield return child;
+            foreach (DependencyObject nested in Descendants(child))
+            {
+                yield return nested;
+            }
+        }
     }
 
     private static void Invoke(Button button) =>

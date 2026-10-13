@@ -28,6 +28,8 @@ $taskManagerSurfaceScenariosPath = Join-Path $sourceRoot (
     'TaskManagerSurfaceScenarios.cs')
 $taskManagerProjectPath = Join-Path $taskManagerModelRoot (
     'Jarvis.Win10.OwnedTaskManager.csproj')
+$explorerSurfacePath = Join-Path $sourceRoot 'ExplorerSurface.xaml'
+$explorerSurfaceCodePath = Join-Path $sourceRoot 'ExplorerSurface.xaml.cs'
 $explorerWorkspacePath = Join-Path $sourceRoot 'ExplorerWorkspace.cs'
 $explorerScenariosPath = Join-Path $sourceRoot (
     'ExplorerWorkspaceScenarios.cs')
@@ -99,7 +101,15 @@ $taskManagerSurfaceCodeText =
 $taskManagerSurfaceScenariosText =
     [IO.File]::ReadAllText($taskManagerSurfaceScenariosPath)
 $taskManagerProjectText = [IO.File]::ReadAllText($taskManagerProjectPath)
+$explorerSurfaceText = [IO.File]::ReadAllText($explorerSurfacePath)
+$desktopOwningXamlText = @(
+    $surfaceText, $explorerSurfaceText
+) -join [Environment]::NewLine
+$explorerSurfaceCodeText = [IO.File]::ReadAllText($explorerSurfaceCodePath)
 $explorerWorkspaceText = [IO.File]::ReadAllText($explorerWorkspacePath)
+$explorerOwningCodeText = @(
+    $surfaceCodeText, $explorerSurfaceCodeText, $explorerWorkspaceText
+) -join [Environment]::NewLine
 $explorerScenariosText = [IO.File]::ReadAllText($explorerScenariosPath)
 $layoutCatalogText = [IO.File]::ReadAllText($layoutCatalogPath)
 $layoutGlyphText = [IO.File]::ReadAllText($layoutGlyphPath)
@@ -264,8 +274,8 @@ Add-Check `
         $surfaceCodeText.Contains('LayoutRailGlyphBounds') -and
         $sourceText.Contains(
             'layout-glyph-drawn-bounds-share-permanent-x-axis') -and
-        -not $surfaceText.Contains('TaskbarStartButton') -and
-        -not $surfaceText.Contains('StartFlyout')) `
+        -not $desktopOwningXamlText.Contains('TaskbarStartButton') -and
+        -not $desktopOwningXamlText.Contains('StartFlyout')) `
     -Detail (
         'The 126px layout column must terminate in the same current-layout ' +
         'glyph while its 2px axis crosses the 2px taskbar rule.')
@@ -285,7 +295,7 @@ Add-Check `
             'PreviewKeyDown="LayoutRailPanel_OnPreviewKeyDown"') -and
         $surfaceText.Contains('x:Name="LayoutRailViewport"') -and
         $surfaceText.Contains('ClipToBounds="True"') -and
-        -not $surfaceText.Contains(
+        -not $desktopOwningXamlText.Contains(
             'MouseMove="LayoutRailRegion_OnMouseMove"') -and
         $surfaceText.Contains('ScrollViewer.CanContentScroll="False"') -and
         $surfaceText.Contains('<ScaleTransform x:Name="LayoutAxisScale" ScaleY="1"') -and
@@ -350,8 +360,8 @@ Add-Check `
         $surfaceCodeText.Contains('_ownedWindowLayouts.TryApply(') -and
         $surfaceCodeText.Contains('_ownedWindowLayouts.TryToggleMaximize(') -and
         $surfaceCodeText.Contains('ExplorerTitleBar_OnMouseMove(') -and
-        $surfaceCodeText.Contains('MinimizeExplorer()') -and
-        $surfaceCodeText.Contains('RestoreExplorer()') -and
+        $surfaceCodeText.Contains('MinimizeExplorer(ExplorerEntry entry)') -and
+        $surfaceCodeText.Contains('RestoreExplorer(ExplorerEntry entry)') -and
         $surfaceCodeText.Contains('DispatcherTimer')) `
     -Detail (
         'The permanent data-driven rail must signal scroll capability through ' +
@@ -394,23 +404,37 @@ Add-Check `
         $explorerWorkspaceText.Contains('CreateUniqueFolder()') -and
         $explorerWorkspaceText.Contains(
             'OperatingSystemLaunchSupported') -and
-        $surfaceText.Contains('x:Name="ExplorerItemList"') -and
-        $surfaceText.Contains('x:Name="ExplorerPreviewPanel"') -and
-        $surfaceText.Contains(
+        $surfaceText.Contains('<local:ExplorerSurface') -and
+        $explorerSurfaceText.Contains('x:Name="ExplorerItemList"') -and
+        $explorerSurfaceText.Contains('x:Name="ExplorerPreviewPanel"') -and
+        $explorerSurfaceText.Contains(
             'PreviewKeyDown="ExplorerWindow_OnPreviewKeyDown"') -and
-        $surfaceCodeText.Contains('ApplyExplorerOpenResult(') -and
-        $surfaceCodeText.Contains('ShowExplorerPreview(') -and
-        $surfaceCodeText.Contains('QueueExplorerRenameFocus(') -and
+        $explorerSurfaceText.Contains('x:Key="SelectionBrush" Color="#FFFFFF"') -and
+        $explorerSurfaceCodeText.Contains('ApplyExplorerOpenResult(') -and
+        $explorerSurfaceCodeText.Contains('ShowExplorerPreview(') -and
+        $explorerSurfaceCodeText.Contains('QueueExplorerRenameFocus(') -and
+        $explorerSurfaceCodeText.Contains('private readonly ExplorerWorkspace _explorerWorkspace = new();') -and
+        $explorerSurfaceCodeText.Contains('IsAncestorOf(editor)') -and
+        $explorerSurfaceCodeText.Contains('CancelPendingFocus()') -and
+        $explorerSurfaceCodeText.Contains('SuspendInteraction()') -and
+        -not $explorerSurfaceCodeText.Contains('DispatcherTimer') -and
+        $surfaceCodeText.Contains('MaximumExplorerSessions = 4') -and
+        $surfaceCodeText.Contains('CommandParameter = entry.Id') -and
+        $explorerScenariosText.Contains(
+            'hosted-taskbar-new-explorer-creates-real-independent-surface') -and
+        $explorerScenariosText.Contains(
+            'hosted-deferred-focus-respects-session-lifecycle-intent-and-unload') -and
         $explorerScenariosText.Contains(
             'hosted-surface-file-open-stays-in-owned-preview') -and
         $explorerBoundaryCanariesCovered -and
         -not [regex]::IsMatch(
-            $explorerWorkspaceText,
+            $explorerOwningCodeText,
             $forbiddenExplorerBoundaryPattern)) `
     -Detail (
-        'The Explorer canvas must keep deterministic in-memory navigation, ' +
-        'selection, owned preview, rename, folder creation and empty states ' +
-        'without filesystem or operating-system launch APIs.')
+        'The shell, reusable ExplorerSurface and ExplorerWorkspace owning ' +
+        'files must keep independent capped memory-only sessions, ID-bearing ' +
+        'commands, guarded focus, selection, owned preview, rename, folders and ' +
+        'empty states without timers, filesystem or operating-system launch APIs.')
 
 Add-Check `
     -Name 'surface.vector-only-visual-grammar' `
@@ -455,7 +479,7 @@ Add-Check `
             'public sealed record RetainedVectorScene') -and
         $sourceText.Contains(
             'public static class RetainedVectorSceneCompiler') -and
-        -not $surfaceText.Contains('<Image ') -and
+        -not $desktopOwningXamlText.Contains('<Image ') -and
         -not $vectorLayerText.Contains('Bitmap') -and
         -not $apertureFrameText.Contains('Bitmap')) `
     -Detail (
@@ -520,18 +544,18 @@ Add-Check `
         $layoutCatalogText.Contains('LayoutPreset.FourQuadrants') -and
         $layoutCatalogText.Contains('HasOrthogonalClosure()') -and
         $layoutCatalogText.Contains('IsExactCover(') -and
-        -not $surfaceText.Contains('Click="LayoutButton_OnClick"') -and
+        -not $desktopOwningXamlText.Contains('Click="LayoutButton_OnClick"') -and
         $surfaceText.Contains('./Assets/Fonts/#Barlow Condensed') -and
         $sourceText.Contains('BarlowCondensed-Regular.ttf') -and
         $sourceText.Contains('BarlowCondensed-Medium.ttf') -and
         $surfaceText.Contains(
             '{Binding AccentBrush, ElementName=Root}') -and
-        -not $surfaceText.Contains('CornerRadius=') -and
-        -not $surfaceText.Contains('<DropShadowEffect') -and
+        -not $desktopOwningXamlText.Contains('CornerRadius=') -and
+        -not $desktopOwningXamlText.Contains('<DropShadowEffect') -and
         -not $sourceText.Contains('RadialGradientBrush') -and
         -not $sourceText.Contains('DropShadowEffect') -and
-        -not $surfaceText.Contains('LinearGradientBrush') -and
-        -not $surfaceText.Contains('RadialGradientBrush')) `
+        -not $desktopOwningXamlText.Contains('LinearGradientBrush') -and
+        -not $desktopOwningXamlText.Contains('RadialGradientBrush')) `
     -Detail (
         'The selected direction requires a black desktop, one yellow state ' +
         'accent, sixteen complete layouts, a floating Explorer, three rule ' +
@@ -543,7 +567,7 @@ $forbiddenDesktopContentPattern =
 Add-Check `
     -Name 'surface.no-device-ui-or-illustration' `
     -Passed (-not [regex]::IsMatch(
-        $surfaceText,
+        $desktopOwningXamlText,
         $forbiddenDesktopContentPattern)) `
     -Detail (
         'The desktop render must not show physical peripherals or a device ' +
@@ -562,7 +586,7 @@ Add-Check `
         -not $windowText.Contains('HueSlider') -and
         -not $windowText.Contains('CYAN') -and
         -not $windowText.Contains('EMERALD') -and
-        -not $surfaceText.Contains('x:Name="HueSlider"')) `
+        -not $desktopOwningXamlText.Contains('x:Name="HueSlider"')) `
     -Detail (
         'The selected preview host must open directly in the committed ' +
         'single-yellow desktop world without scaling or theme controls.')
@@ -771,7 +795,7 @@ if ($buildExitCode -eq 0) {
             $null -ne $explorerReceipt -and
             $explorerReceipt.result -eq 'passed' -and
             $explorerReceipt.schemaVersion -eq 1 -and
-            $explorerReceipt.scenarioCount -eq 21 -and
+            $explorerReceipt.scenarioCount -eq 30 -and
             $explorerReceipt.passedCount -eq
                 $explorerReceipt.scenarioCount -and
             $explorerReceipt.ownProcessOnly -and
@@ -842,7 +866,7 @@ if ($buildExitCode -eq 0) {
             $ownedLayoutReceipt.receiptType -ceq 'jarvisv2-win10-owned-window-layout-test' -and
             $ownedLayoutReceipt.result -eq 'passed' -and
             $ownedLayoutReceipt.schemaVersion -eq 1 -and
-            $ownedLayoutReceipt.scenarioCount -eq 41 -and
+            $ownedLayoutReceipt.scenarioCount -eq 54 -and
             $ownedLayoutReceipt.passedCount -eq $ownedLayoutReceipt.scenarioCount -and
             $ownedLayoutReceipt.ownProcessOnly -and
             -not $ownedLayoutReceipt.thirdPartyWindowControlSupported -and

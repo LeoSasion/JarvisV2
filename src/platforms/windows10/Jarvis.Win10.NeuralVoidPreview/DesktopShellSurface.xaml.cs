@@ -40,6 +40,7 @@ public partial class DesktopShellSurface :
         new("explorer");
     private static readonly OwnedWindowId TaskManagerOwnedWindowId =
         new("task-manager");
+    private const int MaximumExplorerSessions = 4;
     private const double ExplorerCompactWidthThreshold = 820.0;
     private const double ExplorerCompactHeightThreshold = 400.0;
 
@@ -62,7 +63,8 @@ public partial class DesktopShellSurface :
 
     private readonly DispatcherTimer _clockTimer;
     private readonly DispatcherTimer _railScrollTimer;
-    private readonly ExplorerWorkspace _explorerWorkspace = new();
+    private ExplorerWorkspace _explorerWorkspace => PrimaryExplorerSurface.Workspace;
+    private readonly Dictionary<OwnedWindowId, ExplorerEntry> _explorers = [];
     private readonly OwnedWindowLayoutCoordinator _ownedWindowLayouts = new();
     private readonly LinearGradientBrush _layoutRailMaskNone =
         CreateLayoutRailFeatherMask(false, false);
@@ -74,10 +76,6 @@ public partial class DesktopShellSurface :
         CreateLayoutRailFeatherMask(true, true);
     private SolidColorBrush _accentBrush =
         CreateBrush(Color.FromRgb(240, 229, 0));
-    private bool _draggingExplorer;
-    private Point _explorerDragOffset;
-    private Point _explorerDragStart;
-    private bool _explorerDragStarted;
     private bool _draggingTaskManager;
     private Point _taskManagerDragOffset;
     private Point _taskManagerDragStart;
@@ -85,10 +83,6 @@ public partial class DesktopShellSurface :
     private Point? _ownedTitlePointerOverrideForTest;
     private int? _ownedTitleClickCountOverrideForTest;
     private MouseButtonState? _ownedTitleButtonOverrideForTest;
-    private readonly DataTemplate _explorerFullItemTemplate;
-    private readonly DataTemplate _explorerCompactItemTemplate;
-    private bool _explorerCompactWidth;
-    private bool _explorerCompactHeight;
     private ScrollViewer? _layoutRailScrollViewer;
     private LayoutRailScrollDirection _layoutRailScrollDirection;
     private bool _layoutRailRenderingSubscribed;
@@ -101,17 +95,182 @@ public partial class DesktopShellSurface :
     private bool _systemParametersSubscribed;
     private bool _highContrast = SystemParameters.HighContrast;
     private DispatcherOperation? _pendingLayoutReveal;
+    private DispatcherOperation? _pendingOwnedFocus;
+    private int _ownedFocusIntentGeneration;
     private double? _layoutRailPointerYOverrideForTest;
     private int _layoutRailMouseMoveInvocationCount;
     private string _adjacentRailProbeDetailForTest = "not-run";
-    private bool _refreshingExplorerPresentation;
+
+    private sealed class ExplorerEntry(
+        OwnedWindowId id, Border frame, ExplorerSurface surface, Border titleBar,
+        TextBlock titleText, Button minimizeButton, Button maximizeButton, Button closeButton)
+    {
+        internal OwnedWindowId Id { get; } = id;
+        internal Border Frame { get; } = frame;
+        internal ExplorerSurface Surface { get; } = surface;
+        internal Border TitleBar { get; } = titleBar;
+        internal TextBlock TitleText { get; } = titleText;
+        internal Button MinimizeButton { get; } = minimizeButton;
+        internal Button MaximizeButton { get; } = maximizeButton;
+        internal Button CloseButton { get; } = closeButton;
+        internal bool Dragging;
+        internal Point DragOffset;
+        internal Point DragStart;
+        internal bool DragStarted;
+    }
+
+    internal IReadOnlyList<string> ExplorerSessionIdsForTest =>
+        _explorers.Keys.Select(id => id.Value).ToArray();
+
+    internal ExplorerSurface GetExplorerSurfaceForTest(string id) =>
+        _explorers[new OwnedWindowId(id)].Surface;
+
+    private void ConfigureExplorerTaskbarMenu()
+    {
+        ContextMenu menu = new()
+        {
+            Style = (Style)FindResource("ExplorerSessionMenu"),
+        };
+        MenuItem create = new()
+        {
+            Header = "_New Explorer window",
+            InputGestureText = "Shift+F10 / N",
+            CommandParameter = "new",
+            Style = (Style)FindResource("ExplorerSessionMenuItem"),
+        };
+        AutomationProperties.SetName(create, "New Explorer window");
+        create.Click += (_, _) =>
+        {
+            if (_explorers.Count >= MaximumExplorerSessions) return;
+            menu.IsOpen = false;
+            _ = TaskbarExplorerButton.Focus();
+            CreateExplorerSession();
+        };
+        menu.Items.Add(create);
+        menu.Opened += (_, _) =>
+        {
+            CancelExplorerPendingFocus();
+            RefreshExplorerTaskbarMenu();
+        };
+        TaskbarExplorerButton.ContextMenu = menu;
+        TaskbarExplorerButton.PreviewKeyDown += TaskbarExplorerButton_OnPreviewKeyDown;
+        TaskbarExplorerButton.ToolTip = "EXPLORER / RIGHT CLICK OR SHIFT+F10 / NEW WINDOW";
+        AutomationProperties.SetHelpText(TaskbarExplorerButton,
+            "Activate the recent Explorer. Right click or Shift+F10 opens session commands and New Explorer window.");
+    }
+
+    private void TaskbarExplorerButton_OnPreviewKeyDown(object sender, KeyEventArgs eventArgs)
+    {
+        if (eventArgs.Key == Key.Apps ||
+            (eventArgs.Key == Key.F10 && (Keyboard.Modifiers & ModifierKeys.Shift) != 0))
+        {
+            ContextMenu menu = TaskbarExplorerButton.ContextMenu;
+            menu.PlacementTarget = TaskbarExplorerButton;
+            menu.IsOpen = true;
+            eventArgs.Handled = true;
+        }
+    }
+
+    private void CreateExplorerSession()
+    {
+        // Closed sessions retain their exact surface/workspace identity and slot.
+        if (_explorers.Count >= MaximumExplorerSessions) return;
+        OwnedWindowId id = new($"explorer-{_explorers.Count + 1}");
+        ExplorerSurface surface = new();
+        surface.SetBinding(ExplorerSurface.AccentBrushProperty,
+            new System.Windows.Data.Binding(nameof(AccentBrush)) { Source = this });
+        surface.Announced += Announce;
+        TextBlock titleText = new()
+        {
+            Text = $"JARVIS2 / FILE EXPLORER / {id.Value}",
+            FontFamily = (FontFamily)FindResource("MonoFont"),
+            FontSize = 15,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        };
+        Button minimize = CreateExplorerTitleButton("Minimize", id,
+            new System.Windows.Shapes.Path { Width = 16, StrokeThickness = 1.4,
+                Stroke = (Brush)FindResource("TextBrush"), Data = Geometry.Parse("M 0,1 L 16,1") });
+        Button maximize = CreateExplorerTitleButton("Maximize", id,
+            new System.Windows.Shapes.Rectangle { Width = 15, Height = 15, StrokeThickness = 1.5,
+                Stroke = (Brush)FindResource("TextBrush") });
+        Button close = CreateExplorerTitleButton("Close", id,
+            new System.Windows.Shapes.Path { Width = 16, Height = 16, StrokeThickness = 1.5,
+                Stroke = (Brush)FindResource("TextBrush"), Data = Geometry.Parse("M 1,1 L 15,15 M 15,1 L 1,15") });
+        Grid titleGrid = new();
+        titleGrid.ColumnDefinitions.Add(new ColumnDefinition());
+        titleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(132) });
+        titleText.Margin = new Thickness(20, 0, 12, 0);
+        titleGrid.Children.Add(titleText);
+        StackPanel controls = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+        controls.Children.Add(minimize); controls.Children.Add(maximize); controls.Children.Add(close);
+        Grid.SetColumn(controls, 1); titleGrid.Children.Add(controls);
+        Border titleBar = new()
+        {
+            Child = titleGrid, BorderBrush = (Brush)FindResource("SecondaryRuleBrush"),
+            BorderThickness = new Thickness(0, 0, 0, 1), ClipToBounds = true,
+        };
+        Grid body = new();
+        body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(42) });
+        body.RowDefinitions.Add(new RowDefinition());
+        body.Children.Add(titleBar); Grid.SetRow(surface, 1); body.Children.Add(surface);
+        Border frame = new()
+        {
+            Child = body, Width = 930, Height = 667, BorderThickness = new Thickness(2),
+            BorderBrush = (Brush)FindResource("PrimaryRuleBrush"), Background = Brushes.Black,
+            SnapsToDevicePixels = true,
+        };
+        Canvas.SetLeft(frame, 596 - 28 * _explorers.Count);
+        Canvas.SetTop(frame, 63 + 18 * _explorers.Count);
+        ExplorerEntry entry = new(id, frame, surface, titleBar, titleText, minimize, maximize, close);
+        if (!_ownedWindowLayouts.TryRegister(id, OwnedWindowLifecycle.Visible, GetOwnedWindowBounds(frame)))
+        {
+            throw new InvalidOperationException($"Could not register Explorer session {id}.");
+        }
+        _explorers.Add(id, entry);
+        ConfigureExplorerEntry(entry);
+        titleBar.MouseLeftButtonDown += ExplorerTitleBar_OnMouseLeftButtonDown;
+        titleBar.MouseMove += ExplorerTitleBar_OnMouseMove;
+        titleBar.MouseLeftButtonUp += ExplorerTitleBar_OnMouseLeftButtonUp;
+        titleBar.LostMouseCapture += OwnedTitleBar_OnLostMouseCapture;
+        frame.PreviewMouseDown += OwnedWindow_OnPreviewMouseDown;
+        frame.GotKeyboardFocus += OwnedWindow_OnGotKeyboardFocus;
+        DesktopCanvas.Children.Add(frame);
+        ActivateOwnedWindow(frame);
+        UpdateOwnedWindowLayoutDensity();
+        ApplyCurrentLayoutPresentation();
+        RefreshLayoutAvailability();
+        RefreshExplorerTaskbarState();
+        surface.FocusExplorerItems();
+        Announce($"EXPLORER / NEW WINDOW / {id.Value}");
+    }
+
+    private Button CreateExplorerTitleButton(string action, OwnedWindowId id, UIElement glyph)
+    {
+        Button button = new()
+        {
+            Style = (Style)FindResource("WindowControlButton"),
+            Content = glyph,
+            CommandParameter = id,
+            ToolTip = $"{action.ToUpperInvariant()} EXPLORER / {id.Value}",
+        };
+        AutomationProperties.SetName(button, $"{action} Explorer {id.Value}");
+        if (action == "Minimize") button.Click += ExplorerMinimizeButton_OnClick;
+        else if (action == "Maximize") button.Click += ExplorerMaximizeButton_OnClick;
+        else if (action == "Close") button.Click += ExplorerCloseButton_OnClick;
+        return button;
+    }
 
     public DesktopShellSurface()
     {
         InitializeComponent();
-        _explorerFullItemTemplate = ExplorerItemList.ItemTemplate;
-        _explorerCompactItemTemplate =
-            (DataTemplate)FindResource("ExplorerCompactItemTemplate");
+        _explorers.Add(ExplorerOwnedWindowId, new(
+            ExplorerOwnedWindowId, ExplorerWindow, PrimaryExplorerSurface,
+            ExplorerTitleBar, ExplorerTitleText, ExplorerMinimizeButton,
+            ExplorerMaximizeButton, ExplorerCloseButton));
+        PrimaryExplorerSurface.Announced += Announce;
+        ConfigureExplorerEntry(_explorers[ExplorerOwnedWindowId]);
+        ConfigureExplorerTaskbarMenu();
         if (!_ownedWindowLayouts.TryRegister(
                 ExplorerOwnedWindowId,
                 OwnedWindowLifecycle.Visible,
@@ -125,11 +284,11 @@ public partial class DesktopShellSurface :
                 "The owned desktop window registration could not be initialized.");
         }
 
-        _explorerWorkspace.Changed += ExplorerWorkspace_OnChanged;
         LayoutRailHitRegion.AddHandler(
             Mouse.PreviewMouseMoveEvent,
             new MouseEventHandler(LayoutRailRegion_OnPreviewMouseMove),
             true);
+        LayoutRailPanel.GotKeyboardFocus += (_, _) => CancelExplorerPendingFocus();
         LayoutRailViewport.OpacityMask = _layoutRailMaskBoth;
         _clockTimer = new(
             TimeSpan.FromSeconds(1),
@@ -149,7 +308,7 @@ public partial class DesktopShellSurface :
         };
         ApplyCurrentLayoutPresentation();
         RefreshLayoutAvailability();
-        RefreshExplorerPresentation();
+        RefreshExplorerTaskbarState();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -197,9 +356,9 @@ public partial class DesktopShellSurface :
     internal bool IsTaskManagerMaximizedForTest =>
         IsOwnedWindowMaximized(TaskManagerOwnedWindowId);
 
-    internal bool IsExplorerCompactWidthForTest => _explorerCompactWidth;
+    internal bool IsExplorerCompactWidthForTest => PrimaryExplorerSurface.IsCompactWidth;
 
-    internal bool IsExplorerCompactHeightForTest => _explorerCompactHeight;
+    internal bool IsExplorerCompactHeightForTest => PrimaryExplorerSurface.IsCompactHeight;
 
     internal bool IsTaskManagerVisibleForTest =>
         TaskManagerWindow.Visibility == Visibility.Visible;
@@ -212,6 +371,33 @@ public partial class DesktopShellSurface :
 
     internal double TaskManagerIndicatorOpacityForTest =>
         TaskManagerRunningIndicator.Opacity;
+
+    // PRIMARY compatibility aliases; new feature commands resolve a session ID.
+    internal Button ExplorerBackButton => PrimaryExplorerSurface.ExplorerBackButton;
+    internal Button ExplorerForwardButton => PrimaryExplorerSurface.ExplorerForwardButton;
+    internal Button ExplorerUpButton => PrimaryExplorerSurface.ExplorerUpButton;
+    internal TextBlock ExplorerBreadcrumbText => PrimaryExplorerSurface.ExplorerBreadcrumbText;
+    internal Border ExplorerActionPanel => PrimaryExplorerSurface.ExplorerActionPanel;
+    internal Button ExplorerOpenButton => PrimaryExplorerSurface.ExplorerOpenButton;
+    internal Button ExplorerRenameButton => PrimaryExplorerSurface.ExplorerRenameButton;
+    internal Button ExplorerAccessButton => PrimaryExplorerSurface.ExplorerAccessButton;
+    internal Button ExplorerNewFolderButton => PrimaryExplorerSurface.ExplorerNewFolderButton;
+    internal ColumnDefinition ExplorerFolderColumn => PrimaryExplorerSurface.ExplorerFolderColumn;
+    internal ColumnDefinition ExplorerFolderDividerColumn => PrimaryExplorerSurface.ExplorerFolderDividerColumn;
+    internal Grid ExplorerFolderPanel => PrimaryExplorerSurface.ExplorerFolderPanel;
+    internal TextBlock ExplorerFolderNameText => PrimaryExplorerSurface.ExplorerFolderNameText;
+    internal TextBlock ExplorerItemCountText => PrimaryExplorerSurface.ExplorerItemCountText;
+    internal TextBlock ExplorerRenameErrorText => PrimaryExplorerSurface.ExplorerRenameErrorText;
+    internal Grid ExplorerFullHeader => PrimaryExplorerSurface.ExplorerFullHeader;
+    internal Grid ExplorerCompactHeader => PrimaryExplorerSurface.ExplorerCompactHeader;
+    internal ListBox ExplorerItemList => PrimaryExplorerSurface.ExplorerItemList;
+    internal Grid ExplorerEmptyState => PrimaryExplorerSurface.ExplorerEmptyState;
+    internal Grid ExplorerPreviewPanel => PrimaryExplorerSurface.ExplorerPreviewPanel;
+    internal Button ExplorerPreviewCloseButton => PrimaryExplorerSurface.ExplorerPreviewCloseButton;
+    internal TextBlock ExplorerPreviewNameText => PrimaryExplorerSurface.ExplorerPreviewNameText;
+    internal TextBlock ExplorerPreviewTypeText => PrimaryExplorerSurface.ExplorerPreviewTypeText;
+    internal TextBlock ExplorerPreviewKindText => PrimaryExplorerSurface.ExplorerPreviewKindText;
+    internal Border ExplorerStoragePanel => PrimaryExplorerSurface.ExplorerStoragePanel;
 
     internal ExplorerWorkspace ExplorerWorkspaceForTest => _explorerWorkspace;
 
@@ -375,7 +561,7 @@ public partial class DesktopShellSurface :
             return false;
         }
 
-        ApplyExplorerOpenResult(_explorerWorkspace.OpenSelected());
+        PrimaryExplorerSurface.ApplyExplorerOpenResult(_explorerWorkspace.OpenSelected());
         return ExplorerPreviewVisibleForTest &&
             ExplorerPreviewNameForTest == "PROJECT_BRIEF_0826.DOCX";
     }
@@ -503,21 +689,11 @@ public partial class DesktopShellSurface :
         _ownedWindowLayouts.GetAvailability(preset).IsEnabled;
 
     internal Rect GetOwnedWindowBoundsForTest(string id) =>
-        id switch
-        {
-            "explorer" => GetOwnedWindowBounds(ExplorerWindow),
-            "task-manager" => GetOwnedWindowBounds(TaskManagerWindow),
-            _ => throw new ArgumentOutOfRangeException(nameof(id)),
-        };
+        GetOwnedWindowBounds(ResolveOwnedFrame(new OwnedWindowId(id)));
 
     internal void MoveOwnedWindowForTest(string id, Rect bounds)
     {
-        FrameworkElement window = id switch
-        {
-            "explorer" => ExplorerWindow,
-            "task-manager" => TaskManagerWindow,
-            _ => throw new ArgumentOutOfRangeException(nameof(id)),
-        };
+        FrameworkElement window = ResolveOwnedFrame(new OwnedWindowId(id));
         SetOwnedWindowBounds(window, bounds);
         CompleteOwnedWindowManualMove(GetOwnedWindowId(window), window);
     }
@@ -529,12 +705,10 @@ public partial class DesktopShellSurface :
         bool loseCapture = false,
         int clickCount = 1)
     {
-        UIElement title = id switch
-        {
-            "explorer" => ExplorerTitleBar,
-            "task-manager" => TaskManagerTitleBar,
-            _ => throw new ArgumentOutOfRangeException(nameof(id)),
-        };
+        UIElement title = _explorers.TryGetValue(new OwnedWindowId(id), out ExplorerEntry? entry)
+            ? entry.TitleBar
+            : id == "task-manager" ? TaskManagerTitleBar
+            : throw new ArgumentOutOfRangeException(nameof(id));
         try
         {
             _ownedTitlePointerOverrideForTest = press;
@@ -810,7 +984,13 @@ public partial class DesktopShellSurface :
     {
         _clockTimer.Stop();
         TaskManagerPanel.StopSampling();
-        EndExplorerTitleDrag();
+        foreach (ExplorerEntry entry in _explorers.Values)
+        {
+            EndExplorerTitleDrag(entry);
+            entry.Surface.SuspendInteraction();
+        }
+        CancelOwnedFocus();
+        TaskbarExplorerButton.ContextMenu.IsOpen = false;
         EndTaskManagerTitleDrag();
         StopLayoutRailAutoScroll();
         CancelPendingLayoutReveal();
@@ -970,9 +1150,7 @@ public partial class DesktopShellSurface :
         object sender,
         RoutedEventArgs eventArgs)
     {
-        Dispatcher.BeginInvoke(
-            DispatcherPriority.Input,
-            FocusSelectedLayout);
+        QueueOwnedFocus(FocusSelectedLayout);
     }
 
     private void LayoutRailList_OnPreviewMouseWheel(
@@ -1097,13 +1275,17 @@ public partial class DesktopShellSurface :
         if (ActiveOwnedWindowId == "task-manager" &&
             TaskManagerWindow.Visibility == Visibility.Visible)
         {
-            _ = Dispatcher.BeginInvoke(
-                DispatcherPriority.Input,
-                new Action(() => _ = TaskManagerPanel.Focus()));
+            QueueOwnedFocus(() => _ = TaskManagerPanel.Focus(), TaskManagerOwnedWindowId);
+        }
+        else if (_ownedWindowLayouts.ActiveWindowId is OwnedWindowId id &&
+            _explorers.TryGetValue(id, out ExplorerEntry? entry) &&
+            entry.Frame.Visibility == Visibility.Visible)
+        {
+            entry.Surface.FocusExplorerItems();
         }
         else
         {
-            FocusExplorerItems();
+            _ = Focus();
         }
 
         Announce("RAIL CLOSED / FOCUS RETURNED TO ACTIVE WINDOW");
@@ -1855,646 +2037,229 @@ public partial class DesktopShellSurface :
                 "PROJECTS" => ExplorerWorkspace.ProjectsId,
                 _ => ExplorerWorkspace.ArchiveId,
             };
-            ClearExplorerPreview();
-            _ = _explorerWorkspace.TryNavigateTo(locationId);
-            RestoreExplorer();
-            AnnounceExplorerLocation();
-            FocusExplorerItems();
+            ExplorerEntry entry = RecentExplorer();
+            RestoreExplorer(entry);
+            entry.Surface.NavigateTo(locationId);
             return;
         }
 
         Announce($"DESKTOP / {destination}");
     }
 
-    private void ExplorerTitleBar_OnMouseLeftButtonDown(
-        object sender,
-        MouseButtonEventArgs eventArgs)
-    {
-        if (FindParent<Button>(eventArgs.OriginalSource as DependencyObject) is not null)
-        {
-            return;
-        }
+    private ExplorerEntry ExplorerTitleEntry(object sender) =>
+        sender is FrameworkElement { Tag: OwnedWindowId id } &&
+            _explorers.TryGetValue(id, out ExplorerEntry? entry) ? entry :
+        throw new InvalidOperationException("Explorer title requires an explicit registered session ID.");
 
+    private void ExplorerTitleBar_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArgs)
+    {
+        if (FindParent<Button>(eventArgs.OriginalSource as DependencyObject) is not null) return;
+        ExplorerEntry entry = ExplorerTitleEntry(sender);
+        if (GetOwnedWindowState(entry.Id).Lifecycle != OwnedWindowLifecycle.Visible) return;
         if ((_ownedTitleClickCountOverrideForTest ?? eventArgs.ClickCount) == 2)
         {
-            ExplorerTitleBar.ReleaseMouseCapture();
-            _draggingExplorer = false;
-            ToggleExplorerMaximize();
+            EndExplorerTitleDrag(entry);
+            ToggleExplorerMaximize(entry);
+            entry.Surface.FocusExplorerItems();
             eventArgs.Handled = true;
             return;
         }
 
-        ActivateOwnedWindow(ExplorerWindow);
+        ActivateOwnedWindow(entry.Frame);
+        entry.Surface.FocusExplorerItems();
         Point pointer = _ownedTitlePointerOverrideForTest ?? eventArgs.GetPosition(DesktopCanvas);
-        _explorerDragStart = pointer;
-        _explorerDragStarted = false;
-        _explorerDragOffset = new(
-            pointer.X - Canvas.GetLeft(ExplorerWindow),
-            pointer.Y - Canvas.GetTop(ExplorerWindow));
-        _draggingExplorer = true;
-        ExplorerTitleBar.CaptureMouse();
+        entry.DragStart = pointer;
+        entry.DragStarted = false;
+        entry.DragOffset = new Point(pointer.X - Canvas.GetLeft(entry.Frame), pointer.Y - Canvas.GetTop(entry.Frame));
+        entry.Dragging = true;
+        entry.TitleBar.CaptureMouse();
         eventArgs.Handled = true;
     }
 
-    private void ExplorerTitleBar_OnMouseMove(
-        object sender,
-        MouseEventArgs eventArgs)
+    private void ExplorerTitleBar_OnMouseMove(object sender, MouseEventArgs eventArgs)
     {
-        if (!_draggingExplorer ||
-            (_ownedTitleButtonOverrideForTest ?? eventArgs.LeftButton) != MouseButtonState.Pressed)
-        {
-            return;
-        }
-
+        ExplorerEntry entry = ExplorerTitleEntry(sender);
+        if (!entry.Dragging || (_ownedTitleButtonOverrideForTest ?? eventArgs.LeftButton) != MouseButtonState.Pressed) return;
         Point pointer = _ownedTitlePointerOverrideForTest ?? eventArgs.GetPosition(DesktopCanvas);
-        MoveOwnedWindowFromTitle(
-            ExplorerOwnedWindowId,
-            ExplorerWindow,
-            pointer,
-            _explorerDragStart,
-            _explorerDragOffset,
-            ref _explorerDragStarted);
+        MoveOwnedWindowFromTitle(entry.Id, entry.Frame, pointer, entry.DragStart, entry.DragOffset, ref entry.DragStarted);
     }
 
-    private void ExplorerTitleBar_OnMouseLeftButtonUp(
-        object sender,
-        MouseButtonEventArgs eventArgs)
-        => EndExplorerTitleDrag();
+    private void ExplorerTitleBar_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs eventArgs) =>
+        EndExplorerTitleDrag(ExplorerTitleEntry(sender));
 
-    private void EndExplorerTitleDrag()
+    private void EndExplorerTitleDrag(ExplorerEntry entry)
     {
-        bool moved = _explorerDragStarted;
-        _draggingExplorer = false;
-        _explorerDragStarted = false;
-        ExplorerTitleBar.ReleaseMouseCapture();
-        if (moved)
-        {
-            CompleteOwnedWindowManualMove(
-                ExplorerOwnedWindowId,
-                ExplorerWindow);
-        }
+        bool moved = entry.DragStarted;
+        entry.Dragging = false;
+        entry.DragStarted = false;
+        entry.TitleBar.ReleaseMouseCapture();
+        if (moved) CompleteOwnedWindowManualMove(entry.Id, entry.Frame);
     }
 
-    private void ExplorerMinimizeButton_OnClick(
-        object sender,
-        RoutedEventArgs eventArgs)
-        => MinimizeExplorer();
-
-    private void MinimizeExplorer()
+    private void ConfigureExplorerEntry(ExplorerEntry entry)
     {
-        _ = _ownedWindowLayouts.TrySetLifecycle(
-            ExplorerOwnedWindowId,
-            OwnedWindowLifecycle.Minimized);
-        ExplorerWindow.Visibility = Visibility.Collapsed;
-        ExplorerRunningIndicator.Opacity = 0.45;
+        entry.Surface.IsFocusIntentCurrent = () => IsLoaded &&
+            GetOwnedWindowState(entry.Id).Lifecycle == OwnedWindowLifecycle.Visible && IsOwnedWindowActive(entry.Id);
+        entry.Surface.ActivationRequested += () => ActivateOwnedWindow(entry.Frame);
+        entry.TitleBar.Tag = entry.Id;
+        entry.MinimizeButton.CommandParameter = entry.Id;
+        entry.MaximizeButton.CommandParameter = entry.Id;
+        entry.CloseButton.CommandParameter = entry.Id;
+        AutomationProperties.SetName(entry.Frame, $"JARVIS2 Explorer session {entry.Id.Value}");
+    }
+
+    private ExplorerEntry ExplorerCommandEntry(object sender) =>
+        sender is Button { CommandParameter: OwnedWindowId id } &&
+            _explorers.TryGetValue(id, out ExplorerEntry? entry) ? entry :
+        throw new InvalidOperationException("Explorer command requires an explicit registered session ID.");
+
+    private void ExplorerMinimizeButton_OnClick(object sender, RoutedEventArgs eventArgs) =>
+        MinimizeExplorer(ExplorerCommandEntry(sender));
+
+    private void MinimizeExplorer(ExplorerEntry entry)
+    {
+        EndExplorerTitleDrag(entry);
+        entry.Surface.SuspendInteraction();
+        _ = _ownedWindowLayouts.TrySetLifecycle(entry.Id, OwnedWindowLifecycle.Minimized);
+        entry.Frame.Visibility = Visibility.Collapsed;
         ApplyCurrentLayoutPresentation();
         RefreshLayoutAvailability();
         UpdateOwnedWindowZOrder();
+        RefreshExplorerTaskbarState();
         QueueTaskbarFocus(TaskbarExplorerButton);
-        Announce("EXPLORER / MINIMIZED");
+        Announce($"EXPLORER / MINIMIZED / {entry.Id.Value}");
     }
 
-    private void ExplorerMaximizeButton_OnClick(
-        object sender,
-        RoutedEventArgs eventArgs) => ToggleExplorerMaximize();
+    private void ExplorerMaximizeButton_OnClick(object sender, RoutedEventArgs eventArgs) =>
+        ToggleExplorerMaximize(ExplorerCommandEntry(sender));
 
-    private void ToggleExplorerMaximize()
+    private void ToggleExplorerMaximize(ExplorerEntry entry)
     {
-        RestoreExplorer();
-        bool wasMaximized = IsExplorerMaximized;
-        OwnedLayoutApplyResult result =
-            _ownedWindowLayouts.TryToggleMaximize(
-                ExplorerOwnedWindowId,
-                OwnedWorkArea);
+        RestoreExplorer(entry);
+        bool wasMaximized = IsOwnedWindowMaximized(entry.Id);
+        OwnedLayoutApplyResult result = _ownedWindowLayouts.TryToggleMaximize(entry.Id, OwnedWorkArea);
         ApplyOwnedLayoutResult(result);
         ApplyCurrentLayoutPresentation();
         RefreshLayoutAvailability();
-        Announce(wasMaximized
-            ? "EXPLORER / RESTORED"
-            : "EXPLORER / EXPANDED");
+        Announce($"EXPLORER / {(wasMaximized ? "RESTORED" : "EXPANDED")} / {entry.Id.Value}");
     }
 
-    private void ExplorerCloseButton_OnClick(
-        object sender,
-        RoutedEventArgs eventArgs)
+    private void ExplorerCloseButton_OnClick(object sender, RoutedEventArgs eventArgs) =>
+        CloseExplorer(ExplorerCommandEntry(sender));
+
+    private void CloseExplorer(ExplorerEntry entry)
     {
-        _ = _ownedWindowLayouts.TrySetLifecycle(
-            ExplorerOwnedWindowId,
-            OwnedWindowLifecycle.Closed);
-        ExplorerWindow.Visibility = Visibility.Collapsed;
-        ExplorerRunningIndicator.Visibility = Visibility.Collapsed;
+        EndExplorerTitleDrag(entry);
+        entry.Surface.SuspendInteraction();
+        _ = _ownedWindowLayouts.TrySetLifecycle(entry.Id, OwnedWindowLifecycle.Closed);
+        entry.Frame.Visibility = Visibility.Collapsed;
         ApplyCurrentLayoutPresentation();
         RefreshLayoutAvailability();
         UpdateOwnedWindowZOrder();
+        RefreshExplorerTaskbarState();
         QueueTaskbarFocus(TaskbarExplorerButton);
-        Announce("EXPLORER / CLOSED");
+        Announce($"EXPLORER / CLOSED / {entry.Id.Value}");
     }
 
-    private void TaskbarExplorerButton_OnClick(
-        object sender,
-        RoutedEventArgs eventArgs)
+    private ExplorerEntry RecentExplorer()
     {
-        if (ExplorerWindow.Visibility == Visibility.Visible &&
-            IsOwnedWindowActive(ExplorerOwnedWindowId))
-        {
-            MinimizeExplorer();
-        }
-        else
-        {
-            bool wasVisible = ExplorerWindow.Visibility == Visibility.Visible;
-            RestoreExplorer();
-            if (_ownedWindowLayouts.AppliedPreset == LayoutPreset.Maximized)
-            {
-                OwnedLayoutApplyResult result =
-                    _ownedWindowLayouts.TryApply(
-                        LayoutPreset.Maximized,
-                        OwnedWorkArea);
-                ApplyOwnedLayoutResult(result);
-                ApplyCurrentLayoutPresentation();
-            }
-
-            Announce(wasVisible
-                ? "EXPLORER / ACTIVE"
-                : "EXPLORER / RESTORED");
-            _ = Dispatcher.BeginInvoke(
-                DispatcherPriority.Input,
-                new Action(() => _ = ExplorerItemList.Focus()));
-        }
+        OwnedWindowState[] states = _ownedWindowLayouts.CaptureSnapshot().Windows
+            .Where(state => _explorers.ContainsKey(state.Id))
+            .OrderByDescending(state => state.ActivationOrdinal)
+            .ThenByDescending(state => state.RegistrationOrder).ToArray();
+        if (_ownedWindowLayouts.ActiveWindowId is OwnedWindowId active &&
+            _explorers.TryGetValue(active, out ExplorerEntry? activeEntry)) return activeEntry;
+        OwnedWindowState target = states.FirstOrDefault(state => state.Lifecycle != OwnedWindowLifecycle.Closed) ?? states[0];
+        return _explorers[target.Id];
     }
 
-    private void RestoreExplorer()
+    private void TaskbarExplorerButton_OnClick(object sender, RoutedEventArgs eventArgs)
     {
-        bool wasVisible =
-            ExplorerWindow.Visibility == Visibility.Visible;
-        _ = _ownedWindowLayouts.TrySetLifecycle(
-            ExplorerOwnedWindowId,
-            OwnedWindowLifecycle.Visible);
-        ApplyCoordinatorBounds(ExplorerOwnedWindowId, ExplorerWindow);
-        ExplorerWindow.Visibility = Visibility.Visible;
-        ExplorerRunningIndicator.Visibility = Visibility.Visible;
-        ExplorerRunningIndicator.Opacity = 1.0;
-        ActivateOwnedWindow(ExplorerWindow);
-        RefreshLayoutAvailability();
-        if (!wasVisible)
+        ExplorerEntry entry = RecentExplorer();
+        if (entry.Frame.Visibility == Visibility.Visible && IsOwnedWindowActive(entry.Id))
         {
+            MinimizeExplorer(entry);
+            return;
+        }
+
+        bool wasVisible = entry.Frame.Visibility == Visibility.Visible;
+        ActivateExplorerFromTaskbar(entry);
+        Announce($"EXPLORER / {(wasVisible ? "ACTIVE" : "RESTORED")} / {entry.Id.Value}");
+    }
+
+    private void ActivateExplorerFromTaskbar(ExplorerEntry entry)
+    {
+        RestoreExplorer(entry);
+        if (_ownedWindowLayouts.AppliedPreset == LayoutPreset.Maximized)
+        {
+            ApplyOwnedLayoutResult(_ownedWindowLayouts.TryApply(LayoutPreset.Maximized, OwnedWorkArea));
             ApplyCurrentLayoutPresentation();
         }
+        entry.Surface.FocusExplorerItems();
     }
 
-    private void ExplorerBackButton_OnClick(
-        object sender,
-        RoutedEventArgs eventArgs) =>
-        NavigateExplorerHistory(_explorerWorkspace.TryGoBack);
+    private void RestoreExplorer() => RestoreExplorer(_explorers[ExplorerOwnedWindowId]);
 
-    private void ExplorerForwardButton_OnClick(
-        object sender,
-        RoutedEventArgs eventArgs) =>
-        NavigateExplorerHistory(_explorerWorkspace.TryGoForward);
-
-    private void ExplorerUpButton_OnClick(
-        object sender,
-        RoutedEventArgs eventArgs) =>
-        NavigateExplorerHistory(_explorerWorkspace.TryGoUp);
-
-    private void ExplorerOpenButton_OnClick(
-        object sender,
-        RoutedEventArgs eventArgs) =>
-        ApplyExplorerOpenResult(_explorerWorkspace.OpenSelected());
-
-    private void ExplorerRenameButton_OnClick(
-        object sender,
-        RoutedEventArgs eventArgs) =>
-        BeginExplorerRename();
-
-    private void ExplorerAccessButton_OnClick(
-        object sender,
-        RoutedEventArgs eventArgs) =>
-        Announce("EXPLORER / ACCESS PANEL NOT AVAILABLE IN THIS PREVIEW");
-
-    private void ExplorerNewFolderButton_OnClick(
-        object sender,
-        RoutedEventArgs eventArgs) =>
-        CreateExplorerFolder();
-
-    private void ExplorerWorkspace_OnChanged(
-        object? sender,
-        EventArgs eventArgs) =>
-        RefreshExplorerPresentation();
-
-    private void RefreshExplorerPresentation()
+    private void RestoreExplorer(ExplorerEntry entry)
     {
-        _refreshingExplorerPresentation = true;
-        try
+        bool wasVisible = entry.Frame.Visibility == Visibility.Visible;
+        _ = _ownedWindowLayouts.TrySetLifecycle(entry.Id, OwnedWindowLifecycle.Visible);
+        ApplyCoordinatorBounds(entry.Id, entry.Frame);
+        entry.Frame.Visibility = Visibility.Visible;
+        entry.Surface.ResumeInteraction();
+        ActivateOwnedWindow(entry.Frame);
+        RefreshLayoutAvailability();
+        RefreshExplorerTaskbarState();
+        if (!wasVisible) ApplyCurrentLayoutPresentation();
+    }
+
+    private void RefreshExplorerTaskbarState()
+    {
+        OwnedWindowState[] states = _ownedWindowLayouts.CaptureSnapshot().Windows
+            .Where(state => _explorers.ContainsKey(state.Id)).ToArray();
+        ExplorerRunningIndicator.Visibility = states.Any(state => state.Lifecycle != OwnedWindowLifecycle.Closed)
+            ? Visibility.Visible : Visibility.Collapsed;
+        ExplorerRunningIndicator.Opacity = states.Any(state => state.Lifecycle == OwnedWindowLifecycle.Visible) ? 1.0 : 0.45;
+        RefreshExplorerTaskbarMenu();
+    }
+
+    private void RefreshExplorerTaskbarMenu()
+    {
+        ContextMenu menu = TaskbarExplorerButton.ContextMenu;
+        MenuItem create = (MenuItem)menu.Items[0];
+        create.IsEnabled = _explorers.Count < MaximumExplorerSessions;
+        string help = create.IsEnabled
+            ? $"Create an independent memory-only Explorer session ({_explorers.Count} of {MaximumExplorerSessions} retained slots used)."
+            : $"Limit: {MaximumExplorerSessions} retained Explorer sessions. Closing retains the slot; reopen an existing session by ID below.";
+        create.ToolTip = help;
+        AutomationProperties.SetHelpText(create, help);
+        while (menu.Items.Count > 1) menu.Items.RemoveAt(1);
+        foreach (ExplorerEntry entry in _explorers.Values)
         {
-            ExplorerWorkspaceSnapshot snapshot =
-                _explorerWorkspace.CaptureSnapshot();
-            string breadcrumb = string.Join(
-                "  /  ",
-                snapshot.Breadcrumb.Select(segment =>
-                    segment.Name.ToUpperInvariant()));
-
-            ExplorerBreadcrumbText.Text = breadcrumb;
-            ExplorerBreadcrumbText.ToolTip = breadcrumb;
-            AutomationProperties.SetName(
-                ExplorerBreadcrumbText,
-                $"Current Explorer location: {breadcrumb}");
-
-            string folderName =
-                snapshot.CurrentLocation.Name.ToUpperInvariant();
-            ExplorerFolderNameText.Text = folderName;
-            ExplorerFolderNameText.ToolTip = folderName;
-            AutomationProperties.SetName(
-                ExplorerFolderNameText,
-                $"Current folder: {folderName}");
-
-            int itemCount = snapshot.Items.Count;
-            string itemCountText = itemCount == 1
-                ? "1 ITEM"
-                : $"{itemCount} ITEMS";
-            ExplorerItemCountText.Text = itemCountText;
-            AutomationProperties.SetName(
-                ExplorerItemCountText,
-                itemCountText);
-
-            ExplorerItemList.ItemsSource = snapshot.Items;
-            ExplorerWorkspaceItem? selected = snapshot.Items.FirstOrDefault(
-                item => item.IsSelected);
-            ExplorerItemList.SelectedItem = selected;
-
-            ExplorerBackButton.IsEnabled = snapshot.CanGoBack;
-            ExplorerForwardButton.IsEnabled = snapshot.CanGoForward;
-            ExplorerUpButton.IsEnabled = snapshot.CanGoUp;
-            ExplorerOpenButton.IsEnabled = selected is not null;
-            ExplorerRenameButton.IsEnabled = selected is not null;
-            ExplorerAccessButton.IsEnabled = false;
-            ExplorerNewFolderButton.IsEnabled = true;
-            ExplorerEmptyState.Visibility = snapshot.IsEmpty
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-
-            if (snapshot.RenameItemId is null)
+            OwnedWindowLifecycle lifecycle = GetOwnedWindowState(entry.Id).Lifecycle;
+            string action = lifecycle == OwnedWindowLifecycle.Visible ? "Activate" :
+                lifecycle == OwnedWindowLifecycle.Minimized ? "Restore" : "Reopen";
+            MenuItem command = new()
             {
-                ClearExplorerRenameError();
-            }
-        }
-        finally
-        {
-            _refreshingExplorerPresentation = false;
-        }
-    }
-
-    private void ClearExplorerRenameError()
-    {
-        ExplorerRenameErrorText.Text = string.Empty;
-        ExplorerRenameErrorText.Visibility = Visibility.Collapsed;
-        AutomationProperties.SetName(
-            ExplorerRenameErrorText,
-            "No Explorer rename error");
-    }
-
-    private void ShowExplorerRenameError(string message)
-    {
-        ExplorerRenameErrorText.Text = message.ToUpperInvariant();
-        ExplorerRenameErrorText.Visibility = Visibility.Visible;
-        AutomationProperties.SetName(
-            ExplorerRenameErrorText,
-            $"Explorer rename error: {message}");
-    }
-
-    private void NavigateExplorerHistory(Func<bool> navigation)
-    {
-        ClearExplorerPreview();
-        ClearExplorerRenameError();
-        if (navigation())
-        {
-            AnnounceExplorerLocation();
-        }
-        else
-        {
-            Announce("EXPLORER / NAVIGATION BOUNDARY");
-        }
-
-        FocusExplorerItems();
-    }
-
-    private void AnnounceExplorerLocation()
-    {
-        string location = string.Join(
-            " / ",
-            _explorerWorkspace.Breadcrumb.Select(segment => segment.Name));
-        Announce($"EXPLORER / {location}");
-    }
-
-    private void FocusExplorerItems()
-    {
-        _ = Dispatcher.BeginInvoke(
-            DispatcherPriority.Input,
-            new Action(() =>
-            {
-                if (ExplorerWindow.Visibility == Visibility.Visible)
-                {
-                    _ = ExplorerItemList.Focus();
-                }
-            }));
-    }
-
-    private void ApplyExplorerOpenResult(ExplorerOpenResult result)
-    {
-        ClearExplorerRenameError();
-        switch (result.Disposition)
-        {
-            case ExplorerOpenDisposition.Navigated:
-                ClearExplorerPreview();
-                AnnounceExplorerLocation();
-                FocusExplorerItems();
-                break;
-            case ExplorerOpenDisposition.PreviewRequested:
-                ExplorerPreviewRequest request = result.PreviewRequest ??
-                    throw new InvalidOperationException(
-                        "explorer-preview-request-missing");
-                ShowExplorerPreview(request);
-                Announce(
-                    $"EXPLORER / OWNED PREVIEW / {request.DisplayName}");
-                break;
-            default:
-                ClearExplorerPreview();
-                Announce("EXPLORER / SELECT AN ITEM");
-                FocusExplorerItems();
-                break;
+                Header = $"{action} Explorer / {entry.Id.Value}",
+                CommandParameter = entry.Id,
+                Style = (Style)FindResource("ExplorerSessionMenuItem"),
+            };
+            AutomationProperties.SetName(command, $"{action} Explorer session {entry.Id.Value}");
+            command.Click += ExplorerSessionMenuItem_OnClick;
+            menu.Items.Add(command);
         }
     }
 
-    private void BeginExplorerRename()
+    private void ExplorerSessionMenuItem_OnClick(object sender, RoutedEventArgs eventArgs)
     {
-        ClearExplorerPreview();
-        ExplorerRenameResult result =
-            _explorerWorkspace.BeginRenameSelected();
-        if (!result.Succeeded)
+        if (sender is MenuItem { CommandParameter: OwnedWindowId id } &&
+            _explorers.TryGetValue(id, out ExplorerEntry? entry))
         {
-            ShowExplorerRenameError(result.Message);
-            Announce("EXPLORER / RENAME UNAVAILABLE");
-            return;
-        }
-
-        ClearExplorerRenameError();
-        Announce($"EXPLORER / RENAME / {result.Name}");
-        QueueExplorerRenameFocus();
-    }
-
-    private void CreateExplorerFolder()
-    {
-        ClearExplorerPreview();
-        ExplorerWorkspaceItem folder =
-            _explorerWorkspace.CreateUniqueFolder();
-        ClearExplorerRenameError();
-        Announce($"EXPLORER / NEW FOLDER / {folder.Name}");
-        QueueExplorerRenameFocus();
-    }
-
-    private void QueueExplorerRenameFocus()
-    {
-        _ = Dispatcher.BeginInvoke(
-            DispatcherPriority.Input,
-            new Action(() =>
-            {
-                object? selected = ExplorerItemList.SelectedItem;
-                if (selected is null)
-                {
-                    return;
-                }
-
-                ExplorerItemList.ScrollIntoView(selected);
-                ExplorerItemList.UpdateLayout();
-                ListBoxItem? container =
-                    ExplorerItemList.ItemContainerGenerator.ContainerFromItem(
-                        selected) as ListBoxItem;
-                TextBox? editor = container is null
-                    ? null
-                    : FindVisualDescendant<TextBox>(container);
-                if (editor is null || editor.Visibility != Visibility.Visible)
-                {
-                    return;
-                }
-
-                _ = editor.Focus();
-                editor.SelectAll();
-            }));
-    }
-
-    private void CommitExplorerRename(TextBox editor)
-    {
-        if (editor.DataContext is not ExplorerWorkspaceItem item ||
-            !StringComparer.Ordinal.Equals(
-                item.Id,
-                _explorerWorkspace.RenameItemId))
-        {
-            return;
-        }
-
-        ExplorerRenameResult result =
-            _explorerWorkspace.CommitRename(editor.Text);
-        if (result.Succeeded)
-        {
-            ClearExplorerRenameError();
-            Announce($"EXPLORER / RENAMED / {result.Name}");
-            FocusExplorerItems();
-            return;
-        }
-
-        ShowExplorerRenameError(result.Message);
-        Announce("EXPLORER / RENAME NEEDS CORRECTION");
-        _ = Dispatcher.BeginInvoke(
-            DispatcherPriority.Input,
-            new Action(() =>
-            {
-                _ = editor.Focus();
-                editor.SelectAll();
-            }));
-    }
-
-    private void CancelExplorerRename()
-    {
-        if (!_explorerWorkspace.CancelRename())
-        {
-            return;
-        }
-
-        ClearExplorerRenameError();
-        Announce("EXPLORER / RENAME CANCELLED");
-        FocusExplorerItems();
-    }
-
-    private void ShowExplorerPreview(ExplorerPreviewRequest request)
-    {
-        ExplorerPreviewNameText.Text = request.DisplayName;
-        ExplorerPreviewNameText.ToolTip = request.DisplayName;
-        AutomationProperties.SetName(
-            ExplorerPreviewNameText,
-            $"Preview item: {request.DisplayName}");
-        ExplorerPreviewTypeText.Text =
-            $"{request.TypeLabel} / SESSION OBJECT";
-        ExplorerPreviewKindText.Text = request.PreviewKind
-            .Replace('-', ' ')
-            .ToUpperInvariant();
-        ExplorerItemList.IsEnabled = false;
-        ExplorerPreviewPanel.Visibility = Visibility.Visible;
-        _ = Dispatcher.BeginInvoke(
-            DispatcherPriority.Input,
-            new Action(() => _ = ExplorerPreviewCloseButton.Focus()));
-    }
-
-    private void ClearExplorerPreview()
-    {
-        ExplorerPreviewPanel.Visibility = Visibility.Collapsed;
-        ExplorerItemList.IsEnabled = true;
-        ExplorerPreviewNameText.Text = string.Empty;
-        ExplorerPreviewNameText.ToolTip = null;
-        ExplorerPreviewTypeText.Text = string.Empty;
-        ExplorerPreviewKindText.Text = string.Empty;
-    }
-
-    private void ExplorerPreviewCloseButton_OnClick(
-        object sender,
-        RoutedEventArgs eventArgs)
-    {
-        ClearExplorerPreview();
-        Announce("EXPLORER / PREVIEW CLOSED");
-        FocusExplorerItems();
-    }
-
-    private void ExplorerItemList_OnSelectionChanged(
-        object sender,
-        SelectionChangedEventArgs eventArgs)
-    {
-        if (_refreshingExplorerPresentation)
-        {
-            return;
-        }
-
-        ClearExplorerRenameError();
-        ClearExplorerPreview();
-        if (ExplorerItemList.SelectedItem is ExplorerWorkspaceItem item)
-        {
-            _ = _explorerWorkspace.SelectItem(item.Id);
-            Announce($"EXPLORER / SELECTED / {item.Name}");
-        }
-        else
-        {
-            _explorerWorkspace.ClearSelection();
-            Announce("EXPLORER / SELECTION CLEARED");
-        }
-    }
-
-    private void ExplorerItemList_OnMouseDoubleClick(
-        object sender,
-        MouseButtonEventArgs eventArgs)
-    {
-        if (eventArgs.ChangedButton != MouseButton.Left ||
-            FindParent<ListBoxItem>(
-                eventArgs.OriginalSource as DependencyObject) is not
-                    ListBoxItem container ||
-            container.DataContext is not ExplorerWorkspaceItem item)
-        {
-            return;
-        }
-
-        ApplyExplorerOpenResult(_explorerWorkspace.OpenItem(item.Id));
-        eventArgs.Handled = true;
-    }
-
-    private void ExplorerRenameEditor_OnLostKeyboardFocus(
-        object sender,
-        KeyboardFocusChangedEventArgs eventArgs)
-    {
-        if (!_refreshingExplorerPresentation && sender is TextBox editor)
-        {
-            CommitExplorerRename(editor);
-        }
-    }
-
-    private void ExplorerWindow_OnPreviewKeyDown(
-        object sender,
-        KeyEventArgs eventArgs)
-    {
-        Key key = eventArgs.Key == Key.System
-            ? eventArgs.SystemKey
-            : eventArgs.Key;
-        if (ExplorerPreviewPanel.Visibility == Visibility.Visible &&
-            key == Key.Escape)
-        {
-            ClearExplorerPreview();
-            Announce("EXPLORER / PREVIEW CLOSED");
-            FocusExplorerItems();
-            eventArgs.Handled = true;
-            return;
-        }
-
-        if (_explorerWorkspace.RenameItemId is not null &&
-            Keyboard.FocusedElement is TextBox editor)
-        {
-            if (key == Key.Enter)
-            {
-                CommitExplorerRename(editor);
-                eventArgs.Handled = true;
-            }
-            else if (key == Key.Escape)
-            {
-                CancelExplorerRename();
-                eventArgs.Handled = true;
-            }
-
-            return;
-        }
-
-        ModifierKeys modifiers = Keyboard.Modifiers;
-        if ((modifiers & ModifierKeys.Alt) != 0)
-        {
-            if (key == Key.Left)
-            {
-                NavigateExplorerHistory(_explorerWorkspace.TryGoBack);
-                eventArgs.Handled = true;
-            }
-            else if (key == Key.Right)
-            {
-                NavigateExplorerHistory(_explorerWorkspace.TryGoForward);
-                eventArgs.Handled = true;
-            }
-            else if (key == Key.Up)
-            {
-                NavigateExplorerHistory(_explorerWorkspace.TryGoUp);
-                eventArgs.Handled = true;
-            }
-
-            return;
-        }
-
-        if (key == Key.N &&
-            modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
-        {
-            CreateExplorerFolder();
-            eventArgs.Handled = true;
-            return;
-        }
-
-        if (!ExplorerItemList.IsKeyboardFocusWithin)
-        {
-            return;
-        }
-
-        if (key == Key.Enter)
-        {
-            ApplyExplorerOpenResult(_explorerWorkspace.OpenSelected());
-            eventArgs.Handled = true;
-        }
-        else if (key == Key.F2)
-        {
-            BeginExplorerRename();
-            eventArgs.Handled = true;
-        }
-        else if (key == Key.Back)
-        {
-            NavigateExplorerHistory(_explorerWorkspace.TryGoUp);
-            eventArgs.Handled = true;
+            TaskbarExplorerButton.ContextMenu.IsOpen = false;
+            _ = TaskbarExplorerButton.Focus();
+            ActivateExplorerFromTaskbar(entry);
+            Announce($"EXPLORER / ACTIVE / {id.Value}");
         }
     }
 
@@ -2574,9 +2339,9 @@ public partial class DesktopShellSurface :
             return;
         }
 
-        if (ReferenceEquals(sender, ExplorerTitleBar))
+        if (sender is FrameworkElement { Tag: OwnedWindowId id } && _explorers.TryGetValue(id, out ExplorerEntry? entry))
         {
-            EndExplorerTitleDrag();
+            EndExplorerTitleDrag(entry);
         }
         else if (ReferenceEquals(sender, TaskManagerTitleBar))
         {
@@ -2709,9 +2474,7 @@ public partial class DesktopShellSurface :
         }
 
         TaskManagerPanel.StartSampling();
-        _ = Dispatcher.BeginInvoke(
-            DispatcherPriority.Input,
-            new Action(() => _ = TaskManagerMinimizeButton.Focus()));
+        QueueOwnedFocus(() => _ = TaskManagerMinimizeButton.Focus(), TaskManagerOwnedWindowId);
     }
 
     private void MinimizeTaskManager()
@@ -2748,7 +2511,10 @@ public partial class DesktopShellSurface :
     private void ActivateOwnedWindow(FrameworkElement window)
     {
         OwnedWindowId id = GetOwnedWindowId(window);
-        _ = _ownedWindowLayouts.TryActivate(id);
+        if (!_ownedWindowLayouts.TryActivate(id)) return;
+        CancelOwnedFocus();
+        foreach (ExplorerEntry entry in _explorers.Values)
+            if (entry.Id != id) entry.Surface.CancelPendingFocus();
         UpdateOwnedWindowZOrder();
     }
 
@@ -2842,28 +2608,22 @@ public partial class DesktopShellSurface :
 
         foreach (OwnedWindowPlacement placement in result.Placements)
         {
-            FrameworkElement window = placement.WindowId == ExplorerOwnedWindowId
-                ? ExplorerWindow
-                : placement.WindowId == TaskManagerOwnedWindowId
-                    ? TaskManagerWindow
-                    : throw new InvalidOperationException(
-                        $"Unregistered owned window placement {placement.WindowId}.");
+            FrameworkElement window = ResolveOwnedFrame(placement.WindowId);
             SetOwnedWindowBounds(window, placement.Bounds);
             if (window.Visibility != Visibility.Visible)
             {
                 window.Visibility = Visibility.Visible;
-                Border indicator = placement.WindowId == ExplorerOwnedWindowId
-                    ? ExplorerRunningIndicator
-                    : TaskManagerRunningIndicator;
-                indicator.Visibility = Visibility.Visible;
-                indicator.Opacity = 1.0;
+                if (_explorers.TryGetValue(placement.WindowId, out ExplorerEntry? restored)) restored.Surface.ResumeInteraction();
                 if (placement.WindowId == TaskManagerOwnedWindowId)
                 {
+                    TaskManagerRunningIndicator.Visibility = Visibility.Visible;
+                    TaskManagerRunningIndicator.Opacity = 1.0;
                     TaskManagerPanel.StartSampling();
                 }
             }
         }
 
+        RefreshExplorerTaskbarState();
         UpdateOwnedWindowZOrder();
         UpdateOwnedWindowLayoutDensity();
     }
@@ -2878,48 +2638,32 @@ public partial class DesktopShellSurface :
 
     private void UpdateOwnedWindowZOrder()
     {
-        Panel.SetZIndex(
-            ExplorerWindow,
-            IsOwnedWindowActive(ExplorerOwnedWindowId) ? 8 : 5);
-        Panel.SetZIndex(
-            TaskManagerWindow,
-            IsOwnedWindowActive(TaskManagerOwnedWindowId) ? 8 : 5);
+        int zIndex = 5;
+        // Lifecycle promotion preserves history; the active identity must still be on top.
+        foreach (OwnedWindowState state in _ownedWindowLayouts.CaptureSnapshot().Windows
+            .OrderBy(state => state.Id == _ownedWindowLayouts.ActiveWindowId)
+            .ThenBy(state => state.ActivationOrdinal).ThenBy(state => state.RegistrationOrder))
+        {
+            Panel.SetZIndex(ResolveOwnedFrame(state.Id), zIndex++);
+        }
     }
 
     private void UpdateOwnedWindowLayoutDensity()
     {
-        _explorerCompactWidth =
-            ExplorerWindow.Width < ExplorerCompactWidthThreshold;
-        _explorerCompactHeight =
-            ExplorerWindow.Height < ExplorerCompactHeightThreshold;
-        bool compact = _explorerCompactWidth || _explorerCompactHeight;
-        ExplorerFolderPanel.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-        ExplorerActionPanel.Visibility = _explorerCompactHeight ? Visibility.Collapsed : Visibility.Visible;
-        ExplorerStoragePanel.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-        ExplorerFolderColumn.Width = compact
-            ? new GridLength(0.0)
-            : new GridLength(286.0);
-        ExplorerFolderDividerColumn.Width = compact
-            ? new GridLength(0.0)
-            : new GridLength(1.0);
-        ExplorerFullHeader.Visibility = _explorerCompactWidth
-            ? Visibility.Collapsed
-            : Visibility.Visible;
-        ExplorerCompactHeader.Visibility = _explorerCompactWidth
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-        ExplorerItemList.ItemTemplate = _explorerCompactWidth
-            ? _explorerCompactItemTemplate
-            : _explorerFullItemTemplate;
-        ExplorerTitleText.Text = _explorerCompactWidth
-            ? "JARVIS2 / EXPLORER"
-            : "JARVIS2 / FILE EXPLORER";
-        ExplorerActionRow.Height = _explorerCompactHeight
-            ? new GridLength(0.0)
-            : new GridLength(90.0);
-        ExplorerStorageRow.Height = compact
-            ? new GridLength(0.0)
-            : new GridLength(101.0);
+        foreach (ExplorerEntry entry in _explorers.Values)
+        {
+            entry.Surface.SetLayoutDensity(
+                entry.Frame.Width < ExplorerCompactWidthThreshold,
+                entry.Frame.Height < ExplorerCompactHeightThreshold,
+                entry.Frame.Width - entry.Frame.BorderThickness.Left - entry.Frame.BorderThickness.Right);
+            ((Grid)entry.Frame.Child).RowDefinitions[0].Height = new GridLength(entry.Surface.IsCompactHeight ? 32 : 42);
+            entry.TitleBar.ClipToBounds = entry.Surface.IsCompactWidth || entry.Surface.IsCompactHeight;
+            foreach (Button control in new[] { entry.MinimizeButton, entry.MaximizeButton, entry.CloseButton })
+                control.Height = entry.Surface.IsCompactHeight ? 28 : 40;
+            entry.TitleText.Text = entry.Id != ExplorerOwnedWindowId
+                ? $"EXPLORER / {entry.Id.Value}"
+                : entry.Surface.IsCompactWidth ? "JARVIS2 / EXPLORER" : "JARVIS2 / FILE EXPLORER";
+        }
         TaskManagerPanel.SetLayoutDensity(
             TaskManagerWindow.Width < ExplorerCompactWidthThreshold,
             TaskManagerWindow.Height < ExplorerCompactHeightThreshold);
@@ -2930,11 +2674,13 @@ public partial class DesktopShellSurface :
 
     private void UpdateOwnedWindowControlNames()
     {
-        string explorerAction = IsExplorerMaximized ? "Restore" : "Maximize";
-        AutomationProperties.SetName(
-            ExplorerMaximizeButton,
-            $"{explorerAction} Explorer");
-        ExplorerMaximizeButton.ToolTip = $"{explorerAction.ToUpperInvariant()} EXPLORER";
+        foreach (ExplorerEntry entry in _explorers.Values)
+        {
+            string action = IsOwnedWindowMaximized(entry.Id) ? "Restore" : "Maximize";
+            AutomationProperties.SetName(entry.MaximizeButton,
+                entry.Id == ExplorerOwnedWindowId ? $"{action} Explorer" : $"{action} Explorer {entry.Id.Value}");
+            entry.MaximizeButton.ToolTip = $"{action.ToUpperInvariant()} EXPLORER / {entry.Id.Value}";
+        }
         string taskManagerAction = IsTaskManagerMaximizedForTest
             ? "Restore"
             : "Maximize";
@@ -2959,16 +2705,15 @@ public partial class DesktopShellSurface :
             : throw new InvalidOperationException(
                 $"Owned window {id} is not registered.");
 
-    private static OwnedWindowId GetOwnedWindowId(FrameworkElement window) =>
-        window.Name switch
-        {
-            "ExplorerWindow" => ExplorerOwnedWindowId,
-            "TaskManagerWindow" => TaskManagerOwnedWindowId,
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(window),
-                window.Name,
-                "The element is not a registered owned window."),
-        };
+    private FrameworkElement ResolveOwnedFrame(OwnedWindowId id) =>
+        _explorers.TryGetValue(id, out ExplorerEntry? entry) ? entry.Frame :
+        id == TaskManagerOwnedWindowId ? TaskManagerWindow :
+        throw new ArgumentOutOfRangeException(nameof(id), "The owned frame is not registered.");
+
+    private OwnedWindowId GetOwnedWindowId(FrameworkElement window) =>
+        _explorers.Values.FirstOrDefault(entry => ReferenceEquals(entry.Frame, window))?.Id ??
+        (ReferenceEquals(window, TaskManagerWindow) ? TaskManagerOwnedWindowId :
+            throw new ArgumentOutOfRangeException(nameof(window), "The element is not a registered owned frame."));
 
     private static Rect GetOwnedWindowBounds(FrameworkElement window) =>
         new(
@@ -2987,12 +2732,35 @@ public partial class DesktopShellSurface :
         window.Height = bounds.Height;
     }
 
-    private void QueueTaskbarFocus(Button button)
+    private void CancelExplorerPendingFocus()
     {
-        _ = Dispatcher.BeginInvoke(
-            DispatcherPriority.Input,
-            new Action(() => _ = button.Focus()));
+        CancelOwnedFocus();
+        foreach (ExplorerEntry entry in _explorers.Values) entry.Surface.CancelPendingFocus();
     }
+
+    private void CancelOwnedFocus()
+    {
+        _ownedFocusIntentGeneration++;
+        if (_pendingOwnedFocus is { Status: DispatcherOperationStatus.Pending } pending) pending.Abort();
+        _pendingOwnedFocus = null;
+    }
+
+    private void QueueOwnedFocus(Action focus, OwnedWindowId? owner = null)
+    {
+        CancelOwnedFocus();
+        int generation = _ownedFocusIntentGeneration;
+        IInputElement? focusOrigin = Keyboard.FocusedElement;
+        _pendingOwnedFocus = Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        {
+            _pendingOwnedFocus = null;
+            if (generation == _ownedFocusIntentGeneration && IsLoaded &&
+                ReferenceEquals(Keyboard.FocusedElement, focusOrigin) &&
+                (owner is not OwnedWindowId id || (IsOwnedWindowActive(id) && GetOwnedWindowState(id).Lifecycle == OwnedWindowLifecycle.Visible)))
+                focus();
+        }));
+    }
+
+    private void QueueTaskbarFocus(Button button) => QueueOwnedFocus(() => _ = button.Focus());
 
     private void TaskbarUtilityButton_OnClick(
         object sender,

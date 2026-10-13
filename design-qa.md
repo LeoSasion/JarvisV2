@@ -6,8 +6,9 @@
   SHA-256 `F472A0C14D08348B49A44D878202A3F69330D78A6226244D2B2A499EE2C70AC2`
 - Viewport: 1600 x 900 at 96 DPI
 - State: black/yellow desktop, layout rail permanently visible, `FREEFORM`,
-  Explorer restored at `(596, 63)` with size `930 x 667`; only the one-window
-  preset is initially available
+  Explorer restored at `(596, 63)` with size `930 x 667`; all sixteen presets
+  are selectable, but only the one-window preset is fully fillable from the
+  initially visible window before any registered-surface restoration
 - Validation scope: own-process WPF preview only;
   `shellMutationSupported=false`, `liveExplorer=not-run`
 
@@ -15,8 +16,9 @@
 
 The catalog still contains 16 stable topologies: one maximized window, six
 two-window splits, eight three-window structures and one four-quadrant grid.
-Only registered visible owned windows may be tiled. Opening Task Manager
-enables seven presets; three- and four-window entries remain disabled.
+All sixteen presets are selectable. Explicit commits restore only already
+registered owned windows and report honest partial fill; they do not create
+Explorer sessions. Manual taskbar creation permits real three/four-pane fill.
 Every definition is an exact cover of a 12 x 12 integer grid. Startup validation
 rejects duplicate IDs, orders, presets or signatures, gaps, overlaps, and any
 catalog that is not closed under horizontal mirror, vertical mirror and
@@ -70,8 +72,9 @@ rendered and reviewed in a connected graphics session.
   callback or reduced-motion timer and prevents idle CPU work.
 - Direction changes are exclusive. Wheel input, keyboard input, selection,
   leaving the rail or unloading the surface stops auto-scroll.
-- Escape from the permanently visible layout list stops auto-scroll but remains
-  unhandled so the owning window's global Escape action still runs.
+- Escape stops auto-scroll. When the rail owns keyboard focus it is consumed
+  and returns focus to the active owned window; otherwise it remains unhandled
+  so the owning window's global Escape action still runs.
 - A runtime Windows high-contrast change immediately stops auto-scroll and
   replaces the feather with a fully opaque mask; unloading the surface removes
   the static system-parameter subscription.
@@ -96,39 +99,31 @@ rendered and reviewed in a connected graphics session.
 - Full names remain available to accessibility and tooltip surfaces when visual
   columns must ellipsize them.
 
-## Verification
+## Current owned-slice verification
 
 - Release build: passed, 0 warnings / 0 errors
-- Layout and edge-bar scenarios: 25 / 25 passed, including translated bounds of
-  all sixteen generated rail glyphs, the frozen continuous feather mask,
-  top/middle/bottom boundary states, actual adjacent-item hit testing,
-  handled white-glyph pointer routing,
-  nonlinear symmetric pointer pressure,
-  exact endpoints, Escape routing, dynamic high-contrast handling and Explorer
-  taskbar minimize/restore behavior
-- Explorer workspace scenarios: 21 / 21 passed
-- Owned Task Manager model and command scenarios: 10 / 10 passed
-- Owned Task Manager surface scenarios: 9 / 9 passed, including host-window
-  minimize/restore lifecycle, process-instance identity and in-flight restart
-- Owned-window layout scenarios: 27 / 27 passed, including all six splits,
-  both active-window assignments, disabled no-op, compact viewport gates,
-  title-click/jitter restore preservation and actual-drag capture loss
-- Control Center audit: 27 / 27 passed
-- Platform layout: 16 / 16 passed
-- Publication boundary: passed for 533 candidate files; no secret values printed
-- Current owned-preview audit: 26 / 26 passed on the connected locked graphics
-  profile; WPF vector adapter 13 / 13, canonical desktop hash matched exactly,
-  and the separate owned Task Manager render passed structural validation
-- Current canonical SHA-256:
+- Layout and edge-bar scenarios: 25 / 25
+- Explorer workspace scenarios: 30 / 30; three consecutive unfiltered passes
+- Owned Task Manager surface scenarios: 10 / 10
+- Owned-window layout scenarios: 54 / 54 (18 coordinator, 36 hosted);
+  three consecutive unfiltered passes
+- WPF vector adapter: 13 / 13
+- Platform layout: 16 / 16
+- Publication boundary: passed for 535 candidate files; no secret values printed
+- Full owned-preview audit: 26 / 26, `locked-profile-approved`
+- Extended actual-predicate owning-XAML probe: 90 / 90 mutations detected
+  (15 canaries across both owners and full/hidden/compact-template placements)
+- Default canonical SHA-256 unchanged:
   `F472A0C14D08348B49A44D878202A3F69330D78A6226244D2B2A499EE2C70AC2`
-- Separate owned Task Manager render SHA-256:
+- Task Manager structural render SHA-256 unchanged:
   `3971C3ECB2D725C9F5EB12F6F95A95E43600E16EF41D4F91DED57055A2BDEACF`
-- Current evidence state: `locked-profile-approved`. A disconnected graphics
-  session still fails pixel-dependent checks closed and cannot advance either
-  the canonical PNG or approved hash.
 
-Current result: **functional interaction and current full-frame pixel approval
-passed**.
+These results are hosted WPF/offscreen and deterministic-render evidence only,
+not a live mouse/keyboard Shell session or native-release acceptance. Historical
+records below retain their original scope, dates, counts and unresolved findings.
+Current stacking-repair evidence is in
+`jarvis-multi-explorer/fix-zorder/fix-zorder-verification.json` under the local
+Hermes scratch root; earlier focus/policy evidence remains unchanged.
 
 ## Push-preparation boundary (2026-10-09)
 
@@ -399,3 +394,185 @@ current pane; breaking layout clears that geometry. No window is moved or
 unrelated surface revived by this reconciliation. After the fix, the parent
 again verified three consecutive 41/41 runs, the full 26/26 preview gate,
 Task Manager model and platform gates, with the same approved canonical hash.
+
+
+## Manual multi-instance owned Explorer (2026-10-13)
+
+Eight vertical hosted RED-to-GREEN traces completed one at a time. The first
+compiled against the old shell and failed behaviorally because **New Explorer
+window** was absent from `TaskbarExplorerButton.ContextMenu`. Subsequent REDs
+proved same-seed-ID editor cross-routing, missing ID-bearing session lifecycle
+entries, inactive secondary title double-click, clipped three-pane controls,
+the missing retained-session cap, stale cross-session rename focus and stale
+external taskbar focus. No retry-to-pass or assertion suppression was added.
+
+The original shell-owned primary frame and its geometry remain intact. Content
+is now a reusable `ExplorerSurface` with one independent mutable seeded workspace
+per instance. The small identity registry retains up to four Explorer sessions;
+menus, title controls, placement, stacking, density and focus resolve identities
+instead of primary names. Closed sessions retain their surface/workspace and
+slot for exact-ID reopen. Explicit layout commit restores already registered
+surfaces only; there is no automatic new-window factory on commit, no shared
+virtual filesystem, no filesystem access and no OS application launch.
+
+Real three/four-pane hosted tests verify actual populated WPF frame and control
+bounds, independent content, compact rename/preview operability and honest
+occupied-pane metadata. The compact ledger keeps actions visible with minimum
+28-DIP controls, and short-pane bands preserve content in 182-DIP side panes.
+Selection signals and editor selection are pure white; the canvas stays pure
+black. The original deferred-before-editor-focus traces did not prove the
+already-focused blur or shell-callback cases; the independent review repairs
+below add that missing evidence. Unload aborts every instance's work and
+releases capture without adding polling timers.
+
+Extraction initially changed only 119 pixels in the New Folder label, bounds
+`x=994..1053, y=212..219`. A pixel diff localized the change to the added full-size
+`ClipToBounds` compositing boundary. Keeping the original full-size composition
+unclipped and clipping only compact panes restored **zero differing pixels** and
+the exact approved PNG hash. No golden or approved hash was changed.
+
+The gate now reads the actual ExplorerSurface owning files while retaining and
+expanding the memory-only capability ban to shell/control/workspace code. The
+publication manifest includes both new control files and the existing workspace
+and scenario files. The current counts above come from actual receipts. The
+previously documented Escape-focus flake remains unexplained; this milestone
+neither suppresses it nor claims to have diagnosed it. No live theme/Shell
+session, dependency/Pi change, service restart, injection or remote publication
+was performed.
+
+## Independent review blocker repairs (2026-10-13)
+
+Four vertical RED-to-GREEN cycles reproduced the reviewed defects before each
+minimal fix. All original tests and assertions were retained; no retry filters
+or native keyboard injection were used.
+
+- Secondary title activation left real keyboard focus in the primary ledger;
+  routing F2 from `Keyboard.FocusedElement` renamed the primary selection.
+  The fixed title path queues the clicked session's ledger, visible preview or
+  retained rename editor. Existing click/jitter/drag/capture-loss/double-click
+  assertions still pass; automatic layout restoration remains non-focusing.
+- Already-focused rename blur reactivated the departing owner and stole Search
+  focus for both valid and invalid names. Passive blur now commits/validates
+  without activation or replacement focus; explicit Enter retains its existing
+  focus/validation behavior. Four hosted cases prove valid/invalid state plus
+  Search and foreign-Explorer focus/active-identity isolation.
+- Shell callbacks stole intervening Search focus after secondary minimize,
+  close and Task Manager rail return even with unchanged owner/lifecycle.
+  They now check captured keyboard-focus origin alongside the existing
+  generation/load/owner guards. All three new real hosted traces pass.
+- The actual negative gate expressions missed 24 forbidden Explorer insertions
+  across full, hidden and compact-template content. The image, geometry,
+  gradient/glow and device-content bans tested in that round examine both
+  owning texts without changing their strings/regexes or capability checks.
+  That scratch AST-backed probe rejected its 60 shell/Explorer mutations from
+  ten canaries; this was real but partial coverage, not an inventory of all
+  applicable negative predicates. Published XAML and canonical stayed identical during
+  the probe. One initial probe setup failed on the shell Canvas insertion point;
+  its output is preserved separately from the subsequent behavioral RED.
+
+Evidence is in the local Hermes scratch bundle
+`jarvis-multi-explorer/fix-round1`: `issue1-red.log`, `issue1-green.log`,
+`issue2-red.log`, `issue2-green.log`, `issue3-red.log`, `issue3-green.log`,
+`issue4-red-behavior.log`, `issue4-green.log`, and
+`fix-round1-verification.json`. That round's final receipts recorded Release
+`--warnaserror` (zero warnings/errors), three consecutive 30/30 workspace and
+48/48 layout runs, and the full 26-check preview gate. Its logs and receipts
+remain unchanged; the current table above reflects the later verification below.
+Canonical `F472A0C14D08348B49A44D878202A3F69330D78A6226244D2B2A499EE2C70AC2`
+and Task Manager `3971C3ECB2D725C9F5EB12F6F95A95E43600E16EF41D4F91DED57055A2BDEACF`
+remain unchanged. The historical Escape-focus flake remains unexplained;
+these passing runs do not diagnose it. This repair adds no OS/filesystem
+capability, dependencies, models, live Shell changes or publication authority.
+
+## Residual independent-review blockers (2026-10-13)
+
+Two separate vertical behavioral RED-to-GREEN cycles repaired only the remaining
+focus-scheduling and negative-XAML-policy paths.
+
+- Actual `CurrentLayoutButton.Click` overwrote newer real Search and foreign
+  Explorer keyboard focus after Input dispatch. Its untracked operation also
+  remained Pending after the routed Unloaded teardown event or a second click.
+  The explicit rail request now uses the existing guarded/cancellable
+  `QueueOwnedFocus` path. Five hosted scenarios retain the actual operation,
+  assert Aborted before pumping on teardown/supersession, preserve newer focus
+  and active identity, and prove normal button-to-selected-item focus without
+  pre-focusing the rail, including unchanged preview geometry and Escape rules.
+  An initial GREEN fixture incorrectly demanded Pending after foreign owner
+  activation, which already cancels synchronously. That failed output remains
+  recorded; the corrected fixture additionally requires actual Aborted status,
+  and its confirmed behavioral RED was rerun against the unchanged handler.
+- The remaining owning-XAML bans for `TaskbarStartButton`, `StartFlyout`, the
+  obsolete rail MouseMove/layout Click handlers, and `x:Name="HueSlider"` still
+  examined only the shell. The copied/extended actual-AST probe demonstrated
+  15 missed Explorer insertions before the fix and 90/90 detected mutations
+  afterward: 15 canaries x two owners x three placements, counted from real
+  traces. All applicable desktop-owner negative predicates now use the combined
+  owning texts. Exact matching rules, positive roles, window-root constraints
+  and capability bans are unchanged. No published XAML or canonical is written
+  by the probe; the previous 60/60 record remains partial historical evidence.
+
+The remaining shell Dispatcher callbacks were audited: only the existing
+tracked Input focus helper schedules deferred focus; high-contrast notification
+and selected-item reveal are non-focus work and were left unchanged.
+Release `--warnaserror` passed with zero warnings/errors; workspace 30/30 and
+extended layout 53/53 each passed three consecutive unfiltered runs. Edge 25/25,
+Task Manager surface 10/10, full preview 26/26, platform 16/16 and publication
+boundary for 535 files also passed. The desktop and Task Manager hashes above
+are exact and unchanged. Local evidence is in
+`jarvis-multi-explorer/fix-round2`: `issueA-red-confirmed.log`,
+`issueA-green-confirmed.log`, `issueB-red.log`, `issueB-green.log`, and
+`fix-round2-verification.json`. HEAD and the existing index bytes/entries were
+preserved; no owned preview process was left running.
+
+The historical Escape-focus flake remains **UNDIAGNOSED**. These defects and
+passing runs are not proof of its cause or repair. This remains hosted
+own-process evidence only; no auto-creation during rail commit, real filesystem,
+OS launch, native Shell/injection, package/Pi, palette or golden changes were
+introduced.
+
+## Promoted-active stacking repair (2026-10-13)
+
+One additional bounded RED-to-GREEN repaired only owned-frame stacking.
+`UpdateOwnedWindowZOrder` previously sorted solely by historical activation
+ordinal. Real taskbar New/minimize promoted the still-visible primary Explorer
+without advancing its ordinal; explicit EqualColumns restoration retained the
+newer secondary's history. A following rail Maximized commit left that extra
+right-pane frame above the active primary. The permanent real-hosted scenario
+failed with active Z=6/secondary Z=7 after proving unchanged identity, actual
+external keyboard focus, ordinals and extra bounds. The sorter now prioritizes
+the current active identity above all owned frames and retains the existing
+ordinal/registration ordering among non-active frames; no lifecycle, geometry,
+activation-history or focus path changed.
+
+The same permanent scenario also exercises promoted Task Manager with the
+primary Explorer closed, using the real System button and Explorer session
+menu/button. Both cases preserve retained surface/workspace identities, active
+ID, focus origin, registration/activation history, extra visible bounds and
+lifecycle; neither rail commit allocates a session or reactivates the promoted
+body. The actual GREEN receipt reports 54/54 (18 coordinator, 36 hosted), and
+the gate count was derived from that receipt. All prior assertions remain.
+A first scratch targeted adapter build failed nullable warnings-as-errors;
+that setup log is preserved and is not counted as behavioral RED. The corrected
+adapter compiled cleanly before the confirmed stacking RED and unchanged test
+GREEN.
+
+Release `--warnaserror` passed with zero warnings/errors. Workspace 30/30 and
+layout 54/54 passed three consecutive unfiltered runs; edge 25/25, Task Manager
+10/10, full preview 26/26, platform 16/16, publication for 535 files, and the
+unchanged fix-round2 actual-AST 90/90 canary probe also passed. Canonical
+`F472A0C14D08348B49A44D878202A3F69330D78A6226244D2B2A499EE2C70AC2`
+and Task Manager
+`3971C3ECB2D725C9F5EB12F6F95A95E43600E16EF41D4F91DED57055A2BDEACF`
+remain exact. A byte-exact scratch copy of the parent's `ZOrderRepro` now exits
+0/`not-reproduced`, active Z=7 above secondary Z=6, preserving active ID, external
+focus and both rectangles. The old `z-order-repro/reproduction.json` and PNG are
+unchanged; the new output lives separately under `fix-zorder`.
+
+Local proof is in `jarvis-multi-explorer/fix-zorder`: the confirmed RED/GREEN
+logs, differential output and `fix-zorder-verification.json` contain actual
+commands, exits, receipts and source hashes. HEAD/index remain unchanged and
+these scoped worktree edits are left unstaged for parent freeze/review.
+The historical Escape-focus flake remains **UNDIAGNOSED**, not repaired or
+suppressed. Fresh Explorer auto-fill during rail commit remains deferred. No
+new feature, real filesystem/OS launch, native Shell/service activation,
+dependency, palette or golden change is included; this is own-process evidence.

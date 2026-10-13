@@ -127,6 +127,19 @@ internal static class OwnedWindowLayoutScenarios
         Add(scenarios, "hosted-title-clicks-preserve-tiled-layout-and-maximize-restore", HostedTitleClickPreservesTiledLayout);
         Add(scenarios, "hosted-title-drag-and-capture-loss-commit-only-real-moves", HostedTitleDragCommitsRealMove);
         Add(scenarios, "hosted-arrow-keys-step-every-layout-and-preview-preserves-applied-state", HostedArrowPreviewNavigation);
+        Add(scenarios, "hosted-real-populated-three-and-four-pane-explorer-layouts", HostedRealExplorerLayouts);
+        Add(scenarios, "hosted-secondary-title-focus-rail-and-mru-routing", HostedSecondaryTitleFocusRouting);
+        Add(scenarios, "hosted-secondary-identity-lifecycle-retains-real-content", HostedSecondaryIdentityLifecycle);
+        Add(scenarios, "hosted-promoted-active-frame-above-mru-after-rail-restore-and-maximize", HostedPromotedActiveFrameAboveMru);
+        Add(scenarios, "hosted-secondary-title-hands-actual-keyboard-mutation-to-owning-content", HostedSecondaryTitleKeyboardHandoff);
+        Add(scenarios, "hosted-secondary-minimize-preserves-intervening-search-focus", () => HostedShellHidePreservesNewerFocus("Minimize"));
+        Add(scenarios, "hosted-secondary-close-preserves-intervening-search-focus", () => HostedShellHidePreservesNewerFocus("Close"));
+        Add(scenarios, "hosted-task-manager-rail-return-preserves-intervening-search-focus", HostedTaskManagerReturnPreservesNewerFocus);
+        Add(scenarios, "hosted-current-layout-button-preserves-intervening-search-focus", () => HostedCurrentLayoutPreservesNewerFocus(foreignExplorer: false));
+        Add(scenarios, "hosted-current-layout-button-preserves-intervening-foreign-explorer-focus", () => HostedCurrentLayoutPreservesNewerFocus(foreignExplorer: true));
+        Add(scenarios, "hosted-current-layout-unload-event-aborts-retained-operation-before-dispatch", HostedCurrentLayoutUnloadAbortsFocus);
+        Add(scenarios, "hosted-current-layout-second-click-aborts-superseded-operation-before-dispatch", HostedCurrentLayoutSupersedesFocus);
+        Add(scenarios, "hosted-current-layout-button-focuses-selected-item-with-preview-and-escape-intact", HostedCurrentLayoutFocusAndNavigation);
         Add(scenarios, "hosted-escape-returns-focus-to-active-window", HostedEscapeReturnsFocus);
 
         int passed = scenarios.Count(scenario => scenario.Passed);
@@ -882,6 +895,572 @@ internal static class OwnedWindowLayoutScenarios
             shell.GetOwnedWindowBoundsForTest("explorer") == panes[0] &&
             shell.GetOwnedWindowBoundsForTest("task-manager") == panes[1];
     });
+
+    private static bool HostedRealExplorerLayouts() => WithShell(shell =>
+    {
+        _ = shell.SelectLayoutForTest(LayoutPreset.FourQuadrants);
+        if (shell.ExplorerSessionIdsForTest.Count != 1 || shell.VisibleOwnedWindowCount != 2 ||
+            !AutomationProperties.GetHelpText(shell.CurrentLayoutButton).Contains("2 of 4 panes", StringComparison.Ordinal))
+            throw new InvalidOperationException("explicit partial fill must not manufacture Explorer sessions");
+        _ = ExplorerWorkspaceScenarios.CreateViaTaskbarMenu(shell);
+        foreach (LayoutDefinition definition in LayoutCatalog.All.Where(layout => layout.PaneCount == 3))
+        {
+            _ = shell.SelectLayoutForTest(definition.Preset);
+            shell.UpdateLayout();
+            PumpIdle();
+            VerifyRealExplorerPanes(shell, definition, 3);
+        }
+        _ = ExplorerWorkspaceScenarios.CreateViaTaskbarMenu(shell);
+        _ = ExplorerWorkspaceScenarios.CreateViaTaskbarMenu(shell);
+        Invoke(shell.TaskManagerCloseButton);
+        foreach (LayoutDefinition definition in LayoutCatalog.All.Where(layout => layout.PaneCount == 4))
+        {
+            _ = shell.SelectLayoutForTest(definition.Preset);
+            shell.UpdateLayout();
+            PumpIdle();
+            VerifyRealExplorerPanes(shell, definition, 4);
+            foreach (string id in shell.ExplorerSessionIdsForTest)
+            {
+                ExplorerSurface surface = shell.GetExplorerSurfaceForTest(id);
+                _ = surface.ExplorerItemList.Focus();
+                surface.ExplorerItemList.SelectedIndex = 0;
+                Invoke(surface.ExplorerOpenButton);
+                PumpIdle();
+                Border frame = ExplorerFrame(shell, id);
+                Rect bounds = shell.GetOwnedWindowBoundsForTest(id);
+                if (!surface.ExplorerPreviewCloseButton.IsVisible ||
+                    !bounds.Contains(BoundsOnShell(surface.ExplorerPreviewCloseButton, shell)) ||
+                    !ExplorerWorkspaceScenarios.Descendants(surface.ExplorerPreviewPanel).OfType<TextBlock>()
+                        .Any(text => text.IsVisible && text.Text == surface.ExplorerPreviewNameText.Text &&
+                            text.ActualHeight > 0 && bounds.Contains(BoundsOnShell(text, shell))))
+                    throw new InvalidOperationException($"{id}: compact owned preview controls/name clipped");
+                Invoke(surface.ExplorerPreviewCloseButton);
+                Invoke(surface.ExplorerNewFolderButton);
+                PumpIdle();
+                TextBox editor = ExplorerWorkspaceScenarios.Descendants(surface).OfType<TextBox>().First(item => item.IsVisible);
+                if (!bounds.Contains(BoundsOnShell(editor, shell)))
+                    throw new InvalidOperationException($"{id}: compact rename editor outside pane");
+                ExplorerWorkspaceScenarios.RaiseKey(editor, Key.Escape);
+                PumpIdle();
+            }
+        }
+        string retainedId = shell.ExplorerSessionIdsForTest[1];
+        ExplorerSurface retained = shell.GetExplorerSurfaceForTest(retainedId);
+        Invoke(ExplorerTitleButton(shell, retainedId, "Minimize"));
+        _ = shell.SelectLayoutForTest(LayoutPreset.FourQuadrants);
+        PumpIdle();
+        return shell.VisibleOwnedWindowCount == 4 &&
+            ReferenceEquals(retained, shell.GetExplorerSurfaceForTest(retainedId)) &&
+            shell.ExplorerSessionIdsForTest.Count == 4 &&
+            ExplorerFrame(shell, retainedId).Visibility == Visibility.Visible;
+    });
+
+    private static void VerifyRealExplorerPanes(DesktopShellSurface shell, LayoutDefinition definition, int filled)
+    {
+        IReadOnlyList<Rect> panes = OwnedWindowLayoutCoordinator.ScaleWithInternalGap(definition.Preset, WorkArea);
+        Rect[] visible = shell.ExplorerSessionIdsForTest.Select(id => ExplorerFrame(shell, id))
+            .Where(frame => frame.IsVisible).Select(frame => BoundsOnShell(frame, shell))
+            .Concat(shell.TaskManagerWindow.IsVisible ? new[] { BoundsOnShell(shell.TaskManagerWindow, shell) } : Array.Empty<Rect>()).ToArray();
+        if (visible.Length != filled || visible.Distinct().Count() != filled || !visible.All(panes.Contains) ||
+            !AutomationProperties.GetHelpText(shell.CurrentLayoutButton).Contains($"{filled} of {definition.PaneCount} panes", StringComparison.Ordinal))
+            throw new InvalidOperationException($"{definition.Preset}: actual WPF populated pane count/bounds/metadata disagree");
+        foreach (string id in shell.ExplorerSessionIdsForTest)
+        {
+            ExplorerSurface surface = shell.GetExplorerSurfaceForTest(id);
+            if (!ExplorerFrame(shell, id).IsVisible) continue;
+            Rect bounds = shell.GetOwnedWindowBoundsForTest(id);
+            if (surface.ExplorerItemList.Items.Count < 6 || surface.ExplorerItemList.ActualHeight < 44 ||
+                !surface.ExplorerActionPanel.IsVisible)
+                throw new InvalidOperationException($"{definition.Preset}/{id}: populated compact content/actions missing (items={surface.ExplorerItemList.Items.Count}, viewport={surface.ExplorerItemList.ActualHeight}, actions={surface.ExplorerActionPanel.IsVisible}, pane={bounds})");
+            foreach (Button button in new[] { surface.ExplorerOpenButton, surface.ExplorerRenameButton,
+                surface.ExplorerNewFolderButton, surface.ExplorerBackButton, surface.ExplorerUpButton,
+                ExplorerTitleButton(shell, id, "Close") })
+            {
+                Rect controlBounds = BoundsOnShell(button, shell);
+                if (!button.IsVisible || controlBounds.Width < 28 || controlBounds.Height < 28 || !bounds.Contains(controlBounds))
+                    throw new InvalidOperationException($"{definition.Preset}/{id}/{AutomationProperties.GetName(button)}: usable control not within pane ({controlBounds})");
+            }
+        }
+    }
+
+    private static Rect BoundsOnShell(FrameworkElement element, DesktopShellSurface shell) =>
+        element.TransformToAncestor(shell).TransformBounds(new Rect(element.RenderSize));
+
+    private static bool HostedSecondaryTitleFocusRouting() => WithShell(shell =>
+    {
+        string secondId = ExplorerWorkspaceScenarios.CreateViaTaskbarMenu(shell);
+        string thirdId = ExplorerWorkspaceScenarios.CreateViaTaskbarMenu(shell);
+        _ = shell.PrepareTaskManagerForSnapshot();
+        foreach (string id in new[] { secondId, thirdId })
+        {
+            ExplorerSurface surface = shell.GetExplorerSurfaceForTest(id);
+            InvokeSessionMenu(shell, id, "Activate");
+            _ = shell.SelectLayoutForTest(LayoutPreset.EqualColumns);
+            Rect tiled = shell.GetOwnedWindowBoundsForTest(id);
+            Point press = new(tiled.Left + 40, tiled.Top + 20);
+            shell.RaiseOwnedTitleGestureForTest(id, press);
+            shell.RaiseOwnedTitleGestureForTest(id, press, new Point(press.X + 1, press.Y + 1));
+            shell.RaiseOwnedTitleGestureForTest(id, press, loseCapture: true);
+            if (shell.CurrentLayout != LayoutPreset.EqualColumns || shell.GetOwnedWindowBoundsForTest(id) != tiled)
+                throw new InvalidOperationException($"{id}: title click/jitter broke tile");
+            shell.RaiseOwnedTitleGestureForTest(id, press, clickCount: 2);
+            if (shell.GetOwnedWindowBoundsForTest(id) != WorkArea)
+                throw new InvalidOperationException($"{id}: real secondary title double-click did not maximize");
+            shell.RaiseOwnedTitleGestureForTest(id, press, clickCount: 2);
+            if (shell.GetOwnedWindowBoundsForTest(id) != tiled)
+                throw new InvalidOperationException($"{id}: double-click restore lost exact pane");
+            foreach (bool loseCapture in new[] { false, true })
+            {
+                _ = shell.SelectLayoutForTest(LayoutPreset.EqualColumns);
+                tiled = shell.GetOwnedWindowBoundsForTest(id);
+                press = new(tiled.Left + 40, tiled.Top + 20);
+                shell.RaiseOwnedTitleGestureForTest(id, press, new Point(press.X + 64, press.Y + 48), loseCapture);
+                if (!shell.IsOwnedWindowLayoutFreeform || shell.GetOwnedWindowBoundsForTest(id) == tiled ||
+                    Mouse.Captured is not null)
+                    throw new InvalidOperationException($"{id}: drag/capture-loss did not commit and release");
+            }
+            _ = surface.ExplorerItemList.Focus();
+            PumpIdle();
+            if (shell.ActiveOwnedWindowId != id ||
+                Panel.GetZIndex(ExplorerFrame(shell, id)) <= Panel.GetZIndex(shell.TaskManagerWindow)) return false;
+            surface.ExplorerItemList.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+                { RoutedEvent = Mouse.PreviewMouseDownEvent });
+            shell.FocusLayoutRailForTest();
+            PumpIdle();
+            shell.RaiseRailKeyForTest(Key.Escape);
+            PumpIdle();
+            if (!surface.ExplorerItemList.IsKeyboardFocusWithin || shell.ActiveOwnedWindowId != id)
+                throw new InvalidOperationException($"{id}: rail Escape returned to another session");
+            Invoke(shell.ThisPcShortcutButton);
+            PumpIdle();
+            if (surface.Workspace.CurrentLocationId != ExplorerWorkspace.ThisPcId ||
+                shell.GetExplorerSurfaceForTest("explorer").Workspace.CurrentLocationId != ExplorerWorkspace.DocumentsId)
+                throw new InvalidOperationException($"{id}: desktop shortcut did not target active Explorer");
+            // When Task Manager is active, aggregate activation chooses MRU Explorer.
+            ActivateBody(shell, "task-manager");
+            Invoke(shell.TaskbarExplorerButton);
+            PumpIdle();
+            if (shell.ActiveOwnedWindowId != id || shell.ExplorerSessionIdsForTest.Count != 3) return false;
+        }
+        Invoke(ExplorerTitleButton(shell, thirdId, "Close"));
+        int retained = shell.ExplorerSessionIdsForTest.Count;
+        shell.PreviewLayoutForTest(LayoutPreset.FourQuadrants);
+        shell.RaiseRailKeyForTest(Key.Down);
+        Invoke(ExplorerTitleButton(shell, secondId, "Maximize"));
+        Invoke(ExplorerTitleButton(shell, secondId, "Restore"));
+        return ExplorerFrame(shell, thirdId).Visibility == Visibility.Collapsed &&
+            shell.ExplorerSessionIdsForTest.Count == retained;
+    });
+
+    private static bool HostedShellHidePreservesNewerFocus(string action) => WithShell(shell =>
+    {
+        string id = ExplorerWorkspaceScenarios.CreateViaTaskbarMenu(shell);
+        ExplorerSurface secondary = shell.GetExplorerSurfaceForTest(id);
+        _ = secondary.ExplorerItemList.Focus();
+        PumpIdle();
+        if (!secondary.ExplorerItemList.IsKeyboardFocused || shell.ActiveOwnedWindowId != id)
+            throw new InvalidOperationException($"{action}: exact secondary must start focused and active");
+        Invoke(ExplorerTitleButton(shell, id, action));
+        string? active = shell.ActiveOwnedWindowId;
+        _ = shell.TaskbarSearchButton.Focus();
+        if (!shell.TaskbarSearchButton.IsKeyboardFocused)
+            throw new InvalidOperationException($"{action}: newer Search intent was not established before Input drain");
+        PumpIdle();
+        if (!shell.TaskbarSearchButton.IsKeyboardFocused || shell.ActiveOwnedWindowId != active ||
+            ExplorerFrame(shell, id).Visibility != Visibility.Collapsed || secondary.IsKeyboardFocusWithin)
+            throw new InvalidOperationException(
+                $"shell/{action}: focus={(Keyboard.FocusedElement as FrameworkElement)?.Name}, " +
+                $"active={shell.ActiveOwnedWindowId}, expectedActive={active}, hidden={ExplorerFrame(shell, id).Visibility}");
+        return true;
+    });
+
+    private static bool HostedTaskManagerReturnPreservesNewerFocus() => WithShell(shell =>
+    {
+        if (!shell.PrepareTaskManagerForSnapshot()) return false;
+        _ = shell.TaskManagerPanel.Focus();
+        shell.FocusLayoutRailForTest();
+        PumpIdle();
+        if (!shell.LayoutRailHasKeyboardFocusForTest || shell.ActiveOwnedWindowId != "task-manager")
+            throw new InvalidOperationException("Task Manager return must begin with real rail focus and unchanged active owner");
+        shell.RaiseRailKeyForTest(Key.Escape);
+        _ = shell.TaskbarSearchButton.Focus();
+        if (!shell.TaskbarSearchButton.IsKeyboardFocused || shell.ActiveOwnedWindowId != "task-manager")
+            throw new InvalidOperationException("newer Search intent must be established without changing Task Manager owner");
+        PumpIdle();
+        if (!shell.TaskbarSearchButton.IsKeyboardFocused || shell.ActiveOwnedWindowId != "task-manager" ||
+            !shell.IsTaskManagerVisibleForTest || shell.TaskManagerPanelHasKeyboardFocusForTest)
+            throw new InvalidOperationException(
+                $"shell/task-manager-return: focus={(Keyboard.FocusedElement as FrameworkElement)?.Name}, " +
+                $"active={shell.ActiveOwnedWindowId}, visible={shell.IsTaskManagerVisibleForTest}");
+        return true;
+    });
+
+    private static bool HostedCurrentLayoutPreservesNewerFocus(bool foreignExplorer) => WithShell(shell =>
+    {
+        string destinationId = foreignExplorer
+            ? ExplorerWorkspaceScenarios.CreateViaTaskbarMenu(shell)
+            : "explorer";
+        ExplorerSurface destinationExplorer = shell.GetExplorerSurfaceForTest(destinationId);
+        PumpIdle();
+        _ = shell.CurrentLayoutButton.Focus();
+        PumpIdle();
+        if (!shell.CurrentLayoutButton.IsKeyboardFocused || shell.LayoutRailHasKeyboardFocusForTest)
+            throw new InvalidOperationException("current-layout click must start at its actual button, not a pre-focused rail item");
+        DispatcherOperation operation = InvokeCurrentLayoutAndRetainOperation(shell);
+        UIElement destination = foreignExplorer ? destinationExplorer.ExplorerItemList : shell.TaskbarSearchButton;
+        _ = destination.Focus();
+        string? active = shell.ActiveOwnedWindowId;
+        if (!ReferenceEquals(Keyboard.FocusedElement, destination) ||
+            operation.Status is not (DispatcherOperationStatus.Pending or DispatcherOperationStatus.Aborted))
+            throw new InvalidOperationException("newer real keyboard focus must be established before the click's Input callback drains; owner activation may already abort it");
+        PumpIdle();
+        if (!ReferenceEquals(Keyboard.FocusedElement, destination) || shell.ActiveOwnedWindowId != active ||
+            shell.LayoutRailHasKeyboardFocusForTest || !shell.IsOwnedWindowLayoutFreeform)
+            throw new InvalidOperationException(
+                $"current-layout/{(foreignExplorer ? "foreign-explorer" : "search")}: " +
+                $"focus={(Keyboard.FocusedElement as FrameworkElement)?.Name}, active={shell.ActiveOwnedWindowId}, " +
+                $"expectedActive={active}, operation={operation.Status}");
+        if (foreignExplorer && operation.Status != DispatcherOperationStatus.Aborted)
+            throw new InvalidOperationException("foreign Explorer activation must cancel the retained shell operation, not merely leave focus unchanged");
+        return true;
+    });
+
+    private static bool HostedCurrentLayoutUnloadAbortsFocus() => WithShell(shell =>
+    {
+        _ = shell.CurrentLayoutButton.Focus();
+        PumpIdle();
+        if (!shell.CurrentLayoutButton.IsKeyboardFocused)
+            throw new InvalidOperationException("unload trace must start at the real current-layout button");
+        DispatcherOperation operation = InvokeCurrentLayoutAndRetainOperation(shell);
+        // Deliver the owning surface's actual routed teardown event without
+        // pumping Input. Keep the operation itself: an empty queue after drain
+        // would not prove the Unloaded handler cancelled this callback.
+        shell.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+        if (operation.Status != DispatcherOperationStatus.Aborted)
+            throw new InvalidOperationException($"current-layout/unload-before-pump: retained operation={operation.Status}, expected=Aborted");
+        PumpIdle();
+        return operation.Status == DispatcherOperationStatus.Aborted && !shell.LayoutRailHasKeyboardFocusForTest;
+    });
+
+    private static bool HostedCurrentLayoutSupersedesFocus() => WithShell(shell =>
+    {
+        _ = shell.CurrentLayoutButton.Focus();
+        PumpIdle();
+        if (!shell.CurrentLayoutButton.IsKeyboardFocused)
+            throw new InvalidOperationException("supersession trace must start at the real current-layout button");
+        DispatcherOperation first = InvokeCurrentLayoutAndRetainOperation(shell);
+        DispatcherOperation second = InvokeCurrentLayoutAndRetainOperation(shell);
+        if (ReferenceEquals(first, second) || first.Status != DispatcherOperationStatus.Aborted ||
+            second.Status != DispatcherOperationStatus.Pending)
+            throw new InvalidOperationException(
+                $"current-layout/superseded-before-pump: first={first.Status}, second={second.Status}, expected=Aborted/Pending");
+        PumpIdle();
+        return first.Status == DispatcherOperationStatus.Aborted &&
+            Keyboard.FocusedElement is ListBoxItem item && item.IsSelected &&
+            shell.LayoutRailHasKeyboardFocusForTest && shell.CurrentLayout is null;
+    });
+
+    private static bool HostedCurrentLayoutFocusAndNavigation() => WithShell(shell =>
+    {
+        foreach (bool applied in new[] { false, true })
+        {
+            if (applied && !shell.SelectLayoutForTest(LayoutPreset.EqualColumns)) return false;
+            PumpIdle();
+            _ = shell.CurrentLayoutButton.Focus();
+            PumpIdle();
+            if (!shell.CurrentLayoutButton.IsKeyboardFocused || shell.LayoutRailHasKeyboardFocusForTest)
+                throw new InvalidOperationException("normal rail handoff must not pre-focus its intended item");
+            string? active = shell.ActiveOwnedWindowId;
+            Rect explorer = shell.GetOwnedWindowBoundsForTest("explorer");
+            Rect task = shell.GetOwnedWindowBoundsForTest("task-manager");
+            LayoutPreset? committed = shell.CurrentLayout;
+            DispatcherOperation operation = InvokeCurrentLayoutAndRetainOperation(shell);
+            PumpIdle();
+            if (Keyboard.FocusedElement is not ListBoxItem item || !item.IsSelected ||
+                !shell.LayoutRailHasKeyboardFocusForTest || shell.ActiveOwnedWindowId != active ||
+                shell.CurrentLayout != committed ||
+                shell.LayoutRailSelectedValueForTest != (applied ? LayoutPreset.EqualColumns : LayoutPreset.Maximized))
+                throw new InvalidOperationException($"current-layout/normal: applied={applied}, focus={Keyboard.FocusedElement?.GetType().Name}, operation={operation.Status}");
+            LayoutPreset? selected = shell.LayoutRailSelectedValueForTest;
+            KeyEventArgs preview = new(Keyboard.PrimaryDevice, PresentationSource.FromVisual(shell), Environment.TickCount, Key.Down)
+                { RoutedEvent = Keyboard.PreviewKeyDownEvent };
+            item.RaiseEvent(preview);
+            PumpIdle();
+            if (!preview.Handled || shell.LayoutRailSelectedValueForTest == selected ||
+                shell.CurrentLayout != committed || shell.GetOwnedWindowBoundsForTest("explorer") != explorer ||
+                shell.GetOwnedWindowBoundsForTest("task-manager") != task)
+                throw new InvalidOperationException("button handoff changed committed geometry or broke keyboard-only preview");
+            KeyEventArgs escape = new(Keyboard.PrimaryDevice, PresentationSource.FromVisual(shell), Environment.TickCount, Key.Escape)
+                { RoutedEvent = Keyboard.PreviewKeyDownEvent };
+            ((UIElement)Keyboard.FocusedElement!).RaiseEvent(escape);
+            PumpIdle();
+            bool returned = active == "task-manager" ? shell.TaskManagerPanelHasKeyboardFocusForTest :
+                active is not null && shell.GetExplorerSurfaceForTest(active).ExplorerItemList.IsKeyboardFocusWithin;
+            if (!escape.Handled || !returned || shell.ActiveOwnedWindowId != active || shell.CurrentLayout != committed)
+                throw new InvalidOperationException("focused rail Escape must be consumed and return to its unchanged active owned window");
+            _ = shell.TaskbarSearchButton.Focus();
+            KeyEventArgs externalEscape = new(Keyboard.PrimaryDevice, PresentationSource.FromVisual(shell), Environment.TickCount, Key.Escape)
+                { RoutedEvent = Keyboard.PreviewKeyDownEvent };
+            shell.LayoutRailPanel.RaiseEvent(externalEscape);
+            if (externalEscape.Handled || !shell.TaskbarSearchButton.IsKeyboardFocused)
+                throw new InvalidOperationException("rail handler must leave Escape unhandled when the rail does not own keyboard focus");
+        }
+        return true;
+    });
+
+    private static DispatcherOperation InvokeCurrentLayoutAndRetainOperation(DesktopShellSurface shell)
+    {
+        List<DispatcherOperation> posted = [];
+        void OnPosted(object? sender, DispatcherHookEventArgs eventArgs)
+        {
+            if (eventArgs.Operation.Priority == DispatcherPriority.Input) posted.Add(eventArgs.Operation);
+        }
+        shell.Dispatcher.Hooks.OperationPosted += OnPosted;
+        try { Invoke(shell.CurrentLayoutButton); }
+        finally { shell.Dispatcher.Hooks.OperationPosted -= OnPosted; }
+        if (posted.Count != 1 || posted[0].Status != DispatcherOperationStatus.Pending)
+            throw new InvalidOperationException($"actual current-layout Click must queue one pending Input focus operation; posted={posted.Count}");
+        return posted[0];
+    }
+
+    private static bool HostedSecondaryTitleKeyboardHandoff() => WithShell(shell =>
+    {
+        string id = ExplorerWorkspaceScenarios.CreateViaTaskbarMenu(shell);
+        ExplorerSurface primary = shell.GetExplorerSurfaceForTest("explorer");
+        ExplorerSurface secondary = shell.GetExplorerSurfaceForTest(id);
+        primary.ExplorerItemList.SelectedIndex = 1;
+        secondary.ExplorerItemList.SelectedIndex = 0;
+        _ = primary.ExplorerItemList.Focus();
+        PumpIdle();
+        if (!primary.ExplorerItemList.IsKeyboardFocusWithin || shell.ActiveOwnedWindowId != "explorer")
+            throw new InvalidOperationException("title handoff must start at the actually focused primary ledger");
+
+        Rect bounds = shell.GetOwnedWindowBoundsForTest(id);
+        Point press = new(bounds.Left + 40, bounds.Top + 20);
+        shell.RaiseOwnedTitleGestureForTest(id, press);
+        PumpIdle();
+        if (shell.ActiveOwnedWindowId != id || Mouse.Captured is not null)
+            throw new InvalidOperationException("released secondary title must activate its identity and release capture");
+        // Route from WPF's real focus, not from a manually chosen destination.
+        UIElement keySource = Keyboard.FocusedElement as UIElement ??
+            throw new InvalidOperationException("secondary title left no actual keyboard target");
+        ExplorerWorkspaceScenarios.RaiseKey(keySource, Key.F2);
+        PumpIdle();
+        if (primary.Workspace.RenameItemId is not null ||
+            secondary.Workspace.RenameItemId != ExplorerWorkspace.ProjectBriefId ||
+            shell.ActiveOwnedWindowId != id || !secondary.IsKeyboardFocusWithin)
+            throw new InvalidOperationException(
+                $"title/F2: source={keySource.GetType().Name}, primaryRename={primary.Workspace.RenameItemId}, " +
+                $"secondaryRename={secondary.Workspace.RenameItemId}, active={shell.ActiveOwnedWindowId}");
+        ExplorerWorkspaceScenarios.RaiseKey((UIElement)Keyboard.FocusedElement!, Key.Escape);
+        PumpIdle();
+
+        Invoke(secondary.ExplorerOpenButton);
+        PumpIdle();
+        _ = primary.ExplorerItemList.Focus();
+        PumpIdle();
+        shell.RaiseOwnedTitleGestureForTest(id, press);
+        PumpIdle();
+        if (!secondary.ExplorerPreviewCloseButton.IsKeyboardFocused || shell.ActiveOwnedWindowId != id ||
+            primary.ExplorerPreviewPanel.Visibility != Visibility.Collapsed)
+            throw new InvalidOperationException("secondary title did not hand focus to its own visible preview");
+        Invoke(secondary.ExplorerPreviewCloseButton);
+        PumpIdle();
+
+        _ = primary.ExplorerItemList.Focus();
+        PumpIdle();
+        _ = secondary.Workspace.BeginRenameSelected();
+        shell.RaiseOwnedTitleGestureForTest(id, press);
+        PumpIdle();
+        return Keyboard.FocusedElement is TextBox editor && secondary.IsAncestorOf(editor) &&
+            editor.DataContext is ExplorerWorkspaceItem { IsRenameTarget: true } &&
+            secondary.Workspace.RenameItemId == ExplorerWorkspace.ProjectBriefId &&
+            primary.Workspace.RenameItemId is null && shell.ActiveOwnedWindowId == id;
+    });
+
+    private static bool HostedSecondaryIdentityLifecycle() => WithShell(shell =>
+    {
+        string id = ExplorerWorkspaceScenarios.CreateViaTaskbarMenu(shell);
+        ExplorerSurface secondary = shell.GetExplorerSurfaceForTest(id);
+        ExplorerSurface primary = shell.GetExplorerSurfaceForTest("explorer");
+        Rect floating = shell.GetOwnedWindowBoundsForTest(id);
+        InvokeSessionMenu(shell, id, "Activate");
+        if (shell.ActiveOwnedWindowId != id) return false;
+        _ = secondary.Workspace.TryNavigateTo(ExplorerWorkspace.ArchiveId);
+        Invoke(secondary.ExplorerNewFolderButton);
+        PumpIdle();
+        TextBox editor = ExplorerWorkspaceScenarios.Descendants(secondary).OfType<TextBox>().First(item => item.IsVisible);
+        editor.Text = "RETAINED_SESSION_FOLDER";
+        ExplorerWorkspaceScenarios.RaiseKey(editor, Key.Enter);
+        PumpIdle();
+        string? selected = secondary.Workspace.SelectedItemId;
+        Invoke(ExplorerTitleButton(shell, id, "Minimize"));
+        PumpIdle();
+        if (ExplorerFrame(shell, id).Visibility != Visibility.Collapsed ||
+            ExplorerFrame(shell, "explorer").Visibility != Visibility.Visible ||
+            shell.ExplorerRunningIndicator.Visibility != Visibility.Visible ||
+            primary.Workspace.CurrentLocationId != ExplorerWorkspace.DocumentsId) return false;
+        InvokeSessionMenu(shell, id, "Restore");
+        PumpIdle();
+        if (shell.ActiveOwnedWindowId != id || shell.GetOwnedWindowBoundsForTest(id) != floating ||
+            !ReferenceEquals(secondary, shell.GetExplorerSurfaceForTest(id))) return false;
+        Invoke(ExplorerTitleButton(shell, id, "Maximize"));
+        Invoke(ExplorerTitleButton(shell, id, "Restore"));
+        if (shell.GetOwnedWindowBoundsForTest(id) != floating) return false;
+        Invoke(ExplorerTitleButton(shell, id, "Close"));
+        PumpIdle();
+        int retainedCount = shell.ExplorerSessionIdsForTest.Count;
+        Invoke(shell.TaskbarExplorerButton);
+        PumpIdle();
+        // Aggregate activation chooses a running session, never the closed secondary.
+        if (ExplorerFrame(shell, id).Visibility != Visibility.Collapsed ||
+            shell.ExplorerSessionIdsForTest.Count != retainedCount) return false;
+        InvokeSessionMenu(shell, id, "Reopen");
+        PumpIdle();
+        return ReferenceEquals(secondary, shell.GetExplorerSurfaceForTest(id)) &&
+            secondary.Workspace.CurrentLocationId == ExplorerWorkspace.ArchiveId &&
+            secondary.Workspace.SelectedItemId == selected &&
+            secondary.Workspace.Items.Single().Name == "RETAINED_SESSION_FOLDER" &&
+            primary.Workspace.Items.Count == 6 && shell.ActiveOwnedWindowId == id &&
+            shell.GetOwnedWindowBoundsForTest(id) == floating &&
+            shell.ExplorerRunningIndicator.Visibility == Visibility.Visible &&
+            shell.ExplorerRunningIndicator.Opacity == 1.0;
+    });
+
+    private static bool HostedPromotedActiveFrameAboveMru() =>
+        new[] { "explorer", "task-manager" }.All(activeId => WithShell(shell =>
+        {
+            void Require(bool condition, string detail)
+            {
+                if (!condition) throw new InvalidOperationException($"{activeId}: {detail}");
+            }
+
+            // Observe the production coordinator without mutating its activation history.
+            OwnedWindowLayoutCoordinator coordinator =
+                (OwnedWindowLayoutCoordinator)(typeof(DesktopShellSurface).GetField(
+                    "_ownedWindowLayouts",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    ?.GetValue(shell) ?? throw new InvalidOperationException("Hosted coordinator absent"));
+            FrameworkElement Frame(OwnedWindowId id) => id.Value == "task-manager"
+                ? shell.TaskManagerWindow : ExplorerFrame(shell, id.Value);
+
+            if (activeId == "task-manager")
+            {
+                Invoke(shell.TaskbarSystemButton);
+                PumpIdle();
+                // Leave Task Manager as the only visible candidate for promotion.
+                Invoke(shell.ExplorerCloseButton);
+                PumpIdle();
+            }
+
+            string secondaryId = ExplorerWorkspaceScenarios.CreateViaTaskbarMenu(shell);
+            Require(secondaryId == "explorer-2", "real taskbar New did not activate explorer-2");
+            string[] sessionIds = shell.ExplorerSessionIdsForTest.ToArray();
+            Dictionary<string, ExplorerSurface> surfaces = sessionIds.ToDictionary(
+                id => id, shell.GetExplorerSurfaceForTest);
+            Require(sessionIds.Length == 2 && !ReferenceEquals(surfaces["explorer"], surfaces[secondaryId]) &&
+                !ReferenceEquals(surfaces["explorer"].Workspace, surfaces[secondaryId].Workspace),
+                "New must create a real independent surface/workspace");
+            OwnedWindowLayoutSnapshot beforeMinimize = coordinator.CaptureSnapshot();
+
+            Require(shell.TaskbarExplorerButton.Focus(), "external taskbar focus failed");
+            Invoke(shell.TaskbarExplorerButton);
+            PumpIdle();
+            OwnedWindowLayoutSnapshot promoted = coordinator.CaptureSnapshot();
+            Require(shell.ActiveOwnedWindowId == activeId &&
+                Frame(new(activeId)).Visibility == Visibility.Visible &&
+                ExplorerFrame(shell, secondaryId).Visibility == Visibility.Collapsed &&
+                State(coordinator, new(secondaryId)).Lifecycle == OwnedWindowLifecycle.Minimized,
+                "real taskbar minimize did not promote the remaining visible identity");
+            Require(promoted.Windows.All(window => beforeMinimize.Windows.Single(before => before.Id == window.Id)
+                .ActivationOrdinal == window.ActivationOrdinal), "minimize changed activation history");
+            Require(State(coordinator, new(secondaryId)).ActivationOrdinal > State(coordinator, new(activeId)).ActivationOrdinal,
+                "fixture must retain a newer ordinal on the minimized secondary");
+            IInputElement? externalFocus = Keyboard.FocusedElement;
+            Require(ReferenceEquals(externalFocus, shell.TaskbarExplorerButton), "taskbar did not retain actual external keyboard focus");
+
+            void RequirePreservedIdentityAndHistory()
+            {
+                OwnedWindowLayoutSnapshot current = coordinator.CaptureSnapshot();
+                Require(shell.ActiveOwnedWindowId == activeId && current.ActiveWindowId == promoted.ActiveWindowId,
+                    "rail changed the promoted active identity");
+                Require(ReferenceEquals(Keyboard.FocusedElement, externalFocus), "rail stole external keyboard focus");
+                Require(shell.ExplorerSessionIdsForTest.SequenceEqual(sessionIds) &&
+                    sessionIds.All(id => ReferenceEquals(surfaces[id], shell.GetExplorerSurfaceForTest(id))) &&
+                    current.Windows.Count == promoted.Windows.Count && current.Windows.All(window =>
+                    {
+                        OwnedWindowState before = promoted.Windows.Single(original => original.Id == window.Id);
+                        return window.ActivationOrdinal == before.ActivationOrdinal &&
+                            window.RegistrationOrder == before.RegistrationOrder;
+                    }), "rail allocated a session, replaced content or changed activation/registration history");
+            }
+
+            // These are explicit production rail commits, not title/body activation or
+            // taskbar restoration (which would bump the ordinal and hide the defect).
+            Require(shell.SelectLayoutForTest(LayoutPreset.EqualColumns), "EqualColumns rejected");
+            PumpIdle();
+            RequirePreservedIdentityAndHistory();
+            IReadOnlyList<Rect> columns = OwnedWindowLayoutCoordinator.ScaleWithInternalGap(LayoutPreset.EqualColumns, WorkArea);
+            Require(shell.GetOwnedWindowBoundsForTest(activeId) == columns[0] &&
+                shell.GetOwnedWindowBoundsForTest(secondaryId) == columns[1] &&
+                ExplorerFrame(shell, secondaryId).Visibility == Visibility.Visible &&
+                State(coordinator, new(secondaryId)).Lifecycle == OwnedWindowLifecycle.Visible,
+                "explicit rail did not restore secondary into the right pane");
+            OwnedWindowState[] extras = coordinator.CaptureSnapshot().Windows.Where(window => window.Id.Value != activeId).ToArray();
+            Dictionary<OwnedWindowId, Visibility> extraVisibility = extras.ToDictionary(window => window.Id, window => Frame(window.Id).Visibility);
+
+            Require(shell.SelectLayoutForTest(LayoutPreset.Maximized), "Maximized rejected");
+            PumpIdle();
+            RequirePreservedIdentityAndHistory();
+            Require(shell.GetOwnedWindowBoundsForTest(activeId) == WorkArea &&
+                WorkArea.IntersectsWith(shell.GetOwnedWindowBoundsForTest(secondaryId)), "fixture lost overlapping maximize geometry");
+            Require(extras.All(before =>
+            {
+                OwnedWindowState after = State(coordinator, before.Id);
+                return after.Bounds == before.Bounds && after.FloatingBounds == before.FloatingBounds &&
+                    after.Lifecycle == before.Lifecycle && shell.GetOwnedWindowBoundsForTest(before.Id.Value) == before.Bounds &&
+                    Frame(before.Id).Visibility == extraVisibility[before.Id];
+            }), "maximize moved, hid or changed the lifecycle of a retained extra frame");
+
+            OwnedWindowId[] expectedNonActive = extras.OrderBy(window => window.ActivationOrdinal)
+                .ThenBy(window => window.RegistrationOrder).Select(window => window.Id).ToArray();
+            Require(extras.OrderBy(window => Panel.GetZIndex(Frame(window.Id))).Select(window => window.Id)
+                .SequenceEqual(expectedNonActive), "non-active frames lost historical MRU/registration stacking");
+            int activeZ = Panel.GetZIndex(Frame(new(activeId)));
+            int secondaryZ = Panel.GetZIndex(ExplorerFrame(shell, secondaryId));
+            Require(extras.All(window => activeZ > Panel.GetZIndex(Frame(window.Id))),
+                $"active maximized frame is obscured: activeZ={activeZ}, secondaryZ={secondaryZ}; " +
+                "identity, focus, ordinals and extra bounds preserved");
+            return true;
+        }));
+
+    internal static Border ExplorerFrame(DesktopShellSurface shell, string id) =>
+        (Border)((Grid)shell.GetExplorerSurfaceForTest(id).Parent).Parent;
+
+    internal static Button ExplorerTitleButton(DesktopShellSurface shell, string id, string action) =>
+        ExplorerWorkspaceScenarios.Descendants(ExplorerFrame(shell, id)).OfType<Button>().Single(button =>
+            button.CommandParameter is OwnedWindowId windowId && windowId.Value == id &&
+            AutomationProperties.GetName(button).StartsWith(action + " ", StringComparison.Ordinal));
+
+    internal static void InvokeSessionMenu(DesktopShellSurface shell, string id, string action)
+    {
+        ContextMenu menu = shell.TaskbarExplorerButton.ContextMenu;
+        menu.PlacementTarget = shell.TaskbarExplorerButton;
+        menu.IsOpen = true;
+        PumpIdle();
+        try
+        {
+            MenuItem? command = menu.Items.OfType<MenuItem>().SingleOrDefault(item =>
+                item.CommandParameter is OwnedWindowId windowId && windowId.Value == id);
+            if (command is null || command.Header is not string header ||
+                !header.Contains(id, StringComparison.Ordinal) || !header.StartsWith(action, StringComparison.Ordinal))
+                throw new InvalidOperationException($"ID-bearing {action} entry for {id} absent from taskbar context menu");
+            command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        }
+        finally { menu.IsOpen = false; }
+    }
+
+
 
     private static bool HostedInitialState() => WithShell(shell =>
         shell.IsOwnedWindowLayoutFreeform && shell.CurrentLayoutGlyph.IsFreeform &&

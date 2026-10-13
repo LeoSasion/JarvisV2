@@ -25,7 +25,8 @@ this canonical desktop scene and has a separate deterministic render below.
 ## Visual contract
 
 The canvas is pure black. Yellow (`#FFF000`) is the only chromatic accent; it
-marks current state, focus junctions and selected structure. Orange, cyan,
+marks current state and focus junctions. Selection uses pure white (`#FFFFFF`),
+including full/compact Explorer signals and text-editor selection. Orange, cyan,
 purple, green, RGB cycling and other accent variants are not part of this
 component. Text and structural neutrals remain achromatic.
 
@@ -62,11 +63,13 @@ placeholders; the achromatic opacity feather is the sole gradient exception.
 ## Interaction contract
 
 The rail and orthogonal axis remain visible at all times. The desktop starts in
-`FREEFORM`; no tiled preset is selected. Only the single-window preset is enabled
-until a second owned window opens. Explorer plus Task Manager enable the six
-two-window splits as well; unavailable three- and four-window entries stay
-disabled and cannot change window bounds or selection. Selecting an admitted
-layout tiles the registered owned windows and updates the lower-left glyph.
+`FREEFORM`; no tiled preset is selected. All sixteen presets are selectable.
+An explicit commit restores already registered owned surfaces only, fills as
+many panes as those surfaces permit, and honestly reports partial fill. Keyboard
+preview never creates, restores or moves windows. A layout commit does not
+allocate new Explorer sessions. Manually registered Explorer sessions plus Task
+Manager participate in real three/four-pane placement, and extra visible windows
+retain their existing bounds. Committing a layout updates the lower-left glyph.
 The catalog validates exact pane coverage, stable order,
 unique topology signatures and horizontal/vertical/rotational closure before the
 surface can run.
@@ -86,7 +89,10 @@ pressure-dependent steps, avoiding delayed full-item jumps.
 Escape from the permanently visible layout list stops any active rail motion;
 when the rail itself holds keyboard focus, Escape also returns that focus to the
 active owned window and is consumed, otherwise it bubbles without consuming the
-key, preserving the owning window's global Escape action.
+key, preserving the owning window's global Escape action. Clicking the lower-left
+current-layout button requests selected-item keyboard focus through the same
+guarded/cancellable shell scheduler: newer Search or foreign Explorer focus
+wins before dispatch, and unload or a superseding click aborts the old request.
 If Windows high contrast changes while the surface is open, rail motion stops and
 the opacity feather immediately becomes fully opaque; the normal boundary-aware
 mask returns when high contrast is disabled.
@@ -99,15 +105,21 @@ without a hard black plate, scrollbar, arrow or extra rule segment.
 
 The simulated Explorer remains operational within the preview: minimize,
 maximize, close and restore all work, and its taskbar button can activate or
-restore it. Clicking the active taskbar button minimizes Explorer; clicking the
-minimized button restores it without changing the selected layout. The maximize
+restore it. The taskbar's normally closed mouse/keyboard session menu adds
+**New Explorer window** and ID-bearing Activate/Restore/Reopen actions. There
+are at most four retained Explorer sessions, including the original `explorer`;
+closed sessions retain their content and exact reopen identity, so closing does
+not free a fifth allocation slot. The aggregate taskbar button and desktop
+navigation shortcuts target the active/MRU Explorer. Clicking the active taskbar
+button minimizes that session; explicit ID entries restore only their session. The maximize
 control maximizes only the active owned window; restoring returns that window
 to its saved floating or tiled bounds. These interactions affect only controls
 owned by the WPF preview; they do not invoke or mutate the real Windows Explorer
 process.
 
 The Explorer content surface is also an operational, deterministic in-memory
-workspace. It supports selection, Back / Forward / Up navigation, folder open,
+workspace per reusable `ExplorerSurface`, not a shared virtual filesystem.
+Each surface supports independent selection, Back / Forward / Up navigation, folder open,
 an owned-process file preview, inline rename with Windows-style validation,
 unique new-folder naming, long names and explicit empty locations. File previews
 never launch an operating-system application, and the model has no real
@@ -137,34 +149,53 @@ accepted yellow case. The current approved owned-desktop PNG on locked Windows
 
 `F472A0C14D08348B49A44D878202A3F69330D78A6226244D2B2A499EE2C70AC2`
 
-Current bounded verification for the interactive Explorer revision:
+Current bounded verification for manual multi-instance Explorer:
 
 - Release build: passed with zero warnings and zero errors;
 - WPF vector-adapter scenarios: 13 / 13;
-- layout and edge-bar scenarios: 25 / 25, including continuous feather geometry,
-  top/middle/bottom mask states, actual adjacent-item hit testing,
-  handled white-glyph pointer routing,
-  nonlinear symmetric pointer pressure, exact
-  endpoints and actual descendant-bounds equality for all sixteen rail glyphs
-  and the current-layout glyph, plus Escape routing and dynamic high-contrast
-  lifecycle handling;
-- Explorer workspace scenarios: 21 / 21, including model/UI synchronization,
-  owned preview focus containment, extension-aware rename metadata and the
-  memory-only API boundary;
-- owned Task Manager model and command scenarios: 10 / 10;
-- owned Task Manager surface scenarios: 9 / 9, including host-window
-  minimize/restore sampling lifecycle, same-name PID reuse and an in-flight
-  stop/start refresh;
-- owned-window layout scenarios: 27 / 27, including all six splits with either
-  active window, usable compact content, title-click/jitter restore preservation
-  and actual-drag capture loss;
-- publication boundary: passed for 533 candidate files with no secret values
-  printed;
-- current owned-preview audit: 26 / 26 on the locked connected graphics
-  profile. The canonical desktop frame matched the approved SHA-256 exactly;
-  the separate owned Task Manager render passed structural validation with
-  SHA-256
+- layout and edge-bar scenarios: 25 / 25;
+- Explorer workspace scenarios: 30 / 30, including mouse/keyboard creation,
+  independent mutable trees, same-seed-ID rename isolation, owned preview,
+  cap/reopen, already-focused valid/invalid blur, lifecycle/focus-intent races
+  and unload cleanup; three consecutive unfiltered runner passes;
+- owned Task Manager surface scenarios: 10 / 10;
+- owned-window layout scenarios: 54 / 54 (18 coordinator, 36 hosted), including
+  real populated three/four-pane placement, usable compact controls and exact
+  secondary title/lifecycle/focus routing, intervening Search/foreign-Explorer
+  focus races and current-layout-button cancellation/normal rail handoff;
+  the promoted-active stacking regression covers real taskbar New/minimize,
+  EqualColumns restoration then rail Maximized, for Explorer and Task Manager
+  without body reactivation, changed ordinals, focus theft, moved/hidden extras
+  or new session allocation; non-active MRU/registration ordering is retained;
+  three consecutive unfiltered runner passes;
+- platform layout: 16 / 16;
+- publication boundary: passed for 535 candidate files with no secret values
+  printed; publication requirements include the control and workspace owners;
+- current owned-preview audit: 26 / 26, `locked-profile-approved`. The default
+  desktop matched the unchanged approved SHA-256 exactly. The Task Manager
+  structural render retains SHA-256
   `3971C3ECB2D725C9F5EB12F6F95A95E43600E16EF41D4F91DED57055A2BDEACF`.
+
+The source gate reads `ExplorerSurface.xaml/.cs` as the actual control owner and
+checks the shell, control and workspace code against the filesystem/OS-launch
+ban. Applicable desktop-owner negative XAML bans examine both shell and Explorer
+owning texts with unchanged matching rules, including image, square geometry,
+gradient/glow, device content, Start, HueSlider and obsolete-handler bans.
+Positive-role checks and window-root constraints remain unchanged. The original
+60/60 mutation record covered only ten canaries and remains real but partial
+historical evidence. The copied/extended actual-AST probe reproduced 15 further
+Explorer misses, then rejected 90/90 full/hidden/compact-template mutations from
+15 canaries across both owners; totals and uniqueness derive from its traces.
+Neither probe writes published source or approves a canonical. Focus/policy evidence
+remains in `jarvis-multi-explorer/fix-round2/fix-round2-verification.json` under the
+Hermes scratch root. The additional stacking repair's permanent hosted RED/GREEN
+and byte-exact parent-reproducer differential are in
+`jarvis-multi-explorer/fix-zorder/fix-zorder-verification.json`: the parent's
+previous active Z=6/secondary Z=7 becomes active Z=7/secondary Z=6, exit 0,
+`not-reproduced`, with unchanged identity, focus and extra bounds. The original
+bug receipt/PNG remain untouched. The historical Escape-focus flake remains **UNDIAGNOSED**;
+these passing paths do not establish its cause. No capability ban, approved hash
+or golden PNG is relaxed or advanced.
 
 The row/column render gate also checks the actual Task Manager title rule and
 window-control pixels. Snapshot scenes are admitted before the first native

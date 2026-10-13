@@ -96,224 +96,6 @@
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
 
-        <Style x:Key="ExplorerActionButton" TargetType="Button" BasedOn="{StaticResource BareButton}">
-            <Setter Property="Width" Value="116" />
-            <Setter Property="Height" Value="88" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Style.Triggers>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Opacity" Value="{StaticResource DisabledOpacity}" />
-                    <Setter Property="Cursor" Value="Arrow" />
-                    <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="ExplorerNavigationButton" TargetType="Button" BasedOn="{StaticResource BareButton}">
-            <Setter Property="Width" Value="34" />
-            <Setter Property="Height" Value="34" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Style.Triggers>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Opacity" Value="{StaticResource DisabledOpacity}" />
-                    <Setter Property="Cursor" Value="Arrow" />
-                    <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="ExplorerListItem" TargetType="ListBoxItem">
-            <Setter Property="Height" Value="54" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="VerticalContentAlignment" Value="Stretch" />
-            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-            <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ListBoxItem">
-                        <Grid SnapsToDevicePixels="True">
-                            <Border
-                                x:Name="RowFrame"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{StaticResource QuietRuleBrush}"
-                                BorderThickness="0,0,0,1">
-                                <ContentPresenter
-                                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-                            </Border>
-                            <Border
-                                x:Name="SelectionRail"
-                                Width="2"
-                                HorizontalAlignment="Left"
-                                Background="Transparent" />
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="RowFrame" Property="Background" Value="#090909" />
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="RowFrame" Property="Background" Value="#0B0B09" />
-                                <Setter TargetName="SelectionRail" Property="Background" Value="{StaticResource SelectionBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                <Setter TargetName="RowFrame" Property="BorderBrush" Value="{Binding AccentBrush, ElementName=Root}" />
-                                <Setter TargetName="RowFrame" Property="BorderThickness" Value="1" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="ExplorerRenameEditor" TargetType="TextBox">
-            <Setter Property="Height" Value="30" />
-            <Setter Property="Padding" Value="5,1" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="Background" Value="#050505" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-            <Setter Property="CaretBrush" Value="{Binding AccentBrush, ElementName=Root}" />
-            <Setter Property="SelectionBrush" Value="{Binding AccentBrush, ElementName=Root}" />
-            <Setter Property="BorderBrush" Value="{Binding AccentBrush, ElementName=Root}" />
-            <Setter Property="BorderThickness" Value="0,0,0,1" />
-            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
-            <Setter Property="FontSize" Value="15" />
-            <Setter Property="MaxLength" Value="255" />
-            <Setter Property="AcceptsReturn" Value="False" />
-            <Setter Property="HorizontalScrollBarVisibility" Value="Hidden" />
-            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-        </Style>
-
-        <DataTemplate x:Key="ExplorerCompactItemTemplate">
-            <Grid Margin="12,0,10,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="32" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="82" />
-                    <ColumnDefinition Width="10" />
-                </Grid.ColumnDefinitions>
-                <Grid Width="23" Height="27" HorizontalAlignment="Left" VerticalAlignment="Center">
-                    <Path
-                        x:Name="CompactFileIcon"
-                        Stroke="{StaticResource TextBrush}"
-                        StrokeThickness="1.35"
-                        Data="M 2,1 L 15,1 L 21,7 L 21,26 L 2,26 Z M 15,1 L 15,7 L 21,7" />
-                    <Path
-                        x:Name="CompactFolderIcon"
-                        Margin="0,4,0,3"
-                        Stroke="{StaticResource TextBrush}"
-                        StrokeThickness="1.35"
-                        Data="M 1,5 L 8,5 L 11,8 L 22,8 L 22,22 L 1,22 Z"
-                        Visibility="Collapsed" />
-                </Grid>
-                <Grid Grid.Column="1" Margin="0,0,8,0">
-                    <TextBlock
-                        x:Name="ItemNameText"
-                        VerticalAlignment="Center"
-                        Foreground="{StaticResource TextBrush}"
-                        FontFamily="{StaticResource MonoFont}"
-                        FontSize="13"
-                        Text="{Binding Name}"
-                        TextTrimming="CharacterEllipsis"
-                        TextWrapping="NoWrap"
-                        ToolTip="{Binding Name}"
-                        ToolTipService.ShowDuration="30000"
-                        AutomationProperties.Name="{Binding Name}"
-                        AutomationProperties.HelpText="{Binding Name}" />
-                    <TextBox
-                        x:Name="ItemRenameEditor"
-                        Style="{StaticResource ExplorerRenameEditor}"
-                        Text="{Binding Name, Mode=OneWay}"
-                        Visibility="Collapsed"
-                        LostKeyboardFocus="ExplorerRenameEditor_OnLostKeyboardFocus"
-                        AutomationProperties.Name="Rename item" />
-                </Grid>
-                <TextBlock
-                    Grid.Column="2"
-                    VerticalAlignment="Center"
-                    Foreground="{StaticResource SecondaryTextBrush}"
-                    FontFamily="{StaticResource MonoFont}"
-                    FontSize="11"
-                    Text="{Binding TypeLabel}"
-                    TextTrimming="CharacterEllipsis" />
-                <Rectangle
-                    x:Name="SelectionSignal"
-                    Grid.Column="3"
-                    Width="5"
-                    Height="5"
-                    Fill="{Binding AccentBrush, ElementName=Root}"
-                    Visibility="Collapsed" />
-            </Grid>
-            <DataTemplate.Triggers>
-                <DataTrigger Binding="{Binding Kind}" Value="Folder">
-                    <Setter TargetName="CompactFileIcon" Property="Visibility" Value="Collapsed" />
-                    <Setter TargetName="CompactFolderIcon" Property="Visibility" Value="Visible" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                    <Setter TargetName="SelectionSignal" Property="Visibility" Value="Visible" />
-                                            <Setter TargetName="ItemNameText" Property="Foreground" Value="{StaticResource SelectionBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding IsRenameTarget}" Value="True">
-                    <Setter TargetName="ItemNameText" Property="Visibility" Value="Collapsed" />
-                    <Setter TargetName="ItemRenameEditor" Property="Visibility" Value="Visible" />
-                </DataTrigger>
-            </DataTemplate.Triggers>
-        </DataTemplate>
-
-        <Style x:Key="ExplorerScrollThumb" TargetType="Thumb">
-            <Setter Property="Width" Value="4" />
-            <Setter Property="Background" Value="{StaticResource SecondaryRuleBrush}" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Thumb">
-                        <Border Background="{TemplateBinding Background}" />
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{Binding AccentBrush, ElementName=Root}" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="ExplorerScrollBar" TargetType="ScrollBar">
-            <Setter Property="Width" Value="10" />
-            <Setter Property="Background" Value="{StaticResource CanvasBrush}" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ScrollBar">
-                        <Grid Background="{TemplateBinding Background}">
-                            <Track
-                                x:Name="PART_Track"
-                                Focusable="False"
-                                IsDirectionReversed="True">
-                                <Track.DecreaseRepeatButton>
-                                    <RepeatButton
-                                        Command="{x:Static ScrollBar.PageUpCommand}"
-                                        Focusable="False"
-                                        Opacity="0" />
-                                </Track.DecreaseRepeatButton>
-                                <Track.Thumb>
-                                    <Thumb Style="{StaticResource ExplorerScrollThumb}" />
-                                </Track.Thumb>
-                                <Track.IncreaseRepeatButton>
-                                    <RepeatButton
-                                        Command="{x:Static ScrollBar.PageDownCommand}"
-                                        Focusable="False"
-                                        Opacity="0" />
-                                </Track.IncreaseRepeatButton>
-                            </Track>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <Style x:Key="LayoutOptionItem" TargetType="ListBoxItem">
             <Setter Property="Width" Value="86" />
             <Setter Property="Height" Value="{x:Static local:DesktopShellSurface.LayoutItemHeight}" />
@@ -386,6 +168,45 @@
             <Setter Property="BorderBrush" Value="{StaticResource QuietRuleBrush}" />
             <Setter Property="BorderThickness" Value="0,0,0,1" />
         </Style>
+        <Style x:Key="ExplorerSessionMenu" TargetType="ContextMenu">
+            <Setter Property="Background" Value="#000000" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Border Background="#000000" BorderBrush="#FFFFFF" BorderThickness="1" Padding="4">
+                            <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ExplorerSessionMenuItem" TargetType="MenuItem">
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border x:Name="MenuFrame" Background="#000000" BorderBrush="Transparent" BorderThickness="1" Padding="12,9">
+                            <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="MenuFrame" Property="BorderBrush" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="{StaticResource DisabledOpacity}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </UserControl.Resources>
 
     <Canvas x:Name="DesktopCanvas" Background="{StaticResource CanvasBrush}" ClipToBounds="True">
@@ -521,17 +342,12 @@
             BorderThickness="2"
             PreviewMouseDown="OwnedWindow_OnPreviewMouseDown"
             GotKeyboardFocus="OwnedWindow_OnGotKeyboardFocus"
-            PreviewKeyDown="ExplorerWindow_OnPreviewKeyDown"
             SnapsToDevicePixels="True">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="42" />
-                    <RowDefinition Height="44" />
-                    <RowDefinition x:Name="ExplorerActionRow" Height="90" />
                     <RowDefinition Height="*" />
-                    <RowDefinition x:Name="ExplorerStorageRow" Height="101" />
                 </Grid.RowDefinitions>
-
                 <Border
                     x:Name="ExplorerTitleBar"
                     Grid.Row="0"
@@ -567,390 +383,10 @@
                     </Grid>
                 </Border>
 
-                <Border Grid.Row="1" BorderBrush="{StaticResource SecondaryRuleBrush}" BorderThickness="0,0,0,1">
-                    <Grid Margin="20,0">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="106" /><ColumnDefinition Width="2" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                        <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
-                            <Button x:Name="ExplorerBackButton" Style="{StaticResource ExplorerNavigationButton}" Click="ExplorerBackButton_OnClick" ToolTip="ALT+LEFT" AutomationProperties.Name="Back">
-                                <Path Width="16" Height="13" Stroke="{StaticResource SecondaryTextBrush}" StrokeThickness="1.5" Data="M 13,1 L 4,7 L 13,13 M 4,7 L 16,7" />
-                            </Button>
-                            <Button x:Name="ExplorerForwardButton" Style="{StaticResource ExplorerNavigationButton}" Click="ExplorerForwardButton_OnClick" ToolTip="ALT+RIGHT" AutomationProperties.Name="Forward">
-                                <Path Width="16" Height="13" Stroke="{StaticResource SecondaryTextBrush}" StrokeThickness="1.5" Data="M 3,1 L 12,7 L 3,13 M 12,7 L 0,7" />
-                            </Button>
-                            <Button x:Name="ExplorerUpButton" Style="{StaticResource ExplorerNavigationButton}" Click="ExplorerUpButton_OnClick" ToolTip="ALT+UP" AutomationProperties.Name="Up one level">
-                                <Path Width="15" Height="17" Stroke="{StaticResource TextBrush}" StrokeThickness="1.5" Data="M 1,8 L 8,1 L 15,8 M 8,1 L 8,17" />
-                            </Button>
-                        </StackPanel>
-                        <Border Grid.Column="1" Width="2" Height="24" VerticalAlignment="Center" Background="{Binding AccentBrush, ElementName=Root}" />
-                        <TextBlock
-                            x:Name="ExplorerBreadcrumbText"
-                            Grid.Column="2"
-                            Margin="18,0,0,0"
-                            VerticalAlignment="Center"
-                            FontFamily="{StaticResource MonoFont}"
-                            FontSize="15"
-                            TextTrimming="CharacterEllipsis"
-                            TextWrapping="NoWrap"
-                            ToolTipService.ShowDuration="30000"
-                            AutomationProperties.Name="Current Explorer location" />
-                    </Grid>
-                </Border>
-
-                <Border x:Name="ExplorerActionPanel" Grid.Row="2" BorderBrush="{StaticResource SecondaryRuleBrush}" BorderThickness="0,0,0,1">
-                    <StackPanel Margin="20,0,0,0" Orientation="Horizontal">
-                        <Button x:Name="ExplorerOpenButton" Style="{StaticResource ExplorerActionButton}" Click="ExplorerOpenButton_OnClick" ToolTip="OPEN / ENTER" AutomationProperties.Name="Open selected item">
-                            <StackPanel>
-                                <Viewbox Width="36" Height="36" HorizontalAlignment="Center">
-                                    <Canvas Width="36" Height="36"><Path Stroke="{StaticResource TextBrush}" StrokeThickness="1.6" Data="M 5,4 L 31,4 L 31,32 L 5,32 Z M 13,18 L 35,18 M 28,11 L 35,18 L 28,25" /></Canvas>
-                                </Viewbox>
-                                <TextBlock Margin="0,7,0,0" HorizontalAlignment="Center" FontFamily="{StaticResource MonoFont}" FontSize="11" Text="OPEN" />
-                            </StackPanel>
-                        </Button>
-                        <Button x:Name="ExplorerRenameButton" Style="{StaticResource ExplorerActionButton}" Click="ExplorerRenameButton_OnClick" ToolTip="RENAME / F2" AutomationProperties.Name="Rename selected item">
-                            <StackPanel>
-                                <Viewbox Width="36" Height="36" HorizontalAlignment="Center"><Canvas Width="36" Height="36"><Path Stroke="{StaticResource TextBrush}" StrokeThickness="1.6" Data="M 5,29 L 10,18 L 27,1 L 35,9 L 18,26 L 5,29 Z M 10,18 L 18,26 M 4,34 L 31,34" /></Canvas></Viewbox>
-                                <TextBlock Margin="0,7,0,0" HorizontalAlignment="Center" FontFamily="{StaticResource MonoFont}" FontSize="11" Text="RENAME" />
-                            </StackPanel>
-                        </Button>
-                        <Button x:Name="ExplorerAccessButton" Style="{StaticResource ExplorerActionButton}" Click="ExplorerAccessButton_OnClick" IsEnabled="False" ToolTip="ACCESS PANEL / NOT AVAILABLE IN THIS PREVIEW" AutomationProperties.Name="Access settings unavailable in this preview">
-                            <StackPanel>
-                                <Viewbox Width="36" Height="36" HorizontalAlignment="Center"><Canvas Width="36" Height="36"><Path Stroke="{StaticResource TextBrush}" StrokeThickness="1.6" Data="M 9,34 L 9,18 L 18,9 M 18,9 A 7,7 0 1 1 25,16 M 23,21 L 23,34 M 30,26 L 34,26 L 34,33 L 30,33" /></Canvas></Viewbox>
-                                <TextBlock Margin="0,7,0,0" HorizontalAlignment="Center" FontFamily="{StaticResource MonoFont}" FontSize="11" Text="ACCESS" />
-                            </StackPanel>
-                        </Button>
-                        <Button x:Name="ExplorerNewFolderButton" Style="{StaticResource ExplorerActionButton}" Click="ExplorerNewFolderButton_OnClick" ToolTip="NEW FOLDER / CTRL+SHIFT+N" AutomationProperties.Name="Create folder">
-                            <StackPanel>
-                                <Viewbox Width="36" Height="36" HorizontalAlignment="Center"><Canvas Width="36" Height="36"><Path Stroke="{StaticResource TextBrush}" StrokeThickness="1.6" Data="M 4,4 L 32,4 L 32,32 L 4,32 Z M 18,11 L 18,25 M 11,18 L 25,18" /><Rectangle Canvas.Left="29" Canvas.Top="5" Width="5" Height="5" Fill="{Binding AccentBrush, ElementName=Root}" /></Canvas></Viewbox>
-                                <TextBlock Margin="0,7,0,0" HorizontalAlignment="Center" FontFamily="{StaticResource MonoFont}" FontSize="11" Text="NEW FOLDER" />
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-                </Border>
-
-                <Grid Grid.Row="3">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition x:Name="ExplorerFolderColumn" Width="286" />
-                        <ColumnDefinition x:Name="ExplorerFolderDividerColumn" Width="1" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid x:Name="ExplorerFolderPanel" Grid.Column="0" Margin="34,26,28,22">
-                        <Grid.RowDefinitions><RowDefinition Height="42" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                        <StackPanel>
-                            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="14" Text="FOLDER" />
-                            <Border Margin="0,9,0,0" Width="26" Height="2" HorizontalAlignment="Left" Background="{Binding AccentBrush, ElementName=Root}" />
-                        </StackPanel>
-                        <Grid Grid.Row="1">
-                            <Grid.RowDefinitions><RowDefinition Height="190" /><RowDefinition Height="56" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                            <Viewbox Width="150" Height="128" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Canvas Width="150" Height="128">
-                                    <Path Stroke="{StaticResource TextBrush}" StrokeThickness="2" Data="M 6,17 L 51,17 L 64,29 L 144,29 L 144,122 L 6,122 Z" />
-                                    <Rectangle Canvas.Left="121" Canvas.Top="40" Width="16" Height="16" Fill="{Binding AccentBrush, ElementName=Root}" />
-                                </Canvas>
-                            </Viewbox>
-                            <StackPanel Grid.Row="1" VerticalAlignment="Center">
-                                <TextBlock
-                                    x:Name="ExplorerFolderNameText"
-                                    FontFamily="{StaticResource MonoFont}"
-                                    FontSize="34"
-                                    TextTrimming="CharacterEllipsis"
-                                    TextWrapping="NoWrap"
-                                    ToolTipService.ShowDuration="30000"
-                                    AutomationProperties.Name="Current folder" />
-                                <Grid Margin="0,4,0,0"><Border Height="2" Background="{Binding AccentBrush, ElementName=Root}" /><Rectangle Width="6" Height="6" HorizontalAlignment="Right" Stroke="{Binding AccentBrush, ElementName=Root}" StrokeThickness="1" Fill="{StaticResource CanvasBrush}" /></Grid>
-                            </StackPanel>
-                            <StackPanel Grid.Row="2" Margin="0,16,0,0">
-                                <TextBlock
-                                    x:Name="ExplorerItemCountText"
-                                    Foreground="{StaticResource SecondaryTextBrush}"
-                                    FontFamily="{StaticResource MonoFont}"
-                                    FontSize="13"
-                                    AutomationProperties.Name="Explorer item count" />
-                                <TextBlock
-                                    x:Name="ExplorerRenameErrorText"
-                                    Margin="0,10,0,0"
-                                    Foreground="{Binding AccentBrush, ElementName=Root}"
-                                    FontFamily="{StaticResource MonoFont}"
-                                    FontSize="11"
-                                    TextWrapping="Wrap"
-                                    Visibility="Collapsed"
-                                    AutomationProperties.LiveSetting="Assertive" />
-                            </StackPanel>
-                        </Grid>
-                    </Grid>
-                    <Border Grid.Column="1" Background="{StaticResource SecondaryRuleBrush}" />
-                    <Grid Grid.Column="2">
-                        <Grid.RowDefinitions><RowDefinition Height="62" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                        <Border Grid.Row="0" Style="{StaticResource FileRow}">
-                            <Grid>
-                                <Grid x:Name="ExplorerFullHeader" Margin="24,0,18,0">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="46" /><ColumnDefinition Width="*" /><ColumnDefinition Width="96" /><ColumnDefinition Width="170" /><ColumnDefinition Width="12" /></Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="1" VerticalAlignment="Center" FontFamily="{StaticResource MonoFont}" FontSize="13" Text="NAME" />
-                                    <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="{StaticResource MonoFont}" FontSize="13" Text="TYPE" />
-                                    <TextBlock Grid.Column="3" VerticalAlignment="Center" FontFamily="{StaticResource MonoFont}" FontSize="13" Text="MODIFIED" />
-                                </Grid>
-                                <Grid x:Name="ExplorerCompactHeader" Margin="12,0,10,0" Visibility="Collapsed">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="32" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="82" />
-                                        <ColumnDefinition Width="10" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="1" VerticalAlignment="Center" FontFamily="{StaticResource MonoFont}" FontSize="11" Text="NAME" />
-                                    <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="{StaticResource MonoFont}" FontSize="10" Text="TYPE" />
-                                </Grid>
-                            </Grid>
-                        </Border>
-                        <ListBox
-                            x:Name="ExplorerItemList"
-                            Grid.Row="1"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            ItemContainerStyle="{StaticResource ExplorerListItem}"
-                            SelectionChanged="ExplorerItemList_OnSelectionChanged"
-                            MouseDoubleClick="ExplorerItemList_OnMouseDoubleClick"
-                            ScrollViewer.CanContentScroll="True"
-                            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                            ScrollViewer.VerticalScrollBarVisibility="Auto"
-                            SelectionMode="Single"
-                            TextSearch.TextPath="Name"
-                            AutomationProperties.Name="Items in current Explorer location">
-                            <ListBox.Resources>
-                                <Style TargetType="ScrollBar" BasedOn="{StaticResource ExplorerScrollBar}" />
-                            </ListBox.Resources>
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid Margin="24,0,18,0">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="46" /><ColumnDefinition Width="*" /><ColumnDefinition Width="96" /><ColumnDefinition Width="170" /><ColumnDefinition Width="12" /></Grid.ColumnDefinitions>
-                                        <Grid Width="28" Height="31" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Grid x:Name="FileIcon">
-                                                <Path
-                                                    Stroke="{StaticResource TextBrush}"
-                                                    StrokeThickness="1.5"
-                                                    Data="M 3,1 L 18,1 L 25,8 L 25,30 L 3,30 Z M 18,1 L 18,8 L 25,8" />
-                                                <Path
-                                                    x:Name="DocumentMark"
-                                                    Stroke="{StaticResource TextBrush}"
-                                                    StrokeThickness="1.3"
-                                                    Data="M 8,14 L 20,14 M 8,19 L 20,19 M 8,24 L 18,24"
-                                                    Visibility="Collapsed" />
-                                                <Path
-                                                    x:Name="PdfMark"
-                                                    Stroke="{StaticResource TextBrush}"
-                                                    StrokeThickness="1.25"
-                                                    Data="M 7,24 C 10,21 14,10 12,10 C 9,10 10,18 15,22 C 18,24 20,21 22,19"
-                                                    Visibility="Collapsed" />
-                                                <Path
-                                                    x:Name="PresentationMark"
-                                                    Stroke="{StaticResource TextBrush}"
-                                                    StrokeThickness="1.3"
-                                                    Data="M 8,13 L 20,13 L 20,23 L 8,23 Z M 10,21 L 13,17 L 16,20 L 19,15"
-                                                    Visibility="Collapsed" />
-                                                <Path
-                                                    x:Name="SpreadsheetMark"
-                                                    Stroke="{StaticResource TextBrush}"
-                                                    StrokeThickness="1.15"
-                                                    Data="M 8,13 L 20,13 L 20,25 L 8,25 Z M 8,17 L 20,17 M 8,21 L 20,21 M 12,13 L 12,25 M 16,13 L 16,25"
-                                                    Visibility="Collapsed" />
-                                                <Path
-                                                    x:Name="TextMark"
-                                                    Stroke="{StaticResource TextBrush}"
-                                                    StrokeThickness="1.3"
-                                                    Data="M 8,14 L 20,14 M 8,18 L 20,18 M 8,22 L 20,22 M 8,26 L 16,26"
-                                                    Visibility="Collapsed" />
-                                                <Path
-                                                    x:Name="VisualMark"
-                                                    Stroke="{StaticResource TextBrush}"
-                                                    StrokeThickness="1.3"
-                                                    Data="M 7,24 L 11,19 L 15,22 L 20,15 L 22,18 M 8,13 L 10,13"
-                                                    Visibility="Collapsed" />
-                                            </Grid>
-                                            <Path
-                                                x:Name="FolderIcon"
-                                                Margin="1,5,1,4"
-                                                Stroke="{StaticResource TextBrush}"
-                                                StrokeThickness="1.5"
-                                                Data="M 1,5 L 10,5 L 13,8 L 27,8 L 27,25 L 1,25 Z"
-                                                Visibility="Collapsed" />
-                                        </Grid>
-                                        <Grid Grid.Column="1" Margin="0,0,12,0">
-                                            <TextBlock
-                                                x:Name="ItemNameText"
-                                                VerticalAlignment="Center"
-                                                Foreground="{StaticResource TextBrush}"
-                                                FontFamily="{StaticResource MonoFont}"
-                                                FontSize="15"
-                                                Text="{Binding Name}"
-                                                TextTrimming="CharacterEllipsis"
-                                                TextWrapping="NoWrap"
-                                                ToolTip="{Binding Name}"
-                                                ToolTipService.ShowDuration="30000"
-                                                AutomationProperties.Name="{Binding Name}"
-                                                AutomationProperties.HelpText="{Binding Name}" />
-                                            <TextBox
-                                                x:Name="ItemRenameEditor"
-                                                Style="{StaticResource ExplorerRenameEditor}"
-                                                Text="{Binding Name, Mode=OneWay}"
-                                                Visibility="Collapsed"
-                                                LostKeyboardFocus="ExplorerRenameEditor_OnLostKeyboardFocus"
-                                                AutomationProperties.Name="Rename item" />
-                                        </Grid>
-                                        <TextBlock Grid.Column="2" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" FontFamily="{StaticResource MonoFont}" FontSize="13" Text="{Binding TypeLabel}" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Grid.Column="3" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" FontFamily="{StaticResource MonoFont}" FontSize="13" Text="{Binding ModifiedAt, StringFormat={}{0:yyyy-MM-dd HH:mm}}" />
-                                        <Rectangle x:Name="SelectionSignal" Grid.Column="4" Width="6" Height="6" Fill="{StaticResource SelectionBrush}" Visibility="Collapsed" />
-                                    </Grid>
-                                    <DataTemplate.Triggers>
-                                        <DataTrigger Binding="{Binding Kind}" Value="Folder">
-                                            <Setter TargetName="FileIcon" Property="Visibility" Value="Collapsed" />
-                                            <Setter TargetName="FolderIcon" Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IconKey}" Value="document">
-                                            <Setter TargetName="DocumentMark" Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IconKey}" Value="pdf">
-                                            <Setter TargetName="PdfMark" Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IconKey}" Value="presentation">
-                                            <Setter TargetName="PresentationMark" Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IconKey}" Value="spreadsheet">
-                                            <Setter TargetName="SpreadsheetMark" Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IconKey}" Value="text">
-                                            <Setter TargetName="TextMark" Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IconKey}" Value="visual">
-                                            <Setter TargetName="VisualMark" Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                            <Setter TargetName="SelectionSignal" Property="Visibility" Value="Visible" />
-                                            <Setter TargetName="ItemNameText" Property="Foreground" Value="{StaticResource SelectionBrush}" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IsRenameTarget}" Value="True">
-                                            <Setter TargetName="ItemNameText" Property="Visibility" Value="Collapsed" />
-                                            <Setter TargetName="ItemRenameEditor" Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                    </DataTemplate.Triggers>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                        <Grid
-                            x:Name="ExplorerEmptyState"
-                            Grid.Row="1"
-                            IsHitTestVisible="False"
-                            Visibility="Collapsed">
-                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock HorizontalAlignment="Center" FontFamily="{StaticResource MonoFont}" FontSize="17" Text="NO ITEMS" />
-                                <Border Margin="0,11,0,10" Width="38" Height="2" HorizontalAlignment="Center" Background="{Binding AccentBrush, ElementName=Root}" />
-                                <TextBlock Foreground="{StaticResource SecondaryTextBrush}" FontFamily="{StaticResource MonoFont}" FontSize="12" Text="THIS LOCATION IS EMPTY" />
-                            </StackPanel>
-                        </Grid>
-                        <Grid
-                            x:Name="ExplorerPreviewPanel"
-                            Grid.RowSpan="2"
-                            Panel.ZIndex="10"
-                            Background="{StaticResource CanvasBrush}"
-                            Visibility="Collapsed"
-                            KeyboardNavigation.TabNavigation="Cycle"
-                            KeyboardNavigation.ControlTabNavigation="Cycle"
-                            KeyboardNavigation.DirectionalNavigation="Cycle"
-                            AutomationProperties.Name="Owned Explorer preview">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="62" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
-                            <Border BorderBrush="{StaticResource SecondaryRuleBrush}" BorderThickness="0,0,0,1">
-                                <Grid Margin="24,0,8,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="44" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
-                                        <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Text="PREVIEW" />
-                                        <Border Margin="12,0" Width="18" Height="2" Background="{Binding AccentBrush, ElementName=Root}" />
-                                        <TextBlock Foreground="{StaticResource SecondaryTextBrush}" FontFamily="{StaticResource MonoFont}" FontSize="11" Text="OWN PROCESS / VIRTUAL OBJECT" />
-                                    </StackPanel>
-                                    <Button
-                                        x:Name="ExplorerPreviewCloseButton"
-                                        Grid.Column="1"
-                                        Style="{StaticResource WindowControlButton}"
-                                        Click="ExplorerPreviewCloseButton_OnClick"
-                                        ToolTip="CLOSE PREVIEW / ESC"
-                                        AutomationProperties.Name="Close preview">
-                                        <Path Width="14" Height="14" Stroke="{StaticResource TextBrush}" StrokeThickness="1.4" Data="M 1,1 L 13,13 M 13,1 L 1,13" />
-                                    </Button>
-                                </Grid>
-                            </Border>
-                            <Grid Grid.Row="1" Margin="38,30,38,26">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="112" />
-                                    <RowDefinition Height="86" />
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="30" />
-                                </Grid.RowDefinitions>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="96" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Grid Width="64" Height="78" HorizontalAlignment="Left" VerticalAlignment="Center">
-                                        <Path Stroke="{StaticResource TextBrush}" StrokeThickness="1.8" Data="M 3,1 L 44,1 L 61,18 L 61,77 L 3,77 Z M 44,1 L 44,18 L 61,18 M 14,36 L 49,36 M 14,46 L 49,46 M 14,56 L 42,56" />
-                                        <Rectangle Width="9" Height="9" Margin="0,0,1,1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Fill="{Binding AccentBrush, ElementName=Root}" />
-                                    </Grid>
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock
-                                            x:Name="ExplorerPreviewNameText"
-                                            Foreground="{StaticResource TextBrush}"
-                                            FontFamily="{StaticResource MonoFont}"
-                                            FontSize="20"
-                                            TextWrapping="Wrap"
-                                            TextTrimming="CharacterEllipsis"
-                                            MaxHeight="54"
-                                            ToolTipService.ShowDuration="30000" />
-                                        <TextBlock
-                                            x:Name="ExplorerPreviewTypeText"
-                                            Margin="0,8,0,0"
-                                            Foreground="{Binding AccentBrush, ElementName=Root}"
-                                            FontFamily="{StaticResource MonoFont}"
-                                            FontSize="11" />
-                                    </StackPanel>
-                                </Grid>
-                                <Grid Grid.Row="1">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="118" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel>
-                                        <TextBlock Foreground="{StaticResource SecondaryTextBrush}" FontFamily="{StaticResource MonoFont}" FontSize="11" Text="PREVIEW MODE" />
-                                        <TextBlock Margin="0,8,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontFamily="{StaticResource MonoFont}" FontSize="11" Text="OWNER" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock x:Name="ExplorerPreviewKindText" FontFamily="{StaticResource MonoFont}" FontSize="11" />
-                                        <TextBlock Margin="0,8,0,0" FontFamily="{StaticResource MonoFont}" FontSize="11" Text="JARVIS2.NEURAL_VOID_PREVIEW" />
-                                    </StackPanel>
-                                </Grid>
-                                <StackPanel Grid.Row="2" Margin="0,2,0,0">
-                                    <Border Height="1" Background="{StaticResource SecondaryRuleBrush}" />
-                                    <Border Margin="0,12,70,0" Height="1" Background="{StaticResource QuietRuleBrush}" />
-                                    <Border Margin="0,12,24,0" Height="1" Background="{StaticResource QuietRuleBrush}" />
-                                    <Border Margin="0,12,104,0" Height="1" Background="{StaticResource QuietRuleBrush}" />
-                                </StackPanel>
-                                <Grid Grid.Row="3">
-                                    <Border Width="24" Height="2" HorizontalAlignment="Left" VerticalAlignment="Center" Background="{Binding AccentBrush, ElementName=Root}" />
-                                    <TextBlock Margin="36,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" FontFamily="{StaticResource MonoFont}" FontSize="10" Text="FILESYSTEM DISCONNECTED / OS LAUNCH DISABLED" />
-                                </Grid>
-                            </Grid>
-                        </Grid>
-                    </Grid>
-                </Grid>
-
-                <Border x:Name="ExplorerStoragePanel" Grid.Row="4" BorderBrush="{StaticResource SecondaryRuleBrush}" BorderThickness="0,1,0,0">
-                    <Grid Margin="40,0,40,0">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="42" /><ColumnDefinition Width="*" /><ColumnDefinition Width="42" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                        <Grid Grid.Column="0" Margin="0,20,0,0"><Grid.RowDefinitions><RowDefinition Height="24" /><RowDefinition Height="18" /><RowDefinition Height="*" /></Grid.RowDefinitions><TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Text="NEURAL OS (C:)" /><Grid Grid.Row="1"><Border Height="1" VerticalAlignment="Center" Background="{StaticResource QuietRuleBrush}" /><Border Width="146" Height="2" HorizontalAlignment="Left" VerticalAlignment="Center" Background="{Binding AccentBrush, ElementName=Root}" /><Rectangle Margin="143,0,0,0" Width="6" Height="6" HorizontalAlignment="Left" VerticalAlignment="Center" Fill="{Binding AccentBrush, ElementName=Root}" /></Grid><TextBlock Grid.Row="2" Foreground="{StaticResource SecondaryTextBrush}" FontFamily="{StaticResource MonoFont}" FontSize="12" Text="418 GB FREE / 930 GB" /></Grid>
-                        <Grid Grid.Column="2" Margin="0,20,0,0"><Grid.RowDefinitions><RowDefinition Height="24" /><RowDefinition Height="18" /><RowDefinition Height="*" /></Grid.RowDefinitions><TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Text="DATA STREAM (D:)" /><Grid Grid.Row="1"><Border Height="1" VerticalAlignment="Center" Background="{StaticResource QuietRuleBrush}" /><Border Width="145" Height="2" HorizontalAlignment="Left" VerticalAlignment="Center" Background="{Binding AccentBrush, ElementName=Root}" /><Rectangle Margin="142,0,0,0" Width="6" Height="6" HorizontalAlignment="Left" VerticalAlignment="Center" Fill="{Binding AccentBrush, ElementName=Root}" /></Grid><TextBlock Grid.Row="2" Foreground="{StaticResource SecondaryTextBrush}" FontFamily="{StaticResource MonoFont}" FontSize="12" Text="1.42 TB FREE / 2.72 TB" /></Grid>
-                        <Grid Grid.Column="4" Margin="0,20,0,0"><Grid.RowDefinitions><RowDefinition Height="24" /><RowDefinition Height="18" /><RowDefinition Height="*" /></Grid.RowDefinitions><TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Text="ARCHIVE (E:)" /><Grid Grid.Row="1"><Border Height="1" VerticalAlignment="Center" Background="{StaticResource QuietRuleBrush}" /><Border Width="137" Height="2" HorizontalAlignment="Left" VerticalAlignment="Center" Background="{Binding AccentBrush, ElementName=Root}" /><Rectangle Margin="134,0,0,0" Width="6" Height="6" HorizontalAlignment="Left" VerticalAlignment="Center" Fill="{Binding AccentBrush, ElementName=Root}" /></Grid><TextBlock Grid.Row="2" Foreground="{StaticResource SecondaryTextBrush}" FontFamily="{StaticResource MonoFont}" FontSize="12" Text="2.18 TB FREE / 7.27 TB" /></Grid>
-                    </Grid>
-                </Border>
+                <local:ExplorerSurface
+                    x:Name="PrimaryExplorerSurface"
+                    Grid.Row="1"
+                    AccentBrush="{Binding AccentBrush, ElementName=Root}" />
             </Grid>
         </Border>
 
