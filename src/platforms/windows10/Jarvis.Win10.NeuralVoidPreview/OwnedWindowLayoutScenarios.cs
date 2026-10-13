@@ -143,6 +143,16 @@ internal static class OwnedWindowLayoutScenarios
         Add(scenarios, "hosted-current-layout-button-focuses-selected-item-with-preview-and-escape-intact", HostedCurrentLayoutFocusAndNavigation);
         Add(scenarios, "hosted-escape-returns-focus-to-active-window", HostedEscapeReturnsFocus);
 
+        Add(scenarios, "layout-result-committed-metadata-and-readonly-snapshot-contract", ResultCommittedMetadata);
+        Add(scenarios, "layout-result-all-rejections-retain-complete-committed-state", ResultRejectedMetadata);
+        Add(scenarios, "layout-result-no-visible-precedence-and-invalid-explicit-restore-noop", ResultHiddenRestoreMetadata);
+
+        Add(scenarios, "remembered-tiled-presets-restore-partial-without-reopening-hidden-spares", RememberedTiledRestoreContract);
+        Add(scenarios, "all-defined-preset-availability-is-enabled-with-zero-through-seven-windows", DefinedAvailabilityContract);
+
+        Add(scenarios, "primary-pane-arbitrary-ties-integer-area-and-null-empty-contract", PrimaryPaneProjectionContract);
+        Add(scenarios, "pane-placement-literal-order-and-arbitrary-registration-ties", PanePlacementProjectionContract);
+
         int passed = scenarios.Count(scenario => scenario.Passed);
         return new(
             1,
@@ -156,6 +166,268 @@ internal static class OwnedWindowLayoutScenarios
             "not-run",
             false,
             scenarios);
+    }
+
+    private static string CompleteLayoutFingerprint(OwnedWindowLayoutCoordinator coordinator)
+    {
+        object Field(string name) => typeof(OwnedWindowLayoutCoordinator).GetField(name,
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(coordinator)!;
+        return Fingerprint(coordinator.CaptureSnapshot()) + "|" + Field("_activationOrdinal") + "|" + Field("_registrationOrder") + "|" +
+            string.Join(";", ((IReadOnlyList<Rect>)Field("_committedPaneBounds")).Select(Rectangle));
+    }
+
+    private static bool ResultCommittedMetadata()
+    {
+        OwnedWindowLayoutCoordinator coordinator = CreateCoordinator(2);
+        _ = coordinator.TryActivate(Alpha);
+        OwnedWindowLayoutSnapshot before = coordinator.CaptureSnapshot();
+        string frozenBefore = Fingerprint(before);
+        OwnedLayoutApplyResult applied = coordinator.TryApply(LayoutPreset.EqualColumns, WorkArea);
+        OwnedWindowLayoutSnapshot committed = coordinator.CaptureSnapshot();
+        if (!applied.Succeeded || applied.Status != OwnedLayoutApplyStatus.Applied ||
+            applied.AppliedPreset != committed.AppliedPreset || committed.AppliedPreset != LayoutPreset.EqualColumns ||
+            committed.LastTiledPreset != LayoutPreset.EqualColumns || applied.RequiredPaneCount != 2 ||
+            applied.VisibleWindowCount != 2 || applied.ActiveWindowId != Alpha ||
+            !applied.Placements.SequenceEqual(new[]
+            {
+                new OwnedWindowPlacement(Alpha, 0, State(coordinator, Alpha).Bounds, 2, true),
+                new OwnedWindowPlacement(Beta, 1, State(coordinator, Beta).Bounds, 1, false),
+            }) || Fingerprint(before) != frozenBefore)
+            return false;
+        string frozenCommitted = Fingerprint(committed);
+        OwnedWindowPlacement[] frozenPlacements = applied.Placements.ToArray();
+        try
+        {
+            ((IList<OwnedWindowPlacement>)applied.Placements)[0] = frozenPlacements[0];
+            return false;
+        }
+        catch (NotSupportedException) { }
+        try
+        {
+            ((IList<OwnedWindowState>)committed.Windows)[0] = committed.Windows[0];
+            return false;
+        }
+        catch (NotSupportedException) { }
+        if (!coordinator.TrySetManualBounds(Alpha, new Rect(600, 70, 800, 500)) ||
+            Fingerprint(committed) != frozenCommitted || !applied.Placements.SequenceEqual(frozenPlacements))
+            return false;
+        OwnedWindowState floating = State(coordinator, Alpha);
+        OwnedLayoutApplyResult maximized = coordinator.TryToggleMaximize(Alpha, WorkArea);
+        OwnedLayoutApplyResult restored = coordinator.TryToggleMaximize(Alpha, WorkArea);
+        OwnedLayoutApplyResult onePixel = CreateCoordinator(1).TryApply(LayoutPreset.Maximized, new Rect(0, 0, 1, 1));
+        return onePixel.Succeeded && onePixel.Placements.Single().Bounds == new Rect(0, 0, 1, 1) &&
+            maximized.Status == OwnedLayoutApplyStatus.Applied && maximized.AppliedPreset == LayoutPreset.Maximized &&
+            maximized.RequiredPaneCount == 1 && maximized.VisibleWindowCount == 2 && maximized.ActiveWindowId == Alpha &&
+            maximized.Placements.SequenceEqual(new[] { new OwnedWindowPlacement(Alpha, 0, WorkArea, 1, true) }) &&
+            restored.Succeeded && restored.Status == OwnedLayoutApplyStatus.RestoredFreeform && restored.AppliedPreset is null &&
+            coordinator.AppliedPreset is null && coordinator.LastTiledPreset is null && restored.RequiredPaneCount == 1 &&
+            restored.VisibleWindowCount == 2 && restored.ActiveWindowId == Alpha &&
+            restored.Placements.SequenceEqual(new[] { new OwnedWindowPlacement(Alpha, null, floating.FloatingBounds, 1, true) }) &&
+            coordinator.CaptureSnapshot().Windows.All(window => window.AssignedPaneIndex is null) &&
+            Fingerprint(committed) == frozenCommitted && applied.Placements.SequenceEqual(frozenPlacements);
+    }
+
+    private static bool RejectedResultIsNoOp(OwnedWindowLayoutCoordinator coordinator,
+        Func<OwnedLayoutApplyResult> operation, OwnedLayoutApplyStatus status, int required)
+    {
+        OwnedWindowLayoutSnapshot before = coordinator.CaptureSnapshot();
+        string completeBefore = CompleteLayoutFingerprint(coordinator);
+        OwnedLayoutApplyResult result = operation();
+        return !result.Succeeded && result.Status == status && result.AppliedPreset == before.AppliedPreset &&
+            result.RequiredPaneCount == required && result.VisibleWindowCount == before.Windows.Count(window => window.Lifecycle == OwnedWindowLifecycle.Visible) &&
+            result.ActiveWindowId == before.ActiveWindowId && result.Placements.Count == 0 &&
+            result.Placements is IList<OwnedWindowPlacement> { IsReadOnly: true } &&
+            CompleteLayoutFingerprint(coordinator) == completeBefore;
+    }
+
+    private static bool ResultRejectedMetadata()
+    {
+        OwnedWindowLayoutCoordinator coordinator = CreateCoordinator(2);
+        _ = coordinator.TryActivate(Alpha);
+        if (!coordinator.TryApply(LayoutPreset.EqualColumns, WorkArea).Succeeded) return false;
+        OwnedWindowId unknown = new("unregistered:result-contract");
+        if (!RejectedResultIsNoOp(coordinator, () => coordinator.TryToggleMaximize(unknown, Rect.Empty), OwnedLayoutApplyStatus.UnknownOwnedWindow, 1) ||
+            !RejectedResultIsNoOp(coordinator, () => coordinator.TryToggleMaximize(Gamma, WorkArea), OwnedLayoutApplyStatus.UnknownOwnedWindow, 1) ||
+            !RejectedResultIsNoOp(coordinator, () => coordinator.TryApply((LayoutPreset)(-1), Rect.Empty), OwnedLayoutApplyStatus.UnknownLayout, 0))
+            return false;
+        foreach (Rect invalid in new[]
+        {
+            Rect.Empty, new Rect(0, 0, 1, 1), new Rect(double.NaN, 24, 1428, 752),
+            new Rect(0, 0, double.PositiveInfinity, 752), new Rect(1e308, 24, 1e308, 752),
+            new Rect(0, 24, 5e307, 752),
+        })
+            if (!RejectedResultIsNoOp(coordinator, () => coordinator.TryApply(LayoutPreset.EqualRows, invalid), OwnedLayoutApplyStatus.InvalidWorkArea, 2) ||
+                (invalid != new Rect(0, 0, 1, 1) &&
+                    !RejectedResultIsNoOp(coordinator, () => coordinator.TryToggleMaximize(Alpha, invalid), OwnedLayoutApplyStatus.InvalidWorkArea, 1)))
+                return false;
+        System.Reflection.MethodInfo core = typeof(OwnedWindowLayoutCoordinator).GetMethod("TryApplyCore",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        return RejectedResultIsNoOp(coordinator, () => (OwnedLayoutApplyResult)core.Invoke(coordinator,
+                [LayoutPreset.EqualRows, WorkArea, unknown, false])!, OwnedLayoutApplyStatus.UnknownOwnedWindow, 2) &&
+            RejectedResultIsNoOp(coordinator, () => (OwnedLayoutApplyResult)core.Invoke(coordinator,
+                [LayoutPreset.EqualRows, Rect.Empty, unknown, false])!, OwnedLayoutApplyStatus.InvalidWorkArea, 2);
+    }
+
+    private static bool ResultHiddenRestoreMetadata()
+    {
+        OwnedWindowLayoutCoordinator coordinator = CreateCoordinator(2);
+        if (!coordinator.TryApply(LayoutPreset.EqualColumns, WorkArea).Succeeded ||
+            !coordinator.TrySetLifecycle(Alpha, OwnedWindowLifecycle.Minimized) ||
+            !coordinator.TrySetLifecycle(Beta, OwnedWindowLifecycle.Minimized)) return false;
+        if (!RejectedResultIsNoOp(coordinator, () => coordinator.TryApply(LayoutPreset.FourQuadrants, Rect.Empty), OwnedLayoutApplyStatus.NoVisibleWindow, 4) ||
+            !RejectedResultIsNoOp(coordinator, () => coordinator.TryApply((LayoutPreset)(-1), Rect.Empty, true), OwnedLayoutApplyStatus.UnknownLayout, 0))
+            return false;
+        foreach (Rect invalid in new[]
+        {
+            Rect.Empty, new Rect(0, 0, 1, 1), new Rect(1e308, 24, 1e308, 752), new Rect(0, 24, 5e307, 752),
+        })
+            if (!RejectedResultIsNoOp(coordinator, () => coordinator.TryApply(LayoutPreset.FourQuadrants, invalid, true), OwnedLayoutApplyStatus.InvalidWorkArea, 4))
+                return false;
+        OwnedWindowLayoutCoordinator empty = new();
+        return RejectedResultIsNoOp(empty, () => empty.TryApply(LayoutPreset.EqualColumns, Rect.Empty, true), OwnedLayoutApplyStatus.NoVisibleWindow, 2);
+    }
+
+    private static bool RememberedTiledRestoreContract()
+    {
+        foreach (LayoutDefinition definition in LayoutCatalog.All.Where(definition => definition.Preset != LayoutPreset.Maximized))
+        {
+            OwnedWindowLayoutCoordinator coordinator = CreateCoordinator(4);
+            _ = coordinator.TryActivate(Alpha);
+            if (!coordinator.TryApply(definition.Preset, WorkArea).Succeeded || coordinator.LastTiledPreset != definition.Preset ||
+                !RejectedResultIsNoOp(coordinator, () => coordinator.TryApply((LayoutPreset)(-1), Rect.Empty), OwnedLayoutApplyStatus.UnknownLayout, 0) ||
+                !coordinator.TrySetLifecycle(Beta, OwnedWindowLifecycle.Minimized) ||
+                !coordinator.TrySetLifecycle(Gamma, OwnedWindowLifecycle.Closed) ||
+                !coordinator.TrySetLifecycle(Delta, OwnedWindowLifecycle.Minimized)) return false;
+            OwnedWindowState[] hiddenBefore = coordinator.CaptureSnapshot().Windows.Where(window => window.Id != Alpha).ToArray();
+            long ordinal = State(coordinator, Alpha).ActivationOrdinal;
+            OwnedLayoutApplyResult maximized = coordinator.TryToggleMaximize(Alpha, WorkArea);
+            if (!maximized.Succeeded || maximized.AppliedPreset != LayoutPreset.Maximized ||
+                coordinator.LastTiledPreset != definition.Preset ||
+                !RejectedResultIsNoOp(coordinator, () => coordinator.TryToggleMaximize(Alpha, Rect.Empty), OwnedLayoutApplyStatus.InvalidWorkArea, 1) ||
+                !RejectedResultIsNoOp(coordinator, () => coordinator.TryToggleMaximize(Alpha, new Rect(0, 24, 5e307, 752)),
+                    OwnedLayoutApplyStatus.InvalidWorkArea, definition.PaneCount) ||
+                !RejectedResultIsNoOp(coordinator, () => coordinator.TryToggleMaximize(new("not-registered"), Rect.Empty),
+                    OwnedLayoutApplyStatus.UnknownOwnedWindow, 1)) return false;
+            OwnedLayoutApplyResult restored = coordinator.TryToggleMaximize(Alpha, WorkArea);
+            int primary = OwnedWindowLayoutCoordinator.PrimaryPaneIndex(definition);
+            IReadOnlyList<Rect> panes = OwnedWindowLayoutCoordinator.ScaleWithInternalGap(definition.Preset, WorkArea);
+            if (!restored.Succeeded || restored.Status != OwnedLayoutApplyStatus.Applied || restored.AppliedPreset != definition.Preset ||
+                coordinator.LastTiledPreset != definition.Preset || restored.RequiredPaneCount != definition.PaneCount ||
+                restored.VisibleWindowCount != 1 || restored.ActiveWindowId != Alpha ||
+                !restored.Placements.SequenceEqual(new[] { new OwnedWindowPlacement(Alpha, primary, panes[primary], definition.PaneCount, true) }) ||
+                State(coordinator, Alpha).ActivationOrdinal != ordinal ||
+                !coordinator.CaptureSnapshot().Windows.Where(window => window.Id != Alpha).SequenceEqual(hiddenBefore)) return false;
+            if (!coordinator.TrySetLifecycle(Alpha, OwnedWindowLifecycle.Minimized) ||
+                !RejectedResultIsNoOp(coordinator, () => coordinator.TryToggleMaximize(Alpha, Rect.Empty), OwnedLayoutApplyStatus.UnknownOwnedWindow, 1))
+                return false;
+        }
+        return true;
+    }
+
+    private static bool DefinedAvailabilityContract()
+    {
+        for (int visible = 0; visible <= 7; visible++)
+        {
+            OwnedWindowLayoutCoordinator coordinator = new();
+            for (int index = 0; index < 7; index++)
+                if (!coordinator.TryRegister(new($"availability:arbitrary-{index}"),
+                    index < visible ? OwnedWindowLifecycle.Visible : index % 2 == 0 ? OwnedWindowLifecycle.Minimized : OwnedWindowLifecycle.Closed,
+                    new Rect(10 + index, 20, 200, 100))) return false;
+            string before = CompleteLayoutFingerprint(coordinator);
+            foreach (LayoutPreset preset in Enum.GetValues<LayoutPreset>())
+            {
+                int required = LayoutCatalog.Get(preset).PaneCount;
+                if (coordinator.GetAvailability(preset) != new OwnedLayoutAvailability(preset, required, visible, true,
+                    visible >= required ? "AVAILABLE" : $"FILLS {visible} OF {required} PANES")) return false;
+            }
+            if (coordinator.GetAvailability((LayoutPreset)(-1)) != new OwnedLayoutAvailability((LayoutPreset)(-1), 0, visible, false, "UNKNOWN LAYOUT") ||
+                CompleteLayoutFingerprint(coordinator) != before || coordinator.LastTiledPreset is not null) return false;
+        }
+        return true;
+    }
+
+    private static bool PrimaryPaneProjectionContract()
+    {
+        (LayoutPane[] Panes, int Index)[] cases =
+        [
+            ([new(9, 9, 1, 1), new(0, 5, 1, 1), new(5, 0, 1, 1), new(0, 0, 1, 1)], 3),
+            ([new(0, 0, 2, 2), new(0, 0, 2, 2)], 0),
+            ([new(0, 0, 1, 1), new(9, 9, 2, 2)], 1),
+            ([new(9, 9, 0, 4), new(0, 0, 0, 1)], 1),
+            ([new(0, 0, 50_000, 50_000), new(9, 9, 1, 1)], 1),
+            ([new(0, 0, -2, 2), new(1, 1, -1, 1)], 1),
+        ];
+        foreach (var test in cases)
+        {
+            LayoutDefinition definition = new((LayoutPreset)(-1), 0, LayoutFamily.Single, "arbitrary", "Arbitrary", test.Panes);
+            if (OwnedWindowLayoutCoordinator.PrimaryPaneIndex(definition) != test.Index) return false;
+        }
+        try
+        {
+            _ = OwnedWindowLayoutCoordinator.PrimaryPaneIndex(null!);
+            return false;
+        }
+        catch (ArgumentNullException exception) when (exception.ParamName == "definition") { }
+        LayoutDefinition empty = new(LayoutPreset.Maximized, 0, LayoutFamily.Single, "empty", "Empty", []);
+        try
+        {
+            _ = OwnedWindowLayoutCoordinator.PrimaryPaneIndex(empty);
+            return false;
+        }
+        catch (InvalidOperationException) { return true; }
+    }
+
+    private static bool PanePlacementProjectionContract()
+    {
+        Dictionary<LayoutPreset, int[]> expectedOrder = new()
+        {
+            [LayoutPreset.Maximized] = [0], [LayoutPreset.EqualColumns] = [0, 1],
+            [LayoutPreset.WideLeftNarrowRight] = [0, 1], [LayoutPreset.NarrowLeftWideRight] = [1, 0],
+            [LayoutPreset.EqualRows] = [0, 1], [LayoutPreset.WideTopNarrowBottom] = [0, 1],
+            [LayoutPreset.NarrowTopWideBottom] = [1, 0], [LayoutPreset.ThreeColumns] = [0, 1, 2],
+            [LayoutPreset.CenterMainColumns] = [1, 0, 2], [LayoutPreset.LeftMainRightStack] = [0, 1, 2],
+            [LayoutPreset.LeftStackRightMain] = [2, 0, 1], [LayoutPreset.ThreeRows] = [0, 1, 2],
+            [LayoutPreset.CenterMainRows] = [1, 0, 2], [LayoutPreset.TopMainBottomSplit] = [0, 1, 2],
+            [LayoutPreset.TopSplitBottomMain] = [2, 0, 1], [LayoutPreset.FourQuadrants] = [0, 1, 2, 3],
+        };
+        OwnedWindowId[] ids = Enumerable.Range(0, 7).Select(index => new OwnedWindowId($"projection:arbitrary-{index}")).ToArray();
+        foreach (var expected in expectedOrder)
+        {
+            OwnedWindowLayoutCoordinator coordinator = new();
+            for (int index = 0; index < ids.Length; index++)
+                if (!coordinator.TryRegister(ids[index], OwnedWindowLifecycle.Visible, new Rect(10 + index, 20, 200, 100))) return false;
+            _ = coordinator.TryActivate(ids[2]);
+            _ = coordinator.TryActivate(ids[0]);
+            OwnedWindowLayoutSnapshot before = coordinator.CaptureSnapshot();
+            OwnedWindowId[] participants = [ids[0], ids[2], ids[6], ids[5]];
+            OwnedLayoutApplyResult result = coordinator.TryApply(expected.Key, WorkArea);
+            IReadOnlyList<Rect> panes = OwnedWindowLayoutCoordinator.ScaleWithInternalGap(expected.Key, WorkArea);
+            OwnedWindowPlacement[] placements = expected.Value.Select((pane, index) =>
+                new OwnedWindowPlacement(participants[index], pane, panes[pane], expected.Value.Length - index, index == 0)).ToArray();
+            if (!result.Succeeded || !result.Placements.SequenceEqual(placements) || result.ActiveWindowId != ids[0] ||
+                coordinator.CaptureSnapshot().Windows.Count != 7) return false;
+            foreach (OwnedWindowState prior in before.Windows)
+            {
+                OwnedWindowState after = State(coordinator, prior.Id);
+                OwnedWindowPlacement? placed = placements.SingleOrDefault(placement => placement.WindowId == prior.Id);
+                if (after != (placed is null ? prior : prior with { Bounds = placed.Bounds, AssignedPaneIndex = placed.PaneIndex })) return false;
+            }
+        }
+        OwnedWindowLayoutCoordinator tied = new();
+        for (int index = 0; index < ids.Length; index++)
+            if (!tied.TryRegister(ids[index], OwnedWindowLifecycle.Closed, new Rect(10 + index, 20, 200, 100))) return false;
+        OwnedLayoutApplyResult restored = tied.TryApply(LayoutPreset.FourQuadrants, WorkArea, true);
+        if (!restored.Succeeded || !restored.Placements.Select(placement => placement.WindowId).SequenceEqual(ids.Take(4)) ||
+            !restored.Placements.Select(placement => placement.PaneIndex).SequenceEqual(new int?[] { 0, 1, 2, 3 }) ||
+            tied.CaptureSnapshot().Windows.Any(window => window.ActivationOrdinal != 0)) return false;
+        _ = tied.TryActivate(ids[3]);
+        _ = tied.TryActivate(ids[1]);
+        OwnedWindowState extra = State(tied, ids[2]);
+        OwnedLayoutApplyResult reordered = tied.TryApply(LayoutPreset.LeftStackRightMain, WorkArea);
+        return reordered.Succeeded && reordered.Placements.Select(placement => placement.WindowId).SequenceEqual(new[] { ids[1], ids[3], ids[0] }) &&
+            reordered.Placements.Select(placement => placement.PaneIndex).SequenceEqual(new int?[] { 2, 0, 1 }) &&
+            State(tied, ids[2]) == extra with { AssignedPaneIndex = null } &&
+            ids.Skip(4).All(id => State(tied, id).Lifecycle == OwnedWindowLifecycle.Closed);
     }
 
     private static bool SharedVisualSearchContract()

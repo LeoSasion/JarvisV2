@@ -129,7 +129,7 @@ show a live Windows Task Manager or a styled Windows Explorer.
 
 ## Verification
 
-`test-owned-window-layout` passes 55/55 scenarios: 18 coordinator, 36 hosted
+`test-owned-window-layout` passes 62/62 scenarios: 25 coordinator, 36 hosted
 WPF scenarios and one real WPF visual-tree contract. The shared traversal keeps
 depth-first child order, excludes the descendant starting node, includes the
 parent starting source and preserves null behavior. The existing coordinator
@@ -137,7 +137,7 @@ is reused without a model rewrite.
 New hosted traces cover exact secondary lifecycle/content retention, title
 click/jitter/drag/capture loss/double-click, body activation, MRU stacking, rail
 focus return, actual populated three/four-pane bounds and usable controls.
-`test-explorer-workspace` passes 30/30, including taskbar creation, independent
+`test-explorer-workspace` passes 40/40, including taskbar creation, independent
 navigation/selection/rename/new-folder/preview, the inert retained-session cap,
 keyboard New/Restore and lifecycle/focus-intent/unload races. Hosted checks cover both active-window choices for all six splits,
 actual element bounds, partial fill, compact controls, lifecycle, focus,

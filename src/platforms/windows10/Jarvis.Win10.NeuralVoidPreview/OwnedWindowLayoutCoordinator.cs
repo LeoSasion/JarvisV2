@@ -295,7 +295,6 @@ internal sealed class OwnedWindowLayoutCoordinator
         {
             return Result(
                 OwnedLayoutApplyStatus.UnknownOwnedWindow,
-                null,
                 1,
                 []);
         }
@@ -304,7 +303,6 @@ internal sealed class OwnedWindowLayoutCoordinator
         {
             return Result(
                 OwnedLayoutApplyStatus.InvalidWorkArea,
-                null,
                 1,
                 []);
         }
@@ -317,8 +315,7 @@ internal sealed class OwnedWindowLayoutCoordinator
             return TryApplyCore(LayoutPreset.Maximized, workArea, id);
         }
 
-        if (_lastTiledPreset is LayoutPreset lastTiled &&
-            GetAvailability(lastTiled).IsEnabled)
+        if (_lastTiledPreset is LayoutPreset lastTiled)
         {
             return TryApplyCore(lastTiled, workArea, id);
         }
@@ -328,7 +325,6 @@ internal sealed class OwnedWindowLayoutCoordinator
         ActivateCore(entry);
         return Result(
             OwnedLayoutApplyStatus.RestoredFreeform,
-            null,
             1,
             [
                 new(
@@ -345,12 +341,7 @@ internal sealed class OwnedWindowLayoutCoordinator
         ArgumentNullException.ThrowIfNull(definition);
         return definition.Panes
             .Select(
-                (pane, index) => new
-                {
-                    Pane = pane,
-                    Index = index,
-                    Area = pane.Width * pane.Height,
-                })
+                (pane, index) => (Pane: pane, Index: index, Area: pane.Width * pane.Height))
             .OrderByDescending(candidate => candidate.Area)
             .ThenBy(candidate => candidate.Pane.Y)
             .ThenBy(candidate => candidate.Pane.X)
@@ -423,7 +414,6 @@ internal sealed class OwnedWindowLayoutCoordinator
         {
             return Result(
                 OwnedLayoutApplyStatus.UnknownLayout,
-                null,
                 0,
                 []);
         }
@@ -449,7 +439,6 @@ internal sealed class OwnedWindowLayoutCoordinator
         {
             return Result(
                 OwnedLayoutApplyStatus.NoVisibleWindow,
-                null,
                 required,
                 []);
         }
@@ -458,7 +447,6 @@ internal sealed class OwnedWindowLayoutCoordinator
         {
             return Result(
                 OwnedLayoutApplyStatus.InvalidWorkArea,
-                null,
                 required,
                 []);
         }
@@ -471,7 +459,6 @@ internal sealed class OwnedWindowLayoutCoordinator
             {
                 return Result(
                     OwnedLayoutApplyStatus.UnknownOwnedWindow,
-                    null,
                     required,
                     []);
             }
@@ -500,14 +487,13 @@ internal sealed class OwnedWindowLayoutCoordinator
         {
             return Result(
                 OwnedLayoutApplyStatus.InvalidWorkArea,
-                null,
                 required,
                 []);
         }
 
         int primaryPane = PrimaryPaneIndex(definition);
         List<int> paneOrder = definition.Panes
-            .Select((pane, index) => new { Pane = pane, Index = index })
+            .Select((pane, index) => (Pane: pane, Index: index))
             .Where(candidate => candidate.Index != primaryPane)
             .OrderBy(candidate => candidate.Pane.Y)
             .ThenBy(candidate => candidate.Pane.X)
@@ -553,26 +539,18 @@ internal sealed class OwnedWindowLayoutCoordinator
 
         return Result(
             OwnedLayoutApplyStatus.Applied,
-            preset,
             required,
             placements);
     }
 
     private OwnedLayoutApplyResult Result(
         OwnedLayoutApplyStatus status,
-        LayoutPreset? appliedPreset,
         int requiredPaneCount,
         IReadOnlyList<OwnedWindowPlacement> placements)
     {
-        LayoutPreset? effectivePreset = status switch
-        {
-            OwnedLayoutApplyStatus.Applied => appliedPreset,
-            OwnedLayoutApplyStatus.RestoredFreeform => null,
-            _ => _appliedPreset,
-        };
         return new(
             status,
-            effectivePreset,
+            _appliedPreset,
             requiredPaneCount,
             VisibleWindowCount,
             _activeWindowId,

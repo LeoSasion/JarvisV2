@@ -221,10 +221,7 @@ internal sealed class ExplorerWorkspace
             CurrentNode.Children.Contains(itemId, StringComparer.Ordinal);
         if (!isChild)
         {
-            bool changed = _selectedItemId is not null ||
-                _renameItemId is not null;
-            ClearInteractionState();
-            NotifyChangedIf(changed);
+            ClearSelection();
             return false;
         }
 
@@ -265,28 +262,23 @@ internal sealed class ExplorerWorkspace
         return true;
     }
 
-    public bool TryGoBack()
+    public bool TryGoBack() =>
+        TryMoveHistory(_backHistory, _forwardHistory);
+
+    public bool TryGoForward() =>
+        TryMoveHistory(_forwardHistory, _backHistory);
+
+    private bool TryMoveHistory(
+        List<string> source,
+        List<string> destinationHistory)
     {
-        if (_backHistory.Count == 0)
+        if (source.Count == 0)
         {
             return false;
         }
 
-        string destination = Pop(_backHistory);
-        _forwardHistory.Add(_currentLocationId);
-        SetCurrentLocation(destination);
-        return true;
-    }
-
-    public bool TryGoForward()
-    {
-        if (_forwardHistory.Count == 0)
-        {
-            return false;
-        }
-
-        string destination = Pop(_forwardHistory);
-        _backHistory.Add(_currentLocationId);
+        string destination = Pop(source);
+        destinationHistory.Add(_currentLocationId);
         SetCurrentLocation(destination);
         return true;
     }
@@ -416,16 +408,13 @@ internal sealed class ExplorerWorkspace
         string name = UniqueFolderName(CurrentNode);
         int sequence = _nextFolderSequence++;
         string id = $"session:new-folder:{sequence:D4}";
-        Node folder = AddNode(
+        Node folder = AddFolder(
             id,
             name,
-            ExplorerWorkspaceItemKind.Folder,
             CurrentNode.Id,
             "FOLDER",
             "folder",
-            null,
-            SessionEpoch.AddSeconds(sequence),
-            string.Empty);
+            SessionEpoch.AddSeconds(sequence));
         _selectedItemId = folder.Id;
         _renameItemId = folder.Id;
         NotifyChanged();
@@ -434,153 +423,132 @@ internal sealed class ExplorerWorkspace
 
     private void SeedVirtualTree()
     {
-        AddNode(
+        AddFolder(
             ThisPcId,
             "THIS PC",
-            ExplorerWorkspaceItemKind.Folder,
             null,
             "ROOT",
             "this-pc",
-            null,
-            Utc(2026, 8, 1, 9, 0),
-            string.Empty);
-        AddNode(
+            Utc(2026, 8, 1, 9, 0));
+        AddFolder(
             NeuralStorageId,
             "NEURAL STORAGE",
-            ExplorerWorkspaceItemKind.Folder,
             ThisPcId,
             "STORAGE",
             "neural-storage",
-            null,
-            Utc(2026, 8, 1, 9, 1),
-            string.Empty);
-        AddNode(
+            Utc(2026, 8, 1, 9, 1));
+        AddFolder(
             DocumentsId,
             "DOCUMENTS",
-            ExplorerWorkspaceItemKind.Folder,
             NeuralStorageId,
             "FOLDER",
             "documents",
-            null,
-            Utc(2026, 8, 4, 13, 42),
-            string.Empty);
-        AddNode(
+            Utc(2026, 8, 4, 13, 42));
+        AddFolder(
             ProjectsId,
             "PROJECTS",
-            ExplorerWorkspaceItemKind.Folder,
             NeuralStorageId,
             "FOLDER",
             "projects",
-            null,
-            Utc(2026, 8, 3, 18, 20),
-            string.Empty);
-        AddNode(
+            Utc(2026, 8, 3, 18, 20));
+        AddFolder(
             ArchiveId,
             "ARCHIVE",
-            ExplorerWorkspaceItemKind.Folder,
             NeuralStorageId,
             "FOLDER",
             "archive",
-            null,
-            Utc(2026, 7, 29, 16, 18),
-            string.Empty);
+            Utc(2026, 7, 29, 16, 18));
 
         AddFile(
             ProjectBriefId,
             "PROJECT_BRIEF_0826.DOCX",
             DocumentsId,
-            "DOCX",
-            "document",
             2_400_000,
-            Utc(2026, 8, 4, 10, 21),
-            "document-outline");
+            Utc(2026, 8, 4, 10, 21));
         AddFile(
             SpecificationsId,
             "SPECIFICATIONS_V2.PDF",
             DocumentsId,
-            "PDF",
-            "pdf",
             1_800_000,
-            Utc(2026, 8, 3, 15, 42),
-            "pdf-outline");
+            Utc(2026, 8, 3, 15, 42));
         AddFile(
             "file:report-draft",
             "REPORT_DRAFT.PPTX",
             DocumentsId,
-            "PPTX",
-            "presentation",
             5_700_000,
-            Utc(2026, 8, 2, 11, 9),
-            "presentation-outline");
+            Utc(2026, 8, 2, 11, 9));
         AddFile(
             "file:data-sheet",
             "DATA_SHEET.XLSX",
             DocumentsId,
-            "XLSX",
-            "spreadsheet",
             1_200_000,
-            Utc(2026, 8, 1, 9, 33),
-            "spreadsheet-outline");
+            Utc(2026, 8, 1, 9, 33));
         AddFile(
             "file:meeting-notes",
             "MEETING_NOTES_0804.TXT",
             DocumentsId,
-            "TXT",
-            "text",
             18_000,
-            Utc(2026, 8, 4, 8, 47),
-            "text-outline");
+            Utc(2026, 8, 4, 8, 47));
         AddFile(
             "file:site-map",
             "SITE_MAP.VIS",
             DocumentsId,
-            "VISUAL",
-            "visual",
             640_000,
-            Utc(2026, 8, 2, 17, 26),
-            "visual-outline");
+            Utc(2026, 8, 2, 17, 26));
 
-        AddNode(
+        AddFolder(
             "folder:aurora-engine",
             "AURORA ENGINE",
-            ExplorerWorkspaceItemKind.Folder,
             ProjectsId,
             "FOLDER",
             "project-folder",
-            null,
-            Utc(2026, 8, 4, 12, 4),
-            string.Empty);
+            Utc(2026, 8, 4, 12, 4));
         AddFile(
             LongResearchFileId,
             "HORIZON_MEMBRANE_SPATIAL_COMPUTE_RESEARCH_NOTES_" +
                 "AND_IMPLEMENTATION_MATRIX_2026-08-04.MD",
             ProjectsId,
-            "MD",
-            "text",
             84_000,
-            Utc(2026, 8, 4, 12, 28),
-            "text-outline");
+            Utc(2026, 8, 4, 12, 28));
     }
 
     private void AddFile(
         string id,
         string name,
         string parentId,
-        string typeLabel,
-        string iconKey,
         long sizeBytes,
-        DateTimeOffset modifiedAt,
-        string previewKind) =>
-        AddNode(
+        DateTimeOffset modifiedAt)
+    {
+        Node file = AddNode(
             id,
             name,
             ExplorerWorkspaceItemKind.File,
             parentId,
-            typeLabel,
-            iconKey,
+            string.Empty,
+            string.Empty,
             sizeBytes,
             modifiedAt,
-            previewKind);
+            string.Empty);
+        ApplyFilePresentation(file, name);
+    }
+
+    private Node AddFolder(
+        string id,
+        string name,
+        string? parentId,
+        string typeLabel,
+        string iconKey,
+        DateTimeOffset modifiedAt) =>
+        AddNode(
+            id,
+            name,
+            ExplorerWorkspaceItemKind.Folder,
+            parentId,
+            typeLabel,
+            iconKey,
+            null,
+            modifiedAt,
+            string.Empty);
 
     private Node AddNode(
         string id,
@@ -668,7 +636,10 @@ internal sealed class ExplorerWorkspace
             return ExplorerRenameError.InvalidCharacter;
         }
 
-        string deviceStem = proposedName.Split('.')[0];
+        int separator = proposedName.IndexOf('.');
+        string deviceStem = separator < 0
+            ? proposedName
+            : proposedName[..separator];
         if (ReservedDeviceNames.Contains(
                 deviceStem,
                 StringComparer.OrdinalIgnoreCase))

@@ -794,6 +794,371 @@ internal static class ExplorerWorkspaceScenarios
         Add(scenarios, "hosted-already-focused-valid-rename-blur-preserves-foreign-explorer",
             () => HostedRenameBlurPreservesNewerFocus(validName: true, foreignExplorer: true));
 
+        Add(scenarios, "invalid-selection-notifications-null-foreign-and-already-clear",
+            () =>
+            {
+                foreach (string? invalid in new string?[]
+                {
+                    null, "file:not-present", ExplorerWorkspace.ProjectsId,
+                })
+                {
+                    ExplorerWorkspace workspace = new();
+                    int notifications = 0;
+                    bool returned = false;
+                    workspace.Changed += (sender, args) =>
+                    {
+                        notifications++;
+                        Require(ReferenceEquals(sender, workspace) && args == EventArgs.Empty && !returned,
+                            "Changed must run synchronously before invalid selection returns.");
+                        ExplorerWorkspaceSnapshot snapshot = workspace.CaptureSnapshot();
+                        Require(snapshot.SelectedItemId is null && snapshot.RenameItemId is null &&
+                            snapshot.Items.All(item => !item.IsSelected && !item.IsRenameTarget),
+                            "Invalid selection must clear selection and rename before Changed.");
+                    };
+                    Require(!workspace.SelectItem(invalid) && notifications == 0,
+                        "An already-clear invalid selection must not notify.");
+                    ExplorerWorkspace active = new();
+                    Require(active.SelectItem(ExplorerWorkspace.ProjectBriefId) && active.BeginRenameSelected().Succeeded,
+                        "Characterization requires active selection and rename.");
+                    active.Changed += (_, _) =>
+                    {
+                        notifications++;
+                        Require(!returned && active.SelectedItemId is null && active.RenameItemId is null,
+                            "Both interaction fields must be clear inside Changed.");
+                    };
+                    Require(!active.SelectItem(invalid) && notifications == 1,
+                        "Null, missing and foreign membership must each clear exactly once.");
+                    returned = true;
+                    Require(!active.SelectItem(invalid) && notifications == 1,
+                        "Repeating an already-clear invalid selection must be inert.");
+                }
+                return true;
+            });
+        Add(scenarios, "invalid-selection-reentrant-subscriber-selection-survives-outer-return",
+            () =>
+            {
+                ExplorerWorkspace workspace = new();
+                Require(workspace.SelectItem(ExplorerWorkspace.ProjectBriefId) && workspace.BeginRenameSelected().Succeeded,
+                    "Characterization requires active selection and rename.");
+                List<string> trace = [];
+                bool returned = false;
+                workspace.Changed += (_, _) =>
+                {
+                    Require(!returned, "Every nested notification must precede the outer return.");
+                    trace.Add($"event:{workspace.SelectedItemId ?? "none"}:{workspace.RenameItemId ?? "none"}");
+                    if (workspace.SelectedItemId is null)
+                    {
+                        Require(workspace.SelectItem(ExplorerWorkspace.SpecificationsId), "Reentrant seeded selection failed.");
+                        trace.Add($"subscriber:{workspace.SelectedItemId}:{workspace.RenameItemId ?? "none"}");
+                    }
+                };
+                bool accepted = workspace.SelectItem(null);
+                returned = true;
+                trace.Add($"return:{accepted}:{workspace.SelectedItemId}:{workspace.RenameItemId ?? "none"}");
+                Require(trace.SequenceEqual(new[]
+                {
+                    "event:none:none",
+                    "event:file:specifications-v2:none",
+                    "subscriber:file:specifications-v2:none",
+                    "return:False:file:specifications-v2:none",
+                }), string.Join("|", trace));
+                return true;
+            });
+
+        Add(scenarios, "history-public-boundaries-and-notification-snapshots",
+            () =>
+            {
+                ExplorerWorkspace workspace = new();
+                int notifications = 0;
+                Require(!workspace.TryGoBack() && !workspace.TryGoForward(), "Initial history boundaries must be inert.");
+                Require(workspace.TryNavigateTo(ExplorerWorkspace.ProjectsId) &&
+                    workspace.SelectItem("folder:aurora-engine") && workspace.BeginRenameSelected().Succeeded,
+                    "History characterization requires selected rename in Projects.");
+                List<ExplorerWorkspaceSnapshot> snapshots = [];
+                bool returned = false;
+                workspace.Changed += (_, _) =>
+                {
+                    notifications++;
+                    Require(!returned, "History Changed must precede navigation return.");
+                    ExplorerWorkspaceSnapshot snapshot = workspace.CaptureSnapshot();
+                    Require(snapshot.SelectedItemId is null && snapshot.RenameItemId is null &&
+                        snapshot.Items.All(item => !item.IsSelected && !item.IsRenameTarget),
+                        "History must clear interaction before notifying.");
+                    snapshots.Add(snapshot);
+                };
+                Require(workspace.TryGoBack(), "Back failed.");
+                Require(snapshots[0].CurrentLocation.Id == ExplorerWorkspace.DocumentsId &&
+                    !snapshots[0].CanGoBack && snapshots[0].CanGoForward, "Both history mutations must precede Changed.");
+                Require(!workspace.TryGoBack() && notifications == 1, "Empty back history must not notify.");
+                Require(workspace.TryGoForward(), "Forward failed.");
+                Require(snapshots[1].CurrentLocation.Id == ExplorerWorkspace.ProjectsId &&
+                    snapshots[1].CanGoBack && !snapshots[1].CanGoForward, "Forward history mutations must precede Changed.");
+                Require(!workspace.TryGoForward() && notifications == 2, "Empty forward history must not notify.");
+                returned = true;
+                Require(snapshots[0].CurrentLocation.Id == ExplorerWorkspace.DocumentsId &&
+                    snapshots[0].Items.Count == 6 && !snapshots[0].CanGoBack && snapshots[0].CanGoForward,
+                    "Captured history snapshots must remain immutable.");
+                return true;
+            });
+        Add(scenarios, "history-reentrant-opposite-navigation-preserves-synchronous-trace",
+            () =>
+            {
+                foreach (bool backFirst in new[] { true, false })
+                {
+                    ExplorerWorkspace workspace = new();
+                    Require(workspace.TryNavigateTo(ExplorerWorkspace.ProjectsId), "Projects navigation failed.");
+                    if (!backFirst) Require(workspace.TryGoBack(), "Forward setup failed.");
+                    string original = backFirst ? ExplorerWorkspace.ProjectsId : ExplorerWorkspace.DocumentsId;
+                    string destination = backFirst ? ExplorerWorkspace.DocumentsId : ExplorerWorkspace.ProjectsId;
+                    Require(workspace.SelectItem(backFirst ? "folder:aurora-engine" : ExplorerWorkspace.ProjectBriefId) &&
+                        workspace.BeginRenameSelected().Succeeded, "Reentrant history setup failed.");
+                    List<string> trace = [];
+                    bool nested = false;
+                    bool returned = false;
+                    workspace.Changed += (_, _) =>
+                    {
+                        Require(!returned && workspace.SelectedItemId is null && workspace.RenameItemId is null,
+                            "Interaction clearing and callbacks must precede outer return.");
+                        trace.Add($"event:{workspace.CurrentLocationId}:{workspace.CanGoBack}:{workspace.CanGoForward}");
+                        if (!nested)
+                        {
+                            nested = true;
+                            Require(backFirst ? workspace.TryGoForward() : workspace.TryGoBack(), "Nested opposite navigation failed.");
+                            trace.Add($"subscriber:{workspace.CurrentLocationId}");
+                        }
+                    };
+                    Require(backFirst ? workspace.TryGoBack() : workspace.TryGoForward(), "Outer navigation failed.");
+                    returned = true;
+                    trace.Add($"return:{workspace.CurrentLocationId}");
+                    Require(trace.SequenceEqual(new[]
+                    {
+                        $"event:{destination}:{!backFirst}:{backFirst}",
+                        $"event:{original}:{backFirst}:{!backFirst}",
+                        $"subscriber:{original}",
+                        $"return:{original}",
+                    }), string.Join("|", trace));
+                }
+                return true;
+            });
+
+        Add(scenarios, "private-history-helper-moves-lists-before-notifying",
+            () =>
+            {
+                System.Reflection.MethodInfo helper = typeof(ExplorerWorkspace).GetMethod("TryMoveHistory",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+                    null, [typeof(List<string>), typeof(List<string>)], null) ??
+                    throw new InvalidOperationException("Private TryMoveHistory helper absent.");
+                ExplorerWorkspace workspace = new();
+                Require(workspace.SelectItem(ExplorerWorkspace.ProjectBriefId) && workspace.BeginRenameSelected().Succeeded,
+                    "Private history setup failed.");
+                List<string> source = [ExplorerWorkspace.ArchiveId, ExplorerWorkspace.ProjectsId];
+                List<string> destination = [ExplorerWorkspace.ThisPcId];
+                int notifications = 0;
+                workspace.Changed += (_, _) =>
+                {
+                    notifications++;
+                    Require(workspace.SelectedItemId is null && workspace.RenameItemId is null,
+                        "Helper must clear interaction before Changed.");
+                    if (notifications == 1)
+                        Require(source.SequenceEqual(new[] { ExplorerWorkspace.ArchiveId }) &&
+                            destination.SequenceEqual(new[] { ExplorerWorkspace.ThisPcId, ExplorerWorkspace.DocumentsId }) &&
+                            workspace.CurrentLocationId == ExplorerWorkspace.ProjectsId,
+                            "Pop, opposite push and location update must precede Changed.");
+                    else
+                        Require(source.SequenceEqual(new[] { ExplorerWorkspace.ArchiveId, ExplorerWorkspace.ProjectsId }) &&
+                            destination.SequenceEqual(new[] { ExplorerWorkspace.ThisPcId }) &&
+                            workspace.CurrentLocationId == ExplorerWorkspace.DocumentsId,
+                            "Swapped source and destination must use the same transition.");
+                };
+                Require(helper.Invoke(workspace, [source, destination]) is true && notifications == 1,
+                    "History helper must return true after notifying.");
+                Require(helper.Invoke(workspace, [destination, source]) is true && notifications == 2,
+                    "Reverse helper transition failed.");
+                ExplorerWorkspaceSnapshot before = workspace.CaptureSnapshot();
+                Require(helper.Invoke(workspace, [new List<string>(), destination]) is false && notifications == 2 &&
+                    workspace.CaptureSnapshot().CurrentLocation == before.CurrentLocation &&
+                    destination.SequenceEqual(new[] { ExplorerWorkspace.ThisPcId }), "Empty helper source must be inert.");
+                return true;
+            });
+
+        Add(scenarios, "complete-seed-literal-fields-order-locations-and-owned-previews", CompleteSeedContract);
+
+        Add(scenarios, "new-folder-reentrant-changed-advances-sequence-before-item-return",
+            () =>
+            {
+                ExplorerWorkspace workspace = new();
+                Require(workspace.TryNavigateTo(ExplorerWorkspace.ArchiveId), "Folder setup failed.");
+                List<ExplorerWorkspaceSnapshot> events = [];
+                ExplorerWorkspaceItem? nestedFolder = null;
+                bool entered = false;
+                bool returned = false;
+                EventHandler onChanged = (_, _) =>
+                {
+                    Require(!returned, "Folder Changed must be synchronous.");
+                    events.Add(workspace.CaptureSnapshot());
+                    if (!entered)
+                    {
+                        entered = true;
+                        Require(workspace.CommitRename("CALLBACK_RENAMED").Succeeded, "Callback rename failed.");
+                        nestedFolder = workspace.CreateUniqueFolder();
+                    }
+                };
+                workspace.Changed += onChanged;
+                ExplorerWorkspaceItem folder = workspace.CreateUniqueFolder();
+                returned = true;
+                workspace.Changed -= onChanged;
+                ExplorerWorkspaceItem expectedFirst = new("session:new-folder:0001", "New Folder",
+                    ExplorerWorkspaceItemKind.Folder, "FOLDER", "folder", null,
+                    new(2026, 8, 4, 14, 39, 1, TimeSpan.Zero), true, true, false);
+                ExplorerWorkspaceItem expectedSecond = new("session:new-folder:0002", "New Folder",
+                    ExplorerWorkspaceItemKind.Folder, "FOLDER", "folder", null,
+                    new(2026, 8, 4, 14, 39, 2, TimeSpan.Zero), true, true, false);
+                Require(events.Count == 3 && events[0].Items.SequenceEqual(new[] { expectedFirst }) &&
+                    events[0].SelectedItemId == expectedFirst.Id && events[0].RenameItemId == expectedFirst.Id,
+                    "First folder must be published and selected for rename before Changed.");
+                Require(events[1].Items.Single() == expectedFirst with { Name = "CALLBACK_RENAMED", IsRenameTarget = false } &&
+                    events[1].SelectedItemId == expectedFirst.Id && events[1].RenameItemId is null,
+                    "Reentrant rename must publish before its callback.");
+                Require(nestedFolder == expectedSecond && events[2].Items.SequenceEqual(new[]
+                {
+                    expectedFirst with { Name = "CALLBACK_RENAMED", IsSelected = false, IsRenameTarget = false }, expectedSecond,
+                }) && events[2].SelectedItemId == expectedSecond.Id && events[2].RenameItemId == expectedSecond.Id,
+                    "Sequence must advance before a reentrant second creation.");
+                Require(folder == expectedFirst with { Name = "CALLBACK_RENAMED", IsSelected = false, IsRenameTarget = false } &&
+                    events[0].Items.Single() == expectedFirst,
+                    "ToItem must follow Changed and reflect reentrant mutation without changing old snapshots.");
+                Require(workspace.OpenSelected().Disposition == ExplorerOpenDisposition.Navigated &&
+                    workspace.CurrentLocationId == expectedSecond.Id && workspace.IsCurrentLocationEmpty &&
+                    workspace.Breadcrumb.Select(segment => segment.Id).SequenceEqual(new[]
+                    {
+                        "location:this-pc", "location:neural-storage", "location:archive", "session:new-folder:0002",
+                    }), "Created folder must be a real memory-only navigable child.");
+                return true;
+            });
+
+        Add(scenarios, "private-folder-helper-publishes-linked-node-with-exact-fields",
+            () =>
+            {
+                System.Reflection.MethodInfo helper = typeof(ExplorerWorkspace).GetMethod("AddFolder",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+                    null, [typeof(string), typeof(string), typeof(string), typeof(string), typeof(string), typeof(DateTimeOffset)], null) ??
+                    throw new InvalidOperationException("Private AddFolder helper absent.");
+                ExplorerWorkspace workspace = new();
+                int notifications = 0;
+                workspace.Changed += (_, _) => notifications++;
+                DateTimeOffset modified = new(2026, 8, 5, 1, 2, 3, TimeSpan.Zero);
+                object root = helper.Invoke(workspace, ["test:root", "HELPER ROOT", null, "ROOT", "this-pc", modified]) ??
+                    throw new InvalidOperationException("Folder helper did not return its Node.");
+                object child = helper.Invoke(workspace, ["test:child", "HELPER STORAGE", "test:root", "STORAGE", "neural-storage", modified]) ??
+                    throw new InvalidOperationException("Folder helper did not return its child Node.");
+                Require(notifications == 0 && workspace.SelectedItemId is null && workspace.RenameItemId is null &&
+                    workspace.CurrentLocationId == ExplorerWorkspace.DocumentsId && !workspace.CanGoBack && !workspace.CanGoForward,
+                    "Construction helper must not add interaction or navigation notifications.");
+                ExplorerWorkspaceItem? childItem = null;
+                Require(workspace.TryGetItem("test:root", out ExplorerWorkspaceItem? rootItem) && rootItem ==
+                    new ExplorerWorkspaceItem("test:root", "HELPER ROOT", ExplorerWorkspaceItemKind.Folder, "ROOT", "this-pc", null,
+                        modified, false, false, false) &&
+                    workspace.TryGetItem("test:child", out childItem) && childItem ==
+                    new ExplorerWorkspaceItem("test:child", "HELPER STORAGE", ExplorerWorkspaceItemKind.Folder, "STORAGE", "neural-storage", null,
+                        modified, false, false, false), "Helper must preserve every folder presentation field.");
+                Require(root.GetType().GetProperty("ParentId")!.GetValue(root) is null &&
+                    Equals(child.GetType().GetProperty("ParentId")!.GetValue(child), "test:root") &&
+                    Equals(root.GetType().GetProperty("PreviewKind")!.GetValue(root), string.Empty) &&
+                    Equals(child.GetType().GetProperty("PreviewKind")!.GetValue(child), string.Empty),
+                    "Helper must retain null size, explicit parent and empty preview invariants.");
+                Require(workspace.TryNavigateTo("test:root") && workspace.Items.SequenceEqual(new[] { childItem! }) &&
+                    workspace.OpenItem("test:child").Disposition == ExplorerOpenDisposition.Navigated &&
+                    workspace.CurrentLocationId == "test:child" && workspace.IsCurrentLocationEmpty &&
+                    workspace.Breadcrumb.SequenceEqual(new[]
+                    {
+                        new ExplorerBreadcrumbSegment("test:root", "HELPER ROOT"), new("test:child", "HELPER STORAGE"),
+                    }), "Returned nodes must be real linked folders on the public navigation path.");
+                return true;
+            });
+
+        Add(scenarios, "rename-dot-stem-error-precedence-is-nonmutating-and-silent",
+            () =>
+            {
+                (string? Name, ExplorerRenameError Error)[] cases =
+                [
+                    (null, ExplorerRenameError.EmptyName), ("", ExplorerRenameError.EmptyName),
+                    ("  ", ExplorerRenameError.EmptyName),
+                    (new string('A', 256) + "?.", ExplorerRenameError.NameTooLong),
+                    (".", ExplorerRenameError.ReservedName), ("..", ExplorerRenameError.ReservedName),
+                    ("...", ExplorerRenameError.TrailingSpaceOrPeriod),
+                    ("report.", ExplorerRenameError.TrailingSpaceOrPeriod),
+                    ("report ", ExplorerRenameError.TrailingSpaceOrPeriod),
+                    ("CON?. ", ExplorerRenameError.TrailingSpaceOrPeriod),
+                    ("BAD?.", ExplorerRenameError.TrailingSpaceOrPeriod),
+                    ("CON?.txt", ExplorerRenameError.InvalidCharacter),
+                    ("CON\u0001.multi.dot", ExplorerRenameError.InvalidCharacter),
+                    ("CON.multi.dot", ExplorerRenameError.ReservedName),
+                    ("cOn.multi.dot", ExplorerRenameError.ReservedName),
+                    ("CON..txt", ExplorerRenameError.ReservedName),
+                    ("specifications_v2.pdf", ExplorerRenameError.DuplicateName),
+                ];
+                foreach (var test in cases)
+                {
+                    ExplorerWorkspace workspace = new();
+                    int notifications = 0;
+                    workspace.Changed += (_, _) => notifications++;
+                    Require(workspace.CommitRename(test.Name).Error == ExplorerRenameError.NoActiveRename && notifications == 0,
+                        "No-active-rename must precede every name validation.");
+                    Require(workspace.SelectItem(ExplorerWorkspace.ProjectBriefId) && workspace.BeginRenameSelected().Succeeded,
+                        "Validation setup failed.");
+                    int beforeCount = notifications;
+                    string before = JsonSerializer.Serialize(workspace.CaptureSnapshot());
+                    ExplorerRenameResult result = workspace.CommitRename(test.Name);
+                    Require(!result.Succeeded && result.Error == test.Error && result.ItemId is null && result.Name is null &&
+                        notifications == beforeCount && JsonSerializer.Serialize(workspace.CaptureSnapshot()) == before,
+                        $"Rename precedence/mutation/notification changed for '{test.Name}': {result.Error}.");
+                }
+                return true;
+            });
+        Add(scenarios, "rename-dot-prefix-success-preserves-name-and-publishes-before-changed",
+            () =>
+            {
+                (string Name, string Type, string Icon, string Preview)[] cases =
+                [
+                    ("report.v1.final.txt", "TXT", "text", "text-outline"),
+                    (".CON", "FILE", "document", "document-outline"),
+                    ("..CON", "CON", "document", "document-outline"),
+                    (".con.txt", "TXT", "text", "text-outline"),
+                    ("a..b", "B", "document", "document-outline"),
+                    ("report", "FILE", "document", "document-outline"),
+                    (" CON.txt", "TXT", "text", "text-outline"),
+                    ("CON .txt", "TXT", "text", "text-outline"),
+                    ("PROJECT_BRIEF_0826.DOCX", "DOCX", "document", "document-outline"),
+                ];
+                foreach (var test in cases)
+                {
+                    ExplorerWorkspace workspace = new();
+                    Require(workspace.SelectItem(ExplorerWorkspace.ProjectBriefId) && workspace.BeginRenameSelected().Succeeded,
+                        "Rename success setup failed.");
+                    ExplorerWorkspaceItem before = workspace.Items[0];
+                    ExplorerWorkspaceItem expected = before with
+                    {
+                        Name = test.Name, TypeLabel = test.Type, IconKey = test.Icon, IsRenameTarget = false,
+                    };
+                    int notifications = 0;
+                    bool returned = false;
+                    workspace.Changed += (_, _) =>
+                    {
+                        notifications++;
+                        Require(!returned && workspace.RenameItemId is null && workspace.SelectedItemId == before.Id &&
+                            workspace.Items[0] == expected, "Rename must publish complete presentation and clear rename before Changed.");
+                    };
+                    ExplorerRenameResult result = workspace.CommitRename(test.Name);
+                    returned = true;
+                    Require(result == new ExplorerRenameResult(true, ExplorerRenameError.None, before.Id, test.Name, "Rename committed.") &&
+                        notifications == 1 && workspace.OpenSelected().PreviewRequest ==
+                        new ExplorerPreviewRequest(before.Id, test.Name, test.Type, test.Preview,
+                            "JARVIS2.NEURAL_VOID_PREVIEW", true, false, false),
+                        $"Dot-prefix rename contract changed for '{test.Name}'.");
+                }
+                return true;
+            });
+
         int passedCount = scenarios.Count(scenario => scenario.Passed);
         return new(
             1,
@@ -815,6 +1180,89 @@ internal static class ExplorerWorkspaceScenarios
         ExplorerWorkspaceTestReceipt receipt = Run();
         output.WriteLine(JsonSerializer.Serialize(receipt, JsonOptions));
         return receipt.Result == "passed" ? 0 : 12;
+    }
+
+    private static bool CompleteSeedContract()
+    {
+        (ExplorerWorkspaceItem Item, string? ParentId, string PreviewKind)[] expected =
+        [
+            (new("location:this-pc", "THIS PC", ExplorerWorkspaceItemKind.Folder, "ROOT", "this-pc", null,
+                new(2026, 8, 1, 9, 0, 0, TimeSpan.Zero), false, false, false), null, ""),
+            (new("location:neural-storage", "NEURAL STORAGE", ExplorerWorkspaceItemKind.Folder, "STORAGE", "neural-storage", null,
+                new(2026, 8, 1, 9, 1, 0, TimeSpan.Zero), false, false, false), "location:this-pc", ""),
+            (new("location:documents", "DOCUMENTS", ExplorerWorkspaceItemKind.Folder, "FOLDER", "documents", null,
+                new(2026, 8, 4, 13, 42, 0, TimeSpan.Zero), false, false, false), "location:neural-storage", ""),
+            (new("location:projects", "PROJECTS", ExplorerWorkspaceItemKind.Folder, "FOLDER", "projects", null,
+                new(2026, 8, 3, 18, 20, 0, TimeSpan.Zero), false, false, false), "location:neural-storage", ""),
+            (new("location:archive", "ARCHIVE", ExplorerWorkspaceItemKind.Folder, "FOLDER", "archive", null,
+                new(2026, 7, 29, 16, 18, 0, TimeSpan.Zero), false, false, false), "location:neural-storage", ""),
+            (new("file:project-brief-0826", "PROJECT_BRIEF_0826.DOCX", ExplorerWorkspaceItemKind.File, "DOCX", "document", 2_400_000,
+                new(2026, 8, 4, 10, 21, 0, TimeSpan.Zero), false, false, true), "location:documents", "document-outline"),
+            (new("file:specifications-v2", "SPECIFICATIONS_V2.PDF", ExplorerWorkspaceItemKind.File, "PDF", "pdf", 1_800_000,
+                new(2026, 8, 3, 15, 42, 0, TimeSpan.Zero), false, false, true), "location:documents", "pdf-outline"),
+            (new("file:report-draft", "REPORT_DRAFT.PPTX", ExplorerWorkspaceItemKind.File, "PPTX", "presentation", 5_700_000,
+                new(2026, 8, 2, 11, 9, 0, TimeSpan.Zero), false, false, true), "location:documents", "presentation-outline"),
+            (new("file:data-sheet", "DATA_SHEET.XLSX", ExplorerWorkspaceItemKind.File, "XLSX", "spreadsheet", 1_200_000,
+                new(2026, 8, 1, 9, 33, 0, TimeSpan.Zero), false, false, true), "location:documents", "spreadsheet-outline"),
+            (new("file:meeting-notes", "MEETING_NOTES_0804.TXT", ExplorerWorkspaceItemKind.File, "TXT", "text", 18_000,
+                new(2026, 8, 4, 8, 47, 0, TimeSpan.Zero), false, false, true), "location:documents", "text-outline"),
+            (new("file:site-map", "SITE_MAP.VIS", ExplorerWorkspaceItemKind.File, "VISUAL", "visual", 640_000,
+                new(2026, 8, 2, 17, 26, 0, TimeSpan.Zero), false, false, true), "location:documents", "visual-outline"),
+            (new("folder:aurora-engine", "AURORA ENGINE", ExplorerWorkspaceItemKind.Folder, "FOLDER", "project-folder", null,
+                new(2026, 8, 4, 12, 4, 0, TimeSpan.Zero), false, false, false), "location:projects", ""),
+            (new("file:horizon-research-matrix", "HORIZON_MEMBRANE_SPATIAL_COMPUTE_RESEARCH_NOTES_" +
+                "AND_IMPLEMENTATION_MATRIX_2026-08-04.MD", ExplorerWorkspaceItemKind.File, "MD", "text", 84_000,
+                new(2026, 8, 4, 12, 28, 0, TimeSpan.Zero), false, false, true), "location:projects", "text-outline"),
+        ];
+        Dictionary<string, ExplorerBreadcrumbSegment[]> breadcrumbs = new(StringComparer.Ordinal)
+        {
+            ["location:this-pc"] = [new("location:this-pc", "THIS PC")],
+            ["location:neural-storage"] = [new("location:this-pc", "THIS PC"), new("location:neural-storage", "NEURAL STORAGE")],
+            ["location:documents"] = [new("location:this-pc", "THIS PC"), new("location:neural-storage", "NEURAL STORAGE"), new("location:documents", "DOCUMENTS")],
+            ["location:projects"] = [new("location:this-pc", "THIS PC"), new("location:neural-storage", "NEURAL STORAGE"), new("location:projects", "PROJECTS")],
+            ["location:archive"] = [new("location:this-pc", "THIS PC"), new("location:neural-storage", "NEURAL STORAGE"), new("location:archive", "ARCHIVE")],
+            ["folder:aurora-engine"] = [new("location:this-pc", "THIS PC"), new("location:neural-storage", "NEURAL STORAGE"), new("location:projects", "PROJECTS"), new("folder:aurora-engine", "AURORA ENGINE")],
+        };
+        ExplorerWorkspace seeded = new();
+        Require(seeded.CurrentLocationId == "location:documents", "Initial location must remain Documents.");
+        System.Collections.IDictionary nodes = (System.Collections.IDictionary)(typeof(ExplorerWorkspace)
+            .GetField("_nodes", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .GetValue(seeded) ?? throw new InvalidOperationException("Seed dictionary absent."));
+        Require(nodes.Keys.Cast<string>().SequenceEqual(expected.Select(row => row.Item.Id)), "Seed insertion order changed.");
+        foreach (var row in expected)
+        {
+            Require(seeded.TryGetItem(row.Item.Id, out ExplorerWorkspaceItem? item) && item == row.Item,
+                $"Complete seed fields changed: {row.Item.Id}.");
+            object node = nodes[row.Item.Id]!;
+            Require(Equals(node.GetType().GetProperty("ParentId")!.GetValue(node), row.ParentId) &&
+                Equals(node.GetType().GetProperty("PreviewKind")!.GetValue(node), row.PreviewKind),
+                $"Seed parent or preview changed: {row.Item.Id}.");
+            if (row.Item.Kind == ExplorerWorkspaceItemKind.Folder)
+            {
+                ExplorerWorkspace workspace = new();
+                _ = workspace.TryNavigateTo(row.Item.Id);
+                ExplorerWorkspaceSnapshot snapshot = workspace.CaptureSnapshot();
+                ExplorerWorkspaceItem[] children = expected.Where(child => child.ParentId == row.Item.Id).Select(child => child.Item).ToArray();
+                Require(snapshot.CurrentLocation == new ExplorerWorkspaceLocation(row.Item.Id, row.Item.Name, row.Item.IconKey) &&
+                    snapshot.Breadcrumb.SequenceEqual(breadcrumbs[row.Item.Id]) && snapshot.Items.SequenceEqual(children) &&
+                    snapshot.SelectedItemId is null && snapshot.RenameItemId is null &&
+                    snapshot.CanGoBack == (row.Item.Id != "location:documents") && !snapshot.CanGoForward &&
+                    snapshot.CanGoUp == (row.ParentId is not null) && snapshot.IsEmpty == (children.Length == 0),
+                    $"Complete location snapshot changed: {row.Item.Id}.");
+            }
+            else
+            {
+                ExplorerWorkspace workspace = new();
+                _ = workspace.TryNavigateTo(row.ParentId);
+                ExplorerOpenResult result = workspace.OpenItem(row.Item.Id);
+                Require(result == new ExplorerOpenResult(ExplorerOpenDisposition.PreviewRequested, row.ParentId!,
+                    new(row.Item.Id, row.Item.Name, row.Item.TypeLabel, row.PreviewKind,
+                        "JARVIS2.NEURAL_VOID_PREVIEW", true, false, false)), $"Complete preview contract changed: {row.Item.Id}.");
+                Require(workspace.TryGetItem(row.Item.Id, out ExplorerWorkspaceItem? selected) &&
+                    selected == row.Item with { IsSelected = true }, "File-open selection or presentation changed.");
+            }
+        }
+        return true;
     }
 
     private static bool HostedRenameBlurPreservesNewerFocus(bool validName, bool foreignExplorer) =>

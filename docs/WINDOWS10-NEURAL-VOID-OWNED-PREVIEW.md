@@ -154,12 +154,12 @@ Current bounded verification for manual multi-instance Explorer:
 - Release build: passed with zero warnings and zero errors;
 - WPF vector-adapter scenarios: 13 / 13;
 - layout and edge-bar scenarios: 25 / 25;
-- Explorer workspace scenarios: 30 / 30, including mouse/keyboard creation,
+- Explorer workspace scenarios: 40 / 40, including mouse/keyboard creation,
   independent mutable trees, same-seed-ID rename isolation, owned preview,
   cap/reopen, already-focused valid/invalid blur, lifecycle/focus-intent races
   and unload cleanup; three consecutive unfiltered runner passes;
 - owned Task Manager surface scenarios: 10 / 10;
-- owned-window layout scenarios: 55 / 55 (18 coordinator, 36 hosted,
+- owned-window layout scenarios: 62 / 62 (25 coordinator, 36 hosted,
   1 WPF visual-tree contract), including
   real populated three/four-pane placement, usable compact controls and exact
   secondary title/lifecycle/focus routing, intervening Search/foreign-Explorer

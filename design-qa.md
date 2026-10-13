@@ -103,9 +103,9 @@ rendered and reviewed in a connected graphics session.
 
 - Release build: passed, 0 warnings / 0 errors
 - Layout and edge-bar scenarios: 25 / 25
-- Explorer workspace scenarios: 30 / 30; three consecutive unfiltered passes
+- Explorer workspace scenarios: 40 / 40; three consecutive unfiltered passes
 - Owned Task Manager surface scenarios: 10 / 10
-- Owned-window layout scenarios: 55 / 55 (18 coordinator, 36 hosted,
+- Owned-window layout scenarios: 62 / 62 (25 coordinator, 36 hosted,
   1 WPF visual-tree contract);
   three consecutive unfiltered passes
 - WPF vector adapter: 13 / 13
@@ -605,3 +605,35 @@ receipts, hashes and per-file metrics are recorded in
 scratch root. The implementation receipt was captured before staging; Release
 remains ready. The historical Escape flake stays **UNDIAGNOSED**, and fresh
 auto-fill remains deferred.
+
+## Second bounded model cleanup
+
+Eight approved equivalence-only changes reuse selection clearing, history
+transitions, seeded-file presentation and folder construction; avoid splitting
+reserved-name stems; read committed layout state directly; remove a redundant
+remembered-preset availability consultation; and use two named value-tuple
+projections. No feature, UI, authority, dependency, lifecycle or focus change.
+Compile-first reflection tests for the two new private helpers failed only
+because each helper was absent, then passed with the unchanged operation order.
+Each small refactor passed its real unfiltered runner before the next step.
+Literal contracts and before/after runtime receipts preserve all 13 seed nodes,
+six complete location snapshots, seven owned preview requests, synchronous
+reentrant Changed traces and layout metadata/placement ordering.
+
+Release `--warnaserror`, three consecutive workspace 40/40 and layout 62/62
+runs, edge 25/25, Task Manager 10/10, vector 13/13, preview 26/26, platform 16/16,
+publication for 536 files and the actual-AST 90/90 probe passed. All original
+test bodies/assertions and gate predicates are byte-exact apart from the two
+receipt-derived scenario totals. Both approved render hashes are unchanged.
+
+Physical CRLF production metrics include all helper code: ExplorerWorkspace
+830 → 801 lines / 23757 → 22920 bytes; coordinator 667 → 645 / 20485 → 19837.
+Combined production is 1497 → 1446 lines / 44242 → 42757 bytes. Regression tests
+separately grow by 720 lines / 51742 bytes (10 workspace and 7 coordinator cases).
+Seed presentation reuse adds seven bounded constructor extension parses for
+maintenance consistency, not an allocation/latency gain. Tuple projections
+remove temporary anonymous reference constructions; CPU/latency was not measured.
+Scratch commands, raw stdout, receipts, source-transform proof, hashes and
+metrics are in `jarvis-refine-state/implementation/verification.json` under the
+Hermes scratch root. The implementation receipt was captured before staging;
+the Escape flake stays **UNDIAGNOSED**.
