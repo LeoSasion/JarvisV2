@@ -66,6 +66,7 @@ public partial class DesktopShellSurface :
     private readonly DispatcherTimer _railScrollTimer;
     private ExplorerWorkspace _explorerWorkspace => PrimaryExplorerSurface.Workspace;
     private readonly Dictionary<OwnedWindowId, ExplorerEntry> _explorers = [];
+    private readonly Func<int, ExplorerSurface> _createExplorerSurface;
     private readonly OwnedWindowLayoutCoordinator _ownedWindowLayouts = new();
     private readonly LinearGradientBrush _layoutRailMaskNone =
         CreateLayoutRailFeatherMask(false, false);
@@ -176,8 +177,37 @@ public partial class DesktopShellSurface :
     {
         // Closed sessions retain their exact surface/workspace identity and slot.
         if (_explorers.Count >= MaximumExplorerSessions) return;
-        OwnedWindowId id = new($"explorer-{_explorers.Count + 1}");
-        ExplorerSurface surface = new();
+        ExplorerEntry entry;
+        try { entry = PrepareExplorerSession(_explorers.Count + 1); }
+        catch (Exception) { Announce("EXPLORER / NEW PREPARATION FAILED / NO CHANGE"); return; }
+        if (_ownedWindowLayouts.IsPartition)
+        {
+            OwnedLayoutApplyResult result = _ownedWindowLayouts.TryShowPartition(entry.Id,new(entry.Id,GetOwnedWindowBounds(entry.Frame)));
+            if (!result.Succeeded) { entry.Surface.SuspendInteraction(); Announce("PARTITION / NEW REJECTED / NO CHANGE"); return; }
+            PublishExplorerSession(entry);
+            ApplyOwnedLayoutResult(result);
+            RefreshLayoutAvailability();
+            entry.Surface.FocusExplorerItems();
+            Announce($"EXPLORER / NEW WINDOW / {entry.Id.Value}");
+            return;
+        }
+        if (!_ownedWindowLayouts.TryRegister(entry.Id, OwnedWindowLifecycle.Visible, GetOwnedWindowBounds(entry.Frame)))
+            throw new InvalidOperationException($"Could not register Explorer session {entry.Id}.");
+        PublishExplorerSession(entry);
+        ActivateOwnedWindow(entry.Frame);
+        UpdateOwnedWindowLayoutDensity();
+        ApplyCurrentLayoutPresentation();
+        RefreshLayoutAvailability();
+        RefreshExplorerTaskbarState();
+        entry.Surface.FocusExplorerItems();
+        Announce($"EXPLORER / NEW WINDOW / {entry.Id.Value}");
+    }
+
+    private ExplorerEntry PrepareExplorerSession(int number)
+    {
+        OwnedWindowId id = new($"explorer-{number}");
+        ExplorerSurface surface = _createExplorerSurface(number) ?? throw new InvalidOperationException("Explorer factory returned no surface.");
+        if (surface.IsLoaded || surface.Parent is not null) throw new InvalidOperationException("Explorer factory must return a detached surface.");
         surface.SetBinding(ExplorerSurface.AccentBrushProperty,
             new System.Windows.Data.Binding(nameof(AccentBrush)) { Source = this });
         surface.Announced += Announce;
@@ -224,14 +254,9 @@ public partial class DesktopShellSurface :
             BorderBrush = (Brush)FindResource("PrimaryRuleBrush"), Background = Brushes.Black,
             SnapsToDevicePixels = true,
         };
-        Canvas.SetLeft(frame, 596 - 28 * _explorers.Count);
-        Canvas.SetTop(frame, 63 + 18 * _explorers.Count);
+        Canvas.SetLeft(frame, 596 - 28 * (number - 1));
+        Canvas.SetTop(frame, 63 + 18 * (number - 1));
         ExplorerEntry entry = new(id, frame, surface, titleBar, titleText, minimize, maximize, close);
-        if (!_ownedWindowLayouts.TryRegister(id, OwnedWindowLifecycle.Visible, GetOwnedWindowBounds(frame)))
-        {
-            throw new InvalidOperationException($"Could not register Explorer session {id}.");
-        }
-        _explorers.Add(id, entry);
         ConfigureExplorerEntry(entry);
         titleBar.MouseLeftButtonDown += ExplorerTitleBar_OnMouseLeftButtonDown;
         titleBar.MouseMove += ExplorerTitleBar_OnMouseMove;
@@ -239,14 +264,13 @@ public partial class DesktopShellSurface :
         titleBar.LostMouseCapture += OwnedTitleBar_OnLostMouseCapture;
         frame.PreviewMouseDown += OwnedWindow_OnPreviewMouseDown;
         frame.GotKeyboardFocus += OwnedWindow_OnGotKeyboardFocus;
-        DesktopCanvas.Children.Add(frame);
-        ActivateOwnedWindow(frame);
-        UpdateOwnedWindowLayoutDensity();
-        ApplyCurrentLayoutPresentation();
-        RefreshLayoutAvailability();
-        RefreshExplorerTaskbarState();
-        surface.FocusExplorerItems();
-        Announce($"EXPLORER / NEW WINDOW / {id.Value}");
+        return entry;
+    }
+
+    private void PublishExplorerSession(ExplorerEntry entry)
+    {
+        _explorers.Add(entry.Id, entry);
+        DesktopCanvas.Children.Add(entry.Frame);
     }
 
     private Button CreateExplorerTitleButton(string action, OwnedWindowId id, UIElement glyph)
@@ -261,8 +285,12 @@ public partial class DesktopShellSurface :
         return button;
     }
 
-    public DesktopShellSurface()
+    public DesktopShellSurface() : this(_ => new ExplorerSurface()) { }
+
+    internal DesktopShellSurface(Func<int, ExplorerSurface> createExplorerSurface)
     {
+        ArgumentNullException.ThrowIfNull(createExplorerSurface);
+        _createExplorerSurface = createExplorerSurface;
         InitializeComponent();
         _explorers.Add(ExplorerOwnedWindowId, new(
             ExplorerOwnedWindowId, ExplorerWindow, PrimaryExplorerSurface,
@@ -271,6 +299,8 @@ public partial class DesktopShellSurface :
         PrimaryExplorerSurface.Announced += Announce;
         ConfigureExplorerEntry(_explorers[ExplorerOwnedWindowId]);
         ConfigureExplorerTaskbarMenu();
+        ConfigureLayoutCommands();
+        PreviewKeyDown += PartitionSurface_OnPreviewKeyDown;
         if (!_ownedWindowLayouts.TryRegister(
                 ExplorerOwnedWindowId,
                 OwnedWindowLifecycle.Visible,
@@ -694,8 +724,10 @@ public partial class DesktopShellSurface :
     internal void MoveOwnedWindowForTest(string id, Rect bounds)
     {
         FrameworkElement window = ResolveOwnedFrame(new OwnedWindowId(id));
+        if (!_ownedWindowLayouts.TrySetManualBounds(GetOwnedWindowId(window), bounds)) return;
         SetOwnedWindowBounds(window, bounds);
-        CompleteOwnedWindowManualMove(GetOwnedWindowId(window), window);
+        ApplyCurrentLayoutPresentation();
+        RefreshLayoutAvailability();
     }
 
     internal void RaiseOwnedTitleGestureForTest(
@@ -982,6 +1014,7 @@ public partial class DesktopShellSurface :
 
     private void Surface_OnUnloaded(object sender, RoutedEventArgs eventArgs)
     {
+        FinishPartitionGestures();
         _clockTimer.Stop();
         TaskManagerPanel.StopSampling();
         foreach (ExplorerEntry entry in _explorers.Values)
@@ -1101,13 +1134,17 @@ public partial class DesktopShellSurface :
         _hostWindow = null;
     }
 
-    private void HostWindow_OnDeactivated(object? sender, EventArgs eventArgs) =>
+    private void HostWindow_OnDeactivated(object? sender, EventArgs eventArgs)
+    {
+        FinishPartitionGestures();
         StopLayoutRailAutoScroll();
+    }
 
     private void HostWindow_OnStateChanged(object? sender, EventArgs eventArgs)
     {
         if (_hostWindow?.WindowState == WindowState.Minimized)
         {
+            FinishPartitionGestures();
             StopLayoutRailAutoScroll();
             TaskManagerPanel.StopSampling();
             return;
@@ -1145,6 +1182,35 @@ public partial class DesktopShellSurface :
         object sender,
         MouseEventArgs eventArgs)
         => StopLayoutRailAutoScroll();
+
+    private void ConfigureLayoutCommands()
+    {
+        ContextMenu menu = new() { Style = (Style)FindResource("ExplorerSessionMenu") };
+        MenuItem freeform = new()
+        {
+            Header = "_Freeform", CommandParameter = "freeform",
+            Style = (Style)FindResource("ExplorerSessionMenuItem"),
+        };
+        AutomationProperties.SetName(freeform,"Freeform");
+        AutomationProperties.SetHelpText(freeform,"Restore independent floating bounds; retained sessions are kept.");
+        freeform.Click += (_,_) =>
+        {
+            menu.IsOpen = false;
+            ApplyOwnedLayoutResult(_ownedWindowLayouts.TryExitPartition());
+            RefreshLayoutAvailability();
+            Announce("LAYOUT / FREEFORM");
+        };
+        menu.Items.Add(freeform);
+        menu.Opened += (_,_) => CancelExplorerPendingFocus();
+        CurrentLayoutButton.ContextMenu = menu;
+        CurrentLayoutButton.PreviewKeyDown += (_,args) =>
+        {
+            if (args.Key == Key.Apps || (args.Key == Key.F10 && (Keyboard.Modifiers & ModifierKeys.Shift) != 0))
+            {
+                menu.PlacementTarget = CurrentLayoutButton; menu.IsOpen = true; args.Handled = true;
+            }
+        };
+    }
 
     private void CurrentLayoutButton_OnClick(
         object sender,
@@ -1293,6 +1359,8 @@ public partial class DesktopShellSurface :
 
     private bool SelectLayout(LayoutPreset preset, bool announce)
     {
+        if (!_ownedWindowLayouts.CanProjectPartition(preset,OwnedWorkArea))
+        { Announce("PARTITION / GEOMETRY REJECTED / NO CHANGE"); return false; }
         StopLayoutRailAutoScroll();
         LayoutDefinition definition = LayoutCatalog.Get(preset);
         OwnedLayoutAvailability availability =
@@ -1309,9 +1377,25 @@ public partial class DesktopShellSurface :
             return false;
         }
 
-        OwnedLayoutApplyResult result =
-            _ownedWindowLayouts.TryApply(
-                preset, OwnedWorkArea, restoreHiddenWindows: true);
+        List<ExplorerEntry> prepared = [];
+        OwnedLayoutApplyResult result;
+        try
+        {
+            int deficit = Math.Max(0, definition.PaneCount - _ownedWindowLayouts.CaptureSnapshot().Windows.Count);
+            if (_explorers.Count + deficit > MaximumExplorerSessions) return false;
+            for (int index = 0; index < deficit; index++)
+                prepared.Add(PrepareExplorerSession(_explorers.Count + index + 1));
+            result = _ownedWindowLayouts.TryCommitPartition(preset, OwnedWorkArea,
+                prepared.Select(entry => new OwnedWindowAdmission(entry.Id, GetOwnedWindowBounds(entry.Frame))).ToArray());
+        }
+        catch (Exception)
+        {
+            foreach (ExplorerEntry entry in prepared) entry.Surface.SuspendInteraction();
+            Announce("PARTITION / PREPARATION FAILED / NO CHANGE");
+            return false;
+        }
+        if (result.Succeeded)
+            foreach (ExplorerEntry entry in prepared) PublishExplorerSession(entry);
         if (!result.Succeeded)
         {
             ApplyCurrentLayoutPresentation();
@@ -1350,8 +1434,8 @@ public partial class DesktopShellSurface :
             AutomationProperties.SetName(CurrentLayoutButton, freeformName);
             AutomationProperties.SetHelpText(
                 CurrentLayoutButton,
-                "Owned windows keep their independent floating bounds.");
-            CurrentLayoutButton.ToolTip = freeformName;
+                "Owned windows keep their independent floating bounds. Right click or Shift+F10 for Freeform.");
+            CurrentLayoutButton.ToolTip = freeformName + " / RIGHT CLICK OR SHIFT+F10 / FREEFORM";
             UpdateOwnedWindowControlNames();
             return;
         }
@@ -1365,13 +1449,12 @@ public partial class DesktopShellSurface :
             $"Current layout: {definition.AutomationName}";
         AutomationProperties.SetName(CurrentLayoutButton, accessibleName);
         int filledPaneCount = _ownedWindowLayouts.CaptureSnapshot().Windows.Count(
-            window => window.Lifecycle == OwnedWindowLifecycle.Visible &&
-                window.AssignedPaneIndex.HasValue);
+            window => _ownedWindowLayouts.IsWindowShown(window.Id) && window.AssignedPaneIndex.HasValue);
         AutomationProperties.SetHelpText(
             CurrentLayoutButton,
             $"{filledPaneCount} of {definition.PaneCount} panes filled by " +
-            "visible owned windows.");
-        CurrentLayoutButton.ToolTip = accessibleName;
+            "visible owned windows. Right click or Shift+F10 for Freeform; drag shared edges or use arrow keys to resize.");
+        CurrentLayoutButton.ToolTip = accessibleName + " / DRAG SHARED EDGES / SHIFT+F10 / FREEFORM";
         UpdateOwnedWindowControlNames();
     }
 
@@ -1436,34 +1519,16 @@ public partial class DesktopShellSurface :
 
             OwnedLayoutAvailability availability =
                 _ownedWindowLayouts.GetAvailability(definition.Preset);
-            int fillCount = Math.Min(
-                availability.RequiredPaneCount,
-                registeredCount);
-            int restoreCount = Math.Max(0, fillCount - availability.VisibleWindowCount);
-            bool fillsAll = fillCount == availability.RequiredPaneCount;
+            int required = availability.RequiredPaneCount;
+            int deficit = Math.Max(0,required-registeredCount);
+            int restoreCount = Math.Max(0,required-deficit-availability.VisibleWindowCount);
             item.IsEnabled = true;
-            string helpText = restoreCount > 0
-                ? $"{definition.AutomationName} restores {restoreCount} owned " +
-                  $"window{(restoreCount == 1 ? string.Empty : "s")} and fills " +
-                  $"{fillCount} of {availability.RequiredPaneCount} panes. " +
-                  "Spare panes stay empty; only registered JARVIS windows are used."
-                : fillsAll
-                ? $"Apply {definition.AutomationName} to visible JARVIS windows."
-                : $"{definition.AutomationName} fills the first {fillCount} of " +
-                  $"{availability.RequiredPaneCount} panes; spare panes stay empty.";
-            item.ToolTip = restoreCount > 0
-                ? $"{definition.AutomationName} / FILLS {fillCount} OF " +
-                  $"{availability.RequiredPaneCount} / RESTORES {restoreCount}"
-                : fillsAll
-                ? definition.AutomationName
-                : $"{definition.AutomationName} / FILLS {fillCount} OF " +
-                  $"{availability.RequiredPaneCount} PANES";
-            AutomationProperties.SetHelpText(item, helpText);
-            AutomationProperties.SetItemStatus(
-                item,
-                fillsAll && restoreCount == 0
-                    ? "Available"
-                    : $"Fills {fillCount} of {availability.RequiredPaneCount} panes");
+            string helpText = $"{definition.AutomationName} fills all {required} panes; restores {restoreCount} retained owned " +
+                $"windows and creates {deficit} independent Explorers if needed. Only assigned frames are shown. " +
+                "Older hidden or closed sessions may be reused to keep coverage. Drag shared edges to resize; Shift+F10 offers Freeform.";
+            item.ToolTip = $"{definition.AutomationName} / FULL PARTITION / RESTORES {restoreCount} / CREATES {deficit}";
+            AutomationProperties.SetHelpText(item,helpText);
+            AutomationProperties.SetItemStatus(item,$"{required} of {required} panes / Full Partition");
         }
     }
 
@@ -2043,6 +2108,7 @@ public partial class DesktopShellSurface :
 
         ActivateOwnedWindow(entry.Frame);
         entry.Surface.FocusExplorerItems();
+        if (_ownedWindowLayouts.IsPartition) { eventArgs.Handled = true; return; }
         Point pointer = _ownedTitlePointerOverrideForTest ?? eventArgs.GetPosition(DesktopCanvas);
         entry.DragStart = pointer;
         entry.DragStarted = false;
@@ -2094,8 +2160,7 @@ public partial class DesktopShellSurface :
 
     private void MinimizeExplorer(ExplorerEntry entry)
     {
-        HideExplorer(entry, OwnedWindowLifecycle.Minimized);
-        Announce($"EXPLORER / MINIMIZED / {entry.Id.Value}");
+        if (HideExplorer(entry, OwnedWindowLifecycle.Minimized)) Announce($"EXPLORER / MINIMIZED / {entry.Id.Value}");
     }
 
     private void ExplorerMaximizeButton_OnClick(object sender, RoutedEventArgs eventArgs) =>
@@ -2103,6 +2168,13 @@ public partial class DesktopShellSurface :
 
     private void ToggleExplorerMaximize(ExplorerEntry entry)
     {
+        if (_ownedWindowLayouts.IsPartition)
+        {
+            ApplyOwnedLayoutResult(_ownedWindowLayouts.TryTogglePartitionZoom(entry.Id));
+            RefreshLayoutAvailability();
+            Announce($"EXPLORER / ZOOM OR RESTORE / {entry.Id.Value}");
+            return;
+        }
         RestoreExplorer(entry);
         bool wasMaximized = IsOwnedWindowMaximized(entry.Id);
         OwnedLayoutApplyResult result = _ownedWindowLayouts.TryToggleMaximize(entry.Id, OwnedWorkArea);
@@ -2116,12 +2188,17 @@ public partial class DesktopShellSurface :
 
     private void CloseExplorer(ExplorerEntry entry)
     {
-        HideExplorer(entry, OwnedWindowLifecycle.Closed);
-        Announce($"EXPLORER / CLOSED / {entry.Id.Value}");
+        if (HideExplorer(entry, OwnedWindowLifecycle.Closed)) Announce($"EXPLORER / CLOSED / {entry.Id.Value}");
     }
 
-    private void HideExplorer(ExplorerEntry entry, OwnedWindowLifecycle lifecycle)
+    private bool HideExplorer(ExplorerEntry entry, OwnedWindowLifecycle lifecycle)
     {
+        if (_ownedWindowLayouts.IsPartition)
+        {
+            if (!HidePartitionWindow(entry.Id,lifecycle)) return false;
+            QueueTaskbarFocus(TaskbarExplorerButton);
+            return true;
+        }
         EndExplorerTitleDrag(entry);
         entry.Surface.SuspendInteraction();
         _ = _ownedWindowLayouts.TrySetLifecycle(entry.Id, lifecycle);
@@ -2131,6 +2208,7 @@ public partial class DesktopShellSurface :
         UpdateOwnedWindowZOrder();
         RefreshExplorerTaskbarState();
         QueueTaskbarFocus(TaskbarExplorerButton);
+        return true;
     }
 
     private ExplorerEntry RecentExplorer()
@@ -2162,7 +2240,7 @@ public partial class DesktopShellSurface :
     private void ActivateExplorerFromTaskbar(ExplorerEntry entry)
     {
         RestoreExplorer(entry);
-        if (_ownedWindowLayouts.AppliedPreset == LayoutPreset.Maximized)
+        if (!_ownedWindowLayouts.IsPartition && _ownedWindowLayouts.AppliedPreset == LayoutPreset.Maximized)
         {
             ApplyOwnedLayoutResult(_ownedWindowLayouts.TryApply(LayoutPreset.Maximized, OwnedWorkArea));
         }
@@ -2173,6 +2251,12 @@ public partial class DesktopShellSurface :
 
     private void RestoreExplorer(ExplorerEntry entry)
     {
+        if (_ownedWindowLayouts.IsPartition)
+        {
+            ApplyOwnedLayoutResult(_ownedWindowLayouts.TryShowPartition(entry.Id));
+            RefreshLayoutAvailability();
+            return;
+        }
         bool wasVisible = entry.Frame.Visibility == Visibility.Visible;
         _ = _ownedWindowLayouts.TrySetLifecycle(entry.Id, OwnedWindowLifecycle.Visible);
         ApplyCoordinatorBounds(entry.Id, entry.Frame);
@@ -2209,7 +2293,7 @@ public partial class DesktopShellSurface :
         {
             OwnedWindowLifecycle lifecycle = GetOwnedWindowState(entry.Id).Lifecycle;
             string action = lifecycle == OwnedWindowLifecycle.Visible ? "Activate" :
-                lifecycle == OwnedWindowLifecycle.Minimized ? "Restore" : "Reopen";
+                lifecycle == OwnedWindowLifecycle.Suppressed ? "Show" : lifecycle == OwnedWindowLifecycle.Minimized ? "Restore" : "Reopen";
             MenuItem command = new()
             {
                 Header = $"{action} Explorer / {entry.Id.Value}",
@@ -2253,6 +2337,7 @@ public partial class DesktopShellSurface :
         }
 
         ActivateOwnedWindow(TaskManagerWindow);
+        if (_ownedWindowLayouts.IsPartition) { eventArgs.Handled = true; return; }
         Point pointer = _ownedTitlePointerOverrideForTest ?? eventArgs.GetPosition(DesktopCanvas);
         _taskManagerDragStart = pointer;
         _taskManagerDragStarted = false;
@@ -2331,6 +2416,13 @@ public partial class DesktopShellSurface :
 
     private void ToggleTaskManagerMaximize()
     {
+        if (_ownedWindowLayouts.IsPartition)
+        {
+            ApplyOwnedLayoutResult(_ownedWindowLayouts.TryTogglePartitionZoom(TaskManagerOwnedWindowId));
+            RefreshLayoutAvailability();
+            Announce("TASK MANAGER / ZOOM OR RESTORE");
+            return;
+        }
         RestoreTaskManager();
         bool wasMaximized = IsTaskManagerMaximizedForTest;
         OwnedLayoutApplyResult result =
@@ -2406,7 +2498,7 @@ public partial class DesktopShellSurface :
             bool wasClosed = GetOwnedWindowState(TaskManagerOwnedWindowId)
                 .Lifecycle == OwnedWindowLifecycle.Closed;
             RestoreTaskManager();
-            if (_ownedWindowLayouts.AppliedPreset == LayoutPreset.Maximized)
+            if (!_ownedWindowLayouts.IsPartition && _ownedWindowLayouts.AppliedPreset == LayoutPreset.Maximized)
             {
                 OwnedLayoutApplyResult result =
                     _ownedWindowLayouts.TryApply(
@@ -2424,6 +2516,13 @@ public partial class DesktopShellSurface :
 
     private void RestoreTaskManager()
     {
+        if (_ownedWindowLayouts.IsPartition)
+        {
+            ApplyOwnedLayoutResult(_ownedWindowLayouts.TryShowPartition(TaskManagerOwnedWindowId));
+            RefreshLayoutAvailability();
+            QueueOwnedFocus(() => _ = TaskManagerMinimizeButton.Focus(),TaskManagerOwnedWindowId);
+            return;
+        }
         bool wasVisible =
             TaskManagerWindow.Visibility == Visibility.Visible;
         _ = _ownedWindowLayouts.TrySetLifecycle(
@@ -2448,6 +2547,12 @@ public partial class DesktopShellSurface :
 
     private void MinimizeTaskManager()
     {
+        if (_ownedWindowLayouts.IsPartition)
+        {
+            if (HidePartitionWindow(TaskManagerOwnedWindowId,OwnedWindowLifecycle.Minimized))
+            { QueueTaskbarFocus(TaskbarSystemButton); Announce("TASK MANAGER / MINIMIZED / SAMPLING PAUSED"); }
+            return;
+        }
         TaskManagerPanel.StopSampling();
         _ = _ownedWindowLayouts.TrySetLifecycle(
             TaskManagerOwnedWindowId,
@@ -2464,6 +2569,12 @@ public partial class DesktopShellSurface :
 
     private void CloseTaskManager()
     {
+        if (_ownedWindowLayouts.IsPartition)
+        {
+            if (HidePartitionWindow(TaskManagerOwnedWindowId,OwnedWindowLifecycle.Closed))
+            { QueueTaskbarFocus(TaskbarSystemButton); Announce("TASK MANAGER / CLOSED / SAMPLING STOPPED"); }
+            return;
+        }
         TaskManagerPanel.StopSampling();
         _ = _ownedWindowLayouts.TrySetLifecycle(
             TaskManagerOwnedWindowId,
@@ -2477,9 +2588,35 @@ public partial class DesktopShellSurface :
         Announce("TASK MANAGER / CLOSED / SAMPLING STOPPED");
     }
 
+    private bool HidePartitionWindow(OwnedWindowId id, OwnedWindowLifecycle lifecycle)
+    {
+        ExplorerEntry? prepared = null;
+        OwnedLayoutApplyResult result;
+        try
+        {
+            if (_ownedWindowLayouts.PartitionRefillDeficit(id) != 0)
+            {
+                if (_explorers.Count >= MaximumExplorerSessions)
+                { Announce("PARTITION / REPLACEMENT FAILED / RETAINED LIMIT / NO CHANGE"); return false; }
+                prepared = PrepareExplorerSession(_explorers.Count+1);
+            }
+            result = _ownedWindowLayouts.TryHidePartition(id,lifecycle,
+                prepared is null ? null : new(prepared.Id,GetOwnedWindowBounds(prepared.Frame)));
+        }
+        catch (Exception)
+        { prepared?.Surface.SuspendInteraction(); Announce("PARTITION / REPLACEMENT FAILED / NO CHANGE"); return false; }
+        if (!result.Succeeded)
+        { prepared?.Surface.SuspendInteraction(); Announce("PARTITION / REPLACEMENT FAILED / NO CHANGE"); return false; }
+        if (prepared is not null) PublishExplorerSession(prepared);
+        ApplyOwnedLayoutResult(result);
+        RefreshLayoutAvailability();
+        return true;
+    }
+
     private void ActivateOwnedWindow(FrameworkElement window)
     {
         OwnedWindowId id = GetOwnedWindowId(window);
+        if (_applyingPartitionGeometry && IsOwnedWindowActive(id)) return;
         if (!_ownedWindowLayouts.TryActivate(id)) return;
         CancelOwnedFocus();
         foreach (ExplorerEntry entry in _explorers.Values)
@@ -2515,6 +2652,7 @@ public partial class DesktopShellSurface :
         Point offset,
         ref bool started)
     {
+        if (_ownedWindowLayouts.IsPartition) return;
         if (!started &&
             Math.Abs(pointer.X - start.X) < SystemParameters.MinimumHorizontalDragDistance &&
             Math.Abs(pointer.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance)
@@ -2576,6 +2714,15 @@ public partial class DesktopShellSurface :
             return;
         }
 
+        {
+            foreach (OwnedWindowState state in _ownedWindowLayouts.CaptureSnapshot().Windows.Where(state => !_ownedWindowLayouts.IsWindowShown(state.Id)))
+            {
+                FrameworkElement hidden = ResolveOwnedFrame(state.Id);
+                hidden.Visibility = Visibility.Collapsed;
+                if (_explorers.TryGetValue(state.Id, out ExplorerEntry? entry)) entry.Surface.SuspendInteraction();
+                else TaskManagerPanel.StopSampling();
+            }
+        }
         foreach (OwnedWindowPlacement placement in result.Placements)
         {
             FrameworkElement window = ResolveOwnedFrame(placement.WindowId);
@@ -2593,10 +2740,14 @@ public partial class DesktopShellSurface :
             }
         }
 
+        OwnedWindowLifecycle taskLifecycle = GetOwnedWindowState(TaskManagerOwnedWindowId).Lifecycle;
+        TaskManagerRunningIndicator.Visibility = taskLifecycle == OwnedWindowLifecycle.Closed ? Visibility.Collapsed : Visibility.Visible;
+        TaskManagerRunningIndicator.Opacity = TaskManagerWindow.IsVisible ? 1.0 : 0.45;
         RefreshExplorerTaskbarState();
         UpdateOwnedWindowZOrder();
-        UpdateOwnedWindowLayoutDensity();
+        UpdateOwnedWindowLayoutDensity(result.Placements.Select(placement => placement.WindowId).ToHashSet());
         ApplyCurrentLayoutPresentation();
+        RefreshPartitionDividers();
     }
 
     private void ApplyCoordinatorBounds(
@@ -2619,9 +2770,9 @@ public partial class DesktopShellSurface :
         }
     }
 
-    private void UpdateOwnedWindowLayoutDensity()
+    private void UpdateOwnedWindowLayoutDensity(IReadOnlySet<OwnedWindowId>? affected = null)
     {
-        foreach (ExplorerEntry entry in _explorers.Values)
+        foreach (ExplorerEntry entry in _explorers.Values.Where(entry => affected is null || affected.Contains(entry.Id)))
         {
             entry.Surface.SetLayoutDensity(
                 entry.Frame.Width < ExplorerCompactWidthThreshold,
@@ -2635,6 +2786,7 @@ public partial class DesktopShellSurface :
                 ? $"EXPLORER / {entry.Id.Value}"
                 : entry.Surface.IsCompactWidth ? "JARVIS2 / EXPLORER" : "JARVIS2 / FILE EXPLORER";
         }
+        if (affected is not null && !affected.Contains(TaskManagerOwnedWindowId)) return;
         TaskManagerPanel.SetLayoutDensity(
             TaskManagerWindow.Width < ExplorerCompactWidthThreshold,
             TaskManagerWindow.Height < ExplorerCompactHeightThreshold);
@@ -2667,7 +2819,7 @@ public partial class DesktopShellSurface :
 
     private bool IsOwnedWindowMaximized(OwnedWindowId id) =>
         _ownedWindowLayouts.AppliedPreset == LayoutPreset.Maximized &&
-        GetOwnedWindowState(id).AssignedPaneIndex == 0;
+        (_ownedWindowLayouts.IsPartition ? _ownedWindowLayouts.IsWindowShown(id) : GetOwnedWindowState(id).AssignedPaneIndex == 0);
 
     private OwnedWindowState GetOwnedWindowState(OwnedWindowId id) =>
         _ownedWindowLayouts.TryGetWindow(id, out OwnedWindowState? state) &&

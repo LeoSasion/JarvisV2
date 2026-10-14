@@ -29,6 +29,7 @@ internal enum OwnedWindowLifecycle
     Closed,
     Minimized,
     Visible,
+    Suppressed,
 }
 
 internal enum OwnedLayoutApplyStatus
@@ -39,6 +40,7 @@ internal enum OwnedLayoutApplyStatus
     UnknownOwnedWindow,
     UnknownLayout,
     InvalidWorkArea,
+    ModeConflict,
 }
 
 internal sealed record OwnedWindowState(
@@ -88,7 +90,7 @@ internal sealed record OwnedLayoutApplyResult(
 /// Coordinates geometry for explicitly registered, own-process surfaces.
 /// It never discovers or controls operating-system or third-party windows.
 /// </summary>
-internal sealed class OwnedWindowLayoutCoordinator
+internal sealed partial class OwnedWindowLayoutCoordinator
 {
     internal const double InternalGap = 12.0;
 
@@ -108,14 +110,14 @@ internal sealed class OwnedWindowLayoutCoordinator
 
     public int VisibleWindowCount =>
         _windows.Values.Count(
-            window => window.Lifecycle == OwnedWindowLifecycle.Visible);
+            window => IsWindowShown(window.Id));
 
     public bool TryRegister(
         OwnedWindowId id,
         OwnedWindowLifecycle lifecycle,
         Rect initialBounds)
     {
-        if (id.IsEmpty ||
+        if (IsPartition || id.IsEmpty ||
             !IsValidBounds(initialBounds) ||
             _windows.ContainsKey(id))
         {
@@ -188,7 +190,7 @@ internal sealed class OwnedWindowLayoutCoordinator
     public bool TryActivate(OwnedWindowId id)
     {
         if (!_windows.TryGetValue(id, out WindowEntry? entry) ||
-            entry.Lifecycle != OwnedWindowLifecycle.Visible)
+            !IsWindowShown(id))
         {
             return false;
         }
@@ -201,7 +203,7 @@ internal sealed class OwnedWindowLayoutCoordinator
         OwnedWindowId id,
         OwnedWindowLifecycle lifecycle)
     {
-        if (!_windows.TryGetValue(id, out WindowEntry? entry))
+        if (IsPartition || !_windows.TryGetValue(id, out WindowEntry? entry))
         {
             return false;
         }
@@ -267,7 +269,7 @@ internal sealed class OwnedWindowLayoutCoordinator
     {
         if (!_windows.TryGetValue(id, out WindowEntry? entry) ||
             entry.Lifecycle != OwnedWindowLifecycle.Visible ||
-            !IsValidBounds(bounds))
+            IsPartition || !IsValidBounds(bounds))
         {
             return false;
         }
@@ -290,6 +292,7 @@ internal sealed class OwnedWindowLayoutCoordinator
         OwnedWindowId id,
         Rect workArea)
     {
+        if (IsPartition) return Result(OwnedLayoutApplyStatus.ModeConflict, 1, []);
         if (!_windows.TryGetValue(id, out WindowEntry? entry) ||
             entry.Lifecycle != OwnedWindowLifecycle.Visible)
         {
@@ -410,6 +413,7 @@ internal sealed class OwnedWindowLayoutCoordinator
         OwnedWindowId? requestedActive,
         bool restoreHiddenWindows = false)
     {
+        if (IsPartition) return Result(OwnedLayoutApplyStatus.ModeConflict, 0, []);
         if (!Enum.IsDefined(preset))
         {
             return Result(

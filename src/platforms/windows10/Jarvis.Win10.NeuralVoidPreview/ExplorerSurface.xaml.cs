@@ -129,14 +129,66 @@ public partial class ExplorerSurface : UserControl
         ExplorerCompactHeader.Visibility = IsCompactWidth
             ? Visibility.Visible
             : Visibility.Collapsed;
-        ExplorerItemList.ItemTemplate = IsCompactWidth
-            ? _explorerCompactItemTemplate
-            : _explorerFullItemTemplate;
+        ApplyExplorerDensityTemplate(IsCompactWidth ? _explorerCompactItemTemplate : _explorerFullItemTemplate);
         ExplorerActionRow.Height = new GridLength(compactHeight ? 32 : compact ? 48 : 90);
         ExplorerStorageRow.Height = compact
             ? new GridLength(0.0)
             : new GridLength(101.0);
         UpdateCompactRenameError();
+    }
+
+    private TextBox? CurrentRenameEditor()
+    {
+        if (Workspace.RenameItemId is not string id || ExplorerItemList.SelectedItem is not ExplorerWorkspaceItem item || item.Id != id ||
+            ExplorerItemList.ItemContainerGenerator.ContainerFromItem(item) is not ListBoxItem container) return null;
+        return FindVisualDescendant<TextBox>(container) is TextBox editor && editor.IsVisible && IsAncestorOf(editor) ? editor : null;
+    }
+
+    private void ApplyExplorerDensityTemplate(DataTemplate template)
+    {
+        if (ReferenceEquals(ExplorerItemList.ItemTemplate,template)) return;
+        TextBox? departing = CurrentRenameEditor();
+        if (departing is null) { ExplorerItemList.ItemTemplate = template; return; }
+        string? renameId = Workspace.RenameItemId;
+        Panel? departingParent = departing.Parent as Panel;
+        // Keep the physical TextEditor/selection, including its anchor and moving
+        // end. Freeze template-owned values before teardown; Select(start,length)
+        // on a replacement would silently normalize a backward selection.
+        departing.Text = departing.Text;
+        departing.Style = departing.Style;
+        bool ownedFocus = ReferenceEquals(Keyboard.FocusedElement,departing);
+        bool wasRefreshing = _refreshingExplorerPresentation;
+        _refreshingExplorerPresentation = true;
+        try
+        {
+            // Replace only the density template while blur is guarded. Materialize
+            // synchronously so no deferred restore can steal a newer focus intent.
+            ExplorerItemList.ItemTemplate = template;
+            ExplorerItemList.UpdateLayout();
+            // A focused row can survive outside the realized viewport after a
+            // density round-trip. Once unfocused, template refresh drops it;
+            // realize that same rename target before discarding its local draft.
+            if (Workspace.RenameItemId == renameId && CurrentRenameEditor() is null &&
+                ExplorerItemList.SelectedItem is ExplorerWorkspaceItem selected && selected.Id == renameId)
+            {
+                ExplorerItemList.ScrollIntoView(selected);
+                ExplorerItemList.UpdateLayout();
+            }
+            if (Workspace.RenameItemId != renameId || CurrentRenameEditor() is not TextBox replacement ||
+                departingParent is null || replacement.Parent is not Panel replacementParent) return;
+            int slot = replacementParent.Children.IndexOf(replacement);
+            departingParent.Children.Remove(departing);
+            replacementParent.Children.RemoveAt(slot);
+            replacementParent.Children.Insert(slot, departing);
+            AutomationProperties.SetName(departing, AutomationProperties.GetName(replacement));
+            departing.LostKeyboardFocus -= ExplorerRenameEditor_OnLostKeyboardFocus;
+            departing.LostKeyboardFocus += ExplorerRenameEditor_OnLostKeyboardFocus;
+            if (ownedFocus && _interactionEnabled && IsLoaded && IsVisible && (IsFocusIntentCurrent?.Invoke() ?? true) &&
+                (Keyboard.FocusedElement is null || ReferenceEquals(Keyboard.FocusedElement,departing) ||
+                    ReferenceEquals(Keyboard.FocusedElement,ExplorerItemList)))
+                _ = departing.Focus();
+        }
+        finally { _refreshingExplorerPresentation = wasRefreshing; }
     }
 
     private void Announce(string text) => Announced?.Invoke(text);

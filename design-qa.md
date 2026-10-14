@@ -7,8 +7,8 @@
 - Viewport: 1600 x 900 at 96 DPI
 - State: black/yellow desktop, layout rail permanently visible, `FREEFORM`,
   Explorer restored at `(596, 63)` with size `930 x 667`; all sixteen presets
-  are selectable, but only the one-window preset is fully fillable from the
-  initially visible window before any registered-surface restoration
+  are selectable and enter fully occupied, zero-gap Partition on explicit
+  commit; the untouched initial Freeform scene remains the canonical
 - Validation scope: own-process WPF preview only;
   `shellMutationSupported=false`, `liveExplorer=not-run`
 
@@ -16,9 +16,18 @@
 
 The catalog still contains 16 stable topologies: one maximized window, six
 two-window splits, eight three-window structures and one four-quadrant grid.
-All sixteen presets are selectable. Explicit commits restore only already
-registered owned windows and report honest partial fill; they do not create
-Explorer sessions. Manual taskbar creation permits real three/four-pane fill.
+All sixteen presets are selectable. The separate historical legacy placement
+API restores only already registered owned windows on its explicit commits.
+The actual rail now enters enforced Partition: it reuses real owned sessions and
+transactionally prepares only missing Explorers, under the retained cap of four.
+Every pane is filled and no unassigned floating frame obscures the template.
+Titles cannot detach frames; shared divider dragging changes proportions without
+exiting. Close/minimize refills the exact pane excluding its target, and an
+identity-specific show/New command swaps into a pane. Older Closed sessions may
+be reused for refill. Zoom/restore preserves exact assignments and cuts. A
+right-click or keyboard context command on the current-layout button returns to
+Freeform, restoring floating bounds and only mode-induced suppression. Initial
+FourQuadrants reuses Task Manager and prepares two fresh Explorers.
 Every definition is an exact cover of a 12 x 12 integer grid. Startup validation
 rejects duplicate IDs, orders, presets or signatures, gaps, overlaps, and any
 catalog that is not closed under horizontal mirror, vertical mirror and
@@ -105,23 +114,65 @@ rendered and reviewed in a connected graphics session.
 - Layout and edge-bar scenarios: 25 / 25
 - Explorer workspace scenarios: 40 / 40; three consecutive unfiltered passes
 - Owned Task Manager surface scenarios: 10 / 10
-- Owned-window layout scenarios: 62 / 62 (25 coordinator, 36 hosted,
-  1 WPF visual-tree contract);
+- Owned-window layout scenarios: 126 / 126 (25 legacy coordinator, 36 original
+  hosted, 1 WPF visual-tree contract and 64 Partition);
   three consecutive unfiltered passes
+- Partition scenarios: 64 / 64; three preplanned consecutive unfiltered passes.
+  All original 39 bodies remain intact; 25 added entries cover a compile-first
+  backward moving-caret RED/GREEN and the forward/backward, first/last,
+  valid/invalid, owning/Search/foreign focus matrix through captured width and
+  height round-trips, same-seeded-ID physical-session isolation and ordinary
+  completion. Direction is checked by subsequent public WPF Shift navigation
 - WPF vector adapter: 13 / 13
 - Platform layout: 16 / 16
-- Publication boundary: passed for 536 candidate files; no secret values printed
+- Publication boundary: passed for 541 candidate files; no secret values printed
 - Full owned-preview audit: 26 / 26, `locked-profile-approved`
-- Extended actual-predicate owning-XAML probe: 90 / 90 mutations detected
-  (15 canaries across both owners and full/hidden/compact-template placements)
+- Extended actual-predicate owning-XAML probe: 135 / 135 mutations detected
+  (15 canaries across three owners and full/hidden/compact-template placements)
+- Partition source-owner probe: 20 / 20 canaries detected
+- Arranged-control/rule/ledger pixel probe: 33 / 33, covering all sixteen default
+  templates, fifteen resized templates and real Explorer/Task Manager at the
+  simultaneous 320 x 188 DIP minimum; hosted renders are not pointer evidence
+- Genuine SendInput owned-MainWindow harness: 17 / 17 unfiltered; exact
+  HWND/PID/foreground/hit-target admission, null product input overrides, observed
+  native down/up and WPF capture, interference abort and finally cleanup.
+  The parent also replays the formerly failing composed Search case with
+  byte-exact native case source. The full parent replay changes only two
+  screenshot filename expressions to preserve case-specific image history.
+  The scoped direction-fix agent reruns the unchanged original 17 cases and
+  byte-exact parent caret/composed reproducers on the corrected artifact.
+  A no-case-filter appended-harness replay passes 18/18 checks, but its unchanged
+  literal-17 `completeUnfilteredPass` field remains false. The caret-selection
+  fixture uses routed editor commands, not native keyboard selection
 - Default canonical SHA-256 unchanged:
   `F472A0C14D08348B49A44D878202A3F69330D78A6226244D2B2A499EE2C70AC2`
 - Task Manager structural render SHA-256 unchanged:
   `3971C3ECB2D725C9F5EB12F6F95A95E43600E16EF41D4F91DED57055A2BDEACF`
 
-These results are hosted WPF/offscreen and deterministic-render evidence only,
-not a live mouse/keyboard Shell session or native-release acceptance. Historical
-records below retain their original scope, dates, counts and unresolved findings.
+This pre-publication record separates hosted/deterministic render evidence from
+genuine native input delivered to the owned WPF preview. Neither is live Shell
+injection or native-release acceptance. Hash-bound parent receipts remain in
+`jarvis-partitions/parent/` under the local Hermes scratch root; independent
+frozen-tree approval and exact-SHA remote/CI readback are separate release proof.
+Current scoped correction receipts, source/artifact hashes, images and failures
+are under `jarvis-partitions/fix-caret-direction/`; this is fix-agent execution,
+not new parent verification or independent approval. The retained physical
+TextBox keeps draft and real anchor/moving intent; its shared style uses current
+row-data visibility, while the existing blur/realization/focus guards remain.
+Ordinary valid blur, Escape cancellation and subsequent Name binding are checked.
+Logical scroll offset is retained subject to WPF viewport clamping, not a new
+automatic-scroll policy for retained off-viewport rows.
+Historical records below retain their original scope, dates, counts and
+unresolved findings. The historical Escape-focus, post-migration blank-rename
+(093) and rail-focus (115) failures remain undiagnosed. The confirmed composed
+width/height density round-trip draft/caret loss is fixed with a permanent
+behavior RED/GREEN and same-target virtualized-row realization inside the existing
+blur guard. That scoped correction does not claim to explain the historical
+failures. Earlier full native-harness runs overwrote four same-named Search PNG
+versions; their failed history audit is retained. The parent's filename-only
+variant preserves every case's referenced images rather than rewriting history.
+The implementation's early slices did not each achieve full-regression GREEN;
+the actual failed chronology remains preserved, not retroactively relabeled.
 Current stacking-repair evidence is in
 `jarvis-multi-explorer/fix-zorder/fix-zorder-verification.json` under the local
 Hermes scratch root; earlier focus/policy evidence remains unchanged.

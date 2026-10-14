@@ -31,6 +31,12 @@ $taskManagerProjectPath = Join-Path $taskManagerModelRoot (
 $explorerSurfacePath = Join-Path $sourceRoot 'ExplorerSurface.xaml'
 $explorerSurfaceCodePath = Join-Path $sourceRoot 'ExplorerSurface.xaml.cs'
 $visualTreeSearchPath = Join-Path $sourceRoot 'VisualTreeSearch.cs'
+$partitionSourceFiles = @(
+    'OwnedPartitionCoordinator.cs', 'PartitionGeometry.cs',
+    'PartitionDivider.cs', 'DesktopPartitionSurface.cs'
+)
+$partitionScenariosPath = Join-Path $sourceRoot 'PartitionScenarios.cs'
+$ownedCoordinatorPath = Join-Path $sourceRoot 'OwnedWindowLayoutCoordinator.cs'
 $explorerWorkspacePath = Join-Path $sourceRoot 'ExplorerWorkspace.cs'
 $explorerScenariosPath = Join-Path $sourceRoot (
     'ExplorerWorkspaceScenarios.cs')
@@ -104,14 +110,25 @@ $taskManagerSurfaceScenariosText =
 $taskManagerProjectText = [IO.File]::ReadAllText($taskManagerProjectPath)
 $explorerSurfaceText = [IO.File]::ReadAllText($explorerSurfacePath)
 $desktopOwningXamlText = @(
-    $surfaceText, $explorerSurfaceText
+    $surfaceText, $explorerSurfaceText, $taskManagerSurfaceText
 ) -join [Environment]::NewLine
 $explorerSurfaceCodeText = [IO.File]::ReadAllText($explorerSurfaceCodePath)
 $explorerWorkspaceText = [IO.File]::ReadAllText($explorerWorkspacePath)
 $visualTreeSearchText = [IO.File]::ReadAllText($visualTreeSearchPath)
+$partitionCodeText = @(
+    foreach ($file in $partitionSourceFiles) {
+        [IO.File]::ReadAllText((Join-Path $sourceRoot $file))
+    }
+) -join [Environment]::NewLine
+$partitionDividerText = [IO.File]::ReadAllText((Join-Path $sourceRoot 'PartitionDivider.cs'))
+$partitionScenariosText = [IO.File]::ReadAllText($partitionScenariosPath)
+$ownedCoordinatorText = [IO.File]::ReadAllText($ownedCoordinatorPath)
 $explorerOwningCodeText = @(
     $surfaceCodeText, $explorerSurfaceCodeText, $explorerWorkspaceText,
-    $visualTreeSearchText
+    $visualTreeSearchText, $partitionCodeText, $ownedCoordinatorText
+) -join [Environment]::NewLine
+$taskManagerOwningCodeText = @(
+    $taskManagerSurfaceCodeText, $surfaceCodeText, $partitionCodeText, $ownedCoordinatorText
 ) -join [Environment]::NewLine
 $explorerScenariosText = [IO.File]::ReadAllText($explorerScenariosPath)
 $layoutCatalogText = [IO.File]::ReadAllText($layoutCatalogPath)
@@ -167,7 +184,7 @@ Add-Check `
         $taskManagerSurfaceScenariosText.Contains(
             'system-button-owns-complete-window-lifecycle') -and
         -not [regex]::IsMatch(
-            $taskManagerSurfaceCodeText,
+            $taskManagerOwningCodeText,
             $forbiddenTaskManagerControlPattern)) `
     -Detail (
         'The owned Task Manager must consume the injected read-only sampler, ' +
@@ -360,6 +377,17 @@ Add-Check `
             'ScrollToVerticalOffset\(target\);\s*LayoutRailList\.UpdateLayout\(\);' -and
         $surfaceCodeText.Contains('LayoutItemHeight = 64.0') -and
         $surfaceCodeText.Contains('LayoutViewportHeight = 556.0') -and
+        $surfaceCodeText.Contains('_ownedWindowLayouts.TryCommitPartition(') -and
+        $surfaceCodeText.Contains('_ownedWindowLayouts.TryHidePartition(') -and
+        $surfaceCodeText.Contains('_ownedWindowLayouts.TryShowPartition(') -and
+        $partitionCodeText.Contains('TryResizePartition(') -and
+        $partitionDividerText.Contains('IRangeValueProvider') -and
+        $partitionDividerText.Contains('RaisePropertyChangedEvent(') -and
+        $partitionDividerText.Contains('CaptureMouse()') -and
+        $partitionDividerText.Contains('args.GetPosition(_shell.DesktopCanvas)') -and
+        $partitionScenariosText.Contains('partition-rail-four-quadrants-prepares-real-deficit') -and
+        -not [regex]::IsMatch($partitionCodeText,
+            '(?i)\b(?:DispatcherTimer|CompositionTarget|DoubleAnimation|Storyboard|AnimationClock)\b') -and
         $surfaceCodeText.Contains('_ownedWindowLayouts.TryApply(') -and
         $surfaceCodeText.Contains('_ownedWindowLayouts.TryToggleMaximize(') -and
         $surfaceCodeText.Contains('ExplorerTitleBar_OnMouseMove(') -and
@@ -371,7 +399,7 @@ Add-Check `
         'a continuous boundary-aware feather, then map pointer distance from ' +
         'its center through a nonlinear display-frame-synchronized velocity ' +
         'curve without dwell, snap or post-leave offset changes, ' +
-        'apply only layouts admitted by the owned-window registry, ' +
+        'apply enforced full partitions through the detached real factory, ' +
         'synchronize maximize/restore state, and keep the inner Explorer ' +
         'controls operational.')
 
@@ -728,6 +756,9 @@ if ($buildExitCode -eq 0) {
             $null -ne $adapterReceipt -and
             $adapterReceipt.result -eq 'passed' -and
             $adapterReceipt.scenarioCount -eq 13 -and
+            @($adapterReceipt.scenarios).Count -eq $adapterReceipt.scenarioCount -and
+            @($adapterReceipt.scenarios | Where-Object { -not $_.passed }).Count -eq 0 -and
+            @($adapterReceipt.scenarios.name | Sort-Object -Unique).Count -eq $adapterReceipt.scenarioCount -and
             $adapterReceipt.passedCount -eq
                 $adapterReceipt.scenarioCount -and
             -not $adapterReceipt.shellMutationSupported -and
@@ -761,6 +792,9 @@ if ($buildExitCode -eq 0) {
             $edgeReceipt.result -eq 'passed' -and
             $edgeReceipt.schemaVersion -eq 9 -and
             $edgeReceipt.scenarioCount -eq 25 -and
+            @($edgeReceipt.scenarios).Count -eq $edgeReceipt.scenarioCount -and
+            @($edgeReceipt.scenarios | Where-Object { -not $_.passed }).Count -eq 0 -and
+            @($edgeReceipt.scenarios.name | Sort-Object -Unique).Count -eq $edgeReceipt.scenarioCount -and
             $edgeReceipt.passedCount -eq
                 $edgeReceipt.scenarioCount -and
             $edgeReceipt.ownProcessOnly -and
@@ -799,6 +833,9 @@ if ($buildExitCode -eq 0) {
             $explorerReceipt.result -eq 'passed' -and
             $explorerReceipt.schemaVersion -eq 1 -and
             $explorerReceipt.scenarioCount -eq 40 -and
+            @($explorerReceipt.scenarios).Count -eq $explorerReceipt.scenarioCount -and
+            @($explorerReceipt.scenarios | Where-Object { -not $_.passed }).Count -eq 0 -and
+            @($explorerReceipt.scenarios.name | Sort-Object -Unique).Count -eq $explorerReceipt.scenarioCount -and
             $explorerReceipt.passedCount -eq
                 $explorerReceipt.scenarioCount -and
             $explorerReceipt.ownProcessOnly -and
@@ -837,6 +874,9 @@ if ($buildExitCode -eq 0) {
             $taskManagerSurfaceReceipt.result -eq 'passed' -and
             $taskManagerSurfaceReceipt.schemaVersion -eq 1 -and
             $taskManagerSurfaceReceipt.scenarioCount -eq 10 -and
+            @($taskManagerSurfaceReceipt.scenarios).Count -eq $taskManagerSurfaceReceipt.scenarioCount -and
+            @($taskManagerSurfaceReceipt.scenarios | Where-Object { -not $_.passed }).Count -eq 0 -and
+            @($taskManagerSurfaceReceipt.scenarios.name | Sort-Object -Unique).Count -eq $taskManagerSurfaceReceipt.scenarioCount -and
             $taskManagerSurfaceReceipt.passedCount -eq
                 $taskManagerSurfaceReceipt.scenarioCount -and
             $taskManagerSurfaceReceipt.ownProcessOnly -and
@@ -869,7 +909,10 @@ if ($buildExitCode -eq 0) {
             $ownedLayoutReceipt.receiptType -ceq 'jarvisv2-win10-owned-window-layout-test' -and
             $ownedLayoutReceipt.result -eq 'passed' -and
             $ownedLayoutReceipt.schemaVersion -eq 1 -and
-            $ownedLayoutReceipt.scenarioCount -eq 62 -and
+            $ownedLayoutReceipt.scenarioCount -eq 126 -and
+            @($ownedLayoutReceipt.scenarios).Count -eq $ownedLayoutReceipt.scenarioCount -and
+            @($ownedLayoutReceipt.scenarios | Where-Object { -not $_.passed }).Count -eq 0 -and
+            @($ownedLayoutReceipt.scenarios.name | Sort-Object -Unique).Count -eq $ownedLayoutReceipt.scenarioCount -and
             $ownedLayoutReceipt.passedCount -eq $ownedLayoutReceipt.scenarioCount -and
             $ownedLayoutReceipt.ownProcessOnly -and
             -not $ownedLayoutReceipt.thirdPartyWindowControlSupported -and

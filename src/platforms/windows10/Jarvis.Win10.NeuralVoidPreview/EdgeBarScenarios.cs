@@ -738,13 +738,16 @@ internal static class EdgeBarScenarios
 
         Add(
             scenarios,
-            "every-layout-applies-and-selects-with-partial-fill",
+            "every-layout-applies-and-selects-with-full-partition",
             () =>
             {
                 foreach (LayoutDefinition definition in LayoutCatalog.All)
                 {
                     bool applied = surface.SelectLayoutForTest(definition.Preset);
-                    if (!applied || surface.CurrentLayout != definition.Preset ||
+                    if (!applied || surface.VisibleOwnedWindowCount != definition.PaneCount ||
+                        surface.ExplorerSessionIdsForTest.Count(id => OwnedWindowLayoutScenarios.ExplorerFrame(surface,id).Visibility == Visibility.Visible) +
+                            (surface.TaskManagerWindow.Visibility == Visibility.Visible ? 1 : 0) != definition.PaneCount ||
+                        surface.CurrentLayout != definition.Preset ||
                         surface.CurrentLayoutGlyph.Preset != definition.Preset ||
                         surface.SelectedLayoutDefinition?.Preset != definition.Preset ||
                         surface.LayoutRailList.SelectedItems.Count != 1 ||
@@ -808,6 +811,7 @@ internal static class EdgeBarScenarios
             "explorer-is-right-side-floating-window",
             () =>
             {
+                PartitionScenarios.Exit(surface);
                 Invoke(surface.ExplorerCloseButton);
                 surface.RestoreExplorerForTest();
                 return
@@ -853,14 +857,14 @@ internal static class EdgeBarScenarios
                 Invoke(surface.ExplorerMinimizeButton);
                 bool minimized =
                     surface.ExplorerWindow.Visibility == Visibility.Collapsed;
-                Invoke(surface.TaskbarExplorerButton);
+                OwnedWindowLayoutScenarios.InvokeSessionMenu(surface,"explorer","Restore");
                 bool restoredTiled =
                     surface.ExplorerWindow.Visibility == Visibility.Visible &&
                     surface.CurrentLayout == LayoutPreset.EqualColumns;
                 Invoke(surface.TaskbarExplorerButton);
                 bool minimizedFromActiveTaskbar =
                     surface.ExplorerWindow.Visibility == Visibility.Collapsed;
-                Invoke(surface.TaskbarExplorerButton);
+                OwnedWindowLayoutScenarios.InvokeSessionMenu(surface,"explorer","Restore");
                 bool restoredFromTaskbar =
                     surface.ExplorerWindow.Visibility == Visibility.Visible &&
                     surface.CurrentLayout == LayoutPreset.EqualColumns;
@@ -869,7 +873,7 @@ internal static class EdgeBarScenarios
                     surface.IsExplorerMaximized &&
                     surface.CurrentLayout == LayoutPreset.Maximized;
                 Invoke(surface.ExplorerMinimizeButton);
-                Invoke(surface.TaskbarExplorerButton);
+                OwnedWindowLayoutScenarios.InvokeSessionMenu(surface,"explorer","Restore");
                 bool restoredMaximized =
                     surface.ExplorerWindow.Visibility == Visibility.Visible &&
                     surface.IsExplorerMaximized &&

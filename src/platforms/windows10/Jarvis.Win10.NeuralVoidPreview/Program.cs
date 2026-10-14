@@ -108,6 +108,19 @@ internal static class Program
             return receipt.Result == "passed" ? 0 : 12;
         }
 
+        if (args.Length == 1 && args[0] == "test-partitions")
+        {
+            RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
+            _ = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            IReadOnlyList<OwnedWindowLayoutScenario> scenarios = PartitionScenarios.Run();
+            int passed = scenarios.Count(scenario => scenario.Passed);
+            OwnedWindowLayoutTestReceipt receipt = new(1, "jarvisv2-win10-owned-window-layout-test",
+                passed == scenarios.Count ? "passed" : "failed", scenarios.Count, passed,
+                true, false, false, "not-run", false, scenarios);
+            Console.WriteLine(JsonSerializer.Serialize(receipt, JsonOptions));
+            return receipt.Result == "passed" ? 0 : 12;
+        }
+
         if (args.Length == 1 &&
             args[0] == "test-owned-window-layout")
         {
@@ -175,6 +188,7 @@ internal static class Program
             "or render-owned-layout <png-path> <hue> <effect> <phase> <preset> " +
             "or test-vector-adapter " +
             "or test-edge-bars " +
+            "or test-partitions " +
             "or test-owned-window-layout " +
             "or test-explorer-workspace " +
             "or test-task-manager-surface");

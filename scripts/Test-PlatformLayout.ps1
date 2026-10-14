@@ -429,6 +429,11 @@ $ownedTaskManagerRequired = @(
     'src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/TaskManagerSurfaceScenarios.cs',
     'src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/OwnedWindowLayoutCoordinator.cs',
     'src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/OwnedWindowLayoutScenarios.cs',
+    'src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/OwnedPartitionCoordinator.cs',
+    'src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/PartitionGeometry.cs',
+    'src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/PartitionDivider.cs',
+    'src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/DesktopPartitionSurface.cs',
+    'src/platforms/windows10/Jarvis.Win10.NeuralVoidPreview/PartitionScenarios.cs',
     'docs/WINDOWS10-OWNED-WINDOW-LAYOUT.md'
 )
 Add-Check `

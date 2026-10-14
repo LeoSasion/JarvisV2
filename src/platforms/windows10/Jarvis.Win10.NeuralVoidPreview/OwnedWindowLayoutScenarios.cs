@@ -153,6 +153,7 @@ internal static class OwnedWindowLayoutScenarios
         Add(scenarios, "primary-pane-arbitrary-ties-integer-area-and-null-empty-contract", PrimaryPaneProjectionContract);
         Add(scenarios, "pane-placement-literal-order-and-arbitrary-registration-ties", PanePlacementProjectionContract);
 
+        scenarios.AddRange(PartitionScenarios.Run());
         int passed = scenarios.Count(scenario => scenario.Passed);
         return new(
             1,
@@ -1055,7 +1056,7 @@ internal static class OwnedWindowLayoutScenarios
         shell.RaiseRailKeyForTest(Key.Enter);
         shell.UpdateLayout();
         PumpIdle();
-        IReadOnlyList<Rect> panes = OwnedWindowLayoutCoordinator.ScaleWithInternalGap(
+        IReadOnlyList<Rect> panes = PartitionPanes(
             LayoutPreset.EqualColumns, WorkArea);
         string other = id == "explorer" ? "task-manager" : "explorer";
         Border indicator = id == "explorer"
@@ -1124,6 +1125,7 @@ internal static class OwnedWindowLayoutScenarios
     {
         _ = shell.PrepareTaskManagerForSnapshot();
         _ = shell.SelectLayoutForTest(LayoutPreset.EqualColumns);
+        PartitionScenarios.Exit(shell);
         Invoke(shell.TaskManagerMinimizeButton);
         PumpIdle();
         Rect beforePreview = shell.GetOwnedWindowBoundsForTest("explorer");
@@ -1132,7 +1134,7 @@ internal static class OwnedWindowLayoutScenarios
             shell.RaiseRailKeyForTest(key);
             if (shell.VisibleOwnedWindowCount != 1 ||
                 shell.GetOwnedWindowBoundsForTest("explorer") != beforePreview ||
-                shell.CurrentLayout != LayoutPreset.EqualColumns)
+                shell.CurrentLayout is not null)
             {
                 return false;
             }
@@ -1140,7 +1142,7 @@ internal static class OwnedWindowLayoutScenarios
 
         Invoke(shell.ExplorerMaximizeButton);
         Invoke(shell.ExplorerMaximizeButton);
-        if (shell.CurrentLayout != LayoutPreset.EqualColumns ||
+        if (shell.CurrentLayout is not null ||
             shell.VisibleOwnedWindowCount != 1)
         {
             return false;
@@ -1163,7 +1165,7 @@ internal static class OwnedWindowLayoutScenarios
             ActivateBody(shell, other);
             if (!shell.SelectLayoutForTest(LayoutPreset.FourQuadrants) ||
                 !AutomationProperties.GetHelpText(shell.CurrentLayoutButton).Contains(
-                    "2 of 4 panes", StringComparison.Ordinal))
+                    "4 of 4 panes", StringComparison.Ordinal))
             {
                 return false;
             }
@@ -1172,7 +1174,7 @@ internal static class OwnedWindowLayoutScenarios
             Invoke(hidden == "task-manager"
                 ? shell.TaskManagerMinimizeButton : shell.ExplorerMinimizeButton);
             if (!AutomationProperties.GetHelpText(shell.CurrentLayoutButton).Contains(
-                    "1 of 4 panes", StringComparison.Ordinal))
+                    "4 of 4 panes", StringComparison.Ordinal))
             {
                 return false;
             }
@@ -1181,12 +1183,12 @@ internal static class OwnedWindowLayoutScenarios
                 ? shell.ExplorerMaximizeButton : shell.TaskManagerMaximizeButton;
             Invoke(maximizeOther);
             Invoke(maximizeOther);
-            Invoke(hidden == "task-manager"
-                ? shell.TaskbarSystemButton : shell.TaskbarExplorerButton);
+            if (hidden == "task-manager") Invoke(shell.TaskbarSystemButton);
+            else InvokeSessionMenu(shell, hidden, "Restore");
             PumpIdle();
             if (shell.GetOwnedWindowBoundsForTest(hidden) != hiddenBounds ||
                 !AutomationProperties.GetHelpText(shell.CurrentLayoutButton).Contains(
-                    "2 of 4 panes", StringComparison.Ordinal))
+                    "4 of 4 panes", StringComparison.Ordinal))
             {
                 return false;
             }
@@ -1216,7 +1218,7 @@ internal static class OwnedWindowLayoutScenarios
 
         shell.UpdateLayout();
         PumpIdle();
-        IReadOnlyList<Rect> panes = OwnedWindowLayoutCoordinator.ScaleWithInternalGap(
+        IReadOnlyList<Rect> panes = PartitionPanes(
             LayoutPreset.EqualColumns, WorkArea);
         return shell.VisibleOwnedWindowCount == 2 &&
             shell.TaskManagerWindow.Visibility == Visibility.Visible &&
@@ -1231,10 +1233,9 @@ internal static class OwnedWindowLayoutScenarios
     private static bool HostedRealExplorerLayouts() => WithShell(shell =>
     {
         _ = shell.SelectLayoutForTest(LayoutPreset.FourQuadrants);
-        if (shell.ExplorerSessionIdsForTest.Count != 1 || shell.VisibleOwnedWindowCount != 2 ||
-            !AutomationProperties.GetHelpText(shell.CurrentLayoutButton).Contains("2 of 4 panes", StringComparison.Ordinal))
-            throw new InvalidOperationException("explicit partial fill must not manufacture Explorer sessions");
-        _ = ExplorerWorkspaceScenarios.CreateViaTaskbarMenu(shell);
+        if (shell.ExplorerSessionIdsForTest.Count != 3 || shell.VisibleOwnedWindowCount != 4 ||
+            !AutomationProperties.GetHelpText(shell.CurrentLayoutButton).Contains("4 of 4 panes", StringComparison.Ordinal))
+            throw new InvalidOperationException("explicit partition must create only two real deficit Explorer sessions");
         foreach (LayoutDefinition definition in LayoutCatalog.All.Where(layout => layout.PaneCount == 3))
         {
             _ = shell.SelectLayoutForTest(definition.Preset);
@@ -1242,7 +1243,6 @@ internal static class OwnedWindowLayoutScenarios
             PumpIdle();
             VerifyRealExplorerPanes(shell, definition, 3);
         }
-        _ = ExplorerWorkspaceScenarios.CreateViaTaskbarMenu(shell);
         _ = ExplorerWorkspaceScenarios.CreateViaTaskbarMenu(shell);
         Invoke(shell.TaskManagerCloseButton);
         foreach (LayoutDefinition definition in LayoutCatalog.All.Where(layout => layout.PaneCount == 4))
@@ -1279,7 +1279,7 @@ internal static class OwnedWindowLayoutScenarios
         string retainedId = shell.ExplorerSessionIdsForTest[1];
         ExplorerSurface retained = shell.GetExplorerSurfaceForTest(retainedId);
         Invoke(ExplorerTitleButton(shell, retainedId, "Minimize"));
-        _ = shell.SelectLayoutForTest(LayoutPreset.FourQuadrants);
+        InvokeSessionMenu(shell, retainedId, "Restore");
         PumpIdle();
         return shell.VisibleOwnedWindowCount == 4 &&
             ReferenceEquals(retained, shell.GetExplorerSurfaceForTest(retainedId)) &&
@@ -1289,7 +1289,7 @@ internal static class OwnedWindowLayoutScenarios
 
     private static void VerifyRealExplorerPanes(DesktopShellSurface shell, LayoutDefinition definition, int filled)
     {
-        IReadOnlyList<Rect> panes = OwnedWindowLayoutCoordinator.ScaleWithInternalGap(definition.Preset, WorkArea);
+        IReadOnlyList<Rect> panes = PartitionPanes(definition.Preset, WorkArea);
         Rect[] visible = shell.ExplorerSessionIdsForTest.Select(id => ExplorerFrame(shell, id))
             .Where(frame => frame.IsVisible).Select(frame => BoundsOnShell(frame, shell))
             .Concat(shell.TaskManagerWindow.IsVisible ? new[] { BoundsOnShell(shell.TaskManagerWindow, shell) } : Array.Empty<Rect>()).ToArray();
@@ -1341,9 +1341,11 @@ internal static class OwnedWindowLayoutScenarios
             shell.RaiseOwnedTitleGestureForTest(id, press, clickCount: 2);
             if (shell.GetOwnedWindowBoundsForTest(id) != tiled)
                 throw new InvalidOperationException($"{id}: double-click restore lost exact pane");
+            PartitionScenarios.Exit(shell);
             foreach (bool loseCapture in new[] { false, true })
             {
                 _ = shell.SelectLayoutForTest(LayoutPreset.EqualColumns);
+                PartitionScenarios.Exit(shell);
                 tiled = shell.GetOwnedWindowBoundsForTest(id);
                 press = new(tiled.Left + 40, tiled.Top + 20);
                 shell.RaiseOwnedTitleGestureForTest(id, press, new Point(press.X + 64, press.Y + 48), loseCapture);
@@ -1732,7 +1734,7 @@ internal static class OwnedWindowLayoutScenarios
             Require(shell.SelectLayoutForTest(LayoutPreset.EqualColumns), "EqualColumns rejected");
             PumpIdle();
             RequirePreservedIdentityAndHistory();
-            IReadOnlyList<Rect> columns = OwnedWindowLayoutCoordinator.ScaleWithInternalGap(LayoutPreset.EqualColumns, WorkArea);
+            IReadOnlyList<Rect> columns = PartitionPanes(LayoutPreset.EqualColumns, WorkArea);
             Require(shell.GetOwnedWindowBoundsForTest(activeId) == columns[0] &&
                 shell.GetOwnedWindowBoundsForTest(secondaryId) == columns[1] &&
                 ExplorerFrame(shell, secondaryId).Visibility == Visibility.Visible &&
@@ -1750,9 +1752,10 @@ internal static class OwnedWindowLayoutScenarios
             {
                 OwnedWindowState after = State(coordinator, before.Id);
                 return after.Bounds == before.Bounds && after.FloatingBounds == before.FloatingBounds &&
-                    after.Lifecycle == before.Lifecycle && shell.GetOwnedWindowBoundsForTest(before.Id.Value) == before.Bounds &&
-                    Frame(before.Id).Visibility == extraVisibility[before.Id];
-            }), "maximize moved, hid or changed the lifecycle of a retained extra frame");
+                    after.Lifecycle == (before.Lifecycle == OwnedWindowLifecycle.Visible ? OwnedWindowLifecycle.Suppressed : before.Lifecycle) &&
+                    shell.GetOwnedWindowBoundsForTest(before.Id.Value) == before.Bounds &&
+                    Frame(before.Id).Visibility == (extraVisibility[before.Id] == Visibility.Visible ? Visibility.Collapsed : extraVisibility[before.Id]);
+            }), "maximize lost bounds or mode-suppressed lifecycle/visibility of a retained extra frame");
 
             OwnedWindowId[] expectedNonActive = extras.OrderBy(window => window.ActivationOrdinal)
                 .ThenBy(window => window.RegistrationOrder).Select(window => window.Id).ToArray();
@@ -1793,6 +1796,10 @@ internal static class OwnedWindowLayoutScenarios
     }
 
 
+
+    private static IReadOnlyList<Rect> PartitionPanes(LayoutPreset preset, Rect area) =>
+        PartitionGeometry.TryCreate(preset, area, null, out PartitionGeometry? geometry)
+            ? geometry!.Panes : throw new InvalidOperationException("Partition geometry rejected");
 
     private static bool HostedInitialState() => WithShell(shell =>
         shell.IsOwnedWindowLayoutFreeform && shell.CurrentLayoutGlyph.IsFreeform &&
@@ -1856,13 +1863,13 @@ internal static class OwnedWindowLayoutScenarios
                 }
 
                 shell.UpdateLayout();
-                IReadOnlyList<Rect> expected = OwnedWindowLayoutCoordinator.ScaleWithInternalGap(definition.Preset, WorkArea);
+                IReadOnlyList<Rect> expected = PartitionPanes(definition.Preset, WorkArea);
                 int primary = OwnedWindowLayoutCoordinator.PrimaryPaneIndex(definition);
                 string other = active == "explorer" ? "task-manager" : "explorer";
                 Rect first = shell.GetOwnedWindowBoundsForTest(active);
                 Rect second = shell.GetOwnedWindowBoundsForTest(other);
                 if (first != expected[primary] || second != expected[1 - primary] ||
-                    first.IntersectsWith(second) || !WorkArea.Contains(first) || !WorkArea.Contains(second) ||
+                    (Math.Max(first.Left,second.Left) < Math.Min(first.Right,second.Right) && Math.Max(first.Top,second.Top) < Math.Min(first.Bottom,second.Bottom)) || !WorkArea.Contains(first) || !WorkArea.Contains(second) ||
                     shell.CurrentLayout != definition.Preset || shell.CurrentLayoutGlyph.IsFreeform)
                 {
                     return false;
@@ -1925,14 +1932,14 @@ internal static class OwnedWindowLayoutScenarios
         {
             ListBoxItem item = (ListBoxItem)shell.LayoutRailList.ItemContainerGenerator.ContainerFromItem(definition);
             if (!item.IsEnabled ||
-                !AutomationProperties.GetHelpText(item).Contains("fills the first", StringComparison.Ordinal) ||
+                !AutomationProperties.GetHelpText(item).Contains("fills all", StringComparison.Ordinal) ||
                 !shell.SelectLayoutForTest(definition.Preset))
             {
                 return false;
             }
 
             shell.UpdateLayout();
-            IReadOnlyList<Rect> panes = OwnedWindowLayoutCoordinator.ScaleWithInternalGap(definition.Preset, WorkArea);
+            IReadOnlyList<Rect> panes = PartitionPanes(definition.Preset, WorkArea);
             Rect explorer = shell.GetOwnedWindowBoundsForTest("explorer");
             Rect task = shell.GetOwnedWindowBoundsForTest("task-manager");
             if (shell.CurrentLayout != definition.Preset ||
@@ -1952,9 +1959,9 @@ internal static class OwnedWindowLayoutScenarios
         _ = shell.SelectLayoutForTest(LayoutPreset.NarrowLeftWideRight);
         Rect tiled = shell.GetOwnedWindowBoundsForTest("explorer");
         Invoke(shell.ExplorerMinimizeButton);
-        bool minimized = shell.VisibleOwnedWindowCount == 1 && shell.AvailableLayoutCount == 1 &&
+        bool minimized = shell.VisibleOwnedWindowCount == 2 && shell.AvailableLayoutCount == 7 &&
             shell.CurrentLayout == LayoutPreset.NarrowLeftWideRight;
-        Invoke(shell.TaskbarExplorerButton);
+        InvokeSessionMenu(shell, "explorer", "Restore");
         bool restored = shell.GetOwnedWindowBoundsForTest("explorer") == tiled && shell.AvailableLayoutCount == 7;
         Invoke(shell.ExplorerMaximizeButton);
         bool maximized = shell.IsExplorerMaximized && shell.GetOwnedWindowBoundsForTest("explorer") == WorkArea;
@@ -1969,6 +1976,7 @@ internal static class OwnedWindowLayoutScenarios
         Rect floating = shell.GetOwnedWindowBoundsForTest("explorer");
         _ = shell.PrepareTaskManagerForSnapshot();
         _ = shell.SelectLayoutForTest(LayoutPreset.EqualRows);
+        PartitionScenarios.Exit(shell);
         Invoke(shell.ExplorerCloseButton);
         bool closed = shell.IsOwnedWindowLayoutFreeform && shell.VisibleOwnedWindowCount == 1;
         Invoke(shell.TaskbarExplorerButton);
@@ -1987,6 +1995,10 @@ internal static class OwnedWindowLayoutScenarios
             Panel.GetZIndex(shell.TaskManagerWindow) > Panel.GetZIndex(shell.ExplorerWindow);
         _ = shell.SelectLayoutForTest(LayoutPreset.EqualColumns);
         Rect moved = new(420, 90, 700, 600);
+        Rect pane = shell.GetOwnedWindowBoundsForTest("task-manager");
+        shell.MoveOwnedWindowForTest("task-manager", moved);
+        if (shell.CurrentLayout != LayoutPreset.EqualColumns || shell.GetOwnedWindowBoundsForTest("task-manager") != pane) return false;
+        PartitionScenarios.Exit(shell);
         shell.MoveOwnedWindowForTest("task-manager", moved);
         return explorerActive && taskActive && shell.IsOwnedWindowLayoutFreeform &&
             shell.CurrentLayoutGlyph.IsFreeform && shell.LayoutRailList.SelectedItems.Count == 0 &&
@@ -2070,6 +2082,7 @@ internal static class OwnedWindowLayoutScenarios
             {
                 ActivateBody(shell, id);
                 _ = shell.SelectLayoutForTest(LayoutPreset.EqualColumns);
+                PartitionScenarios.Exit(shell);
                 Rect tiled = shell.GetOwnedWindowBoundsForTest(id);
                 Point press = new(tiled.Left + 40, tiled.Top + 20);
                 shell.RaiseOwnedTitleGestureForTest(id, press, new Point(press.X + 64, press.Y + 48), loseCapture);

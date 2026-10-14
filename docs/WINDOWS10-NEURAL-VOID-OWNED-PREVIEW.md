@@ -63,13 +63,28 @@ placeholders; the achromatic opacity feather is the sole gradient exception.
 ## Interaction contract
 
 The rail and orthogonal axis remain visible at all times. The desktop starts in
-`FREEFORM`; no tiled preset is selected. All sixteen presets are selectable.
-An explicit commit restores already registered owned surfaces only, fills as
-many panes as those surfaces permit, and honestly reports partial fill. Keyboard
-preview never creates, restores or moves windows. A layout commit does not
-allocate new Explorer sessions. Manually registered Explorer sessions plus Task
-Manager participate in real three/four-pane placement, and extra visible windows
-retain their existing bounds. Committing a layout updates the lower-left glyph.
+`FREEFORM`; no tiled preset is selected and independent title dragging remains
+available. An explicit rail commit enters **Partition**: all sixteen templates
+fill every pane with real owned windows, sharing exact zero-gap edges. Existing
+active/visible, mode-suppressed and retained hidden sessions are reused before
+preparing only the missing Explorer deficit under the four-retained-session cap.
+The existing Task Manager is reused; initial FourQuadrants needs two fresh
+Explorers. Preparation and admission are transactional. Unassigned windows are
+mode-suppressed rather than falsely closed or left floating over the template.
+Keyboard template preview never creates, restores or moves windows. Committing
+a layout updates the lower-left glyph. Right click the current-layout button,
+or use Shift+F10 / Apps while focused, to choose **Freeform** and restore
+independent floating bounds without discarding retained content.
+
+Partition titles cannot move or detach a frame. Drag the shared horizontal or
+vertical seam instead: transparent 8-DIP hit strips resize neighboring panes
+together while preserving exact coverage and window identities. Keyboard axis
+arrows move 8 DIP, Shift moves 32, and Home/End use legal limits; a real
+RangeValue AutomationPeer uses the same validation. Panes clamp at a simultaneous
+320 x 188 DIP minimum. Pointer dragging does not steal editor/Search focus.
+Release or capture loss retains valid cuts; pointer Escape rolls back only the
+still-current gesture. No resizing timer, animation or render loop is added.
+Ratios persist in bounded memory per template and survive zoom/restore.
 The catalog validates exact pane coverage, stable order,
 unique topology signatures and horizontal/vertical/rotational closure before the
 surface can run.
@@ -111,9 +126,14 @@ are at most four retained Explorer sessions, including the original `explorer`;
 closed sessions retain their content and exact reopen identity, so closing does
 not free a fifth allocation slot. The aggregate taskbar button and desktop
 navigation shortcuts target the active/MRU Explorer. Clicking the active taskbar
-button minimizes that session; explicit ID entries restore only their session. The maximize
-control maximizes only the active owned window; restoring returns that window
-to its saved floating or tiled bounds. These interactions affect only controls
+button minimizes that session; explicit ID entries restore only their session.
+In Partition, close/minimize atomically refills the exact pane while excluding
+the target; older hidden/Closed sessions may be reused. A failed refill rejects
+the entire hide instead of leaving a hole. Showing an unassigned identity or
+creating a window swaps it into a pane rather than floating it over the layout.
+Partition maximize temporarily zooms one occupant; restore returns the exact
+assignments and adjusted cuts without allocation. Freeform retains ordinary
+floating maximize/restore. These interactions affect only controls
 owned by the WPF preview; they do not invoke or mutate the real Windows Explorer
 process.
 
@@ -149,7 +169,7 @@ accepted yellow case. The current approved owned-desktop PNG on locked Windows
 
 `F472A0C14D08348B49A44D878202A3F69330D78A6226244D2B2A499EE2C70AC2`
 
-Current bounded verification for manual multi-instance Explorer:
+Current pre-publication verification for enforced, resizable Partition:
 
 - Release build: passed with zero warnings and zero errors;
 - WPF vector-adapter scenarios: 13 / 13;
@@ -159,32 +179,54 @@ Current bounded verification for manual multi-instance Explorer:
   cap/reopen, already-focused valid/invalid blur, lifecycle/focus-intent races
   and unload cleanup; three consecutive unfiltered runner passes;
 - owned Task Manager surface scenarios: 10 / 10;
-- owned-window layout scenarios: 62 / 62 (25 coordinator, 36 hosted,
-  1 WPF visual-tree contract), including
-  real populated three/four-pane placement, usable compact controls and exact
-  secondary title/lifecycle/focus routing, intervening Search/foreign-Explorer
-  focus races and current-layout-button cancellation/normal rail handoff;
-  the promoted-active stacking regression covers real taskbar New/minimize,
-  EqualColumns restoration then rail Maximized, for Explorer and Task Manager
-  without body reactivation, changed ordinals, focus theft, moved/hidden extras
-  or new session allocation; non-active MRU/registration ordering is retained;
+- owned-window layout scenarios: 126 / 126 (25 legacy coordinator, 36 original
+  hosted, 1 WPF visual-tree contract and 64 Partition); the legacy algorithm
+  bodies remain intact while audited hosted-policy conflicts are explicitly
+  migrated to enforced placement. Coverage includes all sixteen topologies,
+  transactional real fill, suppression/lifecycle refill, exact-ID swaps,
+  shared-divider pointer/key/automation paths, gesture cancellation and zoom,
+  active-highest stacking, focus isolation and composed density draft retention;
   three consecutive unfiltered runner passes;
+- Partition runner: 64 / 64; three preplanned consecutive unfiltered passes.
+  All original 39 bodies remain intact. The 25 added direction entries cover a
+  compile-first backward-selection RED/GREEN plus forward/backward, first/last,
+  valid/invalid, owning/newer-Search/foreign focus width/height round-trips with
+  physical-editor and same-seeded-ID session isolation. Public routed text input
+  and subsequent Shift navigation exercise real editor state, not normalized
+  public `CaretIndex` alone;
+- arranged-control/rule/ledger pixel probes: 33 / 33, comprising sixteen defaults,
+  fifteen resized templates and both minimum-size owners; these render hosts are
+  hit-test-disabled and are not genuine pointer proof;
+- separate genuine SendInput harness: 17 / 17 unfiltered in the owned product
+  MainWindow, including split/stripe/T/grid resizing, clamp/reversal, Escape,
+  capture loss, title enforcement, zoom, minimum panes and rename/focus retention.
+  The parent replays the former composed Search failure with byte-exact native
+  case source. Its full replay changes only screenshot filenames to keep
+  case-specific image history; assertions and input flow are unchanged. The
+  scoped direction-fix agent reruns all original 17 cases unfiltered and the
+  byte-exact parent caret and composed reproducers on the corrected artifact.
+  An additional no-case-filter replay passes all 18 appended-harness entries;
+  its unchanged literal-17 `completeUnfilteredPass` Boolean remains false.
+  The caret fixture uses routed editor commands, not native keyboard selection;
+  divider movement is genuine admitted SendInput with null product overrides;
 - platform layout: 16 / 16;
-- publication boundary: passed for 536 candidate files with no secret values
-  printed; publication requirements include the control, workspace and shared
-  visual-tree helper owners;
+- publication boundary: passed for 541 candidate files with no secret values
+  printed; publication/platform requirements include all new partition helpers;
 - current owned-preview audit: 26 / 26, `locked-profile-approved`. The default
   desktop matched the unchanged approved SHA-256 exactly. The Task Manager
   structural render retains SHA-256
   `3971C3ECB2D725C9F5EB12F6F95A95E43600E16EF41D4F91DED57055A2BDEACF`.
 
-The source gate reads `ExplorerSurface.xaml/.cs` as the actual control owner and
-checks the shell, control, workspace and shared `VisualTreeSearch` code against
-the filesystem/OS-launch ban. Applicable desktop-owner negative XAML bans examine
-both shell and Explorer owning texts with unchanged matching rules, including
+The source gate reads the actual shell, Explorer and embedded Task Manager XAML
+owners, and includes the workspace, shared `VisualTreeSearch` and new partition
+helpers in capability bans. Applicable negative XAML predicates use unchanged
+matching rules across all three rendered owners, including
 image, square geometry,
 gradient/glow, device content, Start, HueSlider and obsolete-handler bans.
-Positive-role checks and window-root constraints remain unchanged. The original
+Positive-role checks and window-root constraints remain unchanged. The current
+actual-predicate probe rejects 135 / 135 owner/placement mutations; twenty
+source-owner canaries also exercise forbidden authority/timer/animation paths.
+Neither probe writes published source or approves a canonical. The original
 60/60 mutation record covered only ten canaries and remains real but partial
 historical evidence. The copied/extended actual-AST probe reproduced 15 further
 Explorer misses, then rejected 90/90 full/hidden/compact-template mutations from
@@ -197,7 +239,22 @@ and byte-exact parent-reproducer differential are in
 previous active Z=6/secondary Z=7 becomes active Z=7/secondary Z=6, exit 0,
 `not-reproduced`, with unchanged identity, focus and extra bounds. The original
 bug receipt/PNG remain untouched. The historical Escape-focus flake remains **UNDIAGNOSED**;
-these passing paths do not establish its cause. No capability ban, approved hash
+these passing paths do not establish its cause. The post-migration historical
+blank-rename/Window-focus (093) and rail-focus (115) failures likewise remain
+undiagnosed. The newly confirmed composed density loss has separate permanent
+RED/GREEN and container/layout trace evidence; it is not a claimed explanation
+of those historical failures. Current hash-bound parent receipts are under
+`jarvis-partitions/parent/`; current scoped selection-direction execution receipts,
+source/artifact hashes, images and failed chronology are separately under
+`jarvis-partitions/fix-caret-direction/`. Density migration now retains the
+physical owning TextBox and its anchor/moving intent instead of reconstructing
+the selected range. Shared row-data visibility, guarded blur, selected-row
+realization and owner-only focus restoration preserve ordinary commit/cancel and
+newer focus. Logical scroll offset remains subject to WPF viewport clamping,
+without a new automatic-scroll policy. This is fix-agent execution, not fresh
+parent verification or independent approval; the pre-publication record does not replace
+independent frozen-payload approval or exact-SHA remote/CI readback.
+No capability ban, approved hash
 or golden PNG is relaxed or advanced.
 
 The row/column render gate also checks the actual Task Manager title rule and
