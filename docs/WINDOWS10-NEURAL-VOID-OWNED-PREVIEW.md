@@ -169,7 +169,8 @@ accepted yellow case. The current approved owned-desktop PNG on locked Windows
 
 `F472A0C14D08348B49A44D878202A3F69330D78A6226244D2B2A499EE2C70AC2`
 
-Current pre-publication verification for enforced, resizable Partition:
+The [design QA log](../design-qa.md) links to the current regression reference.
+The figures below record the original verification of enforced, resizable Partition.
 
 - Release build: passed with zero warnings and zero errors;
 - WPF vector-adapter scenarios: 13 / 13;

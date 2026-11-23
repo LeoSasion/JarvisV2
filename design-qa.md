@@ -8,9 +8,17 @@
 - State: black/yellow desktop, layout rail permanently visible, `FREEFORM`,
   Explorer restored at `(596, 63)` with size `930 x 667`; all sixteen presets
   are selectable and enter fully occupied, zero-gap Partition on explicit
-  commit; the untouched initial Freeform scene remains the canonical
+  commit. The initial Freeform scene remains the canonical pixel baseline.
 - Validation scope: own-process WPF preview only;
   `shellMutationSupported=false`, `liveExplorer=not-run`
+
+## Current regression reference
+
+At `14ce79e`, the Windows 10 preview gate passed 27/27 checks, including
+137/137 owned-layout scenarios and 323/323 failure-reporting cases. The local
+locked-profile pixel check passed for the baseline above. The
+[GitHub CI run](https://github.com/LeoSasion/JarvisV2/actions/runs/45251980517)
+passed all 47 steps. The verification records below retain their original scope.
 
 ## Layout catalog
 
@@ -108,7 +116,7 @@ rendered and reviewed in a connected graphics session.
 - Full names remain available to accessibility and tooltip surfaces when visual
   columns must ellipsize them.
 
-## Current owned-slice verification
+## Enforced-partition baseline verification (2026-10-14)
 
 - Release build: passed, 0 warnings / 0 errors
 - Layout and edge-bar scenarios: 25 / 25

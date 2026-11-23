@@ -10,8 +10,9 @@ Owned Task Manager v1a 已接入 Neural Void WPF 桌面：真实但只读的进�
 PID、CPU、工作集和线程数通过有界快照显示；窗口打开时采样，隐藏、最小化
 或关闭时停止，迟到结果不会回写。`IProcessCounterSource` 把平台数据源与 UI
 分开，后续其他系统后端可拥有自己的采集适配器；当前 Win10 实现仍不提供
-进程/窗口控制、不注入或修改 Explorer，也不声明 Linux 已支持。下一段可见
-工作继续扩展 Win10 自有窗口与布局，并保持这条数据源边界。
+进程或窗口控制。自有桌面已支持独立 Explorer 会话、自由布局和可拖动分界线的
+分区布局。当前创作与验证入口见 [仓库 README](../README.md)，交互不变量见
+[自有窗口布局](WINDOWS10-OWNED-WINDOW-LAYOUT.md)。
 
 ## M1 — Native Taskbar
 
