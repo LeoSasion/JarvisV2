@@ -117,6 +117,8 @@ internal static class OwnedWindowLayoutScenarios
         Add(scenarios, "hosted-passive-actions-leave-spare-window-minimized", HostedPassiveActionsKeepSpareMinimized);
         Add(scenarios, "hosted-snapshot-render-host-excludes-pointer-input", HostedSnapshotHostExcludesPointerInput);
         Add(scenarios, "hosted-title-double-click-toggles-maximize-and-restore", HostedTitleDoubleClickToggles);
+        Add(scenarios, "hosted-task-manager-maximize-and-restore-preserve-keyboard-focus", HostedTaskManagerTogglePreservesFocus);
+        Add(scenarios, "hosted-rail-commit-supersedes-pending-task-manager-focus", HostedRailCommitSupersedesTaskManagerFocus);
         Add(scenarios, "hosted-open-keeps-all-sixteen-layouts-selectable", HostedAvailability);
         Add(scenarios, "hosted-six-splits-place-both-active-window-choices", HostedSplitBounds);
         Add(scenarios, "hosted-compact-layouts-retain-content-and-controls", HostedCompactContent);
@@ -1713,12 +1715,13 @@ internal static class OwnedWindowLayoutScenarios
             IInputElement? externalFocus = Keyboard.FocusedElement;
             Require(ReferenceEquals(externalFocus, shell.TaskbarExplorerButton), "taskbar did not retain actual external keyboard focus");
 
-            void RequirePreservedIdentityAndHistory()
+            void RequirePreservedIdentityAndHistory(LayoutPreset preset)
             {
                 OwnedWindowLayoutSnapshot current = coordinator.CaptureSnapshot();
                 Require(shell.ActiveOwnedWindowId == activeId && current.ActiveWindowId == promoted.ActiveWindowId,
                     "rail changed the promoted active identity");
-                Require(ReferenceEquals(Keyboard.FocusedElement, externalFocus), "rail stole external keyboard focus");
+                Require(ReferenceEquals(Keyboard.FocusedElement, externalFocus),
+                    $"rail {preset} stole external keyboard focus to {(Keyboard.FocusedElement as FrameworkElement)?.Name}");
                 Require(shell.ExplorerSessionIdsForTest.SequenceEqual(sessionIds) &&
                     sessionIds.All(id => ReferenceEquals(surfaces[id], shell.GetExplorerSurfaceForTest(id))) &&
                     current.Windows.Count == promoted.Windows.Count && current.Windows.All(window =>
@@ -1733,7 +1736,7 @@ internal static class OwnedWindowLayoutScenarios
             // taskbar restoration (which would bump the ordinal and hide the defect).
             Require(shell.SelectLayoutForTest(LayoutPreset.EqualColumns), "EqualColumns rejected");
             PumpIdle();
-            RequirePreservedIdentityAndHistory();
+            RequirePreservedIdentityAndHistory(LayoutPreset.EqualColumns);
             IReadOnlyList<Rect> columns = PartitionPanes(LayoutPreset.EqualColumns, WorkArea);
             Require(shell.GetOwnedWindowBoundsForTest(activeId) == columns[0] &&
                 shell.GetOwnedWindowBoundsForTest(secondaryId) == columns[1] &&
@@ -1745,7 +1748,7 @@ internal static class OwnedWindowLayoutScenarios
 
             Require(shell.SelectLayoutForTest(LayoutPreset.Maximized), "Maximized rejected");
             PumpIdle();
-            RequirePreservedIdentityAndHistory();
+            RequirePreservedIdentityAndHistory(LayoutPreset.Maximized);
             Require(shell.GetOwnedWindowBoundsForTest(activeId) == WorkArea &&
                 WorkArea.IntersectsWith(shell.GetOwnedWindowBoundsForTest(secondaryId)), "fixture lost overlapping maximize geometry");
             Require(extras.All(before =>
@@ -1848,6 +1851,79 @@ internal static class OwnedWindowLayoutScenarios
 
         return true;
     });
+
+    private static bool HostedTaskManagerTogglePreservesFocus() => WithShell(shell =>
+    {
+        static void Require(bool passed, string message)
+        {
+            if (!passed) throw new InvalidOperationException(message);
+        }
+
+        Require(shell.PrepareTaskManagerForSnapshot(), "Task Manager did not open");
+        PumpIdle();
+        Button maximize = shell.TaskManagerMaximizeButton;
+
+        void CheckToggle()
+        {
+            Require(maximize.Focus() && ReferenceEquals(Keyboard.FocusedElement, maximize),
+                "maximize button did not acquire keyboard focus");
+            foreach (bool expand in new[] { true, false })
+            {
+                string action = expand ? "maximize" : "restore";
+                Invoke(maximize);
+                PumpIdle();
+                Require(shell.IsTaskManagerMaximizedForTest == expand, $"button did not {action} Task Manager");
+                Require(ReferenceEquals(Keyboard.FocusedElement, maximize),
+                    $"Task Manager {action} moved keyboard focus to {(Keyboard.FocusedElement as FrameworkElement)?.Name}");
+            }
+        }
+
+        CheckToggle();
+        Require(shell.SelectLayoutForTest(LayoutPreset.EqualColumns), "could not enter partition mode");
+        CheckToggle();
+
+        Invoke(shell.TaskManagerMinimizeButton);
+        PumpIdle();
+        Button search = shell.TaskbarSearchButton;
+        Require(search.Focus() && ReferenceEquals(Keyboard.FocusedElement, search),
+            "Search did not acquire keyboard focus after minimizing Task Manager");
+        Invoke(shell.TaskbarSystemButton);
+        Require(ReferenceEquals(Keyboard.FocusedElement, search), "Task Manager restore took focus synchronously");
+        Invoke(maximize);
+        PumpIdle();
+        Require(shell.IsTaskManagerMaximizedForTest, "Task Manager did not zoom after restoring");
+        Require(ReferenceEquals(Keyboard.FocusedElement, search),
+            $"pending Task Manager restore moved keyboard focus to {(Keyboard.FocusedElement as FrameworkElement)?.Name}");
+        return true;
+    });
+
+    private static bool HostedRailCommitSupersedesTaskManagerFocus() =>
+        new[] { LayoutPreset.EqualColumns, LayoutPreset.Maximized }.All(preset => WithShell(shell =>
+        {
+            Invoke(shell.TaskbarSystemButton);
+            PumpIdle();
+            if (!ReferenceEquals(Keyboard.FocusedElement, shell.TaskManagerMinimizeButton))
+                throw new InvalidOperationException("Standalone open did not hand off keyboard focus to Task Manager");
+            Invoke(shell.TaskManagerMinimizeButton);
+            PumpIdle();
+            if (shell.TaskManagerWindow.Visibility != Visibility.Collapsed)
+                throw new InvalidOperationException("Task Manager did not minimize");
+
+            Button taskbar = shell.TaskbarExplorerButton;
+            if (!taskbar.Focus() || !ReferenceEquals(Keyboard.FocusedElement, taskbar))
+                throw new InvalidOperationException("Explorer taskbar button did not acquire keyboard focus");
+            Invoke(shell.TaskbarSystemButton);
+            if (shell.ActiveOwnedWindowId != "task-manager" || !ReferenceEquals(Keyboard.FocusedElement, taskbar))
+                throw new InvalidOperationException("Task Manager did not restore with its focus handoff still pending");
+
+            if (!shell.SelectLayoutForTest(preset))
+                throw new InvalidOperationException($"Rail rejected {preset}");
+            PumpIdle();
+            if (!ReferenceEquals(Keyboard.FocusedElement, taskbar))
+                throw new InvalidOperationException(
+                    $"Rail {preset} let pending Task Manager focus move to {(Keyboard.FocusedElement as FrameworkElement)?.Name}");
+            return true;
+        }));
 
     private static bool HostedSplitBounds() => WithShell(shell =>
     {

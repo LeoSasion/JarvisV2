@@ -161,8 +161,10 @@ No test-only exit substitutes for the actual Freeform command.
 
 ## Verification and limits
 
-Owned layout enumerates **126 = 25 legacy + 36 original hosted + 1 traversal +
-64 Partition**, checked against actual unique entries. The 13 earlier density
+Owned layout enumerates **128 = 25 legacy + 36 original hosted + 1 traversal +
+64 Partition + 2 Task Manager focus regressions**. The focus regressions cover
+title-bar maximize and restore, and a rail commit superseding a pending keyboard
+handoff from a taskbar restore. The 13 earlier density
 entries are the composed last-file round-trip/newer-Search regression plus a
 12-case first/last, valid/invalid, owning/Search/foreign focus matrix with repeated
 width/height round-trips and same-seeded-ID physical-surface isolation. Valid

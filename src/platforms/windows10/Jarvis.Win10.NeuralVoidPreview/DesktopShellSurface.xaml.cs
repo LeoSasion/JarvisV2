@@ -1394,8 +1394,6 @@ public partial class DesktopShellSurface :
             Announce("PARTITION / PREPARATION FAILED / NO CHANGE");
             return false;
         }
-        if (result.Succeeded)
-            foreach (ExplorerEntry entry in prepared) PublishExplorerSession(entry);
         if (!result.Succeeded)
         {
             ApplyCurrentLayoutPresentation();
@@ -1408,6 +1406,9 @@ public partial class DesktopShellSurface :
             return false;
         }
 
+        // A committed rail selection supersedes a pending focus handoff.
+        CancelOwnedFocus();
+        foreach (ExplorerEntry entry in prepared) PublishExplorerSession(entry);
         ApplyOwnedLayoutResult(result);
         RefreshLayoutAvailability();
         QueueRevealSelectedLayout();
@@ -2418,12 +2419,17 @@ public partial class DesktopShellSurface :
     {
         if (_ownedWindowLayouts.IsPartition)
         {
-            ApplyOwnedLayoutResult(_ownedWindowLayouts.TryTogglePartitionZoom(TaskManagerOwnedWindowId));
+            OwnedLayoutApplyResult zoom = _ownedWindowLayouts.TryTogglePartitionZoom(TaskManagerOwnedWindowId);
+            if (zoom.Succeeded) CancelOwnedFocus();
+            ApplyOwnedLayoutResult(zoom);
             RefreshLayoutAvailability();
             Announce("TASK MANAGER / ZOOM OR RESTORE");
             return;
         }
-        RestoreTaskManager();
+        if (TaskManagerWindow.Visibility == Visibility.Visible)
+            ActivateOwnedWindow(TaskManagerWindow);
+        else
+            RestoreTaskManager();
         bool wasMaximized = IsTaskManagerMaximizedForTest;
         OwnedLayoutApplyResult result =
             _ownedWindowLayouts.TryToggleMaximize(

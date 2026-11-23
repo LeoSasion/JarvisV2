@@ -909,7 +909,7 @@ if ($buildExitCode -eq 0) {
             $ownedLayoutReceipt.receiptType -ceq 'jarvisv2-win10-owned-window-layout-test' -and
             $ownedLayoutReceipt.result -eq 'passed' -and
             $ownedLayoutReceipt.schemaVersion -eq 1 -and
-            $ownedLayoutReceipt.scenarioCount -eq 126 -and
+            $ownedLayoutReceipt.scenarioCount -eq 128 -and
             @($ownedLayoutReceipt.scenarios).Count -eq $ownedLayoutReceipt.scenarioCount -and
             @($ownedLayoutReceipt.scenarios | Where-Object { -not $_.passed }).Count -eq 0 -and
             @($ownedLayoutReceipt.scenarios.name | Sort-Object -Unique).Count -eq $ownedLayoutReceipt.scenarioCount -and
