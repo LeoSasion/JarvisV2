@@ -144,6 +144,14 @@ internal static class OwnedWindowLayoutScenarios
         Add(scenarios, "hosted-current-layout-second-click-aborts-superseded-operation-before-dispatch", HostedCurrentLayoutSupersedesFocus);
         Add(scenarios, "hosted-current-layout-button-focuses-selected-item-with-preview-and-escape-intact", HostedCurrentLayoutFocusAndNavigation);
         Add(scenarios, "hosted-escape-returns-focus-to-active-window", HostedEscapeReturnsFocus);
+        Add(scenarios, "hosted-executing-current-layout-preserves-layout-injected-search-focus", HostedExecutingRailSearchFocus);
+        Add(scenarios, "hosted-executing-rename-preserves-layout-injected-search-focus-and-selection", HostedExecutingRenameSearchFocus);
+        foreach (bool rename in new[] { false, true })
+            foreach (string transition in new[] { "foreign", "unload", "supersession" })
+                Add(scenarios, $"hosted-executing-{(rename ? "rename" : "rail")}-{transition}-preserves-newer-intent-and-state",
+                    () => HostedExecutingFocusTransition(rename, transition));
+        Add(scenarios, "hosted-executing-rename-focus-redirect-does-not-select-background-editor",
+            () => HostedExecutingFocusTransition(true, "redirect"));
 
         Add(scenarios, "layout-result-committed-metadata-and-readonly-snapshot-contract", ResultCommittedMetadata);
         Add(scenarios, "layout-result-all-rejections-retain-complete-committed-state", ResultRejectedMetadata);
@@ -1543,6 +1551,253 @@ internal static class OwnedWindowLayoutScenarios
         }
         return true;
     });
+
+    private static bool HostedExecutingRailSearchFocus() => WithShell(shell =>
+    {
+        ListBox rail = shell.LayoutRailList;
+        ScrollViewer scroll = ExplorerWorkspaceScenarios.Descendants(rail).OfType<ScrollViewer>().First();
+        scroll.ScrollToBottom();
+        rail.UpdateLayout();
+        PumpIdle();
+        if (!shell.CurrentLayoutButton.Focus()) throw new InvalidOperationException("executing-rail/setup: origin focus rejected");
+        PumpIdle();
+        OwnedWindowLayoutCoordinator coordinator = (OwnedWindowLayoutCoordinator)typeof(DesktopShellSurface).GetField(
+            "_ownedWindowLayouts", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(shell)!;
+        string before = Fingerprint(coordinator.CaptureSnapshot());
+        bool injected = false, acquired = false;
+        DispatcherOperation? operation = null;
+        void Require(bool condition, string stage)
+        {
+            if (!condition) throw new InvalidOperationException(
+                $"executing-rail/{stage}: injected={injected}, acquired={acquired}, operation={operation?.Status}, " +
+                $"focus={Keyboard.FocusedElement?.GetType().Name}, search={shell.TaskbarSearchButton.IsKeyboardFocused}, active={shell.ActiveOwnedWindowId}");
+        }
+        Require(shell.CurrentLayoutButton.IsKeyboardFocused && !rail.IsKeyboardFocusWithin, "origin");
+        void Inject(object? sender, EventArgs args)
+        {
+            if (injected || operation?.Status != DispatcherOperationStatus.Executing) return;
+            injected = true;
+            acquired = shell.TaskbarSearchButton.Focus() && shell.TaskbarSearchButton.IsKeyboardFocused &&
+                ReferenceEquals(Keyboard.FocusedElement, shell.TaskbarSearchButton);
+        }
+        rail.LayoutUpdated += Inject;
+        try
+        {
+            operation = InvokeCurrentLayoutAndRetainOperation(shell);
+            PumpIdle();
+            Require(injected && acquired, "inconclusive-layout-injection");
+            Require(shell.TaskbarSearchButton.IsKeyboardFocused && !rail.IsKeyboardFocusWithin, "newer-search-stolen");
+            Require(operation.Status == DispatcherOperationStatus.Completed && Mouse.Captured is null &&
+                Fingerprint(coordinator.CaptureSnapshot()) == before, "state-history-capture");
+            return true;
+        }
+        finally { rail.LayoutUpdated -= Inject; }
+    });
+
+    private static bool HostedExecutingRenameSearchFocus() => WithShell(shell =>
+    {
+        ExplorerSurface owner = shell.GetExplorerSurfaceForTest("explorer");
+        ListBox list = owner.ExplorerItemList;
+        list.SelectedIndex = 0;
+        if (!list.Focus()) throw new InvalidOperationException("executing-rename/setup: ledger focus rejected");
+        PumpIdle();
+        OwnedWindowLayoutCoordinator coordinator = (OwnedWindowLayoutCoordinator)typeof(DesktopShellSurface).GetField(
+            "_ownedWindowLayouts", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(shell)!;
+        string before = Fingerprint(coordinator.CaptureSnapshot());
+        string itemId = ((ExplorerWorkspaceItem)list.SelectedItem).Id;
+        bool injected = false, acquired = false;
+        TextBox? retainedEditor = null;
+        DispatcherOperation? operation = null;
+        void Require(bool condition, string stage)
+        {
+            if (!condition) throw new InvalidOperationException(
+                $"executing-rename/{stage}: injected={injected}, acquired={acquired}, operation={operation?.Status}, " +
+                $"focus={Keyboard.FocusedElement?.GetType().Name}, rename={owner.Workspace.RenameItemId}, active={shell.ActiveOwnedWindowId}, " +
+                $"selection={retainedEditor?.SelectionStart}:{retainedEditor?.SelectionLength}");
+        }
+        Require(list.IsKeyboardFocusWithin, "origin");
+        void Inject(object? sender, EventArgs args)
+        {
+            if (injected || operation?.Status != DispatcherOperationStatus.Executing) return;
+            injected = true;
+            retainedEditor = ExplorerWorkspaceScenarios.Descendants(list).OfType<TextBox>().Single(editor => editor.IsVisible);
+            retainedEditor.Select(2, 3);
+            acquired = shell.TaskbarSearchButton.Focus() && shell.TaskbarSearchButton.IsKeyboardFocused &&
+                ReferenceEquals(Keyboard.FocusedElement, shell.TaskbarSearchButton);
+        }
+        list.LayoutUpdated += Inject;
+        try
+        {
+            operation = InvokeRenameAndRetainOperation(shell);
+            // F2 is an explicit interaction and legitimately advances activation
+            // history. Freeze the state after posting, before deferred layout.
+            before = Fingerprint(coordinator.CaptureSnapshot());
+            PumpIdle();
+            Require(injected && acquired, "inconclusive-layout-injection");
+            Require(shell.TaskbarSearchButton.IsKeyboardFocused && !owner.IsKeyboardFocusWithin, "newer-search-stolen");
+            Require(retainedEditor is { IsKeyboardFocused: false, SelectionStart: 2, SelectionLength: 3 } &&
+                owner.IsAncestorOf(retainedEditor) && PresentationSource.FromVisual(retainedEditor) is not null &&
+                retainedEditor.DataContext is ExplorerWorkspaceItem item && item.Id == itemId &&
+                owner.Workspace.RenameItemId == itemId && ((ExplorerWorkspaceItem)list.SelectedItem).Id == itemId,
+                "physical-editor-selection-target");
+            Require(operation.Status == DispatcherOperationStatus.Completed && Mouse.Captured is null &&
+                Fingerprint(coordinator.CaptureSnapshot()) == before, "state-history-capture");
+            return true;
+        }
+        finally { list.LayoutUpdated -= Inject; }
+    });
+
+    private static bool HostedExecutingFocusTransition(bool rename, string transition) => WithShell(shell =>
+    {
+        ExplorerSurface owner = shell.GetExplorerSurfaceForTest("explorer");
+        ExplorerSurface? foreign = null;
+        TextBox? foreignEditor = null;
+        if (transition == "foreign")
+        {
+            string foreignId = ExplorerWorkspaceScenarios.CreateViaTaskbarMenu(shell);
+            foreign = shell.GetExplorerSurfaceForTest(foreignId);
+            foreign.ExplorerItemList.SelectedIndex = 0;
+            _ = foreign.Workspace.BeginRenameSelected();
+            foreign.ExplorerItemList.UpdateLayout();
+            PumpIdle();
+            foreignEditor = ExplorerWorkspaceScenarios.Descendants(foreign).OfType<TextBox>().Single(editor => editor.IsVisible);
+            foreignEditor.Text = "OTHER?.VIS";
+            foreignEditor.Select(2, 3);
+            if (ReferenceEquals(foreign, owner) || !foreign.IsAncestorOf(foreignEditor) ||
+                foreign.Workspace.RenameItemId != ExplorerWorkspace.ProjectBriefId)
+                throw new InvalidOperationException("executing-focus/setup: foreign physical rename fixture missing");
+        }
+        ListBox materializing = rename ? owner.ExplorerItemList : shell.LayoutRailList;
+        if (rename) owner.ExplorerItemList.SelectedIndex = 0;
+        else
+        {
+            ExplorerWorkspaceScenarios.Descendants(materializing).OfType<ScrollViewer>().First().ScrollToBottom();
+            materializing.UpdateLayout();
+        }
+        UIElement origin = rename ? owner.ExplorerItemList : shell.CurrentLayoutButton;
+        if (!origin.Focus()) throw new InvalidOperationException("executing-focus/setup: origin focus rejected");
+        PumpIdle();
+        OwnedWindowLayoutCoordinator coordinator = (OwnedWindowLayoutCoordinator)typeof(DesktopShellSurface).GetField(
+            "_ownedWindowLayouts", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(shell)!;
+        string expectedState = Fingerprint(coordinator.CaptureSnapshot());
+        string[] sessions = shell.ExplorerSessionIdsForTest.ToArray();
+        Dictionary<string, ExplorerSurface> surfaces = sessions.ToDictionary(id => id, shell.GetExplorerSurfaceForTest);
+        bool injected = false, acquired = false, retainedNewer = false, canceledNewer = false, redirected = false;
+        bool capturedBeforeUnload = false, unloadHandled = false;
+        DispatcherOperation? operation = null, newer = null;
+        TextBox? editor = null;
+        string? renameId = null;
+        KeyboardFocusChangedEventHandler? redirect = null;
+        object queueOwner = rename ? owner : shell;
+        string queueField = rename ? "_pendingExplorerFocus" : "_pendingOwnedFocus";
+        DispatcherOperation? Pending() => queueOwner.GetType().GetField(queueField,
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(queueOwner) as DispatcherOperation;
+        void Require(bool condition, string stage)
+        {
+            if (!condition) throw new InvalidOperationException(
+                $"executing-{(rename ? "rename" : "rail")}/{transition}/{stage}: injected={injected}, acquired={acquired}, " +
+                $"old={operation?.Status}, newer={newer?.Status}, retained={retainedNewer}, canceled={canceledNewer}, " +
+                $"redirected={redirected}, focus={Keyboard.FocusedElement?.GetType().Name}, active={shell.ActiveOwnedWindowId}");
+        }
+        void Unload() => ((FrameworkElement)queueOwner).RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+        void Inject(object? sender, EventArgs args)
+        {
+            if (injected || operation?.Status != DispatcherOperationStatus.Executing) return;
+            injected = true;
+            if (rename)
+            {
+                editor = ExplorerWorkspaceScenarios.Descendants(owner.ExplorerItemList).OfType<TextBox>().Single(item => item.IsVisible);
+                editor.Select(2, 3);
+                renameId = owner.Workspace.RenameItemId;
+            }
+            switch (transition)
+            {
+                case "foreign":
+                    acquired = foreignEditor!.Focus() && ReferenceEquals(Keyboard.FocusedElement, foreignEditor) &&
+                        foreign!.IsAncestorOf(foreignEditor) && !owner.IsAncestorOf(foreignEditor);
+                    break;
+                case "unload":
+                    acquired = shell.TaskbarSearchButton.Focus() && shell.TaskbarSearchButton.IsKeyboardFocused;
+                    capturedBeforeUnload = owner.CaptureMouse() && ReferenceEquals(Mouse.Captured, owner);
+                    Unload();
+                    unloadHandled = typeof(ExplorerSurface).GetField("_interactionEnabled",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(owner) is false &&
+                        Mouse.Captured is null && (rename || !shell.IsSystemParametersSubscribedForTest);
+                    break;
+                case "supersession":
+                    newer = rename ? InvokeRenameAndRetainOperation(shell) : InvokeCurrentLayoutAndRetainOperation(shell);
+                    retainedNewer = ReferenceEquals(Pending(), newer) && newer.Status == DispatcherOperationStatus.Pending;
+                    break;
+                case "redirect":
+                    redirect = (_, e) =>
+                    {
+                        if (redirected || !ReferenceEquals(e.NewFocus, editor)) return;
+                        redirected = true;
+                        acquired = shell.TaskbarSearchButton.Focus() && shell.TaskbarSearchButton.IsKeyboardFocused;
+                        e.Handled = true;
+                    };
+                    editor!.PreviewGotKeyboardFocus += redirect;
+                    break;
+            }
+            expectedState = Fingerprint(coordinator.CaptureSnapshot());
+        }
+        void Complete(object? sender, DispatcherHookEventArgs args)
+        {
+            if (!ReferenceEquals(args.Operation, operation) || transition != "supersession") return;
+            retainedNewer &= ReferenceEquals(Pending(), newer) && newer?.Status == DispatcherOperationStatus.Pending;
+            Unload();
+            canceledNewer = newer?.Status == DispatcherOperationStatus.Aborted && Pending() is null;
+            acquired = shell.TaskbarSearchButton.Focus() && shell.TaskbarSearchButton.IsKeyboardFocused;
+        }
+        materializing.LayoutUpdated += Inject;
+        shell.Dispatcher.Hooks.OperationCompleted += Complete;
+        try
+        {
+            operation = rename ? InvokeRenameAndRetainOperation(shell) : InvokeCurrentLayoutAndRetainOperation(shell);
+            expectedState = Fingerprint(coordinator.CaptureSnapshot());
+            PumpIdle();
+            Require(injected && acquired && operation.Status == DispatcherOperationStatus.Completed, "inconclusive-injection-acquisition");
+            if (transition == "foreign")
+                Require(ReferenceEquals(Keyboard.FocusedElement, foreignEditor) && foreignEditor!.Text == "OTHER?.VIS" &&
+                    foreignEditor.SelectionStart == 2 && foreignEditor.SelectionLength == 3 && foreign!.IsAncestorOf(foreignEditor) &&
+                    foreign.Workspace.RenameItemId == ExplorerWorkspace.ProjectBriefId && !owner.IsKeyboardFocusWithin,
+                    "foreign-physical-editor-and-selection");
+            else Require(shell.TaskbarSearchButton.IsKeyboardFocused && !materializing.IsKeyboardFocusWithin, "search-retention");
+            if (transition == "unload") Require(capturedBeforeUnload && unloadHandled, "unload-event-lifetime-and-capture");
+            if (transition == "supersession") Require(retainedNewer && canceledNewer, "new-operation-handle-not-retained");
+            if (transition == "redirect") Require(redirected, "inconclusive-focus-redirect");
+            if (rename && transition != "supersession") Require(editor is { SelectionStart: 2, SelectionLength: 3 } &&
+                owner.Workspace.RenameItemId == renameId && owner.IsAncestorOf(editor), "own-rename-selection-target");
+            Require(Fingerprint(coordinator.CaptureSnapshot()) == expectedState && Mouse.Captured is null &&
+                shell.ExplorerSessionIdsForTest.SequenceEqual(sessions) && sessions.All(id => ReferenceEquals(surfaces[id], shell.GetExplorerSurfaceForTest(id))),
+                "geometry-lifetime-history-content-capture");
+            return true;
+        }
+        finally
+        {
+            materializing.LayoutUpdated -= Inject;
+            shell.Dispatcher.Hooks.OperationCompleted -= Complete;
+            if (editor is not null && redirect is not null) editor.PreviewGotKeyboardFocus -= redirect;
+        }
+    });
+
+    private static DispatcherOperation InvokeRenameAndRetainOperation(DesktopShellSurface shell)
+    {
+        List<DispatcherOperation> posted = [];
+        void OnPosted(object? sender, DispatcherHookEventArgs args)
+        {
+            if (args.Operation.Priority == DispatcherPriority.Input) posted.Add(args.Operation);
+        }
+        shell.Dispatcher.Hooks.OperationPosted += OnPosted;
+        try { ExplorerWorkspaceScenarios.RaiseKey((UIElement)Keyboard.FocusedElement!, Key.F2); }
+        finally { shell.Dispatcher.Hooks.OperationPosted -= OnPosted; }
+        DispatcherOperation? operation = typeof(ExplorerSurface).GetField("_pendingExplorerFocus",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(
+                shell.GetExplorerSurfaceForTest("explorer")) as DispatcherOperation;
+        if (operation?.Status != DispatcherOperationStatus.Pending || posted.Count(item => ReferenceEquals(item, operation)) != 1)
+            throw new InvalidOperationException($"executing-rename/setup: actual F2 must retain its posted pending production operation; posted={posted.Count}, operation={operation?.Status}");
+        return operation;
+    }
 
     private static DispatcherOperation InvokeCurrentLayoutAndRetainOperation(DesktopShellSurface shell)
     {

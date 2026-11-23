@@ -717,7 +717,12 @@ internal static class PartitionScenarios
         _ = shell.SelectLayoutForTest(LayoutPreset.FourQuadrants);
         shell.UpdateLayout();
         ExactCover(shell.ExplorerSessionIdsForTest.Select(id => shell.GetOwnedWindowBoundsForTest(id)).ToArray(), DesktopShellSurface.OwnedWorkArea);
-        _ = shell.TaskbarSearchButton.Focus();
+        bool setupFocusReturn = shell.TaskbarSearchButton.Focus();
+        bool setupSearchFocused = shell.TaskbarSearchButton.IsKeyboardFocused;
+        IInputElement? setupFocus = Keyboard.FocusedElement;
+        int presetIndex = 0;
+        static string FocusIdentity(IInputElement? element) => element is null ? "null" :
+            $"{element.GetType().Name}/{(element as FrameworkElement)?.Name}/{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(element)}";
         foreach (LayoutDefinition definition in LayoutCatalog.All)
         {
             shell.PreviewLayoutForTest(definition.Preset);
@@ -729,8 +734,17 @@ internal static class PartitionScenarios
             Require(frames.Length == definition.PaneCount && shell.VisibleOwnedWindowCount == definition.PaneCount,
                 $"{definition.Preset}: surplus visible/partial {frames.Length}/{definition.PaneCount}");
             ExactCover(frames, DesktopShellSurface.OwnedWorkArea);
-            Require(shell.TaskbarSearchButton.IsKeyboardFocused && shell.ExplorerSessionIdsForTest.Count == 4,
-                "template replacement stole focus or exceeded cap");
+            if (!shell.TaskbarSearchButton.IsKeyboardFocused || shell.ExplorerSessionIdsForTest.Count != 4)
+            {
+                throw new InvalidOperationException(
+                    $"template replacement stole focus or exceeded cap; preset={definition.Preset}; presetIndex={presetIndex}; " +
+                    $"setupFocusReturn={setupFocusReturn}; setupSearchFocused={setupSearchFocused}; " +
+                    $"setupSamePhysicalSearch={ReferenceEquals(setupFocus, shell.TaskbarSearchButton)}; setupFocus={FocusIdentity(setupFocus)}; " +
+                    $"currentSearchFocused={shell.TaskbarSearchButton.IsKeyboardFocused}; currentCount={shell.ExplorerSessionIdsForTest.Count}; " +
+                    $"currentFocus={FocusIdentity(Keyboard.FocusedElement)}; currentSamePhysicalSearch={ReferenceEquals(Keyboard.FocusedElement, shell.TaskbarSearchButton)}; " +
+                    $"activeOwner={shell.ActiveOwnedWindowId ?? "null"}");
+            }
+            presetIndex++;
         }
         return true;
     });

@@ -1216,7 +1216,7 @@ public partial class DesktopShellSurface :
         object sender,
         RoutedEventArgs eventArgs)
     {
-        QueueOwnedFocus(FocusSelectedLayout);
+        QueueOwnedFocusWithCheckpoint(FocusSelectedLayout);
     }
 
     private void LayoutRailList_OnPreviewMouseWheel(
@@ -1479,7 +1479,7 @@ public partial class DesktopShellSurface :
         RevealSelectedLayout();
     }
 
-    private void FocusSelectedLayout()
+    private void FocusSelectedLayout(Func<bool> intentIsCurrent)
     {
         if (LayoutRailList.SelectedItem is null)
         {
@@ -1498,6 +1498,9 @@ public partial class DesktopShellSurface :
         }
 
         RevealSelectedLayout();
+        // Reveal can synchronously reenter focus/lifecycle handlers. The queued
+        // intent must still be the original one, not an origin recaptured here.
+        if (!intentIsCurrent() || !ReferenceEquals(LayoutRailList.SelectedItem, selected)) return;
         if (LayoutRailList.ItemContainerGenerator.ContainerFromItem(selected) is
             ListBoxItem item)
         {
@@ -2874,18 +2877,23 @@ public partial class DesktopShellSurface :
         _pendingOwnedFocus = null;
     }
 
-    private void QueueOwnedFocus(Action focus, OwnedWindowId? owner = null)
+    private void QueueOwnedFocus(Action focus, OwnedWindowId? owner = null) =>
+        QueueOwnedFocusWithCheckpoint(_ => focus(), owner);
+
+    private void QueueOwnedFocusWithCheckpoint(Action<Func<bool>> focus, OwnedWindowId? owner = null)
     {
         CancelOwnedFocus();
         int generation = _ownedFocusIntentGeneration;
         IInputElement? focusOrigin = Keyboard.FocusedElement;
+        bool IntentIsCurrent() => generation == _ownedFocusIntentGeneration && IsLoaded &&
+            ReferenceEquals(Keyboard.FocusedElement, focusOrigin) &&
+            (owner is not OwnedWindowId id || (IsOwnedWindowActive(id) && GetOwnedWindowState(id).Lifecycle == OwnedWindowLifecycle.Visible));
         _pendingOwnedFocus = Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
         {
+            // Clear before entering reentrant work, never after it: a newer
+            // operation posted by layout must retain its cancellation handle.
             _pendingOwnedFocus = null;
-            if (generation == _ownedFocusIntentGeneration && IsLoaded &&
-                ReferenceEquals(Keyboard.FocusedElement, focusOrigin) &&
-                (owner is not OwnedWindowId id || (IsOwnedWindowActive(id) && GetOwnedWindowState(id).Lifecycle == OwnedWindowLifecycle.Visible)))
-                focus();
+            if (IntentIsCurrent()) focus(IntentIsCurrent);
         }));
     }
 

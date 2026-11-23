@@ -86,6 +86,99 @@ function Add-Check {
     }
 }
 
+function Read-PreviewReceipt {
+    param(
+        [object[]]$Output,
+        [int]$ExitCode,
+        [string]$Command,
+        [string[]]$Strings,
+        [string[]]$Booleans,
+        [string[]]$Integers,
+        [switch]$Render,
+        [string]$ScenarioField = ''
+    )
+    # Native stderr/stdout have already been merged by the caller's 2>&1.
+    $combinedOutput = $Output -join [Environment]::NewLine
+    $parsed = $null
+    $parseError = $null
+    $schemaErrors = [Collections.Generic.List[string]]::new()
+    try {
+        if ([string]::IsNullOrWhiteSpace($combinedOutput)) { throw 'empty-output' }
+        $parsed = ConvertFrom-Json -InputObject $combinedOutput -NoEnumerate
+    }
+    catch { $parseError = $_.Exception.Message }
+    $producerFailures = @()
+    $failedScenarios = @()
+    if ($parsed -isnot [pscustomobject]) {
+        $schemaErrors.Add('root: expected one JSON object')
+    }
+    else {
+        if ($Render) {
+            $Strings = @('result', 'receiptType', 'accentHex', 'surfaceState', 'liveExplorer')
+            $Booleans = @('desktopContainsDeviceUi', 'ownProcessOnly', 'shellMutationSupported',
+                'deviceIntegrationSupported', 'activationPermitted', 'mutationPerformed',
+                'readOnlyProcessTelemetry', 'processControlSupported')
+            $Integers = @('schemaVersion', 'width', 'height')
+        }
+        $types = @{}
+        foreach ($name in $Strings) { $types[$name] = 'string' }
+        foreach ($name in $Booleans) { $types[$name] = 'bool' }
+        foreach ($name in $Integers) { $types[$name] = 'integer' }
+        if ($Render) { $types['failures'] = 'strings' }
+        if ($ScenarioField) { $types[$ScenarioField] = 'scenarios' }
+        foreach ($name in ($types.Keys | Sort-Object)) {
+            $property = $parsed.PSObject.Properties[$name]
+            if ($null -eq $property) {
+                $schemaErrors.Add("${name}: missing required field")
+                continue
+            }
+            $value = $property.Value
+            $valid = switch ($types[$name]) {
+                'string' { $value -is [string] }
+                'bool' { $value -is [bool] }
+                'integer' { $value -is [int] -or $value -is [long] -or $value -is [bigint] }
+                'strings' { $value -is [array] -and @($value | Where-Object { $_ -isnot [string] }).Count -eq 0 }
+                'scenarios' {
+                    $value -is [array] -and @($value | Where-Object {
+                        $_ -isnot [pscustomobject] -or
+                        $null -eq $_.PSObject.Properties['name'] -or $_.name -isnot [string] -or
+                        $null -eq $_.PSObject.Properties['passed'] -or $_.passed -isnot [bool] -or
+                        $null -eq $_.PSObject.Properties['detail'] -or $_.detail -isnot [string]
+                    }).Count -eq 0
+                }
+            }
+            if (-not $valid) { $schemaErrors.Add("${name}: expected $($types[$name])") }
+        }
+        # Keep usable diagnostics even when another required field is malformed.
+        $property = $parsed.PSObject.Properties['failures']
+        if ($null -ne $property) {
+            $producerFailures = @($property.Value | Where-Object { $_ -is [string] })
+        }
+        $property = $parsed.PSObject.Properties['scenarios']
+        if ($null -ne $property) {
+            $failedScenarios = @(foreach ($scenario in $property.Value) {
+                if ($scenario -is [pscustomobject] -and
+                    $null -ne $scenario.PSObject.Properties['passed'] -and
+                    $scenario.passed -is [bool] -and -not $scenario.passed -and
+                    $null -ne $scenario.PSObject.Properties['name'] -and $scenario.name -is [string] -and
+                    $null -ne $scenario.PSObject.Properties['detail'] -and $scenario.detail -is [string]) {
+                    [ordered]@{ name = $scenario.name; detail = $scenario.detail }
+                }
+            })
+        }
+    }
+    $valid = $null -eq $parseError -and $schemaErrors.Count -eq 0
+    [pscustomobject]@{
+        valid = $valid
+        receipt = if ($valid) { $parsed } else { $null }
+        detail = ([ordered]@{
+            command = $Command; exitCode = $ExitCode; combinedOutput = $combinedOutput
+            parseError = $parseError; schemaErrors = @($schemaErrors)
+            producer = [ordered]@{ failures = $producerFailures; failedScenarios = $failedScenarios }
+        } | ConvertTo-Json -Depth 12 -Compress)
+    }
+}
+
 $sourceText = @(
     foreach ($currentSourceRoot in @(
         $sourceRoot,
@@ -718,6 +811,42 @@ $taskManagerStructuralRenderPassed = $false
 $taskManagerRenderSha256 = $null
 $taskManagerVisualEvidenceState = 'not-run'
 
+$failureReportingScriptPath = Join-Path $PSScriptRoot 'Test-Windows10NeuralVoidPreviewFailureReporting.ps1'
+$failureReportingOutput = @()
+$failureReportingExitCode = -1
+try {
+    if (-not (Test-Path -LiteralPath $failureReportingScriptPath -PathType Leaf)) {
+        throw 'Failure-reporting regression script is missing.'
+    }
+    $failureReportingOutput = @(
+        & (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File $failureReportingScriptPath 2>&1
+    )
+    $failureReportingExitCode = $LASTEXITCODE
+}
+catch { $failureReportingOutput = @($_.ToString()) }
+$failureReportingAdmission = Read-PreviewReceipt -Output $failureReportingOutput `
+    -ExitCode $failureReportingExitCode -Command 'Test-Windows10NeuralVoidPreviewFailureReporting.ps1' `
+    -Strings @('result', 'receiptType', 'evidenceKind', 'gateSha256', 'testSha256') `
+    -Integers @('schemaVersion', 'testCount', 'passedCount') -ScenarioField 'tests'
+$failureReportingReceipt = $failureReportingAdmission.receipt
+Add-Check `
+    -Name 'test.failure-reporting-regression' `
+    -Passed (
+        $failureReportingExitCode -eq 0 -and
+        $null -ne $failureReportingReceipt -and
+        $failureReportingReceipt.schemaVersion -eq 1 -and
+        $failureReportingReceipt.receiptType -ceq 'jarvisv2-preview-failure-reporting-regression' -and
+        $failureReportingReceipt.evidenceKind -ceq 'deterministic-real-consumer-fixtures-not-product-execution' -and
+        $failureReportingReceipt.result -ceq 'passed' -and
+        $failureReportingReceipt.testCount -gt 0 -and
+        $failureReportingReceipt.passedCount -eq $failureReportingReceipt.testCount -and
+        @($failureReportingReceipt.tests).Count -eq $failureReportingReceipt.testCount -and
+        @($failureReportingReceipt.tests | Where-Object { -not $_.passed }).Count -eq 0 -and
+        @($failureReportingReceipt.tests.name | Sort-Object -Unique).Count -eq $failureReportingReceipt.testCount -and
+        $failureReportingReceipt.gateSha256 -ceq (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash -and
+        $failureReportingReceipt.testSha256 -ceq (Get-FileHash -LiteralPath $failureReportingScriptPath -Algorithm SHA256).Hash) `
+    -Detail $failureReportingAdmission.detail
+
 $buildOutput = @(
     & $DotnetPath build `
         $projectPath `
@@ -740,15 +869,11 @@ if ($buildExitCode -eq 0) {
         & $DotnetPath $assemblyPath test-vector-adapter 2>&1
     )
     $adapterExitCode = $LASTEXITCODE
-    $adapterReceipt = $null
-    try {
-        $adapterReceipt =
-            ($adapterOutput -join [Environment]::NewLine) |
-                ConvertFrom-Json
-    }
-    catch {
-        $adapterReceipt = $null
-    }
+    $adapterAdmission = Read-PreviewReceipt -Output $adapterOutput -ExitCode $adapterExitCode `
+        -Command 'test-vector-adapter' -Strings @('result', 'receiptType', 'liveExplorer') `
+        -Booleans @('shellMutationSupported', 'deviceIntegrationSupported', 'activationPermitted', 'mutationPerformed') `
+        -Integers @('schemaVersion', 'scenarioCount', 'passedCount') -ScenarioField 'scenarios'
+    $adapterReceipt = $adapterAdmission.receipt
     Add-Check `
         -Name 'vector.wpf-adapter-fail-closed-scenarios' `
         -Passed (
@@ -766,24 +891,17 @@ if ($buildExitCode -eq 0) {
             -not $adapterReceipt.activationPermitted -and
             $adapterReceipt.liveExplorer -eq 'not-run' -and
             -not $adapterReceipt.mutationPerformed) `
-        -Detail (
-            "WPF vector adapter exit $adapterExitCode; scenarios " +
-            "$($adapterReceipt.passedCount)/" +
-            "$($adapterReceipt.scenarioCount).")
+        -Detail $adapterAdmission.detail
 
     $edgeOutput = @(
         & $DotnetPath $assemblyPath test-edge-bars 2>&1
     )
     $edgeExitCode = $LASTEXITCODE
-    $edgeReceipt = $null
-    try {
-        $edgeReceipt =
-            ($edgeOutput -join [Environment]::NewLine) |
-                ConvertFrom-Json
-    }
-    catch {
-        $edgeReceipt = $null
-    }
+    $edgeAdmission = Read-PreviewReceipt -Output $edgeOutput -ExitCode $edgeExitCode `
+        -Command 'test-edge-bars' -Strings @('result', 'receiptType', 'liveExplorer') `
+        -Booleans @('ownProcessOnly', 'shellMutationSupported') `
+        -Integers @('schemaVersion', 'scenarioCount', 'passedCount') -ScenarioField 'scenarios'
+    $edgeReceipt = $edgeAdmission.receipt
     Add-Check `
         -Name 'interaction.edge-bar-scenarios' `
         -Passed (
@@ -800,31 +918,17 @@ if ($buildExitCode -eq 0) {
             $edgeReceipt.ownProcessOnly -and
             -not $edgeReceipt.shellMutationSupported -and
             $edgeReceipt.liveExplorer -eq 'not-run') `
-        -Detail (
-            "Edge-bar test exit $edgeExitCode; scenarios " +
-            "$($edgeReceipt.passedCount)/" +
-            "$($edgeReceipt.scenarioCount).")
+        -Detail $edgeAdmission.detail
 
     $explorerOutput = @(
         & $DotnetPath $assemblyPath test-explorer-workspace 2>&1
     )
     $explorerExitCode = $LASTEXITCODE
-    $explorerReceipt = $null
-    try {
-        $explorerReceipt =
-            ($explorerOutput -join [Environment]::NewLine) |
-                ConvertFrom-Json
-    }
-    catch {
-        $explorerReceipt = $null
-    }
-    $explorerScenarioDetail = if ($null -eq $explorerReceipt) {
-        'receipt-unavailable'
-    }
-    else {
-        "$($explorerReceipt.passedCount)/" +
-            "$($explorerReceipt.scenarioCount)"
-    }
+    $explorerAdmission = Read-PreviewReceipt -Output $explorerOutput -ExitCode $explorerExitCode `
+        -Command 'test-explorer-workspace' -Strings @('result', 'receiptType') `
+        -Booleans @('ownProcessOnly', 'operatingSystemLaunchSupported', 'realFileSystemAccessSupported') `
+        -Integers @('schemaVersion', 'scenarioCount', 'passedCount') -ScenarioField 'scenarios'
+    $explorerReceipt = $explorerAdmission.receipt
     Add-Check `
         -Name 'interaction.explorer-workspace-scenarios' `
         -Passed (
@@ -841,31 +945,17 @@ if ($buildExitCode -eq 0) {
             $explorerReceipt.ownProcessOnly -and
             -not $explorerReceipt.operatingSystemLaunchSupported -and
             -not $explorerReceipt.realFileSystemAccessSupported) `
-        -Detail (
-            "Explorer workspace test exit $explorerExitCode; scenarios " +
-            $explorerScenarioDetail + '.')
+        -Detail $explorerAdmission.detail
 
     $taskManagerSurfaceOutput = @(
         & $DotnetPath $assemblyPath test-task-manager-surface 2>&1
     )
     $taskManagerSurfaceExitCode = $LASTEXITCODE
-    $taskManagerSurfaceReceipt = $null
-    try {
-        $taskManagerSurfaceReceipt =
-            ($taskManagerSurfaceOutput -join [Environment]::NewLine) |
-                ConvertFrom-Json
-    }
-    catch {
-        $taskManagerSurfaceReceipt = $null
-    }
-    $taskManagerScenarioDetail =
-        if ($null -eq $taskManagerSurfaceReceipt) {
-            'receipt-unavailable'
-        }
-        else {
-            "$($taskManagerSurfaceReceipt.passedCount)/" +
-                "$($taskManagerSurfaceReceipt.scenarioCount)"
-        }
+    $taskManagerSurfaceAdmission = Read-PreviewReceipt -Output $taskManagerSurfaceOutput -ExitCode $taskManagerSurfaceExitCode `
+        -Command 'test-task-manager-surface' -Strings @('result', 'receiptType', 'liveExplorer') `
+        -Booleans @('ownProcessOnly', 'readOnlyProcessTelemetry', 'processControlSupported', 'samplingStopsWhenHidden', 'mutationPerformed') `
+        -Integers @('schemaVersion', 'scenarioCount', 'passedCount') -ScenarioField 'scenarios'
+    $taskManagerSurfaceReceipt = $taskManagerSurfaceAdmission.receipt
     Add-Check `
         -Name 'interaction.owned-task-manager-scenarios' `
         -Passed (
@@ -885,22 +975,17 @@ if ($buildExitCode -eq 0) {
             $taskManagerSurfaceReceipt.samplingStopsWhenHidden -and
             $taskManagerSurfaceReceipt.liveExplorer -eq 'not-run' -and
             -not $taskManagerSurfaceReceipt.mutationPerformed) `
-        -Detail (
-            "Owned Task Manager surface exit $taskManagerSurfaceExitCode; " +
-            "scenarios $taskManagerScenarioDetail.")
+        -Detail $taskManagerSurfaceAdmission.detail
 
     $ownedLayoutOutput = @(
         & $DotnetPath $assemblyPath test-owned-window-layout 2>&1
     )
     $ownedLayoutExitCode = $LASTEXITCODE
-    $ownedLayoutReceipt = $null
-    try {
-        $ownedLayoutReceipt = ($ownedLayoutOutput -join [Environment]::NewLine) |
-            ConvertFrom-Json
-    }
-    catch {
-        $ownedLayoutReceipt = $null
-    }
+    $ownedLayoutAdmission = Read-PreviewReceipt -Output $ownedLayoutOutput -ExitCode $ownedLayoutExitCode `
+        -Command 'test-owned-window-layout' -Strings @('result', 'receiptType', 'liveExplorer') `
+        -Booleans @('ownProcessOnly', 'thirdPartyWindowControlSupported', 'shellMutationSupported', 'mutationPerformed') `
+        -Integers @('schemaVersion', 'scenarioCount', 'passedCount') -ScenarioField 'scenarios'
+    $ownedLayoutReceipt = $ownedLayoutAdmission.receipt
     Add-Check `
         -Name 'interaction.owned-window-layout-scenarios' `
         -Passed (
@@ -909,7 +994,7 @@ if ($buildExitCode -eq 0) {
             $ownedLayoutReceipt.receiptType -ceq 'jarvisv2-win10-owned-window-layout-test' -and
             $ownedLayoutReceipt.result -eq 'passed' -and
             $ownedLayoutReceipt.schemaVersion -eq 1 -and
-            $ownedLayoutReceipt.scenarioCount -eq 128 -and
+            $ownedLayoutReceipt.scenarioCount -eq 137 -and
             @($ownedLayoutReceipt.scenarios).Count -eq $ownedLayoutReceipt.scenarioCount -and
             @($ownedLayoutReceipt.scenarios | Where-Object { -not $_.passed }).Count -eq 0 -and
             @($ownedLayoutReceipt.scenarios.name | Sort-Object -Unique).Count -eq $ownedLayoutReceipt.scenarioCount -and
@@ -919,7 +1004,7 @@ if ($buildExitCode -eq 0) {
             -not $ownedLayoutReceipt.shellMutationSupported -and
             $ownedLayoutReceipt.liveExplorer -eq 'not-run' -and
             -not $ownedLayoutReceipt.mutationPerformed) `
-        -Detail "Owned layout coordinator and hosted WPF scenarios exit $ownedLayoutExitCode."
+        -Detail $ownedLayoutAdmission.detail
 
     $null = New-Item `
         -ItemType Directory `
@@ -953,15 +1038,9 @@ if ($buildExitCode -eq 0) {
                 $renderCase.phase 2>&1
         )
         $renderExitCode = $LASTEXITCODE
-        $receipt = $null
-        try {
-            $receipt =
-                ($renderOutput -join [Environment]::NewLine) |
-                    ConvertFrom-Json
-        }
-        catch {
-            $receipt = $null
-        }
+        $renderAdmission = Read-PreviewReceipt -Output $renderOutput `
+            -ExitCode $renderExitCode -Command 'render' -Render
+        $receipt = $renderAdmission.receipt
 
         $pngValid = $false
         if (Test-Path -LiteralPath $outputPath -PathType Leaf) {
@@ -1054,7 +1133,7 @@ if ($buildExitCode -eq 0) {
         $renderPassed = $renderPassed -and $casePassed
         $renderDetails.Add(
             "$($renderCase.name)=$casePassed/" +
-            "$($receipt.accentHex)/" +
+            "receipt=$($renderAdmission.detail)/" +
             "structural=$structuralCasePassed/" +
             "comparable=$caseFeatherPixelComparable/" +
             "featherPixelApproved=$caseFeatherPixelApproved/" +
@@ -1089,15 +1168,9 @@ if ($buildExitCode -eq 0) {
             '0' 2>&1
     )
     $taskManagerRenderExitCode = $LASTEXITCODE
-    $taskManagerRenderReceipt = $null
-    try {
-        $taskManagerRenderReceipt =
-            ($taskManagerRenderOutput -join [Environment]::NewLine) |
-                ConvertFrom-Json
-    }
-    catch {
-        $taskManagerRenderReceipt = $null
-    }
+    $taskManagerRenderAdmission = Read-PreviewReceipt -Output $taskManagerRenderOutput `
+        -ExitCode $taskManagerRenderExitCode -Command 'render-task-manager' -Render
+    $taskManagerRenderReceipt = $taskManagerRenderAdmission.receipt
 
     $taskManagerPngValid = $false
     if (Test-Path -LiteralPath $taskManagerOutputPath -PathType Leaf) {
@@ -1155,13 +1228,7 @@ if ($buildExitCode -eq 0) {
         else {
             'render-blocked'
         }
-    $taskManagerFailureDetail =
-        if ($null -eq $taskManagerRenderReceipt) {
-            'receipt-unavailable'
-        }
-        else {
-            @($taskManagerRenderReceipt.failures) -join ','
-        }
+    $taskManagerFailureDetail = $taskManagerRenderAdmission.detail
     Add-Check `
         -Name 'render.owned-task-manager-evidence' `
         -Passed $taskManagerStructuralRenderPassed `
@@ -1184,15 +1251,9 @@ if ($buildExitCode -eq 0) {
                 $ownedLayoutPreset 2>&1
         )
         $ownedLayoutExitCode = $LASTEXITCODE
-        $ownedLayoutReceipt = $null
-        try {
-            $ownedLayoutReceipt =
-                ($ownedLayoutOutput -join [Environment]::NewLine) |
-                    ConvertFrom-Json
-        }
-        catch {
-            $ownedLayoutReceipt = $null
-        }
+        $ownedLayoutAdmission = Read-PreviewReceipt -Output $ownedLayoutOutput `
+            -ExitCode $ownedLayoutExitCode -Command 'render-owned-layout' -Render
+        $ownedLayoutReceipt = $ownedLayoutAdmission.receipt
 
         $ownedLayoutCasePassed =
             $ownedLayoutExitCode -eq 0 -and
@@ -1212,7 +1273,7 @@ if ($buildExitCode -eq 0) {
         $ownedLayoutRenderPassed =
             $ownedLayoutRenderPassed -and $ownedLayoutCasePassed
         $ownedLayoutRenderDetails.Add(
-            "$ownedLayoutPreset=$ownedLayoutCasePassed/exit=$ownedLayoutExitCode")
+            "$ownedLayoutPreset=$ownedLayoutCasePassed/receipt=$($ownedLayoutAdmission.detail)")
     }
     Add-Check `
         -Name 'render.owned-two-pane-layout-chrome' `

@@ -196,6 +196,7 @@
     "scripts/Test-Windows10TaskbarEdgeOverlay.ps1",
     "scripts/Test-Windows10NativeStyleProbe.ps1",
     "scripts/Test-Windows10NeuralVoidPreview.ps1",
+    "scripts/Test-Windows10NeuralVoidPreviewFailureReporting.ps1",
     "scripts/Test-Windows10OwnedTaskManager.ps1",
     "scripts/Test-Windows10RgbThemeModel.ps1",
     "scripts/Test-Windows10ShellSurfaceProbe.ps1",

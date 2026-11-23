@@ -68,17 +68,23 @@ public partial class ExplorerSurface : UserControl
         return true;
     }
 
-    private void QueueExplorerFocus(Action action)
+    private void QueueExplorerFocus(Action action) =>
+        QueueExplorerFocusWithCheckpoint((_, _) => action());
+
+    private void QueueExplorerFocusWithCheckpoint(Action<Func<bool>, Func<bool>> action)
     {
         CancelPendingFocus();
         int generation = _focusIntentGeneration;
         IInputElement? focusOrigin = Keyboard.FocusedElement;
+        bool LifetimeIsCurrent() => generation == _focusIntentGeneration && _interactionEnabled && IsLoaded && IsVisible &&
+            (IsFocusIntentCurrent?.Invoke() ?? true);
+        bool IntentIsCurrent() => LifetimeIsCurrent() && ReferenceEquals(Keyboard.FocusedElement, focusOrigin);
         _pendingExplorerFocus = Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
         {
+            // Never clear after the action: synchronous layout/focus handlers may
+            // have posted a newer operation that must remain cancellable.
             _pendingExplorerFocus = null;
-            if (generation == _focusIntentGeneration && _interactionEnabled && IsLoaded && IsVisible &&
-                ReferenceEquals(Keyboard.FocusedElement, focusOrigin) &&
-                (IsFocusIntentCurrent?.Invoke() ?? true)) action();
+            if (IntentIsCurrent()) action(IntentIsCurrent, LifetimeIsCurrent);
         }));
     }
     internal bool IsCompactWidth { get; private set; }
@@ -432,17 +438,26 @@ public partial class ExplorerSurface : UserControl
     private void QueueExplorerRenameFocus()
     {
         string? renameId = Workspace.RenameItemId;
-        QueueExplorerFocus(() =>
+        QueueExplorerFocusWithCheckpoint((intentIsCurrent, lifetimeIsCurrent) =>
         {
             if (renameId is null || Workspace.RenameItemId != renameId ||
                 ExplorerItemList.SelectedItem is not ExplorerWorkspaceItem selected || selected.Id != renameId) return;
+            bool TargetIsCurrent() => Workspace.RenameItemId == renameId &&
+                ReferenceEquals(ExplorerItemList.SelectedItem, selected);
             ExplorerItemList.ScrollIntoView(selected);
             ExplorerItemList.UpdateLayout();
+            // Materialization can synchronously change focus, rename target or
+            // owning lifecycle after the queue's entry guard already passed.
+            if (!intentIsCurrent() || !TargetIsCurrent()) return;
             if (ExplorerItemList.ItemContainerGenerator.ContainerFromItem(selected) is ListBoxItem container &&
-                FindVisualDescendant<TextBox>(container) is TextBox { IsVisible: true } editor && IsAncestorOf(editor))
+                FindVisualDescendant<TextBox>(container) is TextBox { IsVisible: true } editor &&
+                IsAncestorOf(editor) && ReferenceEquals(editor.DataContext, selected) &&
+                PresentationSource.FromVisual(editor) is not null)
             {
-                _ = editor.Focus();
-                editor.SelectAll();
+                // Focus itself can be rejected or redirected by routed handlers.
+                // Do not select a background/stale editor after that newer intent.
+                if (editor.Focus() && editor.IsKeyboardFocused && lifetimeIsCurrent() && TargetIsCurrent() &&
+                    ReferenceEquals(CurrentRenameEditor(), editor)) editor.SelectAll();
             }
         });
     }
